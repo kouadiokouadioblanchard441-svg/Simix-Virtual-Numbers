@@ -1,0 +1,199 @@
+You are a senior full-stack developer and UI/UX engineer.
+
+Your task is to build a complete mobile-first web application called "Simix" based on the provided UI design images.
+
+---
+
+PROJECT OVERVIEW:
+
+Simix is a fintech + virtual number platform that allows users to:
+
+- buy virtual phone numbers
+- receive SMS verification codes
+- pay using mobile money
+- manage wallet balance
+
+---
+
+IMPORTANT:
+
+The UI design images provided are the reference for:
+
+- layout
+- colors
+- spacing
+- components
+- user flow
+
+You MUST replicate the design as closely as possible.
+
+---
+
+TECH STACK:
+
+- Frontend: React (Next.js preferred)
+- Styling: Tailwind CSS
+- Backend: Node.js (Express)
+- Database: MongoDB
+- State management: simple React state or context
+- API integration ready (for PawaPay or similar)
+
+---
+
+PAGES TO BUILD:
+
+1. Splash Screen
+
+- Logo "Simix"
+- loading animation
+- redirect to login
+
+---
+
+2. Authentication (Login / Register)
+
+- login with phone or username
+- password field
+- OTP support ready (mock)
+- simple signup (name, phone, password)
+
+---
+
+3. Dashboard
+
+- hero section (buy number)
+- balance display
+- quick actions
+- popular services
+- popular countries
+
+---
+
+4. Service Selection
+
+- list of services (WhatsApp, Telegram, etc.)
+- price display
+- availability count
+- categories + search
+
+---
+
+5. Country Selection
+
+- list of countries
+- flags
+- availability
+- pricing
+- search + filters
+
+---
+
+6. Details & Confirmation Page
+
+- selected service + country
+- number info (availability, wait time)
+- price breakdown
+- CTA: "Get Number"
+
+---
+
+7. Number Assigned Page
+
+- display number clearly
+- copy button
+- countdown timer
+- SMS receiving section (mock real-time)
+- actions: refresh, extend time, cancel
+
+---
+
+8. Wallet Page
+
+- balance display
+- recharge options:
+  - Mobile Money
+  - Card
+- preset amounts
+- payment summary
+- CTA: proceed to payment
+
+---
+
+9. Profile Page
+
+- user info
+- verification badge
+- balance overview
+- settings:
+  - security
+  - notifications
+  - payment methods
+- logout button
+
+---
+
+BACKEND FEATURES:
+
+- user authentication (JWT)
+- wallet system
+- transaction tracking
+- mock payment system
+- mock SMS receiving system
+- API structure ready for real providers
+
+---
+
+SECURITY:
+
+- password hashing (bcrypt)
+- protected routes
+- input validation
+
+---
+
+UI REQUIREMENTS:
+
+- dark theme (black + purple gradient)
+- modern fintech style
+- rounded cards
+- smooth animations
+- mobile-first design
+
+---
+
+FOLDER STRUCTURE:
+
+- /frontend (Next.js)
+- /backend (Express)
+- /components
+- /pages
+- /api
+
+---
+
+EXTRA:
+
+- use reusable components
+- clean and readable code
+- add comments for key logic
+- make the app fully navigable
+
+---
+
+GOAL:
+
+Deliver a fully working prototype of Simix based on the UI designs, ready for real API integration and production scaling.
+
+---
+
+START BY:
+
+1. Setting up the project structure
+2. Building the UI pages
+3. Connecting backend APIs
+4. Adding basic logic
+
+---
+
+DO NOT SKIP STEPS.
+BUILD CLEAN, MODERN, SCALABLE CODE.
