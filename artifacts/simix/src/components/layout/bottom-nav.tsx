@@ -21,12 +21,12 @@ function NavLink({ item, active }: { item: NavItem; active: boolean }) {
     <Link
       href={item.href}
       className={cn(
-        "flex flex-col items-center gap-1 px-3 py-1",
-        active ? "text-primary" : "text-muted-foreground",
+        "flex flex-col items-center gap-1.5 px-4 py-2 rounded-xl transition-all",
+        active ? "text-primary" : "text-muted-foreground hover:text-foreground hover:bg-secondary/50",
       )}
     >
-      <Icon className="w-6 h-6" />
-      <span className="text-[10px] font-medium">{item.label}</span>
+      <Icon className={cn("w-5 h-5", active && "fill-primary/20 stroke-2")} />
+      <span className={cn("text-[10px] font-medium", active && "font-bold")}>{item.label}</span>
     </Link>
   );
 }
@@ -37,18 +37,18 @@ export function BottomNav() {
     location === href || location.startsWith(`${href}/`);
 
   return (
-    <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md bg-card/80 backdrop-blur-xl border-t border-card-border pb-safe pt-2 px-6 z-50">
+    <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md bg-background/90 backdrop-blur-xl border-t border-card-border pb-safe pt-2 px-6 z-50">
       <div className="flex items-center justify-between relative">
         {LEFT_ITEMS.map((item) => (
           <NavLink key={item.href} item={item} active={isActive(item.href)} />
         ))}
 
-        <div className="relative -top-6">
+        <div className="relative -top-6 px-2">
           <Link
             href="/services"
-            className="flex items-center justify-center w-14 h-14 rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/30 active:scale-95 transition-transform"
+            className="flex items-center justify-center w-[52px] h-[52px] rounded-full bg-gradient-to-tr from-violet-600 to-indigo-600 text-white shadow-lg shadow-primary/30 active:scale-95 transition-transform"
           >
-            <Plus className="w-8 h-8" />
+            <Plus className="w-6 h-6 stroke-2" />
           </Link>
         </div>
 

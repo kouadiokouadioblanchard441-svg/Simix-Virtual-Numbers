@@ -1,0 +1,20 @@
+uploads = []
+outputs = []
+
+[[generated]]
+id = "7KKbkQS84fRKOJ71s36w1"
+uri = "file://attached_assets/generated_images/simix_phone_3d.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "QDBR0QC5g2UmqAKdH7KHY"
+uri = "file://attached_assets/generated_images/simix_wallet_3d.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "R4RUFHH0QVF6WGPmaW2h0"
+uri = "file://attached_assets/generated_images/simix_phone_chat_3d.png"
+type = "image"
+title = "generated_image"
