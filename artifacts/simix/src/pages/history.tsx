@@ -60,9 +60,7 @@ function HistoryContent() {
               transition={{ delay: i * 0.05 }}
               className="bg-card border border-card-border p-4 rounded-2xl flex items-center gap-4"
             >
-              <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: `${num.service.color}20` }}>
-                 <span className="text-lg font-bold" style={{ color: num.service.color }}>{num.service.name.charAt(0)}</span>
-              </div>
+              <ServiceIcon name={num.service.name} slug={(num.service as any).slug} size={48} rounded="xl" />
               
               <div className="flex-1 min-w-0">
                 <div className="flex justify-between items-start mb-1">

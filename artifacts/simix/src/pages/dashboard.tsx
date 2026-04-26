@@ -7,8 +7,7 @@ import { Bell, Plus, ShieldCheck, Zap, Globe, Clock, ChevronRight, Eye, Shopping
 import { Link } from "wouter";
 import { SimixLogo } from "@/components/simix-logo";
 import phoneChat3d from "@/assets/simix_phone_chat_3d.png";
-import { FaWhatsapp, FaTelegram, FaFacebook, FaGoogle, FaInstagram } from "react-icons/fa";
-import { SiX } from "react-icons/si";
+import { ServiceIcon } from "@/components/service-icon";
 
 export default function Dashboard() {
   return (
@@ -18,17 +17,6 @@ export default function Dashboard() {
       </AppLayout>
     </AuthGuard>
   );
-}
-
-function getServiceIcon(name: string) {
-  const lowerName = name.toLowerCase();
-  if (lowerName.includes("whatsapp")) return <FaWhatsapp className="w-6 h-6 text-white" />;
-  if (lowerName.includes("telegram")) return <FaTelegram className="w-6 h-6 text-white" />;
-  if (lowerName.includes("facebook")) return <FaFacebook className="w-6 h-6 text-white" />;
-  if (lowerName.includes("google")) return <FaGoogle className="w-6 h-6 text-white" />;
-  if (lowerName.includes("instagram")) return <FaInstagram className="w-6 h-6 text-white" />;
-  if (lowerName.includes("twitter") || lowerName.includes("x")) return <SiX className="w-5 h-5 text-white" />;
-  return <span className="text-white font-bold text-lg">{name.charAt(0)}</span>;
 }
 
 function DashboardContent() {
@@ -158,15 +146,13 @@ function DashboardContent() {
           ) : (
             popularServices?.slice(0, 6).map(service => (
               <Link key={service.id} href={`/countries?serviceId=${service.id}`} className="flex items-center gap-3 bg-card border border-card-border p-3 rounded-2xl hover:bg-secondary/50 transition-colors">
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center shadow-sm shrink-0" style={{ backgroundColor: service.color || '#3b82f6' }}>
-                   {getServiceIcon(service.name)}
-                </div>
+                <ServiceIcon name={service.name} slug={service.slug} size={40} rounded="xl" />
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-bold text-foreground truncate">{service.name}</p>
                   <p className="text-[10px] text-muted-foreground truncate">{service.scope || "Global"}</p>
                 </div>
                 <div className="text-right shrink-0">
-                  <span className="text-xs font-bold text-primary">{service.price} FCFA</span>
+                  <span className="text-xs font-bold text-primary">{formatFCFA(service.price)}</span>
                 </div>
               </Link>
             ))

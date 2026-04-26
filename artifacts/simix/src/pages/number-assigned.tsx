@@ -11,19 +11,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { differenceInSeconds, formatDistanceToNow } from "date-fns";
 import { fr } from "date-fns/locale";
 import phoneChat3d from "@/assets/simix_phone_chat_3d.png";
-import { FaWhatsapp, FaTelegram, FaFacebook, FaGoogle, FaInstagram } from "react-icons/fa";
-import { SiX } from "react-icons/si";
-
-function getServiceIcon(name: string) {
-  const lowerName = name.toLowerCase();
-  if (lowerName.includes("whatsapp")) return <FaWhatsapp className="w-5 h-5 text-white" />;
-  if (lowerName.includes("telegram")) return <FaTelegram className="w-5 h-5 text-white" />;
-  if (lowerName.includes("facebook")) return <FaFacebook className="w-5 h-5 text-white" />;
-  if (lowerName.includes("google")) return <FaGoogle className="w-5 h-5 text-white" />;
-  if (lowerName.includes("instagram")) return <FaInstagram className="w-5 h-5 text-white" />;
-  if (lowerName.includes("twitter") || lowerName.includes("x")) return <SiX className="w-4 h-4 text-white" />;
-  return <span className="text-white font-bold text-sm">{name.charAt(0)}</span>;
-}
+import { ServiceIcon } from "@/components/service-icon";
 
 export default function NumberAssigned({ params }: { params: { id: string } }) {
   return (
@@ -145,9 +133,7 @@ function NumberAssignedContent({ id }: { id: string }) {
         {/* Service + Country small card */}
         <div className="bg-card border border-card-border rounded-2xl p-3 flex items-center justify-between mb-4 shadow-sm">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center shadow-sm" style={{ backgroundColor: number.service.color || '#3b82f6' }}>
-               {getServiceIcon(number.service.name)}
-            </div>
+            <ServiceIcon name={number.service.name} slug={(number.service as any).slug} size={40} rounded="xl" />
             <div>
               <p className="text-sm font-bold text-foreground leading-tight">{number.service.name}</p>
               <p className="text-xs text-muted-foreground flex items-center gap-1">

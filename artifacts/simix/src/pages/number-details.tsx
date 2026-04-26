@@ -8,19 +8,7 @@ import { formatFCFA } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
-import { FaWhatsapp, FaTelegram, FaFacebook, FaGoogle, FaInstagram } from "react-icons/fa";
-import { SiX } from "react-icons/si";
-
-function getServiceIcon(name: string) {
-  const lowerName = name.toLowerCase();
-  if (lowerName.includes("whatsapp")) return <FaWhatsapp className="w-8 h-8 text-white" />;
-  if (lowerName.includes("telegram")) return <FaTelegram className="w-8 h-8 text-white" />;
-  if (lowerName.includes("facebook")) return <FaFacebook className="w-8 h-8 text-white" />;
-  if (lowerName.includes("google")) return <FaGoogle className="w-8 h-8 text-white" />;
-  if (lowerName.includes("instagram")) return <FaInstagram className="w-8 h-8 text-white" />;
-  if (lowerName.includes("twitter") || lowerName.includes("x")) return <SiX className="w-7 h-7 text-white" />;
-  return <span className="text-white font-bold text-2xl">{name.charAt(0)}</span>;
-}
+import { ServiceIcon } from "@/components/service-icon";
 
 export default function NumberDetails() {
   return (
@@ -92,9 +80,7 @@ function NumberDetailsContent() {
         <div className="space-y-3 mb-8">
           <div className="bg-violet-900/20 border border-violet-500/30 rounded-2xl p-4 flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <div className="w-14 h-14 rounded-2xl flex items-center justify-center shadow-sm shrink-0" style={{ backgroundColor: quote.service.color || '#3b82f6' }}>
-                {getServiceIcon(quote.service.name)}
-              </div>
+              <ServiceIcon name={quote.service.name} slug={(quote.service as any).slug} size={56} rounded="2xl" />
               <div>
                 <p className="text-[10px] font-bold text-violet-400 uppercase tracking-wider mb-0.5">Service sélectionné</p>
                 <h3 className="text-lg font-bold text-white leading-tight">{quote.service.name}</h3>
