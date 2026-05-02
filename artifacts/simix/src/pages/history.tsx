@@ -6,6 +6,7 @@ import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { motion } from "framer-motion";
 import { Clock, CheckCircle2, XCircle, Search, Filter } from "lucide-react";
+import { ServiceIcon } from "@/components/service-icon";
 
 export default function History() {
   return (

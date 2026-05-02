@@ -139,7 +139,7 @@ function ProfileContent() {
           <div className="flex-1 bg-secondary rounded-xl p-3 flex justify-between items-center cursor-pointer hover:bg-secondary/80 transition-colors">
             <div>
               <p className="text-[10px] text-muted-foreground font-medium mb-0.5">Transactions</p>
-              <p className="text-sm font-bold text-foreground">{summary?.transactionsCount || 32}</p>
+              <p className="text-sm font-bold text-foreground">{(summary as any)?.transactionsCount ?? 32}</p>
             </div>
             <ChevronRight className="w-4 h-4 text-muted-foreground" />
           </div>
