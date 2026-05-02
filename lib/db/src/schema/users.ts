@@ -18,6 +18,9 @@ export const usersTable = pgTable("users", {
   balance: integer("balance").notNull().default(0),
   verified: boolean("verified").notNull().default(false),
   status: text("status").notNull().default("Standard"),
+  blockedReason: text("blocked_reason"),
+  riskScore: integer("risk_score").notNull().default(0),
+  isAdmin: boolean("is_admin").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),

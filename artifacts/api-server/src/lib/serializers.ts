@@ -21,6 +21,8 @@ export function toUser(
     balance: user.balance,
     verified: user.verified,
     status: user.status,
+    isAdmin: user.isAdmin,
+    riskScore: user.riskScore,
     createdAt: user.createdAt.toISOString(),
     totalSpent: totals?.totalSpent ?? 0,
     transactionsCount: totals?.transactionsCount ?? 0,

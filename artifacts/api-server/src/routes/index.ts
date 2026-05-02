@@ -6,6 +6,7 @@ import countriesRouter from "./countries";
 import numbersRouter from "./numbers";
 import walletRouter from "./wallet";
 import dashboardRouter from "./dashboard";
+import adminRouter from "./admin";
 
 const router: IRouter = Router();
 
@@ -16,5 +17,6 @@ router.use(countriesRouter);
 router.use(numbersRouter);
 router.use(walletRouter);
 router.use(dashboardRouter);
+router.use(adminRouter);
 
 export default router;
