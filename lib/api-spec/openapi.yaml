@@ -454,6 +454,10 @@ components:
           type: integer
         transactionsCount:
           type: integer
+        isAdmin:
+          type: boolean
+        riskScore:
+          type: integer
 
     AuthResponse:
       type: object

@@ -1,0 +1,197 @@
+You are a senior full-stack engineer and system architect.
+
+Build a complete ADMIN PANEL SYSTEM for a platform called SIMIX, a virtual phone number service using external APIs (like 5SIM).
+
+The admin panel must allow FULL CONTROL of the entire platform without modifying the code manually.
+
+========================
+OBJECTIVE
+
+Create a powerful admin dashboard that allows the administrator to:
+
+- monitor everything
+- configure everything
+- control business logic
+- manage users and finances
+- manage API providers
+- operate the platform autonomously
+
+========================
+CORE ADMIN FEATURES
+
+1. DASHBOARD OVERVIEW
+
+- total users
+- total transactions
+- total revenue
+- active sessions
+- recent activity logs
+- suspicious activity alerts
+
+========================
+2. USER MANAGEMENT
+
+- View all users
+- Search users
+- View user details:
+  - email
+  - balance
+  - activity
+- Edit user:
+  - add/remove balance
+  - block/unblock user
+- Delete user
+- View user transaction history
+
+========================
+3. WALLET & FINANCE CONTROL
+
+- View all deposits
+- View all purchases
+- Modify user balances manually
+- Set global pricing rules
+- Set profit margins
+- View profit statistics
+
+========================
+4. API MANAGEMENT SYSTEM (VERY IMPORTANT)
+
+Admin must be able to:
+
+- Add new API providers (5SIM, SMSPool, etc.)
+- Edit API keys
+- Enable / disable providers
+- Set priority between providers
+- Set pricing per provider
+
+Example:
+5SIM → active
+SMSPool → backup
+
+========================
+5. SERVICE & PRICING CONTROL
+
+- View all services (WhatsApp, Telegram, etc.)
+
+- Set price per service
+
+- Set country-based pricing
+
+- Apply margin automatically:
+  final_price = provider_price + margin
+
+- Enable / disable services
+
+========================
+6. NUMBER ORDERS MANAGEMENT
+
+- View all purchased numbers
+- See:
+  - user
+  - number
+  - service
+  - status (pending, received, expired)
+- Cancel orders
+- Force refresh SMS
+
+========================
+7. SECURITY & MONITORING
+
+- View login logs:
+  - IP
+  - country
+  - device
+- Detect suspicious behavior
+- Block suspicious users
+- View system alerts
+
+========================
+8. SYSTEM SETTINGS
+
+- Change platform name
+- Change currency (FCFA, USD)
+- Set default country
+- Enable/disable features
+- Configure limits:
+  - max orders per minute
+  - max balance
+
+========================
+9. TELEGRAM ALERT CONFIG
+
+- Add Telegram bot token
+- Add chat ID
+- Enable/disable alerts
+
+========================
+10. ROLE SYSTEM
+
+- Admin
+- Moderator
+- Support
+
+Each role has permissions:
+
+- full access
+- limited access
+
+========================
+11. LOGGING SYSTEM
+
+Store all actions:
+
+- admin actions
+- user actions
+- API calls
+- errors
+
+========================
+TECH REQUIREMENTS
+
+Backend:
+
+- Node.js (Express)
+
+Database:
+
+- MySQL or SQLite
+
+Frontend:
+
+- Clean dashboard UI (HTML/CSS/JS or simple React)
+
+========================
+ARCHITECTURE
+
+/admin/
+/routes/
+/controllers/
+/services/
+/models/
+
+========================
+IMPORTANT RULES
+
+- Everything must be configurable from the admin panel
+- No hardcoded values
+- Clean UI (simple but professional)
+- Beginner-friendly code but structured
+
+========================
+GOAL
+
+The platform must be fully controllable from the admin panel.
+
+The admin should be able to:
+→ run the entire business without touching the code
+
+========================
+OUTPUT REQUIRED
+
+- Full admin panel system
+- Database schema
+- API routes
+- UI structure
+- Explanation of how to use it
+
+Build step by step and make it functional.

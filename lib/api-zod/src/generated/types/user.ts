@@ -20,4 +20,6 @@ export interface User {
   createdAt: Date;
   totalSpent?: number;
   transactionsCount?: number;
+  isAdmin?: boolean;
+  riskScore?: number;
 }

@@ -25,6 +25,7 @@ import {
   ArrowRight,
   TrendingUp,
   Star,
+  LayoutDashboard,
 } from "lucide-react";
 import { Link } from "wouter";
 import { SimixLogo } from "@/components/simix-logo";
@@ -71,6 +72,13 @@ function DashboardContent() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          {me?.isAdmin && (
+            <Link href="/admin">
+              <button className="w-10 h-10 rounded-full bg-violet-600/20 border border-violet-500/30 flex items-center justify-center text-violet-400 hover:bg-violet-600/30 transition-colors" title="Admin Panel">
+                <LayoutDashboard className="w-[18px] h-[18px]" />
+              </button>
+            </Link>
+          )}
           <button className="w-10 h-10 rounded-full bg-card border border-card-border flex items-center justify-center text-foreground relative hover:bg-secondary transition-colors">
             <Bell className="w-[18px] h-[18px]" />
             <span className="absolute top-2 right-2.5 w-2 h-2 bg-red-500 border-2 border-card rounded-full" />

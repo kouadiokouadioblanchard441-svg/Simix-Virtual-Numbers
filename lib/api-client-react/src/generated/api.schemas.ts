@@ -27,6 +27,8 @@ export interface User {
   createdAt: string;
   totalSpent?: number;
   transactionsCount?: number;
+  isAdmin?: boolean;
+  riskScore?: number;
 }
 
 export interface AuthResponse {

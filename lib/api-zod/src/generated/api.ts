@@ -44,6 +44,8 @@ export const RegisterResponse = zod.object({
     createdAt: zod.coerce.date(),
     totalSpent: zod.number().optional(),
     transactionsCount: zod.number().optional(),
+    isAdmin: zod.boolean().optional(),
+    riskScore: zod.number().optional(),
   }),
   token: zod.string(),
 });
@@ -70,6 +72,8 @@ export const LoginResponse = zod.object({
     createdAt: zod.coerce.date(),
     totalSpent: zod.number().optional(),
     transactionsCount: zod.number().optional(),
+    isAdmin: zod.boolean().optional(),
+    riskScore: zod.number().optional(),
   }),
   token: zod.string(),
 });
@@ -96,6 +100,8 @@ export const GetMeResponse = zod.object({
   createdAt: zod.coerce.date(),
   totalSpent: zod.number().optional(),
   transactionsCount: zod.number().optional(),
+  isAdmin: zod.boolean().optional(),
+  riskScore: zod.number().optional(),
 });
 
 /**
