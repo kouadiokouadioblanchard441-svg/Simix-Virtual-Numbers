@@ -5,6 +5,9 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { useEffect } from "react";
 import NotFound from "@/pages/not-found";
 
+// Landing
+import Landing from "@/pages/landing";
+
 // User pages
 import Splash from "@/pages/splash";
 import Login from "@/pages/auth/login";
@@ -59,16 +62,21 @@ function AdminRoutes() {
 function InnerRouter() {
   const [location] = useLocation();
   const isAdmin = location.startsWith("/admin");
+  const isLanding = location === "/";
 
   if (isAdmin) {
     return <AdminRoutes />;
+  }
+
+  if (isLanding) {
+    return <Landing />;
   }
 
   return (
     <div className="flex justify-center min-h-[100dvh] bg-black">
       <div className="w-full max-w-md bg-background relative shadow-2xl sm:border-x sm:border-border overflow-hidden">
         <Switch>
-          <Route path="/" component={Splash} />
+          <Route path="/splash" component={Splash} />
           <Route path="/login" component={Login} />
           <Route path="/register" component={Register} />
           <Route path="/dashboard" component={Dashboard} />

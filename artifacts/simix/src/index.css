@@ -48,58 +48,116 @@
   --background: 258 30% 6%;
   --foreground: 0 0% 100%;
   --border: 258 20% 18%;
-  --input: 258 20% 18%;
-  --ring: 262 83% 65%;
-  --card: 258 25% 11%;
+  --input: 258 20% 14%;
+  --ring: 258 90% 66%;
+
+  --card: 258 25% 9%;
   --card-foreground: 0 0% 100%;
   --card-border: 258 20% 18%;
-  --popover: 258 25% 11%;
+
+  --popover: 258 25% 8%;
   --popover-foreground: 0 0% 100%;
   --popover-border: 258 20% 18%;
-  --primary: 262 83% 65%;
+
+  --primary: 258 90% 66%;
   --primary-foreground: 0 0% 100%;
-  --secondary: 258 20% 15%;
+
+  --secondary: 258 20% 14%;
   --secondary-foreground: 0 0% 100%;
-  --muted: 258 20% 15%;
-  --muted-foreground: 258 10% 65%;
-  --accent: 258 20% 15%;
+
+  --muted: 258 20% 14%;
+  --muted-foreground: 258 15% 60%;
+
+  --accent: 258 20% 18%;
   --accent-foreground: 0 0% 100%;
-  --destructive: 0 62.8% 30.6%;
-  --destructive-foreground: 0 0% 98%;
 
-  --app-font-sans: 'Inter', sans-serif;
-  --radius: 1rem;
+  --destructive: 0 72% 51%;
+  --destructive-foreground: 0 0% 100%;
+
+  --app-font-sans: "Inter", "system-ui", sans-serif;
+  --app-font-serif: "Georgia", serif;
+  --app-font-mono: "JetBrains Mono", "Fira Code", monospace;
+
+  --radius: 0.75rem;
 }
 
-.dark {
-  --background: 258 30% 6%;
-  --foreground: 0 0% 100%;
-  --border: 258 20% 18%;
-  --input: 258 20% 18%;
-  --ring: 262 83% 65%;
-  --card: 258 25% 11%;
-  --card-foreground: 0 0% 100%;
-  --card-border: 258 20% 18%;
-  --popover: 258 25% 11%;
-  --popover-foreground: 0 0% 100%;
-  --popover-border: 258 20% 18%;
-  --primary: 262 83% 65%;
-  --primary-foreground: 0 0% 100%;
-  --secondary: 258 20% 15%;
-  --secondary-foreground: 0 0% 100%;
-  --muted: 258 20% 15%;
-  --muted-foreground: 258 10% 65%;
-  --accent: 258 20% 15%;
-  --accent-foreground: 0 0% 100%;
-  --destructive: 0 62.8% 30.6%;
-  --destructive-foreground: 0 0% 98%;
+* {
+  box-sizing: border-box;
 }
 
-@layer base {
-  * {
-    @apply border-border;
-  }
-  body {
-    @apply font-sans antialiased bg-background text-foreground;
-  }
+body {
+  font-family: var(--app-font-sans);
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
 }
+
+/* ── Marquee / infinite ticker ── */
+@keyframes marquee-left {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+@keyframes marquee-right {
+  0%   { transform: translateX(-50%); }
+  100% { transform: translateX(0); }
+}
+
+.marquee-track {
+  display: flex;
+  width: max-content;
+  animation: marquee-left 40s linear infinite;
+}
+
+.marquee-track-reverse {
+  display: flex;
+  width: max-content;
+  animation: marquee-right 50s linear infinite;
+}
+
+.marquee-track:hover,
+.marquee-track-reverse:hover {
+  animation-play-state: paused;
+}
+
+/* ── Landing grid bg ── */
+.landing-grid {
+  background-image:
+    linear-gradient(rgba(124,58,237,0.07) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(124,58,237,0.07) 1px, transparent 1px);
+  background-size: 60px 60px;
+}
+
+/* ── Glow orb ── */
+.glow-orb {
+  border-radius: 50%;
+  filter: blur(80px);
+  pointer-events: none;
+}
+
+/* ── Glass card ── */
+.glass {
+  background: rgba(255,255,255,0.04);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255,255,255,0.08);
+}
+
+/* ── Service card hover ── */
+.service-card {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.service-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 32px rgba(124,58,237,0.25);
+}
+
+/* ── App screenshot float ── */
+@keyframes float-slow {
+  0%, 100% { transform: translateY(0px) rotate(-2deg); }
+  50% { transform: translateY(-12px) rotate(-2deg); }
+}
+@keyframes float-fast {
+  0%, 100% { transform: translateY(0px) rotate(2deg); }
+  50% { transform: translateY(-8px) rotate(2deg); }
+}
+.float-slow { animation: float-slow 6s ease-in-out infinite; }
+.float-fast { animation: float-fast 4s ease-in-out infinite; }
