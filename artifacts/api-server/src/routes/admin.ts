@@ -302,11 +302,10 @@ router.put("/admin/services/:serviceId", requireAuth, requireAdmin, async (req, 
 
   if (Object.keys(updates).length === 0) { res.status(400).json({ error: "Aucun champ à mettre à jour" }); return; }
 
-  /* Auto-compute final price if providerPrice + margin are both provided */
   if (updates.providerPrice !== undefined && updates.margin !== undefined) {
     const pp = Number(updates.providerPrice);
     const m = Number(updates.margin);
-    updates.price = Math.round(pp + pp * (m / 100));
+    if (pp > 0) updates.price = Math.round(pp + pp * (m / 100));
   }
 
   await db.update(servicesTable).set(updates).where(eq(servicesTable.id, serviceId));
@@ -335,10 +334,67 @@ router.put("/admin/countries/:countryId", requireAuth, requireAdmin, async (req,
   res.json({ success: true });
 });
 
+/* ─────────────────── PAYMENT METHODS MANAGEMENT ─────────────────── */
+router.get("/admin/payment-methods", requireAuth, requireAdmin, async (_req, res): Promise<void> => {
+  const rows = await db.select().from(paymentMethodsTable).orderBy(paymentMethodsTable.sortOrder, paymentMethodsTable.name);
+  res.json(rows);
+});
+
+router.post("/admin/payment-methods", requireAuth, requireAdmin, async (req, res): Promise<void> => {
+  const { name, slug, description, color, logoUrl, recommended, sortOrder } = req.body;
+  if (!name || !slug) { res.status(400).json({ error: "Nom et slug requis" }); return; }
+
+  const existing = await db.select({ id: paymentMethodsTable.id }).from(paymentMethodsTable).where(eq(paymentMethodsTable.slug, String(slug))).limit(1);
+  if (existing.length > 0) { res.status(409).json({ error: "Ce slug existe déjà" }); return; }
+
+  const [method] = await db.insert(paymentMethodsTable).values({
+    name: String(name),
+    slug: String(slug),
+    description: String(description || ""),
+    color: String(color || "#7C3AED"),
+    logoUrl: logoUrl ? String(logoUrl) : null,
+    recommended: Boolean(recommended),
+    sortOrder: Number(sortOrder || 100),
+  }).returning();
+
+  await logAdminAction(req.user!.id, "create_payment_method", req.ip, "payment_method", method.id, { name, slug });
+  res.status(201).json(method);
+});
+
+router.put("/admin/payment-methods/:methodId", requireAuth, requireAdmin, async (req, res): Promise<void> => {
+  const methodId = String(req.params.methodId);
+  const { name, description, color, logoUrl, recommended, sortOrder } = req.body;
+
+  const updates: Record<string, unknown> = {};
+  if (name !== undefined) updates.name = String(name);
+  if (description !== undefined) updates.description = String(description);
+  if (color !== undefined) updates.color = String(color);
+  if (logoUrl !== undefined) updates.logoUrl = logoUrl ? String(logoUrl) : null;
+  if (recommended !== undefined) updates.recommended = Boolean(recommended);
+  if (sortOrder !== undefined) updates.sortOrder = Number(sortOrder);
+
+  if (Object.keys(updates).length === 0) { res.status(400).json({ error: "Aucun champ à mettre à jour" }); return; }
+
+  await db.update(paymentMethodsTable).set(updates).where(eq(paymentMethodsTable.id, methodId));
+  await logAdminAction(req.user!.id, "update_payment_method", req.ip, "payment_method", methodId, updates);
+  res.json({ success: true });
+});
+
+router.delete("/admin/payment-methods/:methodId", requireAuth, requireAdmin, async (req, res): Promise<void> => {
+  const methodId = String(req.params.methodId);
+  await db.delete(paymentMethodsTable).where(eq(paymentMethodsTable.id, methodId));
+  await logAdminAction(req.user!.id, "delete_payment_method", req.ip, "payment_method", methodId);
+  res.json({ success: true });
+});
+
 /* ─────────────────── COUNTRY PAYMENT CONFIGS ─────────────────── */
 router.get("/admin/payment-configs", requireAuth, requireAdmin, async (_req, res): Promise<void> => {
   const configs = await db.select().from(countryPaymentConfigsTable);
-  const countries = await db.select({ code: countriesTable.code, name: countriesTable.name, flag: countriesTable.flag }).from(countriesTable).orderBy(countriesTable.sortOrder, countriesTable.name);
+  const countries = await db.select({
+    code: countriesTable.code,
+    name: countriesTable.name,
+    flag: countriesTable.flag,
+  }).from(countriesTable).orderBy(countriesTable.sortOrder, countriesTable.name);
   const methods = await db.select().from(paymentMethodsTable).orderBy(paymentMethodsTable.sortOrder);
   res.json({ configs, countries, methods });
 });

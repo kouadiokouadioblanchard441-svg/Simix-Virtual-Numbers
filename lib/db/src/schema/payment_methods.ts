@@ -12,6 +12,7 @@ export const paymentMethodsTable = pgTable("payment_methods", {
   slug: text("slug").notNull().unique(),
   description: text("description").notNull(),
   color: text("color").notNull().default("#7C3AED"),
+  logoUrl: text("logo_url"),
   recommended: boolean("recommended").notNull().default(false),
   sortOrder: integer("sort_order").notNull().default(100),
 });

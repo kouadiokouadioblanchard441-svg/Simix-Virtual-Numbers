@@ -57,6 +57,11 @@ export const adminApi = {
   getCountries: () => req<AdminCountry[]>("GET", "/admin/countries"),
   updateCountry: (id: string, data: Partial<AdminCountry>) => req("PUT", `/admin/countries/${id}`, data),
 
+  getPaymentMethods: () => req<AdminPaymentMethod[]>("GET", "/admin/payment-methods"),
+  createPaymentMethod: (data: Partial<AdminPaymentMethod>) => req<AdminPaymentMethod>("POST", "/admin/payment-methods", data),
+  updatePaymentMethod: (id: string, data: Partial<AdminPaymentMethod>) => req("PUT", `/admin/payment-methods/${id}`, data),
+  deletePaymentMethod: (id: string) => req("DELETE", `/admin/payment-methods/${id}`),
+
   getPaymentConfigs: () => req<PaymentConfigData>("GET", "/admin/payment-configs"),
   updatePaymentConfig: (data: { countryCode: string; methodSlug: string; enabled: boolean; minDeposit: number; feePercent: number }) =>
     req("PUT", "/admin/payment-configs", data),
@@ -170,6 +175,17 @@ export interface AdminCountry {
   popular: boolean;
 }
 
+export interface AdminPaymentMethod {
+  id: string;
+  name: string;
+  slug: string;
+  description: string;
+  color: string;
+  logoUrl?: string | null;
+  recommended: boolean;
+  sortOrder: number;
+}
+
 export interface PaymentConfig {
   id: string;
   countryCode: string;
@@ -182,7 +198,7 @@ export interface PaymentConfig {
 export interface PaymentConfigData {
   configs: PaymentConfig[];
   countries: { code: string; name: string; flag: string }[];
-  methods: { id: string; name: string; slug: string; color: string; description: string }[];
+  methods: AdminPaymentMethod[];
 }
 
 export interface ApiProvider {
