@@ -559,15 +559,10 @@ export const ListTransactionsResponse = zod.array(ListTransactionsResponseItem);
 export const ListPaymentMethodsResponseItem = zod.object({
   id: zod.string(),
   name: zod.string(),
-  slug: zod.enum([
-    "mobile_money",
-    "card",
-    "bank_transfer",
-    "orange_money",
-    "mtn_money",
-  ]),
+  slug: zod.string(),
   description: zod.string(),
   color: zod.string(),
+  logoUrl: zod.string().nullish(),
   recommended: zod.boolean().optional(),
 });
 export const ListPaymentMethodsResponse = zod.array(

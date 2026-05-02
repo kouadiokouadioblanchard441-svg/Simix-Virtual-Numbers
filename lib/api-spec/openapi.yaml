@@ -645,11 +645,13 @@ components:
           type: string
         slug:
           type: string
-          enum: [mobile_money, card, bank_transfer, orange_money, mtn_money]
         description:
           type: string
         color:
           type: string
+        logoUrl:
+          type: string
+          nullable: true
         recommended:
           type: boolean
 

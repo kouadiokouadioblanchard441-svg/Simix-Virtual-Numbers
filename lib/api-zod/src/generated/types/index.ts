@@ -17,7 +17,6 @@ export * from "./loginInput";
 export * from "./loginInputMethod";
 export * from "./numberQuote";
 export * from "./paymentMethod";
-export * from "./paymentMethodSlug";
 export * from "./rechargeInput";
 export * from "./registerInput";
 export * from "./requestNumberInput";

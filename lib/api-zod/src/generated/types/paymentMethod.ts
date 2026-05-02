@@ -5,13 +5,13 @@
  * Simix API - virtual phone numbers and mobile money wallet
  * OpenAPI spec version: 0.1.0
  */
-import type { PaymentMethodSlug } from "./paymentMethodSlug";
 
 export interface PaymentMethod {
   id: string;
   name: string;
-  slug: PaymentMethodSlug;
+  slug: string;
   description: string;
   color: string;
+  logoUrl?: string | null;
   recommended?: boolean;
 }

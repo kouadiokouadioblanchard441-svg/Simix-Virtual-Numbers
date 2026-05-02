@@ -63,6 +63,7 @@ export function toPaymentMethod(pm: PaymentMethod) {
     slug: pm.slug,
     description: pm.description,
     color: pm.color,
+    logoUrl: pm.logoUrl ?? null,
     recommended: pm.recommended,
   };
 }

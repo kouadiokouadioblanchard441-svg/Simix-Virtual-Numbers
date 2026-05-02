@@ -145,23 +145,13 @@ export interface Wallet {
   currency: string;
 }
 
-export type PaymentMethodSlug =
-  (typeof PaymentMethodSlug)[keyof typeof PaymentMethodSlug];
-
-export const PaymentMethodSlug = {
-  mobile_money: "mobile_money",
-  card: "card",
-  bank_transfer: "bank_transfer",
-  orange_money: "orange_money",
-  mtn_money: "mtn_money",
-} as const;
-
 export interface PaymentMethod {
   id: string;
   name: string;
-  slug: PaymentMethodSlug;
+  slug: string;
   description: string;
   color: string;
+  logoUrl?: string | null;
   recommended?: boolean;
 }
 

@@ -161,3 +161,7 @@ body {
 }
 .float-slow { animation: float-slow 6s ease-in-out infinite; }
 .float-fast { animation: float-fast 4s ease-in-out infinite; }
+
+/* ── Hide scrollbar ── */
+.hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+.hide-scrollbar::-webkit-scrollbar { display: none; }
