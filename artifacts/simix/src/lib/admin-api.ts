@@ -16,6 +16,7 @@ async function req<T>(method: string, path: string, body?: unknown): Promise<T> 
 
 export const adminApi = {
   getStats: () => req<AdminStats>("GET", "/admin/stats"),
+
   getUsers: (params?: { limit?: number; offset?: number; search?: string }) => {
     const q = new URLSearchParams();
     if (params?.limit) q.set("limit", String(params.limit));
@@ -27,6 +28,10 @@ export const adminApi = {
   blockUser: (id: string, reason: string) => req("POST", `/admin/users/${id}/block`, { reason }),
   unblockUser: (id: string) => req("POST", `/admin/users/${id}/unblock`),
   adjustBalance: (id: string, amount: number, reason: string) => req("POST", `/admin/users/${id}/adjust-balance`, { amount, reason }),
+  setLimits: (id: string, limits: { maxPurchasesPerMin?: number; maxBalance?: number; isRestricted?: boolean }) =>
+    req<{ success: boolean; limits: Record<string, unknown> }>("POST", `/admin/users/${id}/set-limits`, limits),
+  resetPassword: (id: string) => req<{ success: boolean; newPassword: string; message: string }>("POST", `/admin/users/${id}/reset-password`),
+  forceLogout: (id: string) => req<{ success: boolean; message: string }>("POST", `/admin/users/${id}/force-logout`),
   deleteUser: (id: string) => req("DELETE", `/admin/users/${id}`),
   promoteUser: (id: string) => req("POST", `/admin/users/${id}/promote`),
   demoteUser: (id: string) => req("POST", `/admin/users/${id}/demote`),
@@ -52,6 +57,10 @@ export const adminApi = {
   getCountries: () => req<AdminCountry[]>("GET", "/admin/countries"),
   updateCountry: (id: string, data: Partial<AdminCountry>) => req("PUT", `/admin/countries/${id}`, data),
 
+  getPaymentConfigs: () => req<PaymentConfigData>("GET", "/admin/payment-configs"),
+  updatePaymentConfig: (data: { countryCode: string; methodSlug: string; enabled: boolean; minDeposit: number; feePercent: number }) =>
+    req("PUT", "/admin/payment-configs", data),
+
   getProviders: () => req<ApiProvider[]>("GET", "/admin/api-providers"),
   createProvider: (data: Partial<ApiProvider>) => req<ApiProvider>("POST", "/admin/api-providers", data),
   updateProvider: (id: string, data: Partial<ApiProvider>) => req("PUT", `/admin/api-providers/${id}`, data),
@@ -76,6 +85,7 @@ export interface AdminStats {
   newUsersToday: number;
   weeklyTransactions: number;
   blockedUsers: number;
+  restrictedUsers: number;
   criticalEventsThisWeek: number;
   activeNumbers: number;
   totalProviders: number;
@@ -85,13 +95,18 @@ export interface AdminStats {
 export interface AdminUser {
   id: string;
   fullName: string;
+  username?: string;
   phone: string;
   email: string;
+  country?: string;
   balance: number;
   status: string;
   riskScore: number;
   isAdmin: boolean;
   verified: boolean;
+  isRestricted: boolean;
+  maxPurchasesPerMin: number;
+  maxBalance: number;
   createdAt: string;
 }
 
@@ -135,10 +150,13 @@ export interface AdminService {
   slug: string;
   scope: string;
   price: number;
+  providerPrice: number;
+  margin: number;
   available: number;
   color: string;
   category: string;
   popular: boolean;
+  enabled: boolean;
 }
 
 export interface AdminCountry {
@@ -150,6 +168,21 @@ export interface AdminCountry {
   available: number;
   price: number;
   popular: boolean;
+}
+
+export interface PaymentConfig {
+  id: string;
+  countryCode: string;
+  methodSlug: string;
+  enabled: boolean;
+  minDeposit: number;
+  feePercent: number;
+}
+
+export interface PaymentConfigData {
+  configs: PaymentConfig[];
+  countries: { code: string; name: string; flag: string }[];
+  methods: { id: string; name: string; slug: string; color: string; description: string }[];
 }
 
 export interface ApiProvider {

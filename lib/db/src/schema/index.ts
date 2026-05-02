@@ -10,3 +10,4 @@ export * from "./security";
 export * from "./api_providers";
 export * from "./system_settings";
 export * from "./admin_logs";
+export * from "./country_payment_configs";

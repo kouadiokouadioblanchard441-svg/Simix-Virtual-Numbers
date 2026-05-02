@@ -13,6 +13,7 @@ export const usersTable = pgTable("users", {
   username: text("username").unique(),
   phone: text("phone").notNull().unique(),
   email: text("email").notNull(),
+  country: text("country"),
   countryCode: text("country_code").notNull().default("+225"),
   passwordHash: text("password_hash").notNull(),
   balance: integer("balance").notNull().default(0),
@@ -21,6 +22,9 @@ export const usersTable = pgTable("users", {
   blockedReason: text("blocked_reason"),
   riskScore: integer("risk_score").notNull().default(0),
   isAdmin: boolean("is_admin").notNull().default(false),
+  isRestricted: boolean("is_restricted").notNull().default(false),
+  maxPurchasesPerMin: integer("max_purchases_per_min").notNull().default(10),
+  maxBalance: integer("max_balance").notNull().default(500000),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),

@@ -15,6 +15,7 @@ import {
   FileText,
   CreditCard,
   ArrowUpRight,
+  MapPin,
 } from "lucide-react";
 import { SimixLogo } from "@/components/simix-logo";
 import { cn } from "@/lib/utils";
@@ -25,6 +26,7 @@ const NAV_ITEMS = [
   { href: "/admin/orders", label: "Commandes", icon: ShoppingBag },
   { href: "/admin/transactions", label: "Transactions", icon: CreditCard },
   { href: "/admin/services", label: "Services & Prix", icon: Globe },
+  { href: "/admin/payment-config", label: "Paiements / Pays", icon: MapPin },
   { href: "/admin/providers", label: "Fournisseurs API", icon: Zap },
   { href: "/admin/security", label: "Sécurité", icon: Shield },
   { href: "/admin/logs", label: "Journaux", icon: FileText },

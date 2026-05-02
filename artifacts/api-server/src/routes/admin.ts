@@ -4,6 +4,7 @@
  */
 import { Router, type IRouter, type Request, type Response, type NextFunction } from "express";
 import { desc, eq, count, sql, and, gte, like, or } from "drizzle-orm";
+import bcrypt from "bcryptjs";
 import {
   db,
   usersTable,
@@ -15,6 +16,9 @@ import {
   apiProvidersTable,
   systemSettingsTable,
   adminLogsTable,
+  paymentMethodsTable,
+  sessionsTable,
+  countryPaymentConfigsTable,
 } from "@workspace/db";
 import { requireAuth } from "../lib/auth";
 import { blockUser, logSecurityEvent } from "../lib/fraud-detection";
@@ -74,6 +78,7 @@ router.get("/admin/stats", requireAuth, requireAdmin, async (req, res): Promise<
   const [activeNumbers] = await db.select({ c: count() }).from(virtualNumbersTable).where(eq(virtualNumbersTable.status, "waiting"));
   const [totalProviders] = await db.select({ c: count() }).from(apiProvidersTable);
   const [activeProviders] = await db.select({ c: count() }).from(apiProvidersTable).where(eq(apiProvidersTable.active, true));
+  const [restrictedUsers] = await db.select({ c: count() }).from(usersTable).where(eq(usersTable.isRestricted, true));
 
   res.json({
     totalUsers: totalUsersRow?.c ?? 0,
@@ -84,6 +89,7 @@ router.get("/admin/stats", requireAuth, requireAdmin, async (req, res): Promise<
     newUsersToday: newUsersToday?.c ?? 0,
     weeklyTransactions: weeklyTx?.c ?? 0,
     blockedUsers: blockedUsers?.c ?? 0,
+    restrictedUsers: restrictedUsers?.c ?? 0,
     criticalEventsThisWeek: criticalEvents?.c ?? 0,
     activeNumbers: activeNumbers?.c ?? 0,
     totalProviders: totalProviders?.c ?? 0,
@@ -101,13 +107,18 @@ router.get("/admin/users", requireAuth, requireAdmin, async (req, res): Promise<
     .select({
       id: usersTable.id,
       fullName: usersTable.fullName,
+      username: usersTable.username,
       phone: usersTable.phone,
       email: usersTable.email,
+      country: usersTable.country,
       balance: usersTable.balance,
       status: usersTable.status,
       riskScore: usersTable.riskScore,
       isAdmin: usersTable.isAdmin,
       verified: usersTable.verified,
+      isRestricted: usersTable.isRestricted,
+      maxPurchasesPerMin: usersTable.maxPurchasesPerMin,
+      maxBalance: usersTable.maxBalance,
       createdAt: usersTable.createdAt,
     })
     .from(usersTable)
@@ -116,6 +127,7 @@ router.get("/admin/users", requireAuth, requireAdmin, async (req, res): Promise<
           like(usersTable.fullName, `%${search}%`),
           like(usersTable.phone, `%${search}%`),
           like(usersTable.email, `%${search}%`),
+          like(usersTable.username, `%${search}%`),
         )
       : undefined)
     .orderBy(desc(usersTable.createdAt))
@@ -211,6 +223,53 @@ router.post("/admin/users/:userId/adjust-balance", requireAuth, requireAdmin, as
   res.json({ success: true, newBalance });
 });
 
+router.post("/admin/users/:userId/set-limits", requireAuth, requireAdmin, async (req, res): Promise<void> => {
+  const userId = String(req.params.userId);
+  const { maxPurchasesPerMin, maxBalance, isRestricted } = req.body;
+
+  const updates: Record<string, unknown> = {};
+  if (maxPurchasesPerMin !== undefined) updates.maxPurchasesPerMin = Math.max(1, Number(maxPurchasesPerMin));
+  if (maxBalance !== undefined) updates.maxBalance = Math.max(0, Number(maxBalance));
+  if (isRestricted !== undefined) updates.isRestricted = Boolean(isRestricted);
+
+  if (Object.keys(updates).length === 0) { res.status(400).json({ error: "Aucun champ à mettre à jour" }); return; }
+
+  const [user] = await db.select({ id: usersTable.id }).from(usersTable).where(eq(usersTable.id, userId)).limit(1);
+  if (!user) { res.status(404).json({ error: "Utilisateur introuvable" }); return; }
+
+  await db.update(usersTable).set(updates).where(eq(usersTable.id, userId));
+  await logAdminAction(req.user!.id, "set_user_limits", req.ip, "user", userId, updates);
+  res.json({ success: true, limits: updates });
+});
+
+router.post("/admin/users/:userId/reset-password", requireAuth, requireAdmin, async (req, res): Promise<void> => {
+  const userId = String(req.params.userId);
+
+  const [user] = await db.select({ id: usersTable.id, fullName: usersTable.fullName }).from(usersTable).where(eq(usersTable.id, userId)).limit(1);
+  if (!user) { res.status(404).json({ error: "Utilisateur introuvable" }); return; }
+
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789@#!";
+  const newPassword = Array.from({ length: 12 }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
+  const passwordHash = await bcrypt.hash(newPassword, 10);
+
+  await db.update(usersTable).set({ passwordHash }).where(eq(usersTable.id, userId));
+  await logAdminAction(req.user!.id, "reset_password", req.ip, "user", userId, { note: "Password was reset by admin" });
+  logger.warn({ userId, adminId: req.user!.id }, "[ADMIN] User password reset");
+
+  res.json({ success: true, newPassword, message: `Le mot de passe de ${user.fullName} a été réinitialisé` });
+});
+
+router.post("/admin/users/:userId/force-logout", requireAuth, requireAdmin, async (req, res): Promise<void> => {
+  const userId = String(req.params.userId);
+
+  const [user] = await db.select({ id: usersTable.id, fullName: usersTable.fullName }).from(usersTable).where(eq(usersTable.id, userId)).limit(1);
+  if (!user) { res.status(404).json({ error: "Utilisateur introuvable" }); return; }
+
+  await db.delete(sessionsTable).where(eq(sessionsTable.userId, userId));
+  await logAdminAction(req.user!.id, "force_logout", req.ip, "user", userId);
+  res.json({ success: true, message: `${user.fullName} a été déconnecté de force` });
+});
+
 router.delete("/admin/users/:userId", requireAuth, requireAdmin, async (req, res): Promise<void> => {
   const userId = String(req.params.userId);
   if (userId === req.user!.id) { res.status(400).json({ error: "Impossible de supprimer votre propre compte" }); return; }
@@ -227,18 +286,29 @@ router.get("/admin/services", requireAuth, requireAdmin, async (_req, res): Prom
 
 router.put("/admin/services/:serviceId", requireAuth, requireAdmin, async (req, res): Promise<void> => {
   const serviceId = String(req.params.serviceId);
-  const { name, price, available, color, category, popular, scope } = req.body;
+  const { name, price, providerPrice, margin, available, color, category, popular, scope, enabled } = req.body;
 
   const updates: Record<string, unknown> = {};
   if (name !== undefined) updates.name = String(name);
   if (price !== undefined) updates.price = Number(price);
+  if (providerPrice !== undefined) updates.providerPrice = Number(providerPrice);
+  if (margin !== undefined) updates.margin = Number(margin);
   if (available !== undefined) updates.available = Number(available);
   if (color !== undefined) updates.color = String(color);
   if (category !== undefined) updates.category = String(category);
   if (popular !== undefined) updates.popular = Boolean(popular);
   if (scope !== undefined) updates.scope = String(scope);
+  if (enabled !== undefined) updates.enabled = Boolean(enabled);
 
   if (Object.keys(updates).length === 0) { res.status(400).json({ error: "Aucun champ à mettre à jour" }); return; }
+
+  /* Auto-compute final price if providerPrice + margin are both provided */
+  if (updates.providerPrice !== undefined && updates.margin !== undefined) {
+    const pp = Number(updates.providerPrice);
+    const m = Number(updates.margin);
+    updates.price = Math.round(pp + pp * (m / 100));
+  }
+
   await db.update(servicesTable).set(updates).where(eq(servicesTable.id, serviceId));
   await logAdminAction(req.user!.id, "update_service", req.ip, "service", serviceId, updates);
   res.json({ success: true });
@@ -262,6 +332,42 @@ router.put("/admin/countries/:countryId", requireAuth, requireAdmin, async (req,
   if (Object.keys(updates).length === 0) { res.status(400).json({ error: "Aucun champ à mettre à jour" }); return; }
   await db.update(countriesTable).set(updates).where(eq(countriesTable.id, countryId));
   await logAdminAction(req.user!.id, "update_country", req.ip, "country", countryId, updates);
+  res.json({ success: true });
+});
+
+/* ─────────────────── COUNTRY PAYMENT CONFIGS ─────────────────── */
+router.get("/admin/payment-configs", requireAuth, requireAdmin, async (_req, res): Promise<void> => {
+  const configs = await db.select().from(countryPaymentConfigsTable);
+  const countries = await db.select({ code: countriesTable.code, name: countriesTable.name, flag: countriesTable.flag }).from(countriesTable).orderBy(countriesTable.sortOrder, countriesTable.name);
+  const methods = await db.select().from(paymentMethodsTable).orderBy(paymentMethodsTable.sortOrder);
+  res.json({ configs, countries, methods });
+});
+
+router.put("/admin/payment-configs", requireAuth, requireAdmin, async (req, res): Promise<void> => {
+  const { countryCode, methodSlug, enabled, minDeposit, feePercent } = req.body;
+
+  if (!countryCode || !methodSlug) {
+    res.status(400).json({ error: "countryCode et methodSlug sont requis" });
+    return;
+  }
+
+  const values = {
+    countryCode: String(countryCode),
+    methodSlug: String(methodSlug),
+    enabled: enabled !== undefined ? Boolean(enabled) : true,
+    minDeposit: minDeposit !== undefined ? Number(minDeposit) : 500,
+    feePercent: feePercent !== undefined ? Number(feePercent) : 0,
+  };
+
+  await db
+    .insert(countryPaymentConfigsTable)
+    .values(values)
+    .onConflictDoUpdate({
+      target: [countryPaymentConfigsTable.countryCode, countryPaymentConfigsTable.methodSlug],
+      set: { enabled: values.enabled, minDeposit: values.minDeposit, feePercent: values.feePercent },
+    });
+
+  await logAdminAction(req.user!.id, "update_payment_config", req.ip, "payment_config", undefined, values);
   res.json({ success: true });
 });
 
