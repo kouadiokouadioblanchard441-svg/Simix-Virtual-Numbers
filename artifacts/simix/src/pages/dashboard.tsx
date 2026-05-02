@@ -145,25 +145,21 @@ function DashboardContent() {
           </Link>
         </div>
 
-        <div className="grid grid-cols-3 gap-2 pt-3 border-t border-card-border">
-          <Link href="/services" className="flex flex-col items-center gap-1 py-1.5 rounded-xl hover:bg-secondary/50 transition-colors">
-            <div className="w-9 h-9 rounded-full bg-violet-500/10 flex items-center justify-center text-violet-500">
-              <ShoppingBag className="w-[18px] h-[18px]" />
-            </div>
-            <span className="text-[10px] font-semibold text-foreground">Acheter</span>
-          </Link>
-          <Link href="/history" className="flex flex-col items-center gap-1 py-1.5 rounded-xl hover:bg-secondary/50 transition-colors">
-            <div className="w-9 h-9 rounded-full bg-blue-500/10 flex items-center justify-center text-blue-500">
-              <MessageCircle className="w-[18px] h-[18px]" />
-            </div>
-            <span className="text-[10px] font-semibold text-foreground">Mes SMS</span>
-          </Link>
-          <Link href="/wallet" className="flex flex-col items-center gap-1 py-1.5 rounded-xl hover:bg-secondary/50 transition-colors">
-            <div className="w-9 h-9 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-500">
-              <TrendingUp className="w-[18px] h-[18px]" />
-            </div>
-            <span className="text-[10px] font-semibold text-foreground">Historique</span>
-          </Link>
+        <div className="grid grid-cols-3 gap-1 pt-3 border-t border-card-border">
+          {[
+            { href: "/services", icon: ShoppingBag, label: "Acheter", bg: "bg-violet-500/10", fg: "text-violet-500" },
+            { href: "/history", icon: MessageCircle, label: "Mes SMS", bg: "bg-blue-500/10", fg: "text-blue-500" },
+            { href: "/wallet", icon: TrendingUp, label: "Historique", bg: "bg-emerald-500/10", fg: "text-emerald-500" },
+          ].map(({ href, icon: Icon, label, bg, fg }) => (
+            <Link key={href} href={href}>
+              <div className="flex flex-col items-center gap-1.5 py-2 px-1 rounded-xl hover:bg-secondary/60 active:scale-95 transition-all cursor-pointer">
+                <div className={`w-11 h-11 rounded-2xl ${bg} flex items-center justify-center shadow-sm`}>
+                  <Icon className={`w-5 h-5 ${fg} stroke-[2]`} />
+                </div>
+                <span className="text-[11px] font-semibold text-foreground/80 leading-none">{label}</span>
+              </div>
+            </Link>
+          ))}
         </div>
       </motion.div>
 
@@ -172,23 +168,21 @@ function DashboardContent() {
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.12 }}
-        className="relative z-10 mx-5 grid grid-cols-3 gap-2 mb-6"
+        className="relative z-10 mx-5 grid grid-cols-3 gap-3 mb-6"
       >
-        <div className="bg-card border border-card-border rounded-2xl p-2.5 flex flex-col items-center text-center">
-          <ShieldCheck className="w-4 h-4 text-emerald-500 mb-1" />
-          <span className="text-sm font-extrabold text-foreground leading-tight">98%</span>
-          <span className="text-[9px] text-muted-foreground leading-tight mt-0.5">Réussite SMS</span>
-        </div>
-        <div className="bg-card border border-card-border rounded-2xl p-2.5 flex flex-col items-center text-center">
-          <Zap className="w-4 h-4 text-amber-500 mb-1" />
-          <span className="text-sm font-extrabold text-foreground leading-tight">&lt; 30s</span>
-          <span className="text-[9px] text-muted-foreground leading-tight mt-0.5">Réception</span>
-        </div>
-        <div className="bg-card border border-card-border rounded-2xl p-2.5 flex flex-col items-center text-center">
-          <Globe className="w-4 h-4 text-violet-500 mb-1" />
-          <span className="text-sm font-extrabold text-foreground leading-tight">20+</span>
-          <span className="text-[9px] text-muted-foreground leading-tight mt-0.5">Pays couverts</span>
-        </div>
+        {[
+          { icon: ShieldCheck, color: "text-emerald-500", bg: "bg-emerald-500/10", value: "98%", label: "Réussite SMS" },
+          { icon: Zap, color: "text-amber-500", bg: "bg-amber-500/10", value: "< 30s", label: "Délai moyen" },
+          { icon: Globe, color: "text-violet-500", bg: "bg-violet-500/10", value: "20+", label: "Pays" },
+        ].map(({ icon: Icon, color, bg, value, label }) => (
+          <div key={label} className="bg-card border border-card-border rounded-2xl p-3 flex flex-col items-center text-center gap-1.5">
+            <div className={`w-8 h-8 rounded-xl ${bg} flex items-center justify-center`}>
+              <Icon className={`w-4 h-4 ${color}`} />
+            </div>
+            <span className="text-base font-black text-foreground leading-none">{value}</span>
+            <span className="text-[10px] text-muted-foreground leading-tight font-medium">{label}</span>
+          </div>
+        ))}
       </motion.div>
 
       {/* Popular Services */}

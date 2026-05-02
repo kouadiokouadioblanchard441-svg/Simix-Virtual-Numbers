@@ -14,7 +14,7 @@ import {
   Globe,
   FileText,
   CreditCard,
-  ChevronRight,
+  ArrowUpRight,
 } from "lucide-react";
 import { SimixLogo } from "@/components/simix-logo";
 import { cn } from "@/lib/utils";
@@ -38,69 +38,99 @@ function NavLink({ href, label, icon: Icon, onClick }: { href: string; label: st
   return (
     <Link href={href} onClick={onClick}>
       <div className={cn(
-        "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all cursor-pointer group",
+        "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all cursor-pointer",
         isActive
-          ? "bg-violet-600 text-white shadow-lg shadow-violet-500/20"
-          : "text-zinc-400 hover:text-white hover:bg-zinc-800"
+          ? "bg-violet-600/90 text-white shadow-md shadow-violet-500/25"
+          : "text-zinc-400 hover:text-white hover:bg-zinc-800/70"
       )}>
-        <Icon className="w-4 h-4 flex-shrink-0" />
-        <span>{label}</span>
-        {isActive && <ChevronRight className="w-3 h-3 ml-auto" />}
+        <div className={cn(
+          "w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors",
+          isActive ? "bg-white/15" : "bg-zinc-800/60 group-hover:bg-zinc-700"
+        )}>
+          <Icon className="w-3.5 h-3.5" />
+        </div>
+        <span className="truncate">{label}</span>
+        {isActive && <div className="ml-auto w-1.5 h-1.5 rounded-full bg-white/60 flex-shrink-0" />}
       </div>
     </Link>
   );
 }
 
-export function AdminLayout({ children }: { children: React.ReactNode }) {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+function SidebarContent({ onClose }: { onClose?: () => void }) {
   const { data: user } = useGetMe();
 
-  const sidebar = (
+  return (
     <div className="flex flex-col h-full">
-      <div className="flex items-center gap-2 px-4 py-5 border-b border-zinc-800">
-        <SimixLogo size={28} />
+      <div className="flex items-center gap-3 px-4 py-5 border-b border-zinc-800/80">
+        <div className="w-9 h-9 rounded-xl bg-violet-600/20 border border-violet-500/30 flex items-center justify-center">
+          <SimixLogo size={20} />
+        </div>
         <div>
           <div className="text-white font-bold text-sm leading-none">Simix</div>
-          <div className="text-violet-400 text-xs mt-0.5">Admin Panel</div>
+          <div className="text-violet-400 text-[11px] mt-0.5 font-medium">Admin Panel</div>
         </div>
       </div>
 
-      <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
+      <div className="px-3 pt-4 pb-1">
+        <p className="text-[10px] font-bold text-zinc-600 uppercase tracking-widest px-1 mb-1.5">Navigation</p>
+      </div>
+
+      <nav className="flex-1 px-3 pb-3 space-y-0.5 overflow-y-auto">
         {NAV_ITEMS.map((item) => (
-          <NavLink key={item.href} {...item} onClick={() => setSidebarOpen(false)} />
+          <NavLink key={item.href} {...item} onClick={onClose} />
         ))}
       </nav>
 
-      <div className="p-3 border-t border-zinc-800">
-        <div className="flex items-center gap-3 px-3 py-2 rounded-lg bg-zinc-800/50">
-          <div className="w-8 h-8 rounded-full bg-violet-600 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
-            {user?.fullName?.[0] ?? "A"}
+      <div className="p-3 border-t border-zinc-800/80 space-y-2">
+        <Link href="/dashboard" onClick={onClose}>
+          <div className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-zinc-400 hover:text-white hover:bg-zinc-800/70 transition-all cursor-pointer text-sm font-medium">
+            <div className="w-7 h-7 rounded-lg bg-zinc-800/60 flex items-center justify-center flex-shrink-0">
+              <ArrowUpRight className="w-3.5 h-3.5" />
+            </div>
+            <span>Retour à l'app</span>
+          </div>
+        </Link>
+        <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-zinc-800/40 border border-zinc-800/80">
+          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center text-white text-xs font-bold flex-shrink-0 shadow-sm">
+            {user?.fullName?.[0]?.toUpperCase() ?? "A"}
           </div>
           <div className="flex-1 min-w-0">
             <div className="text-white text-xs font-semibold truncate">{user?.fullName}</div>
-            <div className="text-violet-400 text-xs">Administrateur</div>
+            <div className="text-violet-400 text-[10px]">Administrateur</div>
           </div>
-          <Link href="/dashboard">
-            <LogOut className="w-4 h-4 text-zinc-500 hover:text-red-400 transition-colors cursor-pointer" />
+          <Link href="/login">
+            <LogOut className="w-4 h-4 text-zinc-600 hover:text-red-400 transition-colors cursor-pointer" />
           </Link>
         </div>
       </div>
     </div>
   );
+}
+
+export function AdminLayout({ children }: { children: React.ReactNode }) {
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [location] = useLocation();
+
+  const currentPage = NAV_ITEMS.find(item =>
+    item.href === location || (item.href !== "/admin" && location.startsWith(item.href))
+  );
 
   return (
     <div className="flex min-h-screen bg-zinc-950 text-white">
       {/* Desktop sidebar */}
-      <aside className="hidden lg:flex flex-col w-56 border-r border-zinc-800 bg-zinc-900 flex-shrink-0 sticky top-0 h-screen">
-        {sidebar}
+      <aside className="hidden lg:flex flex-col w-60 border-r border-zinc-800/80 bg-zinc-900/60 flex-shrink-0 sticky top-0 h-screen">
+        <SidebarContent />
       </aside>
 
       {/* Mobile sidebar overlay */}
       {sidebarOpen && (
         <div className="lg:hidden fixed inset-0 z-50 flex">
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setSidebarOpen(false)} />
-          <aside className="relative z-10 w-56 bg-zinc-900 border-r border-zinc-800 h-full">
-            {sidebar}
+          <div
+            className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+            onClick={() => setSidebarOpen(false)}
+          />
+          <aside className="relative z-10 w-60 bg-zinc-900 border-r border-zinc-800/80 h-full shadow-2xl">
+            <SidebarContent onClose={() => setSidebarOpen(false)} />
           </aside>
         </div>
       )}
@@ -108,20 +138,31 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
       {/* Main content */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Top bar */}
-        <header className="sticky top-0 z-30 flex items-center gap-3 px-4 py-3 bg-zinc-950/80 backdrop-blur border-b border-zinc-800">
+        <header className="sticky top-0 z-30 flex items-center gap-3 px-4 py-3 bg-zinc-950/90 backdrop-blur-md border-b border-zinc-800/80">
           <button
-            className="lg:hidden p-1.5 rounded-lg hover:bg-zinc-800 transition-colors"
+            className="lg:hidden w-9 h-9 rounded-xl bg-zinc-800/70 hover:bg-zinc-800 transition-colors flex items-center justify-center"
             onClick={() => setSidebarOpen(!sidebarOpen)}
           >
-            {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            {sidebarOpen ? <X className="w-4.5 h-4.5" /> : <Menu className="w-4.5 h-4.5" />}
           </button>
-          <div className="flex-1 text-sm text-zinc-400 hidden sm:block">
-            <span className="text-white font-semibold">Admin Panel</span>
-            <span className="mx-2 text-zinc-700">/</span>
-            <span>Simix Platform</span>
+
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 text-sm">
+              <span className="text-zinc-500 hidden sm:inline">Admin</span>
+              {currentPage && (
+                <>
+                  <span className="text-zinc-700 hidden sm:inline">/</span>
+                  <span className="text-white font-semibold">{currentPage.label}</span>
+                </>
+              )}
+            </div>
           </div>
+
           <Link href="/dashboard">
-            <span className="text-xs text-violet-400 hover:text-violet-300 transition-colors cursor-pointer">← App</span>
+            <div className="flex items-center gap-1.5 text-xs text-violet-400 hover:text-violet-300 transition-colors cursor-pointer bg-violet-500/10 hover:bg-violet-500/15 border border-violet-500/20 px-3 py-1.5 rounded-lg font-medium">
+              <ArrowUpRight className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Retour à l'app</span>
+            </div>
           </Link>
         </header>
 

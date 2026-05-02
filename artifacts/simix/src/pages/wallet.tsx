@@ -3,14 +3,22 @@ import { AuthGuard } from "@/components/auth-guard";
 import { useGetWallet, getGetWalletQueryKey, useListPaymentMethods, getListPaymentMethodsQueryKey, useRechargeWallet, getGetMeQueryKey, useListTransactions, getListTransactionsQueryKey } from "@workspace/api-client-react";
 import { formatFCFA } from "@/lib/format";
 import { motion } from "framer-motion";
-import { Eye, ChevronRight, X, Download, MoreVertical, CreditCard, CheckCircle2, Shield, Info, Edit2 } from "lucide-react";
+import { Eye, ChevronRight, CreditCard, CheckCircle2, Shield, Info, Edit2, ArrowLeft } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import wallet3d from "@/assets/simix_wallet_3d.png";
-import { FaMobileAlt } from "react-icons/fa";
+
+function MobileIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="5" y="2" width="14" height="20" rx="2" />
+      <line x1="12" y1="18" x2="12.01" y2="18" strokeWidth="3" strokeLinecap="round" />
+    </svg>
+  );
+}
 
 export default function Wallet() {
   return (
@@ -55,21 +63,14 @@ function WalletContent() {
   return (
     <div className="flex-1 w-full bg-background overflow-y-auto overflow-x-hidden pt-6 pb-32 px-5">
       
-      <div className="flex items-center justify-between mb-6 sticky top-0 bg-background z-20 pt-2 pb-2">
-        <button onClick={() => window.history.back()} className="w-10 h-10 rounded-full flex items-center justify-center text-foreground hover:bg-secondary transition-colors -ml-2">
-          <div className="w-8 h-8 bg-card border border-card-border rounded-full flex items-center justify-center shadow-sm">
-             <X className="w-4 h-4" />
+      <div className="flex items-center justify-between mb-6 sticky top-0 bg-background/95 backdrop-blur-sm z-20 pt-2 pb-3 border-b border-card-border/50">
+        <button onClick={() => window.history.back()} className="flex items-center gap-2 text-foreground hover:text-primary transition-colors -ml-1">
+          <div className="w-9 h-9 bg-card border border-card-border rounded-xl flex items-center justify-center shadow-sm">
+            <ArrowLeft className="w-4 h-4" />
           </div>
         </button>
-        <h1 className="text-lg font-bold text-foreground">Mon portefeuille</h1>
-        <div className="flex items-center gap-2">
-          <button className="w-10 h-10 rounded-full flex items-center justify-center text-foreground hover:bg-secondary transition-colors">
-             <Download className="w-5 h-5" />
-          </button>
-          <button className="w-10 h-10 rounded-full flex items-center justify-center text-foreground hover:bg-secondary transition-colors">
-             <MoreVertical className="w-5 h-5" />
-          </button>
-        </div>
+        <h1 className="text-base font-bold text-foreground">Mon portefeuille</h1>
+        <div className="w-9 h-9" />
       </div>
 
       {/* HERO BALANCE CARD */}
@@ -115,20 +116,41 @@ function WalletContent() {
             Voir les méthodes
           </Link>
         </div>
-        <div className="flex gap-3 overflow-x-auto pb-4 snap-x hide-scrollbar -mx-5 px-5">
-          {paymentMethods?.map(method => (
-            <button 
-              key={method.slug}
-              onClick={() => setSelectedMethod(method.slug)}
-              className={`min-w-[110px] w-28 aspect-square p-3 rounded-2xl border flex flex-col items-center justify-center gap-2 snap-start transition-all relative ${selectedMethod === method.slug ? 'bg-primary/10 border-primary shadow-sm' : 'bg-card border-card-border hover:bg-secondary'}`}
-            >
-              <div className="w-10 h-10 rounded-full flex items-center justify-center text-xl mb-1" style={{ backgroundColor: `${method.color}15`, color: method.color }}>
-                {method.slug.includes('money') ? <FaMobileAlt className="w-5 h-5" /> : <CreditCard className="w-5 h-5" />}
-              </div>
-              <p className="text-xs font-bold text-foreground text-center leading-tight px-1">{method.name}</p>
-              <p className="text-[9px] text-muted-foreground text-center truncate w-full px-1">{method.description}</p>
-            </button>
-          ))}
+        <div className="flex gap-3 overflow-x-auto pb-2 snap-x hide-scrollbar -mx-5 px-5">
+          {paymentMethods?.map(method => {
+            const isSelected = selectedMethod === method.slug;
+            const isMobile = method.slug.includes("money");
+            return (
+              <button
+                key={method.slug}
+                onClick={() => setSelectedMethod(method.slug)}
+                className={`relative min-w-[120px] flex-shrink-0 p-4 rounded-2xl border snap-start transition-all active:scale-95 ${
+                  isSelected
+                    ? "bg-primary/10 border-primary shadow-md shadow-primary/15"
+                    : "bg-card border-card-border hover:bg-secondary/60"
+                }`}
+              >
+                {isSelected && (
+                  <div className="absolute top-2 right-2 w-4 h-4 rounded-full bg-primary flex items-center justify-center">
+                    <svg className="w-2.5 h-2.5 text-white" viewBox="0 0 12 12" fill="none">
+                      <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  </div>
+                )}
+                <div
+                  className="w-11 h-11 rounded-xl flex items-center justify-center mb-3"
+                  style={{ backgroundColor: `${method.color}18`, color: method.color }}
+                >
+                  {isMobile
+                    ? <MobileIcon className="w-5 h-5" />
+                    : <CreditCard className="w-5 h-5" />
+                  }
+                </div>
+                <p className="text-xs font-bold text-foreground leading-tight">{method.name}</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5 leading-tight line-clamp-2">{method.description}</p>
+              </button>
+            );
+          })}
         </div>
       </motion.div>
 

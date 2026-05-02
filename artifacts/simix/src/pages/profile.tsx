@@ -5,7 +5,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useLocation, Link } from "wouter";
 import { motion } from "framer-motion";
 import { formatFCFA } from "@/lib/format";
-import { User as UserIcon, Shield, Bell, CreditCard, Lock, HelpCircle, LogOut, ChevronRight, Download, MoreVertical, X, Camera, Crown, Phone, Mail, Eye } from "lucide-react";
+import { User as UserIcon, Shield, Bell, CreditCard, Lock, HelpCircle, LogOut, ChevronRight, ArrowLeft, Camera, Crown, Phone, Mail, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export default function Profile() {
@@ -47,21 +47,14 @@ function ProfileContent() {
   return (
     <div className="flex-1 w-full bg-background overflow-y-auto overflow-x-hidden pt-6 pb-24 px-5">
       
-      <div className="flex items-center justify-between mb-6 sticky top-0 bg-background z-20 pt-2 pb-2">
-        <button onClick={() => setLocation('/dashboard')} className="w-10 h-10 rounded-full flex items-center justify-center text-foreground hover:bg-secondary transition-colors -ml-2">
-          <div className="w-8 h-8 bg-card border border-card-border rounded-full flex items-center justify-center shadow-sm">
-             <X className="w-4 h-4" />
+      <div className="flex items-center justify-between mb-6 sticky top-0 bg-background/95 backdrop-blur-sm z-20 pt-2 pb-3 border-b border-card-border/50">
+        <button onClick={() => setLocation('/dashboard')} className="flex items-center gap-2 text-foreground hover:text-primary transition-colors -ml-1">
+          <div className="w-9 h-9 bg-card border border-card-border rounded-xl flex items-center justify-center shadow-sm">
+            <ArrowLeft className="w-4 h-4" />
           </div>
         </button>
-        <h1 className="text-lg font-bold text-foreground">Mon profil</h1>
-        <div className="flex items-center gap-2">
-          <button className="w-10 h-10 rounded-full flex items-center justify-center text-foreground hover:bg-secondary transition-colors">
-             <Download className="w-5 h-5" />
-          </button>
-          <button className="w-10 h-10 rounded-full flex items-center justify-center text-foreground hover:bg-secondary transition-colors">
-             <MoreVertical className="w-5 h-5" />
-          </button>
-        </div>
+        <h1 className="text-base font-bold text-foreground">Mon profil</h1>
+        <div className="w-9 h-9" />
       </div>
 
       {/* User Card */}
