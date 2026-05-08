@@ -401,20 +401,21 @@ function Navbar() {
 
   return (
     <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${scrolled ? "py-3 bg-black/80 backdrop-blur-xl border-b border-zinc-800/60 shadow-lg shadow-black/20" : "py-5 bg-transparent"}`}>
-      <div className="px-4 sm:px-8 lg:px-16 xl:px-24 flex items-center justify-between gap-4">
+      <div className="px-4 sm:px-8 lg:px-16 xl:px-24 flex items-center justify-between gap-3">
         <SimixLogo size={28} />
-        <div className="hidden md:flex items-center gap-6 text-sm text-zinc-400">
-          <a href="#comment" className="hover:text-white transition-colors">Comment ça marche</a>
-          <a href="#operateurs" className="hover:text-white transition-colors">Opérateurs</a>
-          <a href="#services" className="hover:text-white transition-colors">Services</a>
-          <a href="#securite" className="hover:text-white transition-colors">Sécurité</a>
+        <div className="hidden lg:flex items-center gap-5 text-sm text-zinc-400">
+          <a href="#comment" className="hover:text-white transition-colors whitespace-nowrap">Comment ça marche</a>
+          <a href="#operateurs" className="hover:text-white transition-colors whitespace-nowrap">Opérateurs</a>
+          <a href="#services" className="hover:text-white transition-colors whitespace-nowrap">Services</a>
+          <a href="#securite" className="hover:text-white transition-colors whitespace-nowrap">Sécurité</a>
         </div>
-        <div className="flex items-center gap-2.5">
-          <button onClick={() => setLocation("/login")} className="px-4 py-2 text-sm font-medium text-zinc-300 hover:text-white transition-colors">
+        <div className="flex items-center gap-2">
+          <button onClick={() => setLocation("/login")} className="px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium text-zinc-300 hover:text-white transition-colors whitespace-nowrap">
             Se connecter
           </button>
-          <button onClick={() => setLocation("/register")} className="px-4 py-2 text-sm font-semibold bg-violet-600 hover:bg-violet-500 text-white rounded-xl transition-colors shadow-lg shadow-violet-600/20">
-            Commencer gratuitement
+          <button onClick={() => setLocation("/register")} className="px-3 sm:px-5 py-2 text-xs sm:text-sm font-semibold bg-violet-600 hover:bg-violet-500 text-white rounded-xl transition-colors shadow-lg shadow-violet-600/20 whitespace-nowrap">
+            <span className="hidden sm:inline">Commencer gratuitement</span>
+            <span className="sm:hidden">Commencer</span>
           </button>
         </div>
       </div>
@@ -492,7 +493,7 @@ function Hero() {
                 <div key={i} className="text-center p-3 rounded-xl bg-zinc-900/60 border border-zinc-800/60">
                   <div className="flex justify-center mb-1">{s.icon}</div>
                   <div className="text-xl font-bold text-white">{s.value}</div>
-                  <div className="text-xs text-zinc-500 leading-tight">{s.label}</div>
+                  <div className="text-[11px] text-zinc-400 leading-tight mt-0.5">{s.label}</div>
                 </div>
               ))}
             </div>
@@ -549,10 +550,10 @@ function Hero() {
 function AnimatedStat({ target, suffix = "", icon, label }: { target: number; suffix?: string; icon: React.ReactNode; label: string }) {
   const { count, ref } = useCountUp(target, 1800);
   return (
-    <div ref={ref} className="flex flex-col items-center py-5 gap-1.5 text-center px-3">
+    <div ref={ref} className="flex flex-col items-center py-5 gap-1.5 text-center px-2">
       {icon}
       <div className="text-xl font-extrabold text-white tabular-nums">{count}{suffix}</div>
-      <div className="text-xs text-zinc-500 leading-tight">{label}</div>
+      <div className="text-xs text-zinc-400 leading-tight">{label}</div>
     </div>
   );
 }
@@ -562,21 +563,29 @@ function StatsBar() {
   return (
     <div className="border-y border-zinc-800/60 bg-zinc-950/80">
       <Section>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 divide-x divide-zinc-800/40">
-          <AnimatedStat target={54} icon={<Globe className="w-5 h-5 text-violet-400" />} label="Pays africains couverts" />
-          <AnimatedStat target={11} suffix="+" icon={<Smartphone className="w-5 h-5 text-pink-400" />} label="Opérateurs Mobile Money" />
-          <AnimatedStat target={500} suffix="+" icon={<MessageSquare className="w-5 h-5 text-emerald-400" />} label="Services vérifiables" />
-          <div className="flex flex-col items-center py-5 gap-1.5 text-center px-3">
-            <Zap className="w-5 h-5 text-amber-400" />
-            <div className="text-xl font-extrabold text-white">&lt; 30s</div>
-            <div className="text-xs text-zinc-500 leading-tight">Réception du SMS</div>
-          </div>
-          <AnimatedStat target={100} suffix="%" icon={<Shield className="w-5 h-5 text-sky-400" />} label="Paiement Mobile Money" />
-          <div className="flex flex-col items-center py-5 gap-1.5 text-center px-3">
-            <Lock className="w-5 h-5 text-rose-400" />
-            <div className="text-xl font-extrabold text-white">SSL</div>
-            <div className="text-xs text-zinc-500 leading-tight">Connexion sécurisée</div>
-          </div>
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-px bg-zinc-800/40">
+          {[
+            { el: <AnimatedStat target={54} icon={<Globe className="w-5 h-5 text-violet-400" />} label="Pays africains couverts" /> },
+            { el: <AnimatedStat target={11} suffix="+" icon={<Smartphone className="w-5 h-5 text-pink-400" />} label="Opérateurs Mobile Money" /> },
+            { el: <AnimatedStat target={500} suffix="+" icon={<MessageSquare className="w-5 h-5 text-emerald-400" />} label="Services vérifiables" /> },
+            { el: (
+              <div className="flex flex-col items-center py-5 gap-1.5 text-center px-2">
+                <Zap className="w-5 h-5 text-amber-400" />
+                <div className="text-xl font-extrabold text-white">&lt; 30s</div>
+                <div className="text-xs text-zinc-400 leading-tight">Réception du SMS</div>
+              </div>
+            )},
+            { el: <AnimatedStat target={100} suffix="%" icon={<Shield className="w-5 h-5 text-sky-400" />} label="Paiement Mobile Money" /> },
+            { el: (
+              <div className="flex flex-col items-center py-5 gap-1.5 text-center px-2">
+                <Lock className="w-5 h-5 text-rose-400" />
+                <div className="text-xl font-extrabold text-white">SSL</div>
+                <div className="text-xs text-zinc-400 leading-tight">Connexion sécurisée</div>
+              </div>
+            )},
+          ].map((item, i) => (
+            <div key={i} className="bg-zinc-950">{item.el}</div>
+          ))}
         </div>
       </Section>
     </div>
@@ -648,7 +657,7 @@ function PaymentOperators() {
 
       <Section className="mt-8">
         <div className="text-center">
-          <p className="text-zinc-500 text-sm">
+          <p className="text-zinc-400 text-sm">
             Disponible dans <strong className="text-white">54 pays africains</strong> — Paiements en{" "}
             <strong className="text-violet-400">FCFA, KES, GHS, NGN</strong> et toutes monnaies locales
           </p>
@@ -693,20 +702,20 @@ function AppShowcase() {
             initial={{ opacity: 0, x: 30 }}
             whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: true }}
-            className="flex justify-center gap-4 items-end"
+            className="flex justify-center gap-3 sm:gap-4 items-end"
           >
-            <div className="float-slow">
-              <div className="rounded-2xl overflow-hidden border border-zinc-700/40 shadow-2xl shadow-violet-900/20 w-[130px] sm:w-[150px]">
+            <div className="float-slow flex-1 max-w-[110px] sm:max-w-[140px] lg:max-w-[155px]">
+              <div className="rounded-2xl overflow-hidden border border-zinc-700/40 shadow-2xl shadow-violet-900/20">
                 <img src={screenDash} alt="Dashboard Simix" className="w-full" />
               </div>
             </div>
-            <div className="float-fast" style={{ animationDelay: "0.5s" }}>
-              <div className="rounded-2xl overflow-hidden border border-zinc-700/40 shadow-2xl shadow-purple-900/20 w-[130px] sm:w-[150px] mb-8">
+            <div className="float-fast flex-1 max-w-[110px] sm:max-w-[140px] lg:max-w-[155px] mb-6 sm:mb-8" style={{ animationDelay: "0.5s" }}>
+              <div className="rounded-2xl overflow-hidden border border-zinc-700/40 shadow-2xl shadow-purple-900/20">
                 <img src={screenWallet} alt="Wallet Simix" className="w-full" />
               </div>
             </div>
-            <div className="float-slow" style={{ animationDelay: "1s" }}>
-              <div className="rounded-2xl overflow-hidden border border-zinc-700/40 shadow-2xl shadow-pink-900/20 w-[130px] sm:w-[150px]">
+            <div className="float-slow flex-1 max-w-[110px] sm:max-w-[140px] lg:max-w-[155px]" style={{ animationDelay: "1s" }}>
+              <div className="rounded-2xl overflow-hidden border border-zinc-700/40 shadow-2xl shadow-pink-900/20">
                 <img src={screenCountries} alt="Pays Simix" className="w-full" />
               </div>
             </div>
@@ -747,11 +756,11 @@ function AfricaVision() {
                 accessible à tous les Africains
               </span>
             </h2>
-            <p className="text-zinc-300 text-sm leading-relaxed mb-4">
+            <p className="text-zinc-300 text-sm sm:text-base leading-relaxed mb-4">
               Le Mobile Money est le principal outil financier de centaines de millions d'Africains.
               Pourtant, la plupart des plateformes numériques exigent une vérification SMS difficile à accomplir sans numéro adapté.
             </p>
-            <p className="text-zinc-400 text-sm leading-relaxed mb-6">
+            <p className="text-zinc-300 text-sm sm:text-base leading-relaxed mb-6">
               Simix supprime cette barrière. Chaque Africain peut accéder à l'économie numérique mondiale
               sans carte bancaire, sans devise étrangère, et sans complications.
             </p>
@@ -800,7 +809,7 @@ function ServicesGrid() {
         </p>
       </div>
 
-      <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
         {SERVICES.map((s, i) => (
           <motion.div
             key={i}
@@ -808,7 +817,7 @@ function ServicesGrid() {
             whileInView={{ opacity: 1, scale: 1 }}
             viewport={{ once: true }}
             transition={{ delay: i * 0.03 }}
-            className="service-card group relative flex flex-col items-center gap-2 p-4 rounded-2xl border border-zinc-800/60 bg-zinc-900/60 cursor-default overflow-hidden"
+            className="service-card group relative flex flex-col items-center gap-2 p-3 sm:p-4 rounded-2xl border border-zinc-800/60 bg-zinc-900/60 cursor-default overflow-hidden"
             style={{ borderTopColor: `${s.color}30` }}
           >
             <div
@@ -818,7 +827,7 @@ function ServicesGrid() {
             <div className="relative z-10 flex-shrink-0">
               <LandingServiceIcon service={s} />
             </div>
-            <span className="text-xs font-semibold text-center leading-tight relative z-10 text-zinc-300">{s.name}</span>
+            <span className="text-xs font-semibold text-center leading-tight relative z-10 text-zinc-300 line-clamp-2 w-full">{s.name}</span>
             <div className="absolute bottom-0 left-0 right-0 h-0.5 opacity-60" style={{ backgroundColor: s.color }} />
           </motion.div>
         ))}
@@ -872,7 +881,7 @@ function Security() {
               </div>
               <div>
                 <div className="text-sm font-semibold text-white mb-0.5">{f.title}</div>
-                <div className="text-xs text-zinc-500 leading-relaxed">{f.desc}</div>
+                <div className="text-xs text-zinc-400 leading-relaxed">{f.desc}</div>
               </div>
             </motion.div>
           ))}
@@ -919,23 +928,23 @@ function Testimonials() {
                   <span className="text-sm font-semibold text-white">{t.name}</span>
                   <FlagImg code={t.flag} size={16} />
                 </div>
-                <div className="text-xs text-zinc-500 mt-0.5">{t.role}</div>
+                <div className="text-xs text-zinc-400 mt-0.5">{t.role}</div>
               </div>
             </div>
           </motion.div>
         ))}
       </div>
-      <div className="mt-8 flex flex-wrap items-center justify-center gap-6 text-sm text-zinc-500">
+      <div className="mt-8 flex flex-wrap items-center justify-center gap-4 sm:gap-6 text-sm text-zinc-400">
         <div className="flex items-center gap-2">
-          <CheckCircle className="w-4 h-4 text-emerald-500" />
+          <CheckCircle className="w-4 h-4 text-emerald-400" />
           <span>5 000+ utilisateurs actifs</span>
         </div>
         <div className="flex items-center gap-2">
-          <Shield className="w-4 h-4 text-sky-500" />
+          <Shield className="w-4 h-4 text-sky-400" />
           <span>Paiements 100% sécurisés</span>
         </div>
         <div className="flex items-center gap-2">
-          <Zap className="w-4 h-4 text-amber-500" />
+          <Zap className="w-4 h-4 text-amber-400" />
           <span>SMS reçu en moins de 30 secondes</span>
         </div>
       </div>
@@ -1013,26 +1022,26 @@ function FinalCTA() {
               prêt en quelques secondes
             </span>
           </h2>
-          <p className="text-zinc-400 text-base max-w-xl mx-auto mb-8 leading-relaxed">
+          <p className="text-zinc-300 text-base max-w-xl mx-auto mb-8 leading-relaxed">
             Inscription gratuite. Aucune carte bancaire.
             Payez uniquement avec votre Mobile Money local.
           </p>
           <div className="flex flex-wrap gap-3 justify-center">
             <button
               onClick={() => setLocation("/register")}
-              className="flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500 text-white font-bold rounded-xl transition-all shadow-2xl shadow-violet-600/30 text-base"
+              className="flex items-center gap-2 px-6 sm:px-8 py-3.5 sm:py-4 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500 text-white font-bold rounded-xl transition-all shadow-2xl shadow-violet-600/30 text-sm sm:text-base"
             >
               Créer mon compte gratuit <ArrowRight className="w-4 h-4" />
             </button>
             <button
               onClick={() => setLocation("/login")}
-              className="flex items-center gap-2 px-8 py-4 bg-white/10 hover:bg-white/15 border border-white/10 text-white font-semibold rounded-xl transition-all text-base"
+              className="flex items-center gap-2 px-6 sm:px-8 py-3.5 sm:py-4 bg-white/10 hover:bg-white/15 border border-white/20 text-white font-semibold rounded-xl transition-all text-sm sm:text-base"
             >
               J'ai déjà un compte
             </button>
           </div>
-          <p className="text-zinc-600 text-xs mt-5 flex items-center justify-center gap-2">
-            <CheckCircle className="w-3.5 h-3.5 text-emerald-500" />
+          <p className="text-zinc-500 text-xs mt-5 flex items-center justify-center gap-2">
+            <CheckCircle className="w-3.5 h-3.5 text-emerald-400" />
             Inscription gratuite · Aucune carte requise · Paiement Mobile Money
           </p>
         </div>
@@ -1066,7 +1075,7 @@ function Footer() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-7 mb-8">
           <div className="col-span-2 md:col-span-1">
             <SimixLogo size={24} />
-            <p className="text-zinc-500 text-sm mt-3 leading-relaxed max-w-xs">
+            <p className="text-zinc-400 text-sm mt-3 leading-relaxed max-w-xs">
               La plateforme de numéros virtuels SMS pensée pour les Africains. Paiements 100% Mobile Money.
             </p>
             <div className="flex gap-2 mt-4 flex-wrap">
@@ -1076,8 +1085,8 @@ function Footer() {
             </div>
           </div>
           <div>
-            <div className="text-xs font-semibold text-zinc-400 uppercase tracking-widest mb-3">Produit</div>
-            <ul className="space-y-2 text-sm text-zinc-500">
+            <div className="text-xs font-semibold text-zinc-300 uppercase tracking-widest mb-3">Produit</div>
+            <ul className="space-y-2 text-sm text-zinc-400">
               <li><button onClick={() => setLocation("/register")} className="hover:text-white transition-colors">S'inscrire</button></li>
               <li><button onClick={() => setLocation("/login")} className="hover:text-white transition-colors">Se connecter</button></li>
               <li><a href="#services" className="hover:text-white transition-colors">Services</a></li>
@@ -1085,8 +1094,8 @@ function Footer() {
             </ul>
           </div>
           <div>
-            <div className="text-xs font-semibold text-zinc-400 uppercase tracking-widest mb-3">Ressources</div>
-            <ul className="space-y-2 text-sm text-zinc-500">
+            <div className="text-xs font-semibold text-zinc-300 uppercase tracking-widest mb-3">Ressources</div>
+            <ul className="space-y-2 text-sm text-zinc-400">
               <li><a href="#comment" className="hover:text-white transition-colors">Comment ça marche</a></li>
               <li><a href="#securite" className="hover:text-white transition-colors">Sécurité</a></li>
               <li><span className="cursor-default">FAQ</span></li>
@@ -1103,13 +1112,13 @@ function Footer() {
           </div>
         </div>
         <div className="border-t border-zinc-800/60 pt-5 flex flex-col sm:flex-row items-center justify-between gap-3">
-          <p className="text-xs text-zinc-600">© 2026 Simix. Tous droits réservés.</p>
-          <div className="flex gap-4 text-xs text-zinc-600">
-            <span className="hover:text-zinc-400 cursor-pointer transition-colors">Confidentialité</span>
-            <span className="hover:text-zinc-400 cursor-pointer transition-colors">CGU</span>
-            <span className="hover:text-zinc-400 cursor-pointer transition-colors">Mentions légales</span>
+          <p className="text-xs text-zinc-500">© 2026 Simix. Tous droits réservés.</p>
+          <div className="flex gap-4 text-xs text-zinc-500">
+            <span className="hover:text-zinc-300 cursor-pointer transition-colors">Confidentialité</span>
+            <span className="hover:text-zinc-300 cursor-pointer transition-colors">CGU</span>
+            <span className="hover:text-zinc-300 cursor-pointer transition-colors">Mentions légales</span>
           </div>
-          <p className="text-xs text-zinc-600">Conçu pour l'Afrique</p>
+          <p className="text-xs text-zinc-500">Conçu pour l'Afrique</p>
         </div>
       </Section>
     </footer>
