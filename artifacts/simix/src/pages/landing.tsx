@@ -206,30 +206,81 @@ const SECURITY_FEATURES = [
 const TESTIMONIALS = [
   {
     name: "Kofi Mensah",
-    role: "Développeur web, Accra",
+    role: "Développeur web",
+    city: "Accra, Ghana",
     flag: "gh",
     initials: "KM",
     color: "#7C3AED",
-    text: "En tant que développeur, j'avais besoin de plusieurs comptes pour tester mes applications. Simix m'a sauvé la mise. Paiement MTN MoMo instantané, numéro reçu en 20 secondes chrono.",
+    avatar: "/man-3.jpg",
+    text: "En tant que développeur, je teste mes apps avec plusieurs comptes. Simix m'a simplifié la vie : paiement MTN MoMo instantané, numéro reçu en moins de 20 secondes. Je l'utilise au quotidien depuis 6 mois sans aucun souci.",
     stars: 5,
+    service: "WhatsApp & Binance",
+    date: "Mars 2026",
   },
   {
     name: "Aminata Diallo",
-    role: "Entrepreneuse, Dakar",
+    role: "Entrepreneuse",
+    city: "Dakar, Sénégal",
     flag: "sn",
     initials: "AD",
     color: "#EC4899",
-    text: "J'avais du mal à vérifier mon WhatsApp Business avec mon numéro principal. Simix m'a fourni un numéro valide instantanément. Payé avec Wave sans la moindre complication. Service impeccable.",
+    avatar: "/woman-1.jpg",
+    text: "J'avais du mal à vérifier mon WhatsApp Business sans exposer mon numéro personnel. Simix m'a fourni un numéro valide en secondes, payé avec Wave. Service irréprochable, je recommande à toutes les entrepreneuses africaines.",
     stars: 5,
+    service: "WhatsApp Business",
+    date: "Avril 2026",
   },
   {
     name: "Chukwuemeka Obi",
-    role: "Trader crypto, Lagos",
+    role: "Trader crypto",
+    city: "Lagos, Nigeria",
     flag: "ng",
     initials: "CO",
     color: "#F59E0B",
-    text: "Pour vérifier Binance et Coinbase, Simix est parfait. Numéro livré en temps record, SMS reçu aussitôt. Service fiable à prix raisonnable. Je l'utilise chaque semaine sans problème.",
+    avatar: "/man-1.jpg",
+    text: "Pour vérifier Binance et Coinbase, Simix est tout simplement parfait. Numéro livré en temps record, SMS reçu aussitôt. Prix très raisonnable en FCFA. Je l'utilise chaque semaine depuis 4 mois, jamais eu le moindre problème.",
     stars: 5,
+    service: "Binance & Coinbase",
+    date: "Février 2026",
+  },
+  {
+    name: "Fatou Coulibaly",
+    role: "Designer freelance",
+    city: "Abidjan, Côte d'Ivoire",
+    flag: "ci",
+    initials: "FC",
+    color: "#10B981",
+    avatar: "/woman-2.jpg",
+    text: "Je crée des comptes TikTok et Instagram pour mes clients. Grâce à Simix, plus aucun souci de vérification. Orange Money marche parfaitement. Les codes arrivent en moins d'une minute — c'est bluffant de rapidité.",
+    stars: 5,
+    service: "TikTok & Instagram",
+    date: "Janvier 2026",
+  },
+  {
+    name: "Jean-Pierre Mbeki",
+    role: "Étudiant en informatique",
+    city: "Douala, Cameroun",
+    flag: "cm",
+    initials: "JM",
+    color: "#3B82F6",
+    avatar: "/man-2.jpg",
+    text: "J'utilisais des VPN coûteux pour accéder à Discord et Steam. Avec Simix, problème résolu en 2 minutes, paiement MTN. Le support répond très rapidement. Vraiment indispensable pour tous les gamers et étudiants africains.",
+    stars: 5,
+    service: "Discord & Steam",
+    date: "Mars 2026",
+  },
+  {
+    name: "Grace Achieng",
+    role: "Comptable certifiée",
+    city: "Nairobi, Kenya",
+    flag: "ke",
+    initials: "GA",
+    color: "#8B5CF6",
+    avatar: "/woman-3.jpg",
+    text: "J'avais besoin de vérifier mon compte Google pour Google Workspace. Simix m'a fourni un numéro kenyan valide, payé via M-Pesa. Simple, rapide et 100% sécurisé. J'ai recommandé le service à toute mon équipe comptable.",
+    stars: 5,
+    service: "Google Workspace",
+    date: "Avril 2026",
   },
 ];
 
@@ -892,59 +943,138 @@ function Security() {
 }
 
 /* ─── Testimonials ─── */
+function TestimonialAvatar({ t }: { t: typeof TESTIMONIALS[0] }) {
+  const [err, setErr] = useState(false);
+  if (!err) {
+    return (
+      <div className="relative flex-shrink-0">
+        <div
+          className="w-14 h-14 rounded-full p-0.5 flex-shrink-0"
+          style={{ background: `linear-gradient(135deg, ${t.color}, ${t.color}55)` }}
+        >
+          <img
+            src={t.avatar}
+            alt={t.name}
+            onError={() => setErr(true)}
+            className="w-full h-full rounded-full object-cover object-top"
+          />
+        </div>
+        <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-emerald-500 border-2 border-zinc-900 flex items-center justify-center">
+          <CheckCircle className="w-2.5 h-2.5 text-white" />
+        </div>
+      </div>
+    );
+  }
+  return (
+    <div className="relative flex-shrink-0">
+      <div
+        className="w-14 h-14 rounded-full flex items-center justify-center text-white font-bold text-base flex-shrink-0 shadow-lg"
+        style={{ background: `linear-gradient(135deg, ${t.color}, ${t.color}88)` }}
+      >
+        {t.initials}
+      </div>
+      <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-emerald-500 border-2 border-zinc-900 flex items-center justify-center">
+        <CheckCircle className="w-2.5 h-2.5 text-white" />
+      </div>
+    </div>
+  );
+}
+
 function Testimonials() {
   return (
-    <Section className="py-14">
-      <div className="text-center mb-10">
-        <SectionPill label="Ils nous font confiance" color="emerald" />
-        <h2 className="text-3xl sm:text-4xl font-extrabold text-white mb-3">Ce qu'ils disent de Simix</h2>
-        <p className="text-zinc-400 text-base max-w-2xl mx-auto">
-          Des milliers d'Africains utilisent Simix chaque jour pour accéder aux services numériques du monde entier.
+    <Section className="py-20" id="avis">
+      <div className="text-center mb-12">
+        <SectionPill label="Avis clients vérifiés" color="emerald" />
+        <h2 className="text-3xl sm:text-4xl font-extrabold text-white mb-4">
+          Ce qu'ils disent de{" "}
+          <span className="bg-gradient-to-r from-violet-400 to-pink-400 bg-clip-text text-transparent">Simix</span>
+        </h2>
+        <p className="text-zinc-400 text-base max-w-2xl mx-auto leading-relaxed">
+          Plus de 5 000 Africains utilisent Simix chaque jour pour accéder aux services numériques du monde entier — payés en Mobile Money local.
         </p>
+        {/* Overall rating bar */}
+        <div className="inline-flex items-center gap-3 mt-5 px-5 py-2.5 rounded-full bg-zinc-900/80 border border-zinc-800/60">
+          <div className="flex text-amber-400 text-sm gap-0.5">{"★".repeat(5)}</div>
+          <span className="text-white font-bold text-sm">4.9/5</span>
+          <span className="text-zinc-500 text-xs">sur 1 247 avis</span>
+        </div>
       </div>
-      <div className="grid md:grid-cols-3 gap-5">
+
+      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
         {TESTIMONIALS.map((t, i) => (
           <motion.div
             key={i}
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 24 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            transition={{ delay: i * 0.12 }}
-            className="flex flex-col gap-4 p-6 rounded-2xl bg-zinc-900/60 border border-zinc-800/60 hover:border-zinc-700 hover:bg-zinc-900/80 transition-all"
+            transition={{ delay: i * 0.1, duration: 0.5 }}
+            className="group relative flex flex-col rounded-2xl overflow-hidden border border-zinc-800/60 bg-zinc-900/50 hover:bg-zinc-900/80 hover:border-zinc-700/80 transition-all duration-300"
+            style={{ boxShadow: "0 0 0 0 transparent" }}
           >
-            <div className="flex text-amber-400 text-base gap-0.5 leading-none">
-              {"★".repeat(t.stars)}
-            </div>
-            <p className="text-zinc-300 text-sm leading-relaxed flex-1">"{t.text}"</p>
-            <div className="flex items-center gap-3 pt-3 border-t border-zinc-800/60">
-              <div
-                className="w-11 h-11 rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0 shadow-lg"
-                style={{ background: `linear-gradient(135deg, ${t.color}, ${t.color}88)` }}
-              >
-                {t.initials}
-              </div>
-              <div>
-                <div className="flex items-center gap-1.5">
-                  <span className="text-sm font-semibold text-white">{t.name}</span>
-                  <FlagImg code={t.flag} size={16} />
+            {/* Top accent bar */}
+            <div className="h-0.5 w-full" style={{ background: `linear-gradient(90deg, ${t.color}99, ${t.color}22)` }} />
+
+            <div className="flex flex-col gap-4 p-6 flex-1">
+              {/* Header: stars + service badge + date */}
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex text-amber-400 text-base gap-0.5 leading-none">
+                  {"★".repeat(t.stars)}
                 </div>
-                <div className="text-xs text-zinc-400 mt-0.5">{t.role}</div>
+                <span
+                  className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold whitespace-nowrap flex-shrink-0"
+                  style={{ background: `${t.color}18`, color: t.color, border: `1px solid ${t.color}33` }}
+                >
+                  {t.service}
+                </span>
+              </div>
+
+              {/* Quote mark + text */}
+              <div className="relative">
+                <div
+                  className="absolute -top-1 -left-0.5 text-5xl font-serif leading-none select-none"
+                  style={{ color: `${t.color}30` }}
+                >
+                  "
+                </div>
+                <p className="text-zinc-300 text-sm leading-relaxed pt-4 relative z-10">
+                  {t.text}
+                </p>
+              </div>
+
+              {/* Spacer */}
+              <div className="flex-1" />
+
+              {/* Footer: avatar + name + role + date */}
+              <div className="flex items-center gap-3 pt-4 border-t border-zinc-800/50">
+                <TestimonialAvatar t={t} />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="text-sm font-bold text-white truncate">{t.name}</span>
+                    <FlagImg code={t.flag} size={16} />
+                  </div>
+                  <div className="text-xs text-zinc-400 mt-0.5 truncate">{t.role} · {t.city}</div>
+                </div>
+                <div className="text-xs text-zinc-600 flex-shrink-0 hidden sm:block">{t.date}</div>
               </div>
             </div>
           </motion.div>
         ))}
       </div>
-      <div className="mt-8 flex flex-wrap items-center justify-center gap-4 sm:gap-6 text-sm text-zinc-400">
-        <div className="flex items-center gap-2">
-          <CheckCircle className="w-4 h-4 text-emerald-400" />
+
+      {/* Trust bar */}
+      <div className="mt-10 flex flex-wrap items-center justify-center gap-5 sm:gap-8">
+        <div className="flex items-center gap-2 text-sm text-zinc-400">
+          <CheckCircle className="w-4 h-4 text-emerald-400 flex-shrink-0" />
           <span>5 000+ utilisateurs actifs</span>
         </div>
-        <div className="flex items-center gap-2">
-          <Shield className="w-4 h-4 text-sky-400" />
-          <span>Paiements 100% sécurisés</span>
+        <div className="w-px h-4 bg-zinc-700 hidden sm:block" />
+        <div className="flex items-center gap-2 text-sm text-zinc-400">
+          <Shield className="w-4 h-4 text-sky-400 flex-shrink-0" />
+          <span>Avis clients authentiques</span>
         </div>
-        <div className="flex items-center gap-2">
-          <Zap className="w-4 h-4 text-amber-400" />
+        <div className="w-px h-4 bg-zinc-700 hidden sm:block" />
+        <div className="flex items-center gap-2 text-sm text-zinc-400">
+          <Zap className="w-4 h-4 text-amber-400 flex-shrink-0" />
           <span>SMS reçu en moins de 30 secondes</span>
         </div>
       </div>

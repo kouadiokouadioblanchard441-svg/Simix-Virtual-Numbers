@@ -1,5 +1,4 @@
 uploads = []
-outputs = []
 
 [[generated]]
 id = "7KKbkQS84fRKOJ71s36w1"
@@ -78,3 +77,75 @@ id = "58UnKdxDhPr4Kfdpt2ekp"
 uri = "file://artifacts/simix/public/3d/icon-lightning.png"
 type = "image"
 title = "3D lightning bolt icon"
+
+[[outputs]]
+id = "FCS2ekuXvLzokQS_vzl7F"
+uri = "file://attached_assets/avatars/man-1.jpg"
+type = "image"
+title = "man-1 (Chukwuemeka)"
+
+[[outputs]]
+id = "mWsTeTQzQF1O87G1SzrHX"
+uri = "file://attached_assets/avatars/man-2.jpg"
+type = "image"
+title = "man-2 (Jean-Pierre)"
+
+[[outputs]]
+id = "BZYRMqSrVOUopZSvDyUGD"
+uri = "file://attached_assets/avatars/man-3.jpg"
+type = "image"
+title = "man-3 (Kofi)"
+
+[[outputs]]
+id = "A_C5aqQ8rvL-kLzJH-W8k"
+uri = "file://attached_assets/avatars/woman-1.jpg"
+type = "image"
+title = "woman-1 (Aminata)"
+
+[[outputs]]
+id = "jKTSTmFo83FpV_PmAWUme"
+uri = "file://attached_assets/avatars/woman-2.jpg"
+type = "image"
+title = "woman-2 (Fatou)"
+
+[[outputs]]
+id = "KYMQAAMq_qUyQuMt4krmZ"
+uri = "file://attached_assets/avatars/woman-3.jpg"
+type = "image"
+title = "woman-3 (Grace)"
+
+[[outputs]]
+id = "uL5-69I5oH2Ep8gu5Tr68"
+uri = "file://attached_assets/avatars/man-1-large.jpg"
+type = "image"
+title = "Chukwuemeka (Nigeria)"
+
+[[outputs]]
+id = "JmiY5xgttxnNq00l0h9hn"
+uri = "file://attached_assets/avatars/man-2-large.jpg"
+type = "image"
+title = "Jean-Pierre (Cameroun)"
+
+[[outputs]]
+id = "6QH4p6IcXlkcIVeBOZKgd"
+uri = "file://attached_assets/avatars/man-3-large.jpg"
+type = "image"
+title = "Kofi (Ghana)"
+
+[[outputs]]
+id = "WWC1oiVWKC3tnjtPijDaH"
+uri = "file://attached_assets/avatars/woman-1-large.jpg"
+type = "image"
+title = "Aminata (Sénégal)"
+
+[[outputs]]
+id = "3ShIQtWLkSzEpzWX9F52f"
+uri = "file://attached_assets/avatars/woman-2-large.jpg"
+type = "image"
+title = "Fatou (Côte d'Ivoire)"
+
+[[outputs]]
+id = "nJx49x_ytgGI-hZpUcNYs"
+uri = "file://attached_assets/avatars/woman-3-large.jpg"
+type = "image"
+title = "Grace (Kenya)"
