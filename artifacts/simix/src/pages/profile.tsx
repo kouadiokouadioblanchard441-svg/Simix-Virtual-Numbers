@@ -36,12 +36,12 @@ function ProfileContent() {
   };
 
   const settingsItems = [
-    { icon: UserIcon, label: "Informations personnelles", sub: "Gérer vos informations de compte" },
-    { icon: Shield, label: "Sécurité", sub: "Mot de passe, 2FA, sessions actives" },
-    { icon: Bell, label: "Notifications", sub: "Gérer vos préférences de notifications" },
-    { icon: CreditCard, label: "Méthodes de paiement", sub: "Gérer vos moyens de paiement" },
-    { icon: Lock, label: "Confidentialité", sub: "Politique de confidentialité et données" },
-    { icon: HelpCircle, label: "Aide et support", sub: "FAQ, contact et assistance" },
+    { icon: UserIcon, label: "Informations personnelles", sub: "Gérer vos informations de compte", href: "/profile/informations" },
+    { icon: Shield, label: "Sécurité", sub: "Mot de passe, 2FA, sessions actives", href: "/profile/securite" },
+    { icon: Bell, label: "Notifications", sub: "Gérer vos préférences de notifications", href: "/profile/notifications" },
+    { icon: CreditCard, label: "Méthodes de paiement", sub: "Gérer vos moyens de paiement", href: "/profile/paiement" },
+    { icon: Lock, label: "Confidentialité", sub: "Politique de confidentialité et données", href: "/profile/confidentialite" },
+    { icon: HelpCircle, label: "Aide et support", sub: "FAQ, contact et assistance", href: "/profile/aide" },
   ];
 
   return (
@@ -143,7 +143,7 @@ function ProfileContent() {
         <h3 className="text-lg font-bold text-foreground mb-4">Mon compte</h3>
         <div className="space-y-3 mb-8">
           {settingsItems.map((item, i) => (
-            <div key={i} className="flex items-center justify-between p-4 bg-card border border-card-border rounded-2xl hover:bg-secondary/50 cursor-pointer transition-colors">
+            <button key={i} onClick={() => setLocation(item.href)} className="w-full flex items-center justify-between p-4 bg-card border border-card-border rounded-2xl hover:bg-secondary/50 cursor-pointer transition-colors text-left">
               <div className="flex items-center gap-4">
                 <div className="w-10 h-10 rounded-xl bg-secondary flex items-center justify-center text-foreground">
                   <item.icon className="w-5 h-5" />
@@ -154,7 +154,7 @@ function ProfileContent() {
                 </div>
               </div>
               <ChevronRight className="w-5 h-5 text-muted-foreground" />
-            </div>
+            </button>
           ))}
 
           {/* Logout row */}

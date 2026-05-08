@@ -20,6 +20,12 @@ import Services from "@/pages/services";
 import Countries from "@/pages/countries";
 import NumberDetails from "@/pages/number-details";
 import NumberAssigned from "@/pages/number-assigned";
+import ProfileInformations from "@/pages/profile-informations";
+import ProfileSecurite from "@/pages/profile-securite";
+import ProfileNotifications from "@/pages/profile-notifications";
+import ProfilePaiement from "@/pages/profile-paiement";
+import ProfileConfidentialite from "@/pages/profile-confidentialite";
+import ProfileAide from "@/pages/profile-aide";
 
 // Admin pages
 import AdminDashboard from "@/pages/admin/dashboard";
@@ -87,6 +93,12 @@ function InnerRouter() {
           <Route path="/countries" component={Countries} />
           <Route path="/numbers/new" component={NumberDetails} />
           <Route path="/numbers/:id" component={NumberAssigned} />
+          <Route path="/profile/informations" component={ProfileInformations} />
+          <Route path="/profile/securite" component={ProfileSecurite} />
+          <Route path="/profile/notifications" component={ProfileNotifications} />
+          <Route path="/profile/paiement" component={ProfilePaiement} />
+          <Route path="/profile/confidentialite" component={ProfileConfidentialite} />
+          <Route path="/profile/aide" component={ProfileAide} />
           <Route component={NotFound} />
         </Switch>
       </div>
