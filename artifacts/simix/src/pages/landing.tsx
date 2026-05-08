@@ -117,18 +117,30 @@ const AFRICA_COUNTRIES = [
 ];
 
 const OPERATORS = [
-  { name: "Orange Money", abbr: "OM", color: "#FF7A00", countries: "CI · SN · ML · BF · CM · GN · MR · MG", logoUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c8/Orange_logo.svg/200px-Orange_logo.svg.png", bg: "#FF7A00" },
-  { name: "MTN Mobile Money", abbr: "MTN", color: "#FFCC00", countries: "GH · NG · CI · CM · UG · RW · BJ · GN", logoUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9e/MTN_Logo.svg/200px-MTN_Logo.svg.png", bg: "#FFCC00" },
-  { name: "Wave", abbr: "WV", color: "#1BC5F4", countries: "SN · CI · BF · ML · GN · GM", logoUrl: null, bg: "#1BC5F4" },
-  { name: "Moov Money", abbr: "MV", color: "#E2001A", countries: "CI · BF · TG · BJ · NE · MG", logoUrl: null, bg: "#E2001A" },
-  { name: "M-Pesa", abbr: "MP", color: "#4CAF50", countries: "KE · TZ · MZ · UG · RW · GH · CD", logoUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/a/ab/M-pesa_logo.svg/200px-M-pesa_logo.svg.png", bg: "#4CAF50" },
-  { name: "Airtel Money", abbr: "AM", color: "#FF0000", countries: "KE · NG · UG · TZ · ZM · MW · MG", logoUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8a/Airtel_logo.svg/200px-Airtel_logo.svg.png", bg: "#FF0000" },
-  { name: "Free Money", abbr: "FM", color: "#E30613", countries: "Sénégal", logoUrl: null, bg: "#E30613" },
-  { name: "EcoCash", abbr: "EC", color: "#F7941D", countries: "Zimbabwe", logoUrl: null, bg: "#F7941D" },
-  { name: "Zamtel Kwacha", abbr: "ZK", color: "#007EC4", countries: "Zambie", logoUrl: null, bg: "#007EC4" },
-  { name: "Vodacom M-Pesa", abbr: "VM", color: "#E60000", countries: "TZ · MZ · CD · LS", logoUrl: null, bg: "#E60000" },
-  { name: "Tigo Pesa", abbr: "TP", color: "#0078C8", countries: "TZ · GH · SN", logoUrl: null, bg: "#0078C8" },
-  { name: "Equitel", abbr: "EQ", color: "#00A651", countries: "Kenya", logoUrl: null, bg: "#00A651" },
+  { name: "Orange Money", abbr: "OM", color: "#FF7A00", countries: "CI · SN · ML · BF · CM · GN · MR · MG", bg: "#FF7A00",
+    svg: <svg viewBox="0 0 32 32" className="w-full h-full"><circle cx="16" cy="16" r="14" fill="#FF7A00"/><circle cx="16" cy="16" r="7" fill="#fff" opacity="0.95"/></svg> },
+  { name: "MTN Mobile Money", abbr: "MTN", color: "#FFCC00", countries: "GH · NG · CI · CM · UG · RW · BJ · GN", bg: "#1A1A1A",
+    svg: <svg viewBox="0 0 32 32" className="w-full h-full"><rect width="32" height="32" rx="6" fill="#FFCC00"/><text x="16" y="21" textAnchor="middle" fontFamily="Arial Black,Arial" fontWeight="900" fontSize="10" fill="#1A1A1A">MTN</text></svg> },
+  { name: "Wave", abbr: "WV", color: "#1BC5F4", countries: "SN · CI · BF · ML · GN · GM", bg: "#1BC5F4",
+    svg: <svg viewBox="0 0 32 32" className="w-full h-full"><rect width="32" height="32" rx="6" fill="#1BC5F4"/><path d="M6 18 Q10 12 16 16 Q22 20 26 14" stroke="#fff" strokeWidth="2.5" fill="none" strokeLinecap="round"/></svg> },
+  { name: "Moov Money", abbr: "MV", color: "#E2001A", countries: "CI · BF · TG · BJ · NE · MG", bg: "#E2001A",
+    svg: <svg viewBox="0 0 32 32" className="w-full h-full"><rect width="32" height="32" rx="6" fill="#E2001A"/><text x="16" y="22" textAnchor="middle" fontFamily="Arial,sans-serif" fontWeight="800" fontSize="9.5" fill="#fff">MOOV</text></svg> },
+  { name: "M-Pesa", abbr: "MP", color: "#4CAF50", countries: "KE · TZ · MZ · UG · RW · GH · CD", bg: "#4CAF50",
+    svg: <svg viewBox="0 0 32 32" className="w-full h-full"><rect width="32" height="32" rx="6" fill="#4CAF50"/><text x="16" y="14" textAnchor="middle" fontFamily="Arial Black,Arial" fontWeight="900" fontSize="8" fill="#fff">M-</text><text x="16" y="24" textAnchor="middle" fontFamily="Arial Black,Arial" fontWeight="900" fontSize="8" fill="#fff">PESA</text></svg> },
+  { name: "Airtel Money", abbr: "AM", color: "#E40000", countries: "KE · NG · UG · TZ · ZM · MW · MG", bg: "#E40000",
+    svg: <svg viewBox="0 0 32 32" className="w-full h-full"><rect width="32" height="32" rx="6" fill="#E40000"/><path d="M16 8 L8 24 L16 20 L24 24 Z" fill="#fff" opacity="0.9"/></svg> },
+  { name: "Free Money", abbr: "FM", color: "#E30613", countries: "Sénégal", bg: "#E30613",
+    svg: <svg viewBox="0 0 32 32" className="w-full h-full"><rect width="32" height="32" rx="6" fill="#E30613"/><text x="16" y="22" textAnchor="middle" fontFamily="Arial Black,Arial" fontWeight="900" fontSize="10" fill="#fff">FM</text></svg> },
+  { name: "EcoCash", abbr: "EC", color: "#F7941D", countries: "Zimbabwe", bg: "#F7941D",
+    svg: <svg viewBox="0 0 32 32" className="w-full h-full"><rect width="32" height="32" rx="6" fill="#F7941D"/><text x="16" y="22" textAnchor="middle" fontFamily="Arial Black,Arial" fontWeight="900" fontSize="8.5" fill="#fff">ECO</text></svg> },
+  { name: "Zamtel Kwacha", abbr: "ZK", color: "#007EC4", countries: "Zambie", bg: "#007EC4",
+    svg: <svg viewBox="0 0 32 32" className="w-full h-full"><rect width="32" height="32" rx="6" fill="#007EC4"/><text x="16" y="22" textAnchor="middle" fontFamily="Arial Black,Arial" fontWeight="900" fontSize="10" fill="#fff">ZK</text></svg> },
+  { name: "Vodacom M-Pesa", abbr: "VM", color: "#E60000", countries: "TZ · MZ · CD · LS", bg: "#E60000",
+    svg: <svg viewBox="0 0 32 32" className="w-full h-full"><rect width="32" height="32" rx="6" fill="#E60000"/><circle cx="16" cy="16" r="8" fill="#fff" opacity="0.15"/><text x="16" y="21" textAnchor="middle" fontFamily="Arial Black,Arial" fontWeight="900" fontSize="9" fill="#fff">VDF</text></svg> },
+  { name: "Tigo Pesa", abbr: "TP", color: "#0078C8", countries: "TZ · GH · SN", bg: "#0078C8",
+    svg: <svg viewBox="0 0 32 32" className="w-full h-full"><rect width="32" height="32" rx="6" fill="#0078C8"/><text x="16" y="22" textAnchor="middle" fontFamily="Arial Black,Arial" fontWeight="900" fontSize="9" fill="#fff">TIGO</text></svg> },
+  { name: "Equitel", abbr: "EQ", color: "#00A651", countries: "Kenya", bg: "#00A651",
+    svg: <svg viewBox="0 0 32 32" className="w-full h-full"><rect width="32" height="32" rx="6" fill="#00A651"/><text x="16" y="22" textAnchor="middle" fontFamily="Arial Black,Arial" fontWeight="900" fontSize="8.5" fill="#fff">EQL</text></svg> },
 ];
 
 const SERVICES = [
@@ -1029,6 +1041,22 @@ function FinalCTA() {
   );
 }
 
+/* ─── Footer operator badge ─── */
+function FooterOpBadge({ op }: { op: typeof OPERATORS[0] }) {
+  const shortName = op.name
+    .replace("Mobile Money", "MoMo")
+    .replace(" Money", "")
+    .replace("Vodacom ", "");
+  return (
+    <div className="flex items-center gap-2.5">
+      <div className="w-7 h-7 rounded-lg overflow-hidden flex-shrink-0">
+        {op.svg}
+      </div>
+      <span className="text-xs text-zinc-400 leading-tight">{shortName}</span>
+    </div>
+  );
+}
+
 /* ─── Footer ─── */
 function Footer() {
   const [, setLocation] = useLocation();
@@ -1067,12 +1095,9 @@ function Footer() {
           </div>
           <div>
             <div className="text-xs font-semibold text-zinc-400 uppercase tracking-widest mb-3">Paiements acceptés</div>
-            <div className="grid grid-cols-2 gap-1.5">
+            <div className="flex flex-col gap-2">
               {OPERATORS.slice(0, 6).map(op => (
-                <div key={op.name} className="flex items-center gap-1.5 text-xs text-zinc-500">
-                  <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: op.color }} />
-                  {op.name.split(" ")[0]}
-                </div>
+                <FooterOpBadge key={op.name} op={op} />
               ))}
             </div>
           </div>
