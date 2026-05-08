@@ -134,7 +134,17 @@ export class PawaPayClient {
   }
 
   async getActiveCorrespondents(): Promise<PawaPayCorrespondent[]> {
-    return this.request<PawaPayCorrespondent[]>("/active-conf");
+    return this.request<PawaPayCorrespondent[]>("/active-configuration");
+  }
+
+  async predictCorrespondent(msisdn: string): Promise<{ correspondent: string; country: string } | null> {
+    try {
+      const result = await this.request<{ correspondent?: string; country?: string }>("/predict-correspondent", "POST", { msisdn });
+      if (result.correspondent) return { correspondent: result.correspondent, country: result.country ?? "" };
+      return null;
+    } catch {
+      return null;
+    }
   }
 
   async checkAvailability(): Promise<{ status: string; country?: string }> {
@@ -148,10 +158,11 @@ export class PawaPayClient {
 }
 
 export function generateDepositId(): string {
-  const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
-  return Array.from({ length: 36 }, (_, i) =>
-    [8, 13, 18, 23].includes(i) ? "-" : chars[Math.floor(Math.random() * chars.length)]
-  ).join("");
+  const hex = () => Math.floor(Math.random() * 16).toString(16);
+  const s = () => Array.from({ length: 8 }, hex).join("");
+  const s4 = () => Array.from({ length: 4 }, hex).join("");
+  const v4variant = () => (Math.floor(Math.random() * 4) + 8).toString(16);
+  return `${s()}-${s4()}-4${Array.from({ length: 3 }, hex).join("")}-${v4variant()}${Array.from({ length: 3 }, hex).join("")}-${Array.from({ length: 12 }, hex).join("")}`;
 }
 
 export function normalizeMSISDN(phone: string): string {

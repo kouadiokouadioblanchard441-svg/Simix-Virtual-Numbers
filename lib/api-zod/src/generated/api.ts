@@ -527,6 +527,9 @@ export const rechargeWalletBodyAmountMin = 100;
 export const RechargeWalletBody = zod.object({
   amount: zod.number().min(rechargeWalletBodyAmountMin),
   methodSlug: zod.string(),
+  phoneNumber: zod.string().optional(),
+  countryCode: zod.string().optional(),
+  dialCode: zod.string().optional(),
 });
 
 export const RechargeWalletResponse = zod.object({

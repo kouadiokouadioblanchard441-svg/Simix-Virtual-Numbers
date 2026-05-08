@@ -159,6 +159,9 @@ export interface RechargeInput {
   /** @minimum 100 */
   amount: number;
   methodSlug: string;
+  phoneNumber?: string;
+  countryCode?: string;
+  dialCode?: string;
 }
 
 export type TransactionType =

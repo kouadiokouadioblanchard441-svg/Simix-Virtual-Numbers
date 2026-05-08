@@ -24,17 +24,26 @@ import { logger } from "../lib/logger";
 const router: IRouter = Router();
 
 async function getPawaPayClient(): Promise<{ client: PawaPayClient; env: string } | null> {
-  const rows = await db.select().from(systemSettingsTable).where(
-    eq(systemSettingsTable.key, "pawapay_api_token")
-  ).limit(1);
-  const token = rows[0]?.value;
+  /* 1. Try environment variable first */
+  let token = process.env.PAWAPAY_API_TOKEN ?? null;
+  let env: "sandbox" | "production" = (process.env.PAWAPAY_ENV as "sandbox" | "production") ?? "sandbox";
+
+  /* 2. Fall back to DB system settings */
+  if (!token) {
+    const rows = await db.select().from(systemSettingsTable).where(
+      eq(systemSettingsTable.key, "pawapay_api_token")
+    ).limit(1);
+    token = rows[0]?.value ?? null;
+
+    if (token) {
+      const envRows = await db.select().from(systemSettingsTable).where(
+        eq(systemSettingsTable.key, "pawapay_env")
+      ).limit(1);
+      env = (envRows[0]?.value as "sandbox" | "production") ?? "sandbox";
+    }
+  }
+
   if (!token) return null;
-
-  const envRows = await db.select().from(systemSettingsTable).where(
-    eq(systemSettingsTable.key, "pawapay_env")
-  ).limit(1);
-  const env = (envRows[0]?.value as "sandbox" | "production") ?? "sandbox";
-
   return { client: new PawaPayClient(token, env), env };
 }
 
@@ -54,9 +63,7 @@ router.post(
       return;
     }
     const user = req.user!;
-    const { amount, methodSlug } = parsed.data;
-    const phoneNumber = req.body.phoneNumber as string | undefined;
-    const countryCode = req.body.countryCode as string | undefined;
+    const { amount, methodSlug, phoneNumber, countryCode, dialCode } = parsed.data;
 
     const [method] = await db
       .select()
@@ -81,7 +88,11 @@ router.post(
         if (correspondent) {
           try {
             const depositId = generateDepositId();
-            const msisdn = normalizeMSISDN(phoneNumber);
+            /* Prepend country dial code if not already present */
+            const rawPhone = dialCode
+              ? `${dialCode.replace(/^\+/, "")}${phoneNumber.replace(/^\+/, "").replace(/^0+/, "")}`
+              : phoneNumber;
+            const msisdn = normalizeMSISDN(rawPhone);
 
             const depositRes = await client.initiateDeposit({
               depositId,
@@ -150,6 +161,22 @@ router.post(
     res.json(toTransaction(tx!));
   },
 );
+
+/* ── Predict correspondent from MSISDN ── */
+router.post("/wallet/predict-correspondent", requireAuth, async (req, res): Promise<void> => {
+  const { msisdn } = req.body as { msisdn?: string };
+  if (!msisdn) { res.status(400).json({ error: "msisdn required" }); return; }
+
+  const pawaPayCtx = await getPawaPayClient();
+  if (!pawaPayCtx) { res.status(503).json({ error: "PawaPay not configured" }); return; }
+
+  try {
+    const result = await pawaPayCtx.client.predictCorrespondent(msisdn);
+    res.json(result ?? { correspondent: null });
+  } catch (e) {
+    res.status(500).json({ error: (e as Error).message });
+  }
+});
 
 /* ── PawaPay webhook — called by PawaPay when payment confirmed ── */
 router.post("/wallet/pawapay/webhook", async (req, res): Promise<void> => {
