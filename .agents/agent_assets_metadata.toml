@@ -18,3 +18,63 @@ id = "R4RUFHH0QVF6WGPmaW2h0"
 uri = "file://attached_assets/generated_images/simix_phone_chat_3d.png"
 type = "image"
 title = "generated_image"
+
+[[generated]]
+id = "2ApllArSdKRhQ3EMR4vqz"
+uri = "file://artifacts/simix/public/3d/step-globe.png"
+type = "image"
+title = "3D globe step icon"
+
+[[generated]]
+id = "LyjbFTt0HeBtCB2faAlQM"
+uri = "file://artifacts/simix/public/3d/step-phone.png"
+type = "image"
+title = "3D phone step icon"
+
+[[generated]]
+id = "NSLDGfubiDwqf_6D8QYmT"
+uri = "file://artifacts/simix/public/3d/step-payment.png"
+type = "image"
+title = "3D payment step icon"
+
+[[generated]]
+id = "_nkUl3OrA-S7zSrolKh3e"
+uri = "file://artifacts/simix/public/3d/icon-lock.png"
+type = "image"
+title = "3D lock security icon"
+
+[[generated]]
+id = "b6gAGDM_D2fMme2OIdexM"
+uri = "file://artifacts/simix/public/3d/icon-eye.png"
+type = "image"
+title = "3D eye privacy icon"
+
+[[generated]]
+id = "omAyja_9I_JKmuZaKUx3r"
+uri = "file://artifacts/simix/public/3d/icon-shield.png"
+type = "image"
+title = "3D shield security icon"
+
+[[generated]]
+id = "GCJJ_MY7-PG-ZVlI5eRhB"
+uri = "file://artifacts/simix/public/3d/icon-refresh.png"
+type = "image"
+title = "3D refresh refund icon"
+
+[[generated]]
+id = "0aAatAr7MPZACdAy7IpQH"
+uri = "file://artifacts/simix/public/3d/icon-clock.png"
+type = "image"
+title = "3D clock 24h icon"
+
+[[generated]]
+id = "gj7Ue5Y8VP_CwxW1jf-4n"
+uri = "file://artifacts/simix/public/3d/icon-check.png"
+type = "image"
+title = "3D check verified icon"
+
+[[generated]]
+id = "58UnKdxDhPr4Kfdpt2ekp"
+uri = "file://artifacts/simix/public/3d/icon-lightning.png"
+type = "image"
+title = "3D lightning bolt icon"

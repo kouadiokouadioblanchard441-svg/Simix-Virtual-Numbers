@@ -9,10 +9,24 @@ import screenDash from "@/assets/screen-dashboard.png";
 import screenWallet from "@/assets/screen-wallet.png";
 import screenCountries from "@/assets/screen-countries.png";
 import {
-  Shield, Zap, Globe, Smartphone, Lock, CheckCircle,
+  Shield, Zap, Globe, Smartphone,
   ArrowRight, ChevronRight, MessageSquare, Users,
-  Wifi, CreditCard, RefreshCw, Eye, Clock,
+  Wifi, CheckCircle, Lock,
 } from "lucide-react";
+
+/* ─── Icon 3D paths (public folder) ─── */
+const I = {
+  stepGlobe:    "/3d/step-globe.png",
+  stepPhone:    "/3d/step-phone.png",
+  stepPayment:  "/3d/step-payment.png",
+  iconLock:     "/3d/icon-lock.png",
+  iconEye:      "/3d/icon-eye.png",
+  iconShield:   "/3d/icon-shield.png",
+  iconRefresh:  "/3d/icon-refresh.png",
+  iconClock:    "/3d/icon-clock.png",
+  iconCheck:    "/3d/icon-check.png",
+  iconLightning:"/3d/icon-lightning.png",
+};
 
 /* ─── Animated counter hook ─── */
 function useCountUp(target: number, duration = 2000) {
@@ -103,102 +117,18 @@ const AFRICA_COUNTRIES = [
 ];
 
 const OPERATORS = [
-  {
-    name: "Orange Money",
-    abbr: "OM",
-    color: "#FF7A00",
-    countries: "CI · SN · ML · BF · CM · GN · MR · MG",
-    logoUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c8/Orange_logo.svg/200px-Orange_logo.svg.png",
-    bg: "#FF7A00",
-  },
-  {
-    name: "MTN Mobile Money",
-    abbr: "MTN",
-    color: "#FFCC00",
-    countries: "GH · NG · CI · CM · UG · RW · BJ · GN",
-    logoUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9e/MTN_Logo.svg/200px-MTN_Logo.svg.png",
-    bg: "#FFCC00",
-  },
-  {
-    name: "Wave",
-    abbr: "WV",
-    color: "#1BC5F4",
-    countries: "SN · CI · BF · ML · GN · GM",
-    logoUrl: null,
-    bg: "#1BC5F4",
-  },
-  {
-    name: "Moov Money",
-    abbr: "MV",
-    color: "#E2001A",
-    countries: "CI · BF · TG · BJ · NE · MG",
-    logoUrl: null,
-    bg: "#E2001A",
-  },
-  {
-    name: "M-Pesa",
-    abbr: "MP",
-    color: "#4CAF50",
-    countries: "KE · TZ · MZ · UG · RW · GH · CD",
-    logoUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/a/ab/M-pesa_logo.svg/200px-M-pesa_logo.svg.png",
-    bg: "#4CAF50",
-  },
-  {
-    name: "Airtel Money",
-    abbr: "AM",
-    color: "#FF0000",
-    countries: "KE · NG · UG · TZ · ZM · MW · MG",
-    logoUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8a/Airtel_logo.svg/200px-Airtel_logo.svg.png",
-    bg: "#FF0000",
-  },
-  {
-    name: "Free Money",
-    abbr: "FM",
-    color: "#E30613",
-    countries: "Sénégal",
-    logoUrl: null,
-    bg: "#E30613",
-  },
-  {
-    name: "EcoCash",
-    abbr: "EC",
-    color: "#F7941D",
-    countries: "Zimbabwe",
-    logoUrl: null,
-    bg: "#F7941D",
-  },
-  {
-    name: "Zamtel Kwacha",
-    abbr: "ZK",
-    color: "#007EC4",
-    countries: "Zambie",
-    logoUrl: null,
-    bg: "#007EC4",
-  },
-  {
-    name: "Vodacom M-Pesa",
-    abbr: "VM",
-    color: "#E60000",
-    countries: "TZ · MZ · CD · LS",
-    logoUrl: null,
-    bg: "#E60000",
-  },
-  {
-    name: "Tigo Pesa",
-    abbr: "TP",
-    color: "#0078C8",
-    countries: "TZ · GH · SN",
-    logoUrl: null,
-    bg: "#0078C8",
-  },
-  {
-    name: "Equitel",
-    abbr: "EQ",
-    color: "#00A651",
-    countries: "Kenya",
-    logoUrl: null,
-    bg: "#00A651",
-  },
+  { name: "Orange Money", abbr: "OM", color: "#FF7A00", countries: "CI · SN · ML · BF · CM · GN · MR · MG", logoUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c8/Orange_logo.svg/200px-Orange_logo.svg.png", bg: "#FF7A00" },
+  { name: "MTN Mobile Money", abbr: "MTN", color: "#FFCC00", countries: "GH · NG · CI · CM · UG · RW · BJ · GN", logoUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9e/MTN_Logo.svg/200px-MTN_Logo.svg.png", bg: "#FFCC00" },
+  { name: "Wave", abbr: "WV", color: "#1BC5F4", countries: "SN · CI · BF · ML · GN · GM", logoUrl: null, bg: "#1BC5F4" },
+  { name: "Moov Money", abbr: "MV", color: "#E2001A", countries: "CI · BF · TG · BJ · NE · MG", logoUrl: null, bg: "#E2001A" },
+  { name: "M-Pesa", abbr: "MP", color: "#4CAF50", countries: "KE · TZ · MZ · UG · RW · GH · CD", logoUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/a/ab/M-pesa_logo.svg/200px-M-pesa_logo.svg.png", bg: "#4CAF50" },
+  { name: "Airtel Money", abbr: "AM", color: "#FF0000", countries: "KE · NG · UG · TZ · ZM · MW · MG", logoUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8a/Airtel_logo.svg/200px-Airtel_logo.svg.png", bg: "#FF0000" },
+  { name: "Free Money", abbr: "FM", color: "#E30613", countries: "Sénégal", logoUrl: null, bg: "#E30613" },
+  { name: "EcoCash", abbr: "EC", color: "#F7941D", countries: "Zimbabwe", logoUrl: null, bg: "#F7941D" },
+  { name: "Zamtel Kwacha", abbr: "ZK", color: "#007EC4", countries: "Zambie", logoUrl: null, bg: "#007EC4" },
+  { name: "Vodacom M-Pesa", abbr: "VM", color: "#E60000", countries: "TZ · MZ · CD · LS", logoUrl: null, bg: "#E60000" },
+  { name: "Tigo Pesa", abbr: "TP", color: "#0078C8", countries: "TZ · GH · SN", logoUrl: null, bg: "#0078C8" },
+  { name: "Equitel", abbr: "EQ", color: "#00A651", countries: "Kenya", logoUrl: null, bg: "#00A651" },
 ];
 
 const SERVICES = [
@@ -231,21 +161,21 @@ const SERVICES = [
 const STEPS = [
   {
     number: "01",
-    icon: <Globe className="w-6 h-6" />,
+    imgSrc: I.stepGlobe,
     title: "Choisissez un pays et un service",
     desc: "Sélectionnez le pays du numéro désiré parmi 54 nations africaines et au-delà, puis choisissez le service à vérifier.",
     color: "#7C3AED",
   },
   {
     number: "02",
-    icon: <Smartphone className="w-6 h-6" />,
+    imgSrc: I.stepPhone,
     title: "Obtenez votre numéro virtuel",
     desc: "Un numéro temporaire vous est attribué instantanément. Utilisez-le pour recevoir votre code de vérification SMS.",
     color: "#EC4899",
   },
   {
     number: "03",
-    icon: <CreditCard className="w-6 h-6" />,
+    imgSrc: I.stepPayment,
     title: "Payez via Mobile Money en FCFA",
     desc: "Rechargez votre solde avec Orange Money, MTN, Wave ou tout autre opérateur local. Aucune carte bancaire requise.",
     color: "#F59E0B",
@@ -253,12 +183,12 @@ const STEPS = [
 ];
 
 const SECURITY_FEATURES = [
-  { icon: <Lock className="w-5 h-5" />, title: "Chiffrement bout en bout", desc: "Vos données et transactions sont chiffrées avec les standards les plus élevés." },
-  { icon: <Eye className="w-5 h-5" />, title: "Numéros éphémères", desc: "Chaque numéro est temporaire et détruit après usage. Aucun historique conservé." },
-  { icon: <Shield className="w-5 h-5" />, title: "Aucune carte bancaire", desc: "Uniquement du Mobile Money local. Vos coordonnées bancaires ne sont jamais sollicitées." },
-  { icon: <RefreshCw className="w-5 h-5" />, title: "Remboursement garanti", desc: "Si aucun SMS n'est reçu dans les délais, votre solde est remboursé automatiquement." },
-  { icon: <Clock className="w-5 h-5" />, title: "Disponible 24h/24", desc: "Plateforme opérationnelle à toute heure, tous les jours de l'année, sans interruption." },
-  { icon: <CheckCircle className="w-5 h-5" />, title: "Numéros vérifiés actifs", desc: "Chaque numéro est testé et vérifié avant d'être proposé à la vente." },
+  { imgSrc: I.iconLock,    title: "Chiffrement bout en bout", desc: "Vos données et transactions sont chiffrées avec les standards les plus élevés." },
+  { imgSrc: I.iconEye,     title: "Numéros éphémères", desc: "Chaque numéro est temporaire et détruit après usage. Aucun historique conservé." },
+  { imgSrc: I.iconShield,  title: "Aucune carte bancaire", desc: "Uniquement du Mobile Money local. Vos coordonnées bancaires ne sont jamais sollicitées." },
+  { imgSrc: I.iconRefresh, title: "Remboursement garanti", desc: "Si aucun SMS n'est reçu dans les délais, votre solde est remboursé automatiquement." },
+  { imgSrc: I.iconClock,   title: "Disponible 24h/24", desc: "Plateforme opérationnelle à toute heure, tous les jours de l'année, sans interruption." },
+  { imgSrc: I.iconCheck,   title: "Numéros vérifiés actifs", desc: "Chaque numéro est testé et vérifié avant d'être proposé à la vente." },
 ];
 
 /* ─── Flag image ─── */
@@ -334,17 +264,33 @@ function Section({ children, className = "", id }: { children: React.ReactNode; 
   return <section id={id} className={`px-4 sm:px-8 lg:px-16 xl:px-24 ${className}`}>{children}</section>;
 }
 
+/* ─── Section label pill ─── */
+function SectionPill({ label, color = "violet" }: { label: string; color?: "violet" | "amber" | "pink" | "emerald" | "sky" }) {
+  const cls: Record<string, string> = {
+    violet: "bg-violet-600/10 border-violet-600/25 text-violet-400",
+    amber:  "bg-amber-500/10  border-amber-500/25  text-amber-400",
+    pink:   "bg-pink-600/10   border-pink-600/25   text-pink-400",
+    emerald:"bg-emerald-600/10 border-emerald-600/25 text-emerald-400",
+    sky:    "bg-sky-600/10    border-sky-600/25    text-sky-400",
+  };
+  return (
+    <div className={`inline-flex items-center gap-2 px-4 py-1.5 border rounded-full text-xs font-semibold uppercase tracking-widest mb-3 ${cls[color]}`}>
+      {label}
+    </div>
+  );
+}
+
 /* ─── Countries ticker ─── */
 function CountriesTicker() {
   const doubled = [...AFRICA_COUNTRIES, ...AFRICA_COUNTRIES];
   const doubled2 = [...AFRICA_COUNTRIES, ...AFRICA_COUNTRIES];
   return (
-    <div className="py-10 overflow-hidden border-y border-zinc-800/60 bg-zinc-950/50">
-      <div className="flex items-center gap-6 mb-4 px-4 sm:px-8 lg:px-16 xl:px-24">
+    <div className="py-8 overflow-hidden border-y border-zinc-800/60 bg-zinc-950/50">
+      <div className="flex items-center gap-6 mb-3 px-4 sm:px-8 lg:px-16 xl:px-24">
         <span className="text-zinc-400 text-sm font-semibold uppercase tracking-widest whitespace-nowrap">54 pays africains couverts</span>
         <div className="h-px flex-1 bg-gradient-to-r from-violet-600/40 to-transparent" />
       </div>
-      <div className="overflow-hidden mb-3">
+      <div className="overflow-hidden mb-2.5">
         <div className="marquee-track">
           {doubled.map((c, i) => (
             <div key={i} className="flex items-center gap-2.5 px-4 py-2 mx-1.5 bg-zinc-900/80 border border-zinc-800/60 rounded-full whitespace-nowrap flex-shrink-0">
@@ -368,35 +314,21 @@ function CountriesTicker() {
   );
 }
 
-/* ─── Operators ticker — real logo strip ─── */
+/* ─── Operators ticker ─── */
 function OperatorsTicker() {
   return (
-    <div className="py-6 overflow-hidden bg-zinc-950/30">
-      {/* Row 1 — scroll left */}
-      <div className="overflow-hidden mb-3">
+    <div className="py-5 overflow-hidden bg-zinc-950/30">
+      <div className="overflow-hidden mb-2.5">
         <div className="marquee-track">
           {[0, 1, 2, 3].map((k) => (
-            <img
-              key={k}
-              src="/operator-logos.png"
-              alt="Opérateurs Mobile Money"
-              className="h-10 object-contain flex-shrink-0 mx-8 select-none"
-              draggable={false}
-            />
+            <img key={k} src="/operator-logos.png" alt="Opérateurs Mobile Money" className="h-10 object-contain flex-shrink-0 mx-8 select-none" draggable={false} />
           ))}
         </div>
       </div>
-      {/* Row 2 — scroll right (mirrored) */}
       <div className="overflow-hidden">
         <div className="marquee-track-reverse">
           {[0, 1, 2, 3].map((k) => (
-            <img
-              key={k}
-              src="/operator-logos.png"
-              alt="Opérateurs Mobile Money"
-              className="h-10 object-contain flex-shrink-0 mx-8 select-none opacity-70"
-              draggable={false}
-            />
+            <img key={k} src="/operator-logos.png" alt="Opérateurs Mobile Money" className="h-10 object-contain flex-shrink-0 mx-8 select-none opacity-70" draggable={false} />
           ))}
         </div>
       </div>
@@ -442,20 +374,20 @@ function Navbar() {
 function Hero() {
   const [, setLocation] = useLocation();
   return (
-    <div className="relative min-h-[100dvh] flex flex-col justify-center landing-grid overflow-hidden pt-24 pb-16">
+    <div className="relative landing-grid overflow-hidden pt-28 pb-14">
       <div className="glow-orb absolute -top-20 -left-20 w-[600px] h-[600px] bg-violet-600/15" />
       <div className="glow-orb absolute top-1/2 -right-40 w-[500px] h-[400px] bg-purple-800/20" />
       <div className="glow-orb absolute bottom-0 left-1/3 w-[400px] h-[300px] bg-pink-900/15" />
 
       <Section className="relative z-10">
-        <div className="grid lg:grid-cols-2 gap-12 items-center">
+        <div className="grid lg:grid-cols-2 gap-10 items-center">
           <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7 }}>
-            <div className="inline-flex items-center gap-2 px-4 py-2 bg-violet-600/15 border border-violet-600/30 rounded-full text-violet-300 text-sm font-medium mb-6">
+            <div className="inline-flex items-center gap-2 px-4 py-2 bg-violet-600/15 border border-violet-600/30 rounded-full text-violet-300 text-sm font-medium mb-5">
               <span className="w-1.5 h-1.5 rounded-full bg-violet-400 animate-pulse" />
               Fintech 100% Africaine — Paiements Mobile Money
             </div>
 
-            <h1 className="text-4xl sm:text-5xl xl:text-6xl font-extrabold leading-[1.1] text-white mb-6">
+            <h1 className="text-4xl sm:text-5xl xl:text-6xl font-extrabold leading-[1.1] text-white mb-5">
               Recevez vos{" "}
               <span className="bg-gradient-to-r from-violet-400 to-pink-400 bg-clip-text text-transparent">
                 codes SMS
@@ -464,12 +396,12 @@ function Hero() {
               <span className="text-violet-400">partout en Afrique.</span>
             </h1>
 
-            <p className="text-lg text-zinc-400 leading-relaxed mb-8 max-w-xl">
+            <p className="text-base text-zinc-400 leading-relaxed mb-7 max-w-xl">
               Des numéros virtuels temporaires pour vérifier vos comptes WhatsApp, Telegram, Google et bien plus —
               payés en <strong className="text-white">FCFA via Orange Money, MTN, Wave</strong> et tous les opérateurs Mobile Money du continent.
             </p>
 
-            <div className="flex flex-wrap gap-3 mb-10">
+            <div className="flex flex-wrap gap-3 mb-8">
               <button
                 onClick={() => setLocation("/register")}
                 className="flex items-center gap-2 px-7 py-3.5 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500 text-white font-semibold rounded-xl transition-all shadow-xl shadow-violet-600/30 text-base"
@@ -484,10 +416,10 @@ function Hero() {
               </button>
             </div>
 
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-3 gap-3">
               {[
                 { value: "54", label: "Pays africains", icon: <Globe className="w-5 h-5 text-violet-400" /> },
-                { value: "11+", label: "Opérateurs Mobile Money", icon: <CreditCard className="w-5 h-5 text-pink-400" /> },
+                { value: "11+", label: "Opérateurs MoMo", icon: <img src={I.stepPayment} alt="" className="w-5 h-5 object-contain" /> },
                 { value: "500+", label: "Services supportés", icon: <CheckCircle className="w-5 h-5 text-emerald-400" /> },
               ].map((s, i) => (
                 <div key={i} className="text-center p-3 rounded-xl bg-zinc-900/60 border border-zinc-800/60">
@@ -505,7 +437,7 @@ function Hero() {
             transition={{ duration: 0.8, delay: 0.2 }}
             className="hidden lg:flex items-center justify-center relative"
           >
-            <div className="relative w-full max-w-[440px] h-[520px]">
+            <div className="relative w-full max-w-[440px] h-[500px]">
               <div className="absolute left-1/2 -translate-x-1/2 top-0 z-10 float-slow">
                 <img src={phone3d} alt="Simix App" className="w-[240px] drop-shadow-2xl" />
               </div>
@@ -542,7 +474,7 @@ function Hero() {
         </div>
       </Section>
 
-      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1 text-zinc-600">
+      <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1 text-zinc-600">
         <div className="w-5 h-9 border-2 border-zinc-700 rounded-full flex justify-center pt-1.5">
           <motion.div animate={{ y: [0, 8, 0] }} transition={{ duration: 1.5, repeat: Infinity }} className="w-1 h-1.5 bg-zinc-500 rounded-full" />
         </div>
@@ -555,7 +487,7 @@ function Hero() {
 function AnimatedStat({ target, suffix = "", icon, label }: { target: number; suffix?: string; icon: React.ReactNode; label: string }) {
   const { count, ref } = useCountUp(target, 1800);
   return (
-    <div ref={ref} className="flex flex-col items-center py-6 gap-2 text-center px-3">
+    <div ref={ref} className="flex flex-col items-center py-5 gap-1.5 text-center px-3">
       {icon}
       <div className="text-xl font-extrabold text-white tabular-nums">{count}{suffix}</div>
       <div className="text-xs text-zinc-500 leading-tight">{label}</div>
@@ -570,15 +502,15 @@ function StatsBar() {
       <Section>
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 divide-x divide-zinc-800/40">
           <AnimatedStat target={54} icon={<Globe className="w-5 h-5 text-violet-400" />} label="Pays africains couverts" />
-          <AnimatedStat target={11} suffix="+" icon={<Smartphone className="w-5 h-5 text-pink-400" />} label="Opérateurs Mobile Money" />
+          <AnimatedStat target={11} suffix="+" icon={<img src={I.stepPayment} alt="" className="w-5 h-5 object-contain" />} label="Opérateurs Mobile Money" />
           <AnimatedStat target={500} suffix="+" icon={<MessageSquare className="w-5 h-5 text-emerald-400" />} label="Services vérifiables" />
-          <div className="flex flex-col items-center py-6 gap-2 text-center px-3">
+          <div className="flex flex-col items-center py-5 gap-1.5 text-center px-3">
             <Zap className="w-5 h-5 text-amber-400" />
             <div className="text-xl font-extrabold text-white">&lt; 30s</div>
             <div className="text-xs text-zinc-500 leading-tight">Réception du SMS</div>
           </div>
           <AnimatedStat target={100} suffix="%" icon={<Shield className="w-5 h-5 text-sky-400" />} label="Paiement Mobile Money" />
-          <div className="flex flex-col items-center py-6 gap-2 text-center px-3">
+          <div className="flex flex-col items-center py-5 gap-1.5 text-center px-3">
             <Lock className="w-5 h-5 text-rose-400" />
             <div className="text-xl font-extrabold text-white">SSL</div>
             <div className="text-xs text-zinc-500 leading-tight">Connexion sécurisée</div>
@@ -592,18 +524,16 @@ function StatsBar() {
 /* ─── How it works ─── */
 function HowItWorks() {
   return (
-    <Section className="py-24" id="comment">
-      <div className="text-center mb-14">
-        <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-violet-600/10 border border-violet-600/20 rounded-full text-violet-400 text-xs font-semibold uppercase tracking-widest mb-4">
-          Simple et rapide
-        </div>
-        <h2 className="text-3xl sm:text-4xl font-extrabold text-white mb-4">Comment ça marche ?</h2>
-        <p className="text-zinc-400 text-lg max-w-2xl mx-auto">
+    <Section className="py-14" id="comment">
+      <div className="text-center mb-10">
+        <SectionPill label="Simple et rapide" />
+        <h2 className="text-3xl sm:text-4xl font-extrabold text-white mb-3">Comment ça marche ?</h2>
+        <p className="text-zinc-400 text-base max-w-2xl mx-auto">
           En 3 étapes simples, obtenez votre numéro et recevez votre code SMS depuis n'importe quel service.
         </p>
       </div>
 
-      <div className="grid md:grid-cols-3 gap-8 relative">
+      <div className="grid md:grid-cols-3 gap-6 relative">
         <div className="hidden md:block absolute top-16 left-[22%] right-[22%] h-px bg-gradient-to-r from-violet-600/40 via-pink-600/40 to-amber-500/40" />
         {STEPS.map((step, i) => (
           <motion.div
@@ -612,18 +542,25 @@ function HowItWorks() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ delay: i * 0.15 }}
-            className="relative bg-zinc-900/60 border border-zinc-800 rounded-2xl p-7 hover:border-zinc-700 transition-colors"
+            className="relative bg-zinc-900/60 border border-zinc-800 rounded-2xl p-6 hover:border-zinc-700 transition-colors group"
           >
             <div className="absolute -top-3 left-6">
               <span className="px-2.5 py-0.5 text-xs font-bold rounded-full text-white" style={{ backgroundColor: step.color }}>
                 {step.number}
               </span>
             </div>
-            <div className="w-12 h-12 rounded-xl flex items-center justify-center mb-5 mt-2" style={{ backgroundColor: `${step.color}20`, color: step.color }}>
-              {step.icon}
+            {/* 3D icon */}
+            <div className="w-16 h-16 mb-4 mt-2 flex items-center justify-center">
+              <img
+                src={step.imgSrc}
+                alt={step.title}
+                className="w-full h-full object-contain drop-shadow-lg group-hover:scale-110 transition-transform duration-300"
+              />
             </div>
-            <h3 className="text-lg font-bold text-white mb-3">{step.title}</h3>
+            <h3 className="text-base font-bold text-white mb-2">{step.title}</h3>
             <p className="text-zinc-400 text-sm leading-relaxed">{step.desc}</p>
+            {/* bottom accent */}
+            <div className="absolute bottom-0 left-4 right-4 h-0.5 rounded-full opacity-40 transition-opacity group-hover:opacity-80" style={{ backgroundColor: step.color }} />
           </motion.div>
         ))}
       </div>
@@ -634,14 +571,12 @@ function HowItWorks() {
 /* ─── Payment Operators ─── */
 function PaymentOperators() {
   return (
-    <div id="operateurs" className="py-24 bg-gradient-to-b from-transparent via-zinc-950/50 to-transparent">
+    <div id="operateurs" className="py-14 bg-gradient-to-b from-transparent via-zinc-950/50 to-transparent">
       <Section>
-        <div className="text-center mb-14">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-amber-500/10 border border-amber-500/20 rounded-full text-amber-400 text-xs font-semibold uppercase tracking-widest mb-4">
-            Mobile Money
-          </div>
-          <h2 className="text-3xl sm:text-4xl font-extrabold text-white mb-4">Payez avec votre opérateur local</h2>
-          <p className="text-zinc-400 text-lg max-w-2xl mx-auto">
+        <div className="text-center mb-10">
+          <SectionPill label="Mobile Money" color="amber" />
+          <h2 className="text-3xl sm:text-4xl font-extrabold text-white mb-3">Payez avec votre opérateur local</h2>
+          <p className="text-zinc-400 text-base max-w-2xl mx-auto">
             Tous les grands opérateurs Mobile Money d'Afrique acceptés. Aucune carte bancaire, aucune devise étrangère requise.
           </p>
         </div>
@@ -649,7 +584,7 @@ function PaymentOperators() {
 
       <OperatorsTicker />
 
-      <Section className="mt-10">
+      <Section className="mt-8">
         <div className="text-center">
           <p className="text-zinc-500 text-sm">
             Disponible dans <strong className="text-white">54 pays africains</strong> — Paiements en{" "}
@@ -661,23 +596,21 @@ function PaymentOperators() {
   );
 }
 
-/* ─── App screenshots showcase ─── */
+/* ─── App showcase ─── */
 function AppShowcase() {
   return (
-    <div className="py-24 overflow-hidden bg-gradient-to-b from-violet-950/10 via-purple-950/5 to-transparent">
+    <div className="py-14 overflow-hidden bg-gradient-to-b from-violet-950/10 via-purple-950/5 to-transparent">
       <Section>
-        <div className="grid lg:grid-cols-2 gap-12 items-center">
+        <div className="grid lg:grid-cols-2 gap-10 items-center">
           <motion.div initial={{ opacity: 0, x: -30 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }}>
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-pink-600/10 border border-pink-600/20 rounded-full text-pink-400 text-xs font-semibold uppercase tracking-widest mb-4">
-              Interface intuitive
-            </div>
-            <h2 className="text-3xl sm:text-4xl font-extrabold text-white mb-5">
+            <SectionPill label="Interface intuitive" color="pink" />
+            <h2 className="text-3xl sm:text-4xl font-extrabold text-white mb-4">
               Une application pensée pour <span className="text-violet-400">l'Afrique</span>
             </h2>
-            <p className="text-zinc-400 text-lg leading-relaxed mb-8">
+            <p className="text-zinc-400 text-base leading-relaxed mb-6">
               Interface claire, légère et optimisée pour les connexions mobiles africaines. Fonctionne même avec une connexion 3G.
             </p>
-            <ul className="space-y-4">
+            <ul className="space-y-3">
               {[
                 { icon: <Smartphone className="w-4 h-4" />, text: "Interface mobile-first, compatible tous smartphones" },
                 { icon: <Wifi className="w-4 h-4" />, text: "Optimisé pour les réseaux 3G et 4G africains" },
@@ -736,35 +669,33 @@ function AfricaStat({ target, suffix, label, color }: { target: number; suffix: 
 /* ─── Africa Vision ─── */
 function AfricaVision() {
   return (
-    <Section className="py-24">
+    <Section className="py-14">
       <div className="relative rounded-3xl overflow-hidden border border-zinc-800/60">
         <div
           className="absolute inset-0 bg-cover bg-center bg-no-repeat"
           style={{ backgroundImage: "url(https://images.unsplash.com/photo-1561336313-0bd5e0b27ec8?w=1400&q=80&auto=format&fit=crop)" }}
         />
         <div className="absolute inset-0 bg-gradient-to-r from-black/95 via-black/85 to-black/60" />
-        <div className="relative z-10 p-8 sm:p-12 lg:p-16 grid lg:grid-cols-2 gap-10 items-center">
+        <div className="relative z-10 p-7 sm:p-10 lg:p-14 grid lg:grid-cols-2 gap-8 items-center">
           <div>
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-amber-500/15 border border-amber-500/30 rounded-full text-amber-400 text-xs font-semibold uppercase tracking-widest mb-6">
-              Notre vision pour l'Afrique
-            </div>
-            <h2 className="text-3xl sm:text-4xl font-extrabold text-white mb-6 leading-tight">
+            <SectionPill label="Notre vision pour l'Afrique" color="amber" />
+            <h2 className="text-3xl sm:text-4xl font-extrabold text-white mb-4 leading-tight">
               L'inclusion numérique,{" "}
               <span className="bg-gradient-to-r from-amber-400 to-orange-400 bg-clip-text text-transparent">
                 accessible à tous les Africains
               </span>
             </h2>
-            <p className="text-zinc-300 text-base leading-relaxed mb-6">
+            <p className="text-zinc-300 text-sm leading-relaxed mb-4">
               Le Mobile Money est le principal outil financier de centaines de millions d'Africains.
               Pourtant, la plupart des plateformes numériques exigent une vérification SMS difficile à accomplir sans numéro adapté.
             </p>
-            <p className="text-zinc-400 text-sm leading-relaxed mb-8">
+            <p className="text-zinc-400 text-sm leading-relaxed mb-6">
               Simix supprime cette barrière. Chaque Africain peut accéder à l'économie numérique mondiale
               sans carte bancaire, sans devise étrangère, et sans complications.
             </p>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-3">
               <AfricaStat target={54} suffix="" label="Nations africaines couvertes" color="text-violet-400" />
-              <AfricaStat target={11} suffix="+" label="Opérateurs Mobile Money acceptés" color="text-amber-400" />
+              <AfricaStat target={11} suffix="+" label="Opérateurs Mobile Money" color="text-amber-400" />
               <div className="glass p-4 rounded-xl">
                 <div className="text-2xl font-extrabold mb-1 text-emerald-400">Gratuit</div>
                 <div className="text-xs text-zinc-400 leading-tight">Création de compte sans frais</div>
@@ -779,7 +710,7 @@ function AfricaVision() {
           <div className="hidden lg:flex justify-center items-center">
             <div className="relative">
               <div className="float-slow">
-                <img src={wallet3d} alt="Simix Wallet" className="w-64 drop-shadow-2xl" />
+                <img src={wallet3d} alt="Simix Wallet" className="w-60 drop-shadow-2xl" />
               </div>
               <div className="absolute -bottom-4 -left-8">
                 <div className="glass px-4 py-3 rounded-2xl border border-emerald-500/20">
@@ -798,13 +729,11 @@ function AfricaVision() {
 /* ─── Services grid ─── */
 function ServicesGrid() {
   return (
-    <Section className="py-24" id="services">
-      <div className="text-center mb-14">
-        <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-emerald-600/10 border border-emerald-600/20 rounded-full text-emerald-400 text-xs font-semibold uppercase tracking-widest mb-4">
-          Plus de 500 plateformes
-        </div>
-        <h2 className="text-3xl sm:text-4xl font-extrabold text-white mb-4">Vérifiez n'importe quel service</h2>
-        <p className="text-zinc-400 text-lg max-w-2xl mx-auto">
+    <Section className="py-14" id="services">
+      <div className="text-center mb-10">
+        <SectionPill label="Plus de 500 plateformes" color="emerald" />
+        <h2 className="text-3xl sm:text-4xl font-extrabold text-white mb-3">Vérifiez n'importe quel service</h2>
+        <p className="text-zinc-400 text-base max-w-2xl mx-auto">
           WhatsApp, Telegram, Google, TikTok et des centaines d'autres plateformes disponibles dans notre catalogue.
         </p>
       </div>
@@ -817,7 +746,7 @@ function ServicesGrid() {
             whileInView={{ opacity: 1, scale: 1 }}
             viewport={{ once: true }}
             transition={{ delay: i * 0.03 }}
-            className="service-card group relative flex flex-col items-center gap-2.5 p-4 rounded-2xl border border-zinc-800/60 bg-zinc-900/60 cursor-default overflow-hidden"
+            className="service-card group relative flex flex-col items-center gap-2 p-4 rounded-2xl border border-zinc-800/60 bg-zinc-900/60 cursor-default overflow-hidden"
             style={{ borderTopColor: `${s.color}30` }}
           >
             <div
@@ -839,38 +768,45 @@ function ServicesGrid() {
 /* ─── Security ─── */
 function Security() {
   return (
-    <Section className="py-24" id="securite">
-      <div className="grid lg:grid-cols-2 gap-16 items-center">
+    <Section className="py-14" id="securite">
+      <div className="grid lg:grid-cols-2 gap-12 items-center">
+        {/* Left: text + 3D shield illustration */}
         <motion.div initial={{ opacity: 0, x: -20 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }}>
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-sky-600/10 border border-sky-600/20 rounded-full text-sky-400 text-xs font-semibold uppercase tracking-widest mb-4">
-            Confiance et Sécurité
-          </div>
-          <h2 className="text-3xl sm:text-4xl font-extrabold text-white mb-5">
+          <SectionPill label="Confiance et Sécurité" color="sky" />
+          <h2 className="text-3xl sm:text-4xl font-extrabold text-white mb-4">
             Votre sécurité,{" "}
             <span className="text-sky-400">notre priorité absolue</span>
           </h2>
-          <p className="text-zinc-400 text-lg leading-relaxed mb-8">
+          <p className="text-zinc-400 text-base leading-relaxed mb-5">
             Chaque transaction, chaque numéro, chaque SMS est protégé par des protocoles de sécurité de niveau bancaire.
           </p>
-          <div className="flex flex-wrap gap-3">
+          <div className="flex flex-wrap gap-2.5 mb-7">
             {["Chiffrement SSL/TLS", "Numéros éphémères", "RGPD Compliant", "2FA disponible"].map(tag => (
               <span key={tag} className="px-3 py-1.5 text-xs font-semibold bg-sky-600/10 border border-sky-600/20 text-sky-400 rounded-full">{tag}</span>
             ))}
           </div>
+          {/* 3D shield illustration */}
+          <div className="flex justify-center lg:justify-start">
+            <div className="relative float-slow">
+              <img src={I.iconShield} alt="Sécurité" className="w-36 h-36 object-contain drop-shadow-2xl" />
+              <div className="absolute inset-0 rounded-full bg-sky-500/10 blur-2xl -z-10" />
+            </div>
+          </div>
         </motion.div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {/* Right: feature cards with 3D icons */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {SECURITY_FEATURES.map((f, i) => (
             <motion.div
               key={i}
               initial={{ opacity: 0, y: 15 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              transition={{ delay: i * 0.08 }}
-              className="flex gap-3.5 p-4 rounded-xl bg-zinc-900/60 border border-zinc-800/60 hover:border-zinc-700 transition-colors"
+              transition={{ delay: i * 0.07 }}
+              className="flex gap-3 p-4 rounded-xl bg-zinc-900/60 border border-zinc-800/60 hover:border-zinc-700 hover:bg-zinc-900/80 transition-all group"
             >
-              <div className="w-9 h-9 rounded-lg bg-sky-600/15 flex items-center justify-center text-sky-400 flex-shrink-0">
-                {f.icon}
+              <div className="w-10 h-10 flex-shrink-0 group-hover:scale-110 transition-transform">
+                <img src={f.imgSrc} alt={f.title} className="w-full h-full object-contain drop-shadow-md" />
               </div>
               <div>
                 <div className="text-sm font-semibold text-white mb-0.5">{f.title}</div>
@@ -888,26 +824,30 @@ function Security() {
 function FinalCTA() {
   const [, setLocation] = useLocation();
   return (
-    <Section className="py-24">
+    <Section className="py-14">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true }}
-        className="relative rounded-3xl overflow-hidden border border-violet-800/30 p-8 sm:p-14 text-center"
+        className="relative rounded-3xl overflow-hidden border border-violet-800/30 p-8 sm:p-12 text-center"
         style={{ background: "linear-gradient(135deg, #1e0a3c, #0a0a12, #0d0520)" }}
       >
         <div className="glow-orb absolute -top-20 left-1/2 -translate-x-1/2 w-[500px] h-[300px] bg-violet-600/20" />
         <div className="relative z-10">
-          <div className="w-16 h-16 rounded-2xl bg-violet-600/20 border border-violet-500/30 flex items-center justify-center mx-auto mb-6">
-            <Zap className="w-8 h-8 text-violet-400" />
+          {/* 3D lightning icon */}
+          <div className="flex justify-center mb-5">
+            <div className="relative">
+              <img src={I.iconLightning} alt="Rapide" className="w-20 h-20 object-contain drop-shadow-2xl float-slow" />
+              <div className="absolute inset-0 rounded-full bg-violet-500/20 blur-2xl -z-10" />
+            </div>
           </div>
-          <h2 className="text-3xl sm:text-5xl font-extrabold text-white mb-5 leading-tight">
+          <h2 className="text-3xl sm:text-5xl font-extrabold text-white mb-4 leading-tight">
             Votre numéro virtuel,<br />
             <span className="bg-gradient-to-r from-violet-400 via-pink-400 to-amber-400 bg-clip-text text-transparent">
               prêt en quelques secondes
             </span>
           </h2>
-          <p className="text-zinc-400 text-lg max-w-xl mx-auto mb-10 leading-relaxed">
+          <p className="text-zinc-400 text-base max-w-xl mx-auto mb-8 leading-relaxed">
             Inscription gratuite. Aucune carte bancaire.
             Payez uniquement avec votre Mobile Money local.
           </p>
@@ -925,7 +865,7 @@ function FinalCTA() {
               J'ai déjà un compte
             </button>
           </div>
-          <p className="text-zinc-600 text-xs mt-6 flex items-center justify-center gap-2">
+          <p className="text-zinc-600 text-xs mt-5 flex items-center justify-center gap-2">
             <CheckCircle className="w-3.5 h-3.5 text-emerald-500" />
             Inscription gratuite · Aucune carte requise · Paiement Mobile Money
           </p>
@@ -940,8 +880,8 @@ function Footer() {
   const [, setLocation] = useLocation();
   return (
     <footer className="border-t border-zinc-800/60 bg-zinc-950/80">
-      <Section className="py-12">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-10">
+      <Section className="py-10">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-7 mb-8">
           <div className="col-span-2 md:col-span-1">
             <SimixLogo size={24} />
             <p className="text-zinc-500 text-sm mt-3 leading-relaxed max-w-xs">
@@ -983,7 +923,7 @@ function Footer() {
             </div>
           </div>
         </div>
-        <div className="border-t border-zinc-800/60 pt-6 flex flex-col sm:flex-row items-center justify-between gap-3">
+        <div className="border-t border-zinc-800/60 pt-5 flex flex-col sm:flex-row items-center justify-between gap-3">
           <p className="text-xs text-zinc-600">© 2026 Simix. Tous droits réservés.</p>
           <div className="flex gap-4 text-xs text-zinc-600">
             <span className="hover:text-zinc-400 cursor-pointer transition-colors">Confidentialité</span>
