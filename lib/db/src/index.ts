@@ -10,8 +10,24 @@ if (!process.env.SUPABASE_DATABASE_URL) {
   );
 }
 
+function parseSupabaseUrl(url: string): pg.PoolConfig {
+  try {
+    const parsed = new URL(url);
+    return {
+      host: parsed.hostname,
+      port: Number(parsed.port) || 6543,
+      database: parsed.pathname.replace(/^\//, ""),
+      user: decodeURIComponent(parsed.username),
+      password: decodeURIComponent(parsed.password),
+      ssl: { rejectUnauthorized: false },
+    };
+  } catch {
+    return { connectionString: url, ssl: { rejectUnauthorized: false } };
+  }
+}
+
 export const pool = new Pool({
-  connectionString: process.env.SUPABASE_DATABASE_URL,
+  ...parseSupabaseUrl(process.env.SUPABASE_DATABASE_URL),
   max: 10,
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 10000,
