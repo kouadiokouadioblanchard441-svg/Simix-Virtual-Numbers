@@ -270,7 +270,7 @@ export default function Register() {
                 <FormControl>
                   <div className="relative h-14">
                     <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                    <Input type={showPassword ? "text" : "password"} placeholder="Minimum 6 caractères" className="pl-11 pr-12 bg-card border-card-border focus-visible:ring-primary h-full rounded-xl" {...field} />
+                    <Input type={showPassword ? "text" : "password"} placeholder="Minimum 6 caractères" autoComplete="new-password" className="pl-11 pr-12 bg-card border-card-border focus-visible:ring-primary h-full rounded-xl" {...field} />
                     <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors">
                       {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
@@ -286,7 +286,7 @@ export default function Register() {
                 <FormControl>
                   <div className="relative h-14">
                     <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                    <Input type={showConfirmPassword ? "text" : "password"} placeholder="Répétez votre mot de passe" className="pl-11 pr-12 bg-card border-card-border focus-visible:ring-primary h-full rounded-xl" {...field} />
+                    <Input type={showConfirmPassword ? "text" : "password"} placeholder="Répétez votre mot de passe" autoComplete="new-password" className="pl-11 pr-12 bg-card border-card-border focus-visible:ring-primary h-full rounded-xl" {...field} />
                     <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors">
                       {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>

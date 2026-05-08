@@ -143,18 +143,18 @@ const SERVICES = [
   { name: "Snapchat", slug: "snapchat", color: "#FFFC00", logoUrl: null },
   { name: "Microsoft", slug: "microsoft", color: "#0078D4", logoUrl: null },
   { name: "Netflix", slug: "netflix", color: "#E50914", logoUrl: "https://cdn.simpleicons.org/netflix/E50914" },
-  { name: "Amazon", slug: "amazon", color: "#FF9900", logoUrl: "https://cdn.simpleicons.org/amazon/FF9900" },
+  { name: "Amazon", slug: "amazon", color: "#FF9900", logoUrl: null },
   { name: "PayPal", slug: "paypal", color: "#003087", logoUrl: "https://cdn.simpleicons.org/paypal/003087" },
   { name: "Binance", slug: "binance", color: "#F3BA2F", logoUrl: "https://cdn.simpleicons.org/binance/F3BA2F" },
   { name: "Spotify", slug: "spotify", color: "#1DB954", logoUrl: "https://cdn.simpleicons.org/spotify/1DB954" },
   { name: "Uber", slug: "uber", color: "#000000", logoUrl: "https://cdn.simpleicons.org/uber/FFFFFF" },
-  { name: "LinkedIn", slug: "linkedin", color: "#0077B5", logoUrl: "https://cdn.simpleicons.org/linkedin/0077B5" },
+  { name: "LinkedIn", slug: "linkedin", color: "#0077B5", logoUrl: null },
   { name: "Steam", slug: "steam", color: "#1b2838", logoUrl: "https://cdn.simpleicons.org/steam/FFFFFF" },
   { name: "Coinbase", slug: "coinbase", color: "#0052FF", logoUrl: "https://cdn.simpleicons.org/coinbase/0052FF" },
   { name: "Airbnb", slug: "airbnb", color: "#FF5A5F", logoUrl: "https://cdn.simpleicons.org/airbnb/FF5A5F" },
   { name: "Booking.com", slug: "booking", color: "#003580", logoUrl: "https://cdn.simpleicons.org/bookingdotcom/FFFFFF" },
-  { name: "Shein", slug: "shein", color: "#000000", logoUrl: "https://cdn.simpleicons.org/shein/FFFFFF" },
-  { name: "OLX", slug: "olx", color: "#3F2A8F", logoUrl: "https://cdn.simpleicons.org/olx/FFFFFF" },
+  { name: "Shein", slug: "shein", color: "#000000", logoUrl: null },
+  { name: "OLX", slug: "olx", color: "#3F2A8F", logoUrl: null },
   { name: "+500 autres", slug: "", color: "#7C3AED", logoUrl: null },
 ];
 
@@ -191,6 +191,63 @@ const SECURITY_FEATURES = [
   { imgSrc: I.iconCheck,   title: "Numéros vérifiés actifs", desc: "Chaque numéro est testé et vérifié avant d'être proposé à la vente." },
 ];
 
+const TESTIMONIALS = [
+  {
+    name: "Kofi Mensah",
+    role: "Développeur web, Accra",
+    flag: "gh",
+    initials: "KM",
+    color: "#7C3AED",
+    text: "En tant que développeur, j'avais besoin de plusieurs comptes pour tester mes applications. Simix m'a sauvé la mise. Paiement MTN MoMo instantané, numéro reçu en 20 secondes chrono.",
+    stars: 5,
+  },
+  {
+    name: "Aminata Diallo",
+    role: "Entrepreneuse, Dakar",
+    flag: "sn",
+    initials: "AD",
+    color: "#EC4899",
+    text: "J'avais du mal à vérifier mon WhatsApp Business avec mon numéro principal. Simix m'a fourni un numéro valide instantanément. Payé avec Wave sans la moindre complication. Service impeccable.",
+    stars: 5,
+  },
+  {
+    name: "Chukwuemeka Obi",
+    role: "Trader crypto, Lagos",
+    flag: "ng",
+    initials: "CO",
+    color: "#F59E0B",
+    text: "Pour vérifier Binance et Coinbase, Simix est parfait. Numéro livré en temps record, SMS reçu aussitôt. Service fiable à prix raisonnable. Je l'utilise chaque semaine sans problème.",
+    stars: 5,
+  },
+];
+
+const FAQ_ITEMS = [
+  {
+    q: "Comment fonctionne Simix exactement ?",
+    a: "Simix vous fournit des numéros de téléphone virtuels temporaires. Utilisez-les pour recevoir des codes SMS de vérification depuis n'importe quel service (WhatsApp, Google, Binance...), puis payez via votre Mobile Money local en FCFA.",
+  },
+  {
+    q: "Quels opérateurs Mobile Money sont acceptés ?",
+    a: "Nous acceptons Orange Money, MTN MoMo, Wave, Moov Money, M-Pesa, Airtel Money, Free Money et bien d'autres — soit plus de 11 opérateurs couvrant 54 pays africains. Aucune carte bancaire requise.",
+  },
+  {
+    q: "Que se passe-t-il si je ne reçois pas le SMS ?",
+    a: "Si aucun SMS n'est reçu dans les délais impartis, votre solde est remboursé automatiquement. Nous vous proposons également un autre numéro pour réessayer sans frais supplémentaires.",
+  },
+  {
+    q: "Combien de temps le numéro reste-t-il actif ?",
+    a: "Les numéros sont actifs 10 à 30 minutes — suffisant pour recevoir votre code. Une fois le SMS reçu, le numéro expire automatiquement pour préserver votre confidentialité.",
+  },
+  {
+    q: "Puis-je utiliser Simix sans carte bancaire ?",
+    a: "Absolument. Simix est conçu exclusivement pour les paiements Mobile Money africains. Payez en FCFA, KES, GHS, NGN et toutes les devises locales. Aucune carte bancaire internationale n'est requise.",
+  },
+  {
+    q: "Est-ce légal d'utiliser des numéros virtuels ?",
+    a: "Oui, totalement légal. Les services de numéros virtuels SMS sont légaux et utilisés dans le monde entier pour la vérification d'identité en ligne. Simix opère en conformité totale avec les réglementations locales.",
+  },
+];
+
 /* ─── Flag image ─── */
 function FlagImg({ code, size = 24 }: { code: string; size?: number }) {
   const [err, setErr] = useState(false);
@@ -206,23 +263,6 @@ function FlagImg({ code, size = 24 }: { code: string; size?: number }) {
       style={{ width: size, height: Math.round(size * 0.75) }}
       className="object-cover rounded-sm flex-shrink-0"
     />
-  );
-}
-
-/* ─── Operator logo ─── */
-function OperatorLogoImg({ op }: { op: typeof OPERATORS[0] }) {
-  const [err, setErr] = useState(false);
-  if (op.logoUrl && !err) {
-    return (
-      <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center overflow-hidden p-1 flex-shrink-0">
-        <img src={op.logoUrl} alt={op.name} onError={() => setErr(true)} className="w-full h-full object-contain" />
-      </div>
-    );
-  }
-  return (
-    <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-xs flex-shrink-0" style={{ backgroundColor: op.color }}>
-      {op.abbr}
-    </div>
   );
 }
 
@@ -401,7 +441,7 @@ function Hero() {
               payés en <strong className="text-white">FCFA via Orange Money, MTN, Wave</strong> et tous les opérateurs Mobile Money du continent.
             </p>
 
-            <div className="flex flex-wrap gap-3 mb-8">
+            <div className="flex flex-wrap gap-3 mb-5">
               <button
                 onClick={() => setLocation("/register")}
                 className="flex items-center gap-2 px-7 py-3.5 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500 text-white font-semibold rounded-xl transition-all shadow-xl shadow-violet-600/30 text-base"
@@ -416,10 +456,25 @@ function Hero() {
               </button>
             </div>
 
+            <div className="flex items-center gap-3 mb-6">
+              <div className="flex -space-x-2">
+                {["ci","sn","gh","ng","ke"].map(c => (
+                  <div key={c} className="w-8 h-8 rounded-full border-2 border-black overflow-hidden flex-shrink-0 bg-zinc-800">
+                    <FlagImg code={c} size={32} />
+                  </div>
+                ))}
+              </div>
+              <div className="text-xs text-zinc-400 leading-tight">
+                <span className="text-white font-semibold">5 000+</span> utilisateurs actifs en Afrique<br />
+                <span className="text-amber-400">★★★★★</span>{" "}
+                <span className="text-zinc-500">Note 4.8/5</span>
+              </div>
+            </div>
+
             <div className="grid grid-cols-3 gap-3">
               {[
                 { value: "54", label: "Pays africains", icon: <Globe className="w-5 h-5 text-violet-400" /> },
-                { value: "11+", label: "Opérateurs MoMo", icon: <img src={I.stepPayment} alt="" className="w-5 h-5 object-contain" /> },
+                { value: "11+", label: "Opérateurs MoMo", icon: <Smartphone className="w-5 h-5 text-pink-400" /> },
                 { value: "500+", label: "Services supportés", icon: <CheckCircle className="w-5 h-5 text-emerald-400" /> },
               ].map((s, i) => (
                 <div key={i} className="text-center p-3 rounded-xl bg-zinc-900/60 border border-zinc-800/60">
@@ -474,11 +529,6 @@ function Hero() {
         </div>
       </Section>
 
-      <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1 text-zinc-600">
-        <div className="w-5 h-9 border-2 border-zinc-700 rounded-full flex justify-center pt-1.5">
-          <motion.div animate={{ y: [0, 8, 0] }} transition={{ duration: 1.5, repeat: Infinity }} className="w-1 h-1.5 bg-zinc-500 rounded-full" />
-        </div>
-      </div>
     </div>
   );
 }
@@ -502,7 +552,7 @@ function StatsBar() {
       <Section>
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 divide-x divide-zinc-800/40">
           <AnimatedStat target={54} icon={<Globe className="w-5 h-5 text-violet-400" />} label="Pays africains couverts" />
-          <AnimatedStat target={11} suffix="+" icon={<img src={I.stepPayment} alt="" className="w-5 h-5 object-contain" />} label="Opérateurs Mobile Money" />
+          <AnimatedStat target={11} suffix="+" icon={<Smartphone className="w-5 h-5 text-pink-400" />} label="Opérateurs Mobile Money" />
           <AnimatedStat target={500} suffix="+" icon={<MessageSquare className="w-5 h-5 text-emerald-400" />} label="Services vérifiables" />
           <div className="flex flex-col items-center py-5 gap-1.5 text-center px-3">
             <Zap className="w-5 h-5 text-amber-400" />
@@ -820,6 +870,110 @@ function Security() {
   );
 }
 
+/* ─── Testimonials ─── */
+function Testimonials() {
+  return (
+    <Section className="py-14">
+      <div className="text-center mb-10">
+        <SectionPill label="Ils nous font confiance" color="emerald" />
+        <h2 className="text-3xl sm:text-4xl font-extrabold text-white mb-3">Ce qu'ils disent de Simix</h2>
+        <p className="text-zinc-400 text-base max-w-2xl mx-auto">
+          Des milliers d'Africains utilisent Simix chaque jour pour accéder aux services numériques du monde entier.
+        </p>
+      </div>
+      <div className="grid md:grid-cols-3 gap-5">
+        {TESTIMONIALS.map((t, i) => (
+          <motion.div
+            key={i}
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ delay: i * 0.12 }}
+            className="flex flex-col gap-4 p-6 rounded-2xl bg-zinc-900/60 border border-zinc-800/60 hover:border-zinc-700 hover:bg-zinc-900/80 transition-all"
+          >
+            <div className="flex text-amber-400 text-base gap-0.5 leading-none">
+              {"★".repeat(t.stars)}
+            </div>
+            <p className="text-zinc-300 text-sm leading-relaxed flex-1">"{t.text}"</p>
+            <div className="flex items-center gap-3 pt-3 border-t border-zinc-800/60">
+              <div
+                className="w-11 h-11 rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0 shadow-lg"
+                style={{ background: `linear-gradient(135deg, ${t.color}, ${t.color}88)` }}
+              >
+                {t.initials}
+              </div>
+              <div>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-sm font-semibold text-white">{t.name}</span>
+                  <FlagImg code={t.flag} size={16} />
+                </div>
+                <div className="text-xs text-zinc-500 mt-0.5">{t.role}</div>
+              </div>
+            </div>
+          </motion.div>
+        ))}
+      </div>
+      <div className="mt-8 flex flex-wrap items-center justify-center gap-6 text-sm text-zinc-500">
+        <div className="flex items-center gap-2">
+          <CheckCircle className="w-4 h-4 text-emerald-500" />
+          <span>5 000+ utilisateurs actifs</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <Shield className="w-4 h-4 text-sky-500" />
+          <span>Paiements 100% sécurisés</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <Zap className="w-4 h-4 text-amber-500" />
+          <span>SMS reçu en moins de 30 secondes</span>
+        </div>
+      </div>
+    </Section>
+  );
+}
+
+/* ─── FAQ ─── */
+function FAQ() {
+  const [open, setOpen] = useState<number | null>(null);
+  return (
+    <Section className="py-14">
+      <div className="text-center mb-10">
+        <SectionPill label="Questions fréquentes" color="violet" />
+        <h2 className="text-3xl sm:text-4xl font-extrabold text-white mb-3">Vos questions, nos réponses</h2>
+        <p className="text-zinc-400 text-base max-w-2xl mx-auto">
+          Tout ce que vous devez savoir avant de commencer avec Simix.
+        </p>
+      </div>
+      <div className="max-w-2xl mx-auto space-y-3">
+        {FAQ_ITEMS.map((item, i) => (
+          <motion.div
+            key={i}
+            initial={{ opacity: 0, y: 10 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ delay: i * 0.05 }}
+            className="rounded-xl border border-zinc-800/60 bg-zinc-900/60 overflow-hidden"
+          >
+            <button
+              onClick={() => setOpen(open === i ? null : i)}
+              className="w-full flex items-center justify-between gap-4 px-5 py-4 text-left hover:bg-zinc-800/40 transition-colors"
+            >
+              <span className="text-sm font-semibold text-white">{item.q}</span>
+              <ChevronRight
+                className={`w-4 h-4 text-zinc-500 flex-shrink-0 transition-transform duration-200 ${open === i ? "rotate-90 text-violet-400" : ""}`}
+              />
+            </button>
+            {open === i && (
+              <div className="px-5 pb-4 text-sm text-zinc-400 leading-relaxed border-t border-zinc-800/40 pt-3">
+                {item.a}
+              </div>
+            )}
+          </motion.div>
+        ))}
+      </div>
+    </Section>
+  );
+}
+
 /* ─── Final CTA ─── */
 function FinalCTA() {
   const [, setLocation] = useLocation();
@@ -951,6 +1105,8 @@ export default function Landing() {
       <AfricaVision />
       <ServicesGrid />
       <Security />
+      <Testimonials />
+      <FAQ />
       <FinalCTA />
       <Footer />
     </div>

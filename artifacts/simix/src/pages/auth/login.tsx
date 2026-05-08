@@ -258,6 +258,7 @@ export default function Login() {
                       <Input
                         type={showPassword ? "text" : "password"}
                         placeholder="Votre mot de passe"
+                        autoComplete="current-password"
                         className="bg-card border-card-border focus-visible:ring-primary h-full rounded-xl pr-12"
                         {...field}
                       />
