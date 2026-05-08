@@ -705,7 +705,7 @@ router.post("/admin/api-providers/:providerId/sync-products", requireAuth, requi
   const client = new FiveSimClient(provider.apiKey);
 
   try {
-    const products = await client.getProducts("russia", "any");
+    const products = await client.getProducts("france", "any");
     const productNames = Object.keys(products);
     let synced = 0;
 

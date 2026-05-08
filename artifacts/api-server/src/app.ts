@@ -7,6 +7,7 @@ import router from "./routes";
 import { logger } from "./lib/logger";
 import { attachUser } from "./lib/auth";
 import { globalRateLimit, checkUserBlocked } from "./middlewares/security";
+import { startFiveSimPoller } from "./lib/fivesim-poller";
 
 const app: Express = express();
 
@@ -48,5 +49,8 @@ app.use(attachUser);
 app.use(checkUserBlocked);
 
 app.use("/api", router);
+
+/* ── Start 5sim background SMS poller ── */
+startFiveSimPoller();
 
 export default app;
