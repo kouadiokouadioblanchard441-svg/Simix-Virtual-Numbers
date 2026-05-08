@@ -9,9 +9,7 @@ import screenDash from "@/assets/screen-dashboard.png";
 import screenWallet from "@/assets/screen-wallet.png";
 import screenCountries from "@/assets/screen-countries.png";
 import {
-  Shield, Zap, Globe, Smartphone,
-  ArrowRight, ChevronRight, MessageSquare, Users,
-  Wifi, CheckCircle, Lock,
+  ArrowRight, ChevronRight, CheckCircle,
 } from "lucide-react";
 
 /* ─── Icon 3D paths (public folder) ─── */
@@ -144,30 +142,30 @@ const OPERATORS = [
 ];
 
 const SERVICES = [
-  { name: "WhatsApp", slug: "whatsapp", color: "#25D366", logoUrl: null },
-  { name: "Telegram", slug: "telegram", color: "#2AABEE", logoUrl: null },
-  { name: "Google", slug: "google", color: "#4285F4", logoUrl: null },
-  { name: "Facebook", slug: "facebook", color: "#1877F2", logoUrl: null },
-  { name: "Instagram", slug: "instagram", color: "#E1306C", logoUrl: null },
-  { name: "TikTok", slug: "tiktok", color: "#FF0050", logoUrl: null },
-  { name: "X / Twitter", slug: "x", color: "#1a1a1a", logoUrl: null },
-  { name: "Discord", slug: "discord", color: "#5865F2", logoUrl: null },
-  { name: "Snapchat", slug: "snapchat", color: "#FFFC00", logoUrl: null },
-  { name: "Microsoft", slug: "microsoft", color: "#0078D4", logoUrl: null },
-  { name: "Netflix", slug: "netflix", color: "#E50914", logoUrl: "https://cdn.simpleicons.org/netflix/E50914" },
-  { name: "Amazon", slug: "amazon", color: "#FF9900", logoUrl: null },
-  { name: "PayPal", slug: "paypal", color: "#003087", logoUrl: "https://cdn.simpleicons.org/paypal/003087" },
-  { name: "Binance", slug: "binance", color: "#F3BA2F", logoUrl: "https://cdn.simpleicons.org/binance/F3BA2F" },
-  { name: "Spotify", slug: "spotify", color: "#1DB954", logoUrl: "https://cdn.simpleicons.org/spotify/1DB954" },
-  { name: "Uber", slug: "uber", color: "#000000", logoUrl: "https://cdn.simpleicons.org/uber/FFFFFF" },
-  { name: "LinkedIn", slug: "linkedin", color: "#0077B5", logoUrl: null },
-  { name: "Steam", slug: "steam", color: "#1b2838", logoUrl: "https://cdn.simpleicons.org/steam/FFFFFF" },
-  { name: "Coinbase", slug: "coinbase", color: "#0052FF", logoUrl: "https://cdn.simpleicons.org/coinbase/0052FF" },
-  { name: "Airbnb", slug: "airbnb", color: "#FF5A5F", logoUrl: "https://cdn.simpleicons.org/airbnb/FF5A5F" },
-  { name: "Booking.com", slug: "booking", color: "#003580", logoUrl: "https://cdn.simpleicons.org/bookingdotcom/FFFFFF" },
-  { name: "Shein", slug: "shein", color: "#000000", logoUrl: null },
-  { name: "OLX", slug: "olx", color: "#3F2A8F", logoUrl: null },
-  { name: "+500 autres", slug: "", color: "#7C3AED", logoUrl: null },
+  { name: "WhatsApp",    slug: "whatsapp",  color: "#25D366", icon3d: "/3d/services/whatsapp.png" },
+  { name: "Telegram",   slug: "telegram",  color: "#2AABEE", icon3d: "/3d/services/telegram.png" },
+  { name: "Google",     slug: "google",    color: "#4285F4", icon3d: "/3d/services/google.png" },
+  { name: "Facebook",   slug: "facebook",  color: "#1877F2", icon3d: "/3d/services/facebook.png" },
+  { name: "Instagram",  slug: "instagram", color: "#E1306C", icon3d: "/3d/services/instagram.png" },
+  { name: "TikTok",     slug: "tiktok",    color: "#FF0050", icon3d: "/3d/services/tiktok.png" },
+  { name: "X / Twitter",slug: "x",         color: "#1a1a1a", icon3d: "/3d/services/x.png" },
+  { name: "Discord",    slug: "discord",   color: "#5865F2", icon3d: "/3d/services/discord.png" },
+  { name: "Snapchat",   slug: "snapchat",  color: "#FFFC00", icon3d: "/3d/services/snapchat.png" },
+  { name: "Microsoft",  slug: "microsoft", color: "#0078D4", icon3d: "/3d/services/microsoft.png" },
+  { name: "Netflix",    slug: "netflix",   color: "#E50914", icon3d: "/3d/services/netflix.png" },
+  { name: "Amazon",     slug: "amazon",    color: "#FF9900", icon3d: "/3d/services/amazon.png" },
+  { name: "PayPal",     slug: "paypal",    color: "#003087", icon3d: "/3d/services/paypal.png" },
+  { name: "Binance",    slug: "binance",   color: "#F3BA2F", icon3d: "/3d/services/binance.png" },
+  { name: "Spotify",    slug: "spotify",   color: "#1DB954", icon3d: "/3d/services/spotify.png" },
+  { name: "Uber",       slug: "uber",      color: "#000000", icon3d: "/3d/services/uber.png" },
+  { name: "LinkedIn",   slug: "linkedin",  color: "#0077B5", icon3d: "/3d/services/linkedin.png" },
+  { name: "Steam",      slug: "steam",     color: "#1b2838", icon3d: "/3d/services/steam.png" },
+  { name: "Coinbase",   slug: "coinbase",  color: "#0052FF", icon3d: "/3d/services/coinbase.png" },
+  { name: "Airbnb",     slug: "airbnb",    color: "#FF5A5F", icon3d: "/3d/services/airbnb.png" },
+  { name: "YouTube",    slug: "youtube",   color: "#FF0000", icon3d: "/3d/services/youtube.png" },
+  { name: "Apple",      slug: "apple",     color: "#555555", icon3d: "/3d/services/apple.png" },
+  { name: "Signal",     slug: "signal",    color: "#3A76F0", icon3d: "/3d/services/signal.png" },
+  { name: "+500 autres",slug: "",          color: "#7C3AED", icon3d: "" },
 ];
 
 const STEPS = [
@@ -332,31 +330,30 @@ function FlagImg({ code, size = 24 }: { code: string; size?: number }) {
 /* ─── Service logo for landing grid ─── */
 function LandingServiceIcon({ service }: { service: typeof SERVICES[0] }) {
   const [err, setErr] = useState(false);
-  const knownSlugs = ["whatsapp","telegram","facebook","instagram","tiktok","x","discord","snapchat","signal","apple","google","microsoft"];
 
-  if (!service.slug) {
+  if (!service.slug || !service.icon3d) {
     return (
-      <div className="w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold text-lg" style={{ background: "linear-gradient(135deg,#7C3AED,#6366F1)" }}>
-        +
+      <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-white font-bold text-xl shadow-lg" style={{ background: "linear-gradient(135deg,#7C3AED,#6366F1)" }}>
+        <span className="text-2xl">+</span>
       </div>
     );
   }
 
-  if (knownSlugs.includes(service.slug)) {
-    return <ServiceIcon name={service.name} slug={service.slug} size={48} rounded="xl" />;
-  }
-
-  if (service.logoUrl && !err) {
-    const darkBg = ["uber","steam","shein","olx","booking"].includes(service.slug);
+  if (service.icon3d && !err) {
     return (
-      <div className="w-12 h-12 rounded-xl flex items-center justify-center overflow-hidden p-2 flex-shrink-0" style={{ background: darkBg ? service.color : "#fff" }}>
-        <img src={service.logoUrl} alt={service.name} onError={() => setErr(true)} className="w-full h-full object-contain" />
+      <div className="w-14 h-14 flex items-center justify-center drop-shadow-xl">
+        <img
+          src={service.icon3d}
+          alt={service.name}
+          onError={() => setErr(true)}
+          className="w-14 h-14 object-contain group-hover:scale-110 transition-transform duration-300"
+        />
       </div>
     );
   }
 
   return (
-    <div className="w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold text-xl" style={{ background: service.color }}>
+    <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-white font-bold text-xl" style={{ background: service.color }}>
       {service.name.charAt(0)}
     </div>
   );
@@ -537,12 +534,14 @@ function Hero() {
 
             <div className="grid grid-cols-3 gap-3">
               {[
-                { value: "54", label: "Pays africains", icon: <Globe className="w-5 h-5 text-violet-400" /> },
-                { value: "11+", label: "Opérateurs MoMo", icon: <Smartphone className="w-5 h-5 text-pink-400" /> },
-                { value: "500+", label: "Services supportés", icon: <CheckCircle className="w-5 h-5 text-emerald-400" /> },
+                { value: "54", label: "Pays africains", icon: "/3d/step-globe.png" },
+                { value: "11+", label: "Opérateurs MoMo", icon: "/3d/step-phone.png" },
+                { value: "500+", label: "Services supportés", icon: "/3d/icon-check.png" },
               ].map((s, i) => (
-                <div key={i} className="text-center p-3 rounded-xl bg-zinc-900/60 border border-zinc-800/60">
-                  <div className="flex justify-center mb-1">{s.icon}</div>
+                <div key={i} className="text-center p-3 rounded-xl bg-zinc-900/60 border border-zinc-800/60 hover:border-zinc-700 transition-colors">
+                  <div className="flex justify-center mb-1.5">
+                    <img src={s.icon} alt={s.label} className="w-8 h-8 object-contain drop-shadow-lg" />
+                  </div>
                   <div className="text-xl font-bold text-white">{s.value}</div>
                   <div className="text-[11px] text-zinc-400 leading-tight mt-0.5">{s.label}</div>
                 </div>
@@ -581,7 +580,7 @@ function Hero() {
               </div>
               <div className="absolute left-4 top-20 z-30">
                 <div className="glass px-3 py-2 rounded-xl shadow-lg border border-amber-500/20 flex items-center gap-1.5">
-                  <Zap className="w-4 h-4 text-amber-400" />
+                  <img src="/3d/icon-lightning.png" alt="" className="w-4 h-4 object-contain" />
                   <div>
                     <div className="text-xs text-zinc-400">Solde</div>
                     <div className="text-sm font-bold text-white">5 000 <span className="text-[10px] text-zinc-500">FCFA</span></div>
@@ -616,20 +615,20 @@ function StatsBar() {
       <Section>
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-px bg-zinc-800/40">
           {[
-            { el: <AnimatedStat target={54} icon={<Globe className="w-5 h-5 text-violet-400" />} label="Pays africains couverts" /> },
-            { el: <AnimatedStat target={11} suffix="+" icon={<Smartphone className="w-5 h-5 text-pink-400" />} label="Opérateurs Mobile Money" /> },
-            { el: <AnimatedStat target={500} suffix="+" icon={<MessageSquare className="w-5 h-5 text-emerald-400" />} label="Services vérifiables" /> },
+            { el: <AnimatedStat target={54} icon={<img src="/3d/step-globe.png" alt="pays" className="w-8 h-8 object-contain drop-shadow-md" />} label="Pays africains couverts" /> },
+            { el: <AnimatedStat target={11} suffix="+" icon={<img src="/3d/step-phone.png" alt="opérateurs" className="w-8 h-8 object-contain drop-shadow-md" />} label="Opérateurs Mobile Money" /> },
+            { el: <AnimatedStat target={500} suffix="+" icon={<img src="/3d/services/whatsapp.png" alt="services" className="w-8 h-8 object-contain drop-shadow-md" />} label="Services vérifiables" /> },
             { el: (
               <div className="flex flex-col items-center py-5 gap-1.5 text-center px-2">
-                <Zap className="w-5 h-5 text-amber-400" />
+                <img src="/3d/icon-lightning.png" alt="rapide" className="w-8 h-8 object-contain drop-shadow-md" />
                 <div className="text-xl font-extrabold text-white">&lt; 30s</div>
                 <div className="text-xs text-zinc-400 leading-tight">Réception du SMS</div>
               </div>
             )},
-            { el: <AnimatedStat target={100} suffix="%" icon={<Shield className="w-5 h-5 text-sky-400" />} label="Paiement Mobile Money" /> },
+            { el: <AnimatedStat target={100} suffix="%" icon={<img src="/3d/icon-shield.png" alt="sécurité" className="w-8 h-8 object-contain drop-shadow-md" />} label="Paiement Mobile Money" /> },
             { el: (
               <div className="flex flex-col items-center py-5 gap-1.5 text-center px-2">
-                <Lock className="w-5 h-5 text-rose-400" />
+                <img src="/3d/icon-lock.png" alt="ssl" className="w-8 h-8 object-contain drop-shadow-md" />
                 <div className="text-xl font-extrabold text-white">SSL</div>
                 <div className="text-xs text-zinc-400 leading-tight">Connexion sécurisée</div>
               </div>
@@ -734,16 +733,16 @@ function AppShowcase() {
             </p>
             <ul className="space-y-3">
               {[
-                { icon: <Smartphone className="w-4 h-4" />, text: "Interface mobile-first, compatible tous smartphones" },
-                { icon: <Wifi className="w-4 h-4" />, text: "Optimisé pour les réseaux 3G et 4G africains" },
-                { icon: <Globe className="w-4 h-4" />, text: "Disponible en français et anglais, couvrant 54 pays africains" },
-                { icon: <Users className="w-4 h-4" />, text: "Adapté aux usages quotidiens des Africains connectés" },
+                { icon: "/3d/step-phone.png", text: "Interface mobile-first, compatible tous smartphones" },
+                { icon: "/3d/icon-lightning.png", text: "Optimisé pour les réseaux 3G et 4G africains" },
+                { icon: "/3d/step-globe.png", text: "Disponible en français et anglais, couvrant 54 pays africains" },
+                { icon: "/3d/icon-check.png", text: "Adapté aux usages quotidiens des Africains connectés" },
               ].map((item, i) => (
                 <li key={i} className="flex items-start gap-3">
-                  <div className="w-7 h-7 rounded-lg bg-violet-600/20 flex items-center justify-center text-violet-400 flex-shrink-0 mt-0.5">
-                    {item.icon}
+                  <div className="w-9 h-9 flex-shrink-0 mt-0.5">
+                    <img src={item.icon} alt="" className="w-full h-full object-contain drop-shadow-md" />
                   </div>
-                  <span className="text-zinc-300 text-sm">{item.text}</span>
+                  <span className="text-zinc-300 text-sm mt-2">{item.text}</span>
                 </li>
               ))}
             </ul>
@@ -860,26 +859,26 @@ function ServicesGrid() {
         </p>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 sm:gap-4">
         {SERVICES.map((s, i) => (
           <motion.div
             key={i}
-            initial={{ opacity: 0, scale: 0.9 }}
-            whileInView={{ opacity: 1, scale: 1 }}
+            initial={{ opacity: 0, y: 16 }}
+            whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            transition={{ delay: i * 0.03 }}
-            className="service-card group relative flex flex-col items-center gap-2 p-3 sm:p-4 rounded-2xl border border-zinc-800/60 bg-zinc-900/60 cursor-default overflow-hidden"
-            style={{ borderTopColor: `${s.color}30` }}
+            transition={{ delay: i * 0.03, duration: 0.4 }}
+            className="service-card group relative flex flex-col items-center gap-3 p-4 sm:p-5 rounded-2xl border border-zinc-800/50 bg-gradient-to-b from-zinc-900/80 to-zinc-900/50 cursor-default overflow-hidden hover:border-zinc-600/60 hover:from-zinc-800/80 hover:to-zinc-900/60 transition-all duration-300 shadow-lg shadow-black/20"
+            style={{ borderTopColor: `${s.color}45` }}
           >
             <div
-              className="absolute inset-0 opacity-0 group-hover:opacity-10 transition-opacity"
-              style={{ background: `radial-gradient(circle at center, ${s.color}, transparent)` }}
+              className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+              style={{ background: `radial-gradient(ellipse at top, ${s.color}12, transparent 70%)` }}
             />
-            <div className="relative z-10 flex-shrink-0">
+            <div className="relative z-10 flex-shrink-0 group-hover:scale-110 transition-transform duration-300">
               <LandingServiceIcon service={s} />
             </div>
-            <span className="text-xs font-semibold text-center leading-tight relative z-10 text-zinc-300 line-clamp-2 w-full">{s.name}</span>
-            <div className="absolute bottom-0 left-0 right-0 h-0.5 opacity-60" style={{ backgroundColor: s.color }} />
+            <span className="text-[11px] sm:text-xs font-semibold text-center leading-tight relative z-10 text-zinc-300 group-hover:text-white transition-colors w-full">{s.name}</span>
+            <div className="absolute bottom-0 left-0 right-0 h-0.5 opacity-0 group-hover:opacity-80 transition-opacity" style={{ backgroundColor: s.color }} />
           </motion.div>
         ))}
       </div>
@@ -1064,17 +1063,17 @@ function Testimonials() {
       {/* Trust bar */}
       <div className="mt-10 flex flex-wrap items-center justify-center gap-5 sm:gap-8">
         <div className="flex items-center gap-2 text-sm text-zinc-400">
-          <CheckCircle className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+          <img src="/3d/icon-check.png" alt="" className="w-5 h-5 object-contain drop-shadow-sm" />
           <span>5 000+ utilisateurs actifs</span>
         </div>
         <div className="w-px h-4 bg-zinc-700 hidden sm:block" />
         <div className="flex items-center gap-2 text-sm text-zinc-400">
-          <Shield className="w-4 h-4 text-sky-400 flex-shrink-0" />
+          <img src="/3d/icon-shield.png" alt="" className="w-5 h-5 object-contain drop-shadow-sm" />
           <span>Avis clients authentiques</span>
         </div>
         <div className="w-px h-4 bg-zinc-700 hidden sm:block" />
         <div className="flex items-center gap-2 text-sm text-zinc-400">
-          <Zap className="w-4 h-4 text-amber-400 flex-shrink-0" />
+          <img src="/3d/icon-lightning.png" alt="" className="w-5 h-5 object-contain drop-shadow-sm" />
           <span>SMS reçu en moins de 30 secondes</span>
         </div>
       </div>
