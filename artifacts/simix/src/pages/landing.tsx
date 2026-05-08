@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
 import { motion } from "framer-motion";
 import { SimixLogo } from "@/components/simix-logo";
@@ -11,8 +11,38 @@ import screenCountries from "@/assets/screen-countries.png";
 import {
   Shield, Zap, Globe, Smartphone, Lock, CheckCircle,
   ArrowRight, ChevronRight, MessageSquare, Users,
-  TrendingUp, Wifi, CreditCard, RefreshCw, Eye, Clock,
+  Wifi, CreditCard, RefreshCw, Eye, Clock,
 } from "lucide-react";
+
+/* ─── Animated counter hook ─── */
+function useCountUp(target: number, duration = 2000) {
+  const [count, setCount] = useState(0);
+  const triggered = useRef(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting && !triggered.current) {
+          triggered.current = true;
+          const start = performance.now();
+          const tick = (now: number) => {
+            const p = Math.min((now - start) / duration, 1);
+            const eased = 1 - Math.pow(1 - p, 3);
+            setCount(Math.round(eased * target));
+            if (p < 1) requestAnimationFrame(tick);
+          };
+          requestAnimationFrame(tick);
+        }
+      },
+      { threshold: 0.4 }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [target, duration]);
+  return { count, ref };
+}
 
 /* ─── Data ─── */
 const AFRICA_COUNTRIES = [
@@ -338,35 +368,35 @@ function CountriesTicker() {
   );
 }
 
-/* ─── Operators ticker ─── */
+/* ─── Operators ticker — real logo strip ─── */
 function OperatorsTicker() {
-  const doubled = [...OPERATORS, ...OPERATORS];
-  const doubled2 = [...OPERATORS, ...OPERATORS];
   return (
-    <div className="py-10 overflow-hidden bg-zinc-950/30">
+    <div className="py-6 overflow-hidden bg-zinc-950/30">
+      {/* Row 1 — scroll left */}
       <div className="overflow-hidden mb-3">
         <div className="marquee-track">
-          {doubled.map((op, i) => (
-            <div key={i} className="flex items-center gap-3 px-4 py-2.5 mx-2 bg-zinc-900/80 border border-zinc-800/60 rounded-2xl whitespace-nowrap flex-shrink-0 min-w-[180px]">
-              <OperatorLogoImg op={op} />
-              <div className="min-w-0">
-                <div className="text-sm font-bold text-white truncate">{op.name}</div>
-                <div className="text-xs text-zinc-500 truncate">{op.countries}</div>
-              </div>
-            </div>
+          {[0, 1, 2, 3].map((k) => (
+            <img
+              key={k}
+              src="/operator-logos.png"
+              alt="Opérateurs Mobile Money"
+              className="h-10 object-contain flex-shrink-0 mx-8 select-none"
+              draggable={false}
+            />
           ))}
         </div>
       </div>
+      {/* Row 2 — scroll right (mirrored) */}
       <div className="overflow-hidden">
         <div className="marquee-track-reverse">
-          {doubled2.map((op, i) => (
-            <div key={i} className="flex items-center gap-3 px-4 py-2.5 mx-2 bg-zinc-900/60 border border-amber-900/20 rounded-2xl whitespace-nowrap flex-shrink-0 min-w-[180px]">
-              <OperatorLogoImg op={op} />
-              <div className="min-w-0">
-                <div className="text-sm font-bold text-white truncate">{op.name}</div>
-                <div className="text-xs text-zinc-500 truncate">{op.countries}</div>
-              </div>
-            </div>
+          {[0, 1, 2, 3].map((k) => (
+            <img
+              key={k}
+              src="/operator-logos.png"
+              alt="Opérateurs Mobile Money"
+              className="h-10 object-contain flex-shrink-0 mx-8 select-none opacity-70"
+              draggable={false}
+            />
           ))}
         </div>
       </div>
@@ -521,27 +551,38 @@ function Hero() {
   );
 }
 
+/* ─── Animated stat item ─── */
+function AnimatedStat({ target, suffix = "", icon, label }: { target: number; suffix?: string; icon: React.ReactNode; label: string }) {
+  const { count, ref } = useCountUp(target, 1800);
+  return (
+    <div ref={ref} className="flex flex-col items-center py-6 gap-2 text-center px-3">
+      {icon}
+      <div className="text-xl font-extrabold text-white tabular-nums">{count}{suffix}</div>
+      <div className="text-xs text-zinc-500 leading-tight">{label}</div>
+    </div>
+  );
+}
+
 /* ─── Stats bar ─── */
 function StatsBar() {
-  const stats = [
-    { icon: <Globe className="w-5 h-5 text-violet-400" />, value: "54", label: "Pays africains couverts" },
-    { icon: <Smartphone className="w-5 h-5 text-pink-400" />, value: "11+", label: "Opérateurs Mobile Money" },
-    { icon: <MessageSquare className="w-5 h-5 text-emerald-400" />, value: "500+", label: "Services vérifiables" },
-    { icon: <Zap className="w-5 h-5 text-amber-400" />, value: "Moins de 30s", label: "Réception du SMS" },
-    { icon: <TrendingUp className="w-5 h-5 text-sky-400" />, value: "100%", label: "Paiement Mobile Money" },
-    { icon: <Shield className="w-5 h-5 text-rose-400" />, value: "SSL", label: "Connexion sécurisée" },
-  ];
   return (
     <div className="border-y border-zinc-800/60 bg-zinc-950/80">
       <Section>
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 divide-x divide-zinc-800/40">
-          {stats.map((s, i) => (
-            <div key={i} className="flex flex-col items-center py-6 gap-2 text-center px-3">
-              {s.icon}
-              <div className="text-xl font-extrabold text-white">{s.value}</div>
-              <div className="text-xs text-zinc-500 leading-tight">{s.label}</div>
-            </div>
-          ))}
+          <AnimatedStat target={54} icon={<Globe className="w-5 h-5 text-violet-400" />} label="Pays africains couverts" />
+          <AnimatedStat target={11} suffix="+" icon={<Smartphone className="w-5 h-5 text-pink-400" />} label="Opérateurs Mobile Money" />
+          <AnimatedStat target={500} suffix="+" icon={<MessageSquare className="w-5 h-5 text-emerald-400" />} label="Services vérifiables" />
+          <div className="flex flex-col items-center py-6 gap-2 text-center px-3">
+            <Zap className="w-5 h-5 text-amber-400" />
+            <div className="text-xl font-extrabold text-white">&lt; 30s</div>
+            <div className="text-xs text-zinc-500 leading-tight">Réception du SMS</div>
+          </div>
+          <AnimatedStat target={100} suffix="%" icon={<Shield className="w-5 h-5 text-sky-400" />} label="Paiement Mobile Money" />
+          <div className="flex flex-col items-center py-6 gap-2 text-center px-3">
+            <Lock className="w-5 h-5 text-rose-400" />
+            <div className="text-xl font-extrabold text-white">SSL</div>
+            <div className="text-xs text-zinc-500 leading-tight">Connexion sécurisée</div>
+          </div>
         </div>
       </Section>
     </div>
@@ -640,7 +681,7 @@ function AppShowcase() {
               {[
                 { icon: <Smartphone className="w-4 h-4" />, text: "Interface mobile-first, compatible tous smartphones" },
                 { icon: <Wifi className="w-4 h-4" />, text: "Optimisé pour les réseaux 3G et 4G africains" },
-                { icon: <Globe className="w-4 h-4" />, text: "Disponible en français, anglais, et bientôt en langues locales" },
+                { icon: <Globe className="w-4 h-4" />, text: "Disponible en français et anglais, couvrant 54 pays africains" },
                 { icon: <Users className="w-4 h-4" />, text: "Adapté aux usages quotidiens des Africains connectés" },
               ].map((item, i) => (
                 <li key={i} className="flex items-start gap-3">
@@ -681,6 +722,17 @@ function AppShowcase() {
   );
 }
 
+/* ─── Animated stat for Africa section ─── */
+function AfricaStat({ target, suffix, label, color }: { target: number; suffix: string; label: string; color: string }) {
+  const { count, ref } = useCountUp(target, 1800);
+  return (
+    <div ref={ref} className="glass p-4 rounded-xl">
+      <div className={`text-2xl font-extrabold mb-1 tabular-nums ${color}`}>{count}{suffix}</div>
+      <div className="text-xs text-zinc-400 leading-tight">{label}</div>
+    </div>
+  );
+}
+
 /* ─── Africa Vision ─── */
 function AfricaVision() {
   return (
@@ -703,25 +755,24 @@ function AfricaVision() {
               </span>
             </h2>
             <p className="text-zinc-300 text-base leading-relaxed mb-6">
-              Plus de <strong className="text-white">800 millions d'Africains</strong> utilisent le Mobile Money comme principal outil financier.
-              Pourtant, des centaines de services numériques essentiels exigent une vérification SMS que beaucoup ne peuvent pas accomplir.
+              Le Mobile Money est le principal outil financier de centaines de millions d'Africains.
+              Pourtant, la plupart des plateformes numériques exigent une vérification SMS difficile à accomplir sans numéro adapté.
             </p>
             <p className="text-zinc-400 text-sm leading-relaxed mb-8">
-              Simix brise cette barrière. Nous croyons que chaque Africain mérite un accès égal à l'économie numérique mondiale —
-              sans carte bancaire, sans devises étrangères, sans complications.
+              Simix supprime cette barrière. Chaque Africain peut accéder à l'économie numérique mondiale
+              sans carte bancaire, sans devise étrangère, et sans complications.
             </p>
             <div className="grid grid-cols-2 gap-4">
-              {[
-                { value: "800M+", label: "Utilisateurs Mobile Money en Afrique", color: "text-amber-400" },
-                { value: "54", label: "Nations africaines, une seule plateforme", color: "text-violet-400" },
-                { value: "Gratuit", label: "Création de compte sans frais", color: "text-emerald-400" },
-                { value: "30s", label: "Temps moyen de livraison SMS", color: "text-pink-400" },
-              ].map((s, i) => (
-                <div key={i} className="glass p-4 rounded-xl">
-                  <div className={`text-2xl font-extrabold mb-1 ${s.color}`}>{s.value}</div>
-                  <div className="text-xs text-zinc-400 leading-tight">{s.label}</div>
-                </div>
-              ))}
+              <AfricaStat target={54} suffix="" label="Nations africaines couvertes" color="text-violet-400" />
+              <AfricaStat target={11} suffix="+" label="Opérateurs Mobile Money acceptés" color="text-amber-400" />
+              <div className="glass p-4 rounded-xl">
+                <div className="text-2xl font-extrabold mb-1 text-emerald-400">Gratuit</div>
+                <div className="text-xs text-zinc-400 leading-tight">Création de compte sans frais</div>
+              </div>
+              <div className="glass p-4 rounded-xl">
+                <div className="text-2xl font-extrabold mb-1 text-pink-400">&lt; 30s</div>
+                <div className="text-xs text-zinc-400 leading-tight">Temps moyen de livraison SMS</div>
+              </div>
             </div>
           </div>
 
@@ -851,14 +902,14 @@ function FinalCTA() {
             <Zap className="w-8 h-8 text-violet-400" />
           </div>
           <h2 className="text-3xl sm:text-5xl font-extrabold text-white mb-5 leading-tight">
-            Rejoignez la révolution<br />
+            Votre numéro virtuel,<br />
             <span className="bg-gradient-to-r from-violet-400 via-pink-400 to-amber-400 bg-clip-text text-transparent">
-              Fintech africaine
+              prêt en quelques secondes
             </span>
           </h2>
           <p className="text-zinc-400 text-lg max-w-xl mx-auto mb-10 leading-relaxed">
-            Créez votre compte en 30 secondes. Aucune carte bancaire requise.
-            Commencez avec votre Mobile Money local.
+            Inscription gratuite. Aucune carte bancaire.
+            Payez uniquement avec votre Mobile Money local.
           </p>
           <div className="flex flex-wrap gap-3 justify-center">
             <button
@@ -933,13 +984,13 @@ function Footer() {
           </div>
         </div>
         <div className="border-t border-zinc-800/60 pt-6 flex flex-col sm:flex-row items-center justify-between gap-3">
-          <p className="text-xs text-zinc-600">© 2025 Simix. Tous droits réservés.</p>
+          <p className="text-xs text-zinc-600">© 2026 Simix. Tous droits réservés.</p>
           <div className="flex gap-4 text-xs text-zinc-600">
             <span className="hover:text-zinc-400 cursor-pointer transition-colors">Confidentialité</span>
             <span className="hover:text-zinc-400 cursor-pointer transition-colors">CGU</span>
             <span className="hover:text-zinc-400 cursor-pointer transition-colors">Mentions légales</span>
           </div>
-          <p className="text-xs text-zinc-700">Conçu pour l'Afrique</p>
+          <p className="text-xs text-zinc-600">Conçu pour l'Afrique</p>
         </div>
       </Section>
     </footer>
