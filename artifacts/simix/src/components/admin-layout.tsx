@@ -16,12 +16,14 @@ import {
   CreditCard,
   ArrowUpRight,
   MapPin,
+  BarChart3,
 } from "lucide-react";
 import { SimixLogo } from "@/components/simix-logo";
 import { cn } from "@/lib/utils";
 
 const NAV_ITEMS = [
   { href: "/admin", label: "Tableau de bord", icon: LayoutDashboard },
+  { href: "/admin/analytics", label: "Analytiques", icon: BarChart3 },
   { href: "/admin/users", label: "Utilisateurs", icon: Users },
   { href: "/admin/orders", label: "Commandes", icon: ShoppingBag },
   { href: "/admin/transactions", label: "Transactions", icon: CreditCard },

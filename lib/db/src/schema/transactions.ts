@@ -17,6 +17,7 @@ export const transactionsTable = pgTable("transactions", {
   status: text("status").notNull().default("completed"),
   method: text("method"),
   description: text("description"),
+  externalDepositId: text("external_deposit_id"),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),

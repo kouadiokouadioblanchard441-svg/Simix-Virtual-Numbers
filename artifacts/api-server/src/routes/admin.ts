@@ -479,6 +479,103 @@ router.post("/admin/orders/:orderId/cancel", requireAuth, requireAdmin, async (r
   res.json({ success: true, message: "Commande annulée et remboursée" });
 });
 
+/* ─────────────────── ANALYTICS ─────────────────── */
+router.get("/admin/analytics", requireAuth, requireAdmin, async (req, res): Promise<void> => {
+  const days = Math.min(Number(req.query.days) || 30, 365);
+  const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+
+  /* Daily revenue + orders */
+  const allTx = await db.select({
+    amount: transactionsTable.amount,
+    type: transactionsTable.type,
+    status: transactionsTable.status,
+    createdAt: transactionsTable.createdAt,
+  }).from(transactionsTable).where(and(gte(transactionsTable.createdAt, since)));
+
+  const dailyMap: Record<string, { revenue: number; orders: number }> = {};
+  const userDayMap: Record<string, number> = {};
+
+  for (const tx of allTx) {
+    const day = tx.createdAt.toISOString().slice(0, 10);
+    if (!dailyMap[day]) dailyMap[day] = { revenue: 0, orders: 0 };
+    if (tx.type === "purchase" && tx.status === "completed") {
+      dailyMap[day].revenue += tx.amount;
+      dailyMap[day].orders += 1;
+    }
+  }
+
+  const dailyRevenue = Array.from({ length: days }, (_, i) => {
+    const d = new Date(since.getTime() + i * 24 * 60 * 60 * 1000);
+    const key = d.toISOString().slice(0, 10);
+    return { date: key, ...(dailyMap[key] ?? { revenue: 0, orders: 0 }) };
+  });
+
+  /* Top services */
+  const allOrders = await db.select({
+    price: virtualNumbersTable.price,
+    serviceName: servicesTable.name,
+  }).from(virtualNumbersTable)
+    .leftJoin(servicesTable, eq(virtualNumbersTable.serviceId, servicesTable.id))
+    .where(gte(virtualNumbersTable.createdAt, since));
+
+  const svcMap: Record<string, { count: number; revenue: number }> = {};
+  for (const o of allOrders) {
+    const name = o.serviceName ?? "Inconnu";
+    if (!svcMap[name]) svcMap[name] = { count: 0, revenue: 0 };
+    svcMap[name].count += 1;
+    svcMap[name].revenue += o.price;
+  }
+  const topServices = Object.entries(svcMap)
+    .map(([name, v]) => ({ name, ...v }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 8);
+
+  /* Top countries */
+  const allCountryOrders = await db.select({
+    countryName: countriesTable.name,
+    countryFlag: countriesTable.flag,
+  }).from(virtualNumbersTable)
+    .leftJoin(countriesTable, eq(virtualNumbersTable.countryId, countriesTable.id))
+    .where(gte(virtualNumbersTable.createdAt, since));
+
+  const cntMap: Record<string, { name: string; flag: string; count: number }> = {};
+  for (const o of allCountryOrders) {
+    const name = o.countryName ?? "Inconnu";
+    if (!cntMap[name]) cntMap[name] = { name, flag: o.countryFlag ?? "🌍", count: 0 };
+    cntMap[name].count += 1;
+  }
+  const topCountries = Object.values(cntMap).sort((a, b) => b.count - a.count).slice(0, 8);
+
+  /* Transaction breakdown */
+  const txBreakdown = { recharge: 0, purchase: 0, refund: 0 };
+  for (const tx of allTx) {
+    if (tx.status === "completed") {
+      if (tx.type === "recharge") txBreakdown.recharge++;
+      else if (tx.type === "purchase") txBreakdown.purchase++;
+      else if (tx.type === "refund") txBreakdown.refund++;
+    }
+  }
+
+  /* User growth */
+  const newUsers = await db.select({ createdAt: usersTable.createdAt }).from(usersTable).where(gte(usersTable.createdAt, since));
+  const userDayMapFull: Record<string, number> = {};
+  for (const u of newUsers) {
+    const day = u.createdAt.toISOString().slice(0, 10);
+    userDayMapFull[day] = (userDayMapFull[day] ?? 0) + 1;
+  }
+  const userGrowth = Array.from({ length: days }, (_, i) => {
+    const d = new Date(since.getTime() + i * 24 * 60 * 60 * 1000);
+    const key = d.toISOString().slice(0, 10);
+    return { date: key, newUsers: userDayMapFull[key] ?? 0 };
+  });
+
+  const totalRevenue30d = dailyRevenue.reduce((s, d) => s + d.revenue, 0);
+  const totalOrders30d = dailyRevenue.reduce((s, d) => s + d.orders, 0);
+  const avgOrderValue = totalOrders30d > 0 ? Math.round(totalRevenue30d / totalOrders30d) : 0;
+
+  res.json({ dailyRevenue, topServices, topCountries, txBreakdown, userGrowth, totalRevenue30d, totalOrders30d, avgOrderValue });
+});
+
 /* ─────────────────── API PROVIDERS ─────────────────── */
 router.get("/admin/api-providers", requireAuth, requireAdmin, async (_req, res): Promise<void> => {
   const rows = await db.select().from(apiProvidersTable).orderBy(apiProvidersTable.priority);
@@ -526,6 +623,116 @@ router.delete("/admin/api-providers/:providerId", requireAuth, requireAdmin, asy
   await db.delete(apiProvidersTable).where(eq(apiProvidersTable.id, providerId));
   await logAdminAction(req.user!.id, "delete_provider", req.ip, "provider", providerId);
   res.json({ success: true });
+});
+
+/* ─── Test provider connection ─── */
+router.post("/admin/api-providers/:providerId/test", requireAuth, requireAdmin, async (req, res): Promise<void> => {
+  const providerId = String(req.params.providerId);
+  const [provider] = await db.select().from(apiProvidersTable).where(eq(apiProvidersTable.id, providerId)).limit(1);
+  if (!provider) { res.status(404).json({ error: "Fournisseur introuvable" }); return; }
+
+  if (provider.slug === "5sim") {
+    if (!provider.apiKey) {
+      res.json({ success: false, message: "Clé API non configurée" });
+      return;
+    }
+    const { FiveSimClient } = await import("../lib/fivesim");
+    const client = new FiveSimClient(provider.apiKey);
+    const start = Date.now();
+    try {
+      const profile = await client.getProfile();
+      const latencyMs = Date.now() - start;
+      await logAdminAction(req.user!.id, "test_provider", req.ip, "provider", providerId, { success: true, latencyMs });
+      res.json({
+        success: true,
+        message: `Connexion réussie (${latencyMs}ms)`,
+        latencyMs,
+        balance: profile.balance,
+        details: { email: profile.email, vendor: profile.vendor, rating: profile.rating },
+      });
+    } catch (e) {
+      res.json({ success: false, message: (e as Error).message, latencyMs: Date.now() - start });
+    }
+    return;
+  }
+
+  /* Generic HTTP ping */
+  const baseUrl = provider.baseUrl || "https://api.example.com";
+  const start = Date.now();
+  try {
+    const resp = await fetch(baseUrl, { method: "HEAD", signal: AbortSignal.timeout(5000) });
+    const latencyMs = Date.now() - start;
+    res.json({ success: resp.ok || resp.status < 500, message: `HTTP ${resp.status} (${latencyMs}ms)`, latencyMs });
+  } catch (e) {
+    res.json({ success: false, message: (e as Error).message, latencyMs: Date.now() - start });
+  }
+});
+
+/* ─── Get provider balance ─── */
+router.get("/admin/api-providers/:providerId/balance", requireAuth, requireAdmin, async (req, res): Promise<void> => {
+  const providerId = String(req.params.providerId);
+  const [provider] = await db.select().from(apiProvidersTable).where(eq(apiProvidersTable.id, providerId)).limit(1);
+  if (!provider) { res.status(404).json({ error: "Fournisseur introuvable" }); return; }
+
+  if (provider.slug === "5sim" && provider.apiKey) {
+    const { FiveSimClient } = await import("../lib/fivesim");
+    const client = new FiveSimClient(provider.apiKey);
+    try {
+      const profile = await client.getProfile();
+      res.json({ balance: profile.balance, currency: "USD" });
+      return;
+    } catch (e) {
+      res.status(503).json({ error: (e as Error).message });
+      return;
+    }
+  }
+
+  res.json(null);
+});
+
+/* ─── Sync 5sim products ─── */
+router.post("/admin/api-providers/:providerId/sync-products", requireAuth, requireAdmin, async (req, res): Promise<void> => {
+  const providerId = String(req.params.providerId);
+  const [provider] = await db.select().from(apiProvidersTable).where(eq(apiProvidersTable.id, providerId)).limit(1);
+  if (!provider) { res.status(404).json({ error: "Fournisseur introuvable" }); return; }
+
+  if (provider.slug !== "5sim" || !provider.apiKey) {
+    res.status(400).json({ error: "Synchronisation uniquement disponible pour 5sim avec une clé API" });
+    return;
+  }
+
+  const { FiveSimClient } = await import("../lib/fivesim");
+  const client = new FiveSimClient(provider.apiKey);
+
+  try {
+    const products = await client.getProducts("russia", "any");
+    const productNames = Object.keys(products);
+    let synced = 0;
+
+    for (const productName of productNames.slice(0, 50)) {
+      const existing = await db.select({ id: servicesTable.id }).from(servicesTable)
+        .where(eq(servicesTable.slug, productName)).limit(1);
+      if (existing.length === 0) {
+        const productInfo = products[productName];
+        await db.insert(servicesTable).values({
+          name: productName.charAt(0).toUpperCase() + productName.slice(1),
+          slug: productName,
+          price: Math.round((productInfo?.Price ?? 0) * 655 * (1 + provider.markup / 100)),
+          providerPrice: Math.round((productInfo?.Price ?? 0) * 655),
+          margin: provider.markup,
+          available: productInfo?.Qty ?? 100,
+          enabled: true,
+          sortOrder: 100,
+        }).onConflictDoNothing();
+        synced++;
+      }
+    }
+
+    await logAdminAction(req.user!.id, "sync_products", req.ip, "provider", providerId, { synced, total: productNames.length });
+    res.json({ synced, message: `${synced} nouveaux services synchronisés depuis 5sim` });
+  } catch (e) {
+    res.status(503).json({ error: (e as Error).message });
+  }
 });
 
 /* ─────────────────── SYSTEM SETTINGS ─────────────────── */

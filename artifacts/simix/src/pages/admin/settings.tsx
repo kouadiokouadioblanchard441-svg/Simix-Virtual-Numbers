@@ -41,6 +41,14 @@ const SETTINGS_SCHEMA = [
       { key: "telegram_alerts_enabled", label: "Alertes Telegram activées", placeholder: "false", type: "text" },
     ],
   },
+  {
+    group: "PawaPay — Mobile Money",
+    fields: [
+      { key: "pawapay_api_token", label: "Token API PawaPay", placeholder: "eyJ...", type: "password", hint: "Obtenez votre token sur le portail PawaPay" },
+      { key: "pawapay_env", label: "Environnement PawaPay", placeholder: "sandbox", type: "text", hint: "sandbox ou production" },
+      { key: "pawapay_webhook_secret", label: "Secret webhook PawaPay", placeholder: "webhook-secret", type: "password", hint: "Optionnel — pour valider les webhooks entrants" },
+    ],
+  },
 ];
 
 function SettingsContent() {
@@ -96,23 +104,48 @@ function SettingsContent() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {SETTINGS_SCHEMA.map(({ group, fields }) => (
-          <div key={group} className="bg-zinc-900 border border-zinc-800 rounded-xl p-5 space-y-4">
-            <h2 className="text-sm font-semibold text-white border-b border-zinc-800 pb-3">{group}</h2>
-            {fields.map(({ key, label, placeholder, type }) => (
-              <div key={key}>
-                <label className="text-xs text-zinc-400 mb-1 block">{label}</label>
-                <input
-                  type={type}
-                  value={values[key] ?? ""}
-                  onChange={e => set(key, e.target.value)}
-                  placeholder={placeholder}
-                  className="w-full px-3 py-2 text-sm bg-zinc-800 border border-zinc-700 rounded-lg text-white placeholder:text-zinc-500 focus:outline-none focus:border-violet-500 transition-colors"
-                />
-                {!values[key] && (
-                  <div className="text-xs text-zinc-600 mt-1">Défaut : {placeholder}</div>
-                )}
+          <div
+            key={group}
+            className={`bg-zinc-900 border rounded-xl p-5 space-y-4 ${group === "PawaPay — Mobile Money" ? "border-orange-500/30 lg:col-span-2" : "border-zinc-800"}`}
+          >
+            <div className="flex items-center gap-2 border-b border-zinc-800 pb-3">
+              {group === "PawaPay — Mobile Money" && (
+                <div className="w-5 h-5 rounded-full bg-orange-500/20 border border-orange-500/40 flex items-center justify-center text-orange-400 text-[10px] font-bold">P</div>
+              )}
+              <h2 className="text-sm font-semibold text-white">{group}</h2>
+              {group === "PawaPay — Mobile Money" && (
+                <span className="ml-2 text-[10px] px-2 py-0.5 rounded-full bg-orange-500/15 text-orange-400 border border-orange-500/20 font-medium">Paiements Mobile Money</span>
+              )}
+            </div>
+
+            {group === "PawaPay — Mobile Money" && (
+              <div className="bg-zinc-800/60 border border-zinc-700/60 rounded-lg p-3 text-xs text-zinc-400 space-y-1">
+                <p>PawaPay permet d'accepter des paiements Mobile Money réels (Orange Money, MTN, Wave, etc.) via une seule API.</p>
+                <p>
+                  Obtenez vos identifiants sur{" "}
+                  <a href="https://dashboard.pawapay.io" target="_blank" rel="noreferrer" className="text-orange-400 hover:underline">dashboard.pawapay.io</a>.
+                  Utilisez <code className="text-violet-400">sandbox</code> pour les tests et <code className="text-violet-400">production</code> pour le live.
+                </p>
+                <p>URL webhook à configurer sur PawaPay : <code className="text-emerald-400">/api/wallet/pawapay/webhook</code></p>
               </div>
-            ))}
+            )}
+
+            <div className={group === "PawaPay — Mobile Money" ? "grid grid-cols-1 md:grid-cols-3 gap-4" : ""}>
+              {fields.map(({ key, label, placeholder, type, hint }: { key: string; label: string; placeholder: string; type: string; hint?: string }) => (
+                <div key={key}>
+                  <label className="text-xs text-zinc-400 mb-1 block">{label}</label>
+                  <input
+                    type={type}
+                    value={values[key] ?? ""}
+                    onChange={e => set(key, e.target.value)}
+                    placeholder={placeholder}
+                    className={`w-full px-3 py-2 text-sm bg-zinc-800 border rounded-lg text-white placeholder:text-zinc-500 focus:outline-none transition-colors ${group === "PawaPay — Mobile Money" ? "border-zinc-700 focus:border-orange-500" : "border-zinc-700 focus:border-violet-500"}`}
+                  />
+                  {hint && <div className="text-xs text-zinc-600 mt-1">{hint}</div>}
+                  {!values[key] && !hint && <div className="text-xs text-zinc-600 mt-1">Défaut : {placeholder}</div>}
+                </div>
+              ))}
+            </div>
           </div>
         ))}
       </div>

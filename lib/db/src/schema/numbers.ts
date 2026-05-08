@@ -25,6 +25,7 @@ export const virtualNumbersTable = pgTable("virtual_numbers", {
   price: integer("price").notNull(),
   expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
   smsScheduledAt: timestamp("sms_scheduled_at", { withTimezone: true }),
+  externalOrderId: text("external_order_id"),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),

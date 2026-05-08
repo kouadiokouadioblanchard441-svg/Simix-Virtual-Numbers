@@ -16,6 +16,7 @@ async function req<T>(method: string, path: string, body?: unknown): Promise<T> 
 
 export const adminApi = {
   getStats: () => req<AdminStats>("GET", "/admin/stats"),
+  getAnalytics: (days = 30) => req<AdminAnalytics>("GET", `/admin/analytics?days=${days}`),
 
   getUsers: (params?: { limit?: number; offset?: number; search?: string }) => {
     const q = new URLSearchParams();
@@ -70,6 +71,9 @@ export const adminApi = {
   createProvider: (data: Partial<ApiProvider>) => req<ApiProvider>("POST", "/admin/api-providers", data),
   updateProvider: (id: string, data: Partial<ApiProvider>) => req("PUT", `/admin/api-providers/${id}`, data),
   deleteProvider: (id: string) => req("DELETE", `/admin/api-providers/${id}`),
+  testProvider: (id: string) => req<ProviderTestResult>("POST", `/admin/api-providers/${id}/test`),
+  getProviderBalance: (id: string) => req<{ balance: number; currency: string } | null>("GET", `/admin/api-providers/${id}/balance`),
+  syncProviderProducts: (id: string) => req<{ synced: number; message: string }>("POST", `/admin/api-providers/${id}/sync-products`),
 
   getSettings: () => req<Record<string, string>>("GET", "/admin/settings"),
   updateSettings: (data: Record<string, string>) => req("PUT", "/admin/settings", data),
@@ -95,6 +99,25 @@ export interface AdminStats {
   activeNumbers: number;
   totalProviders: number;
   activeProviders: number;
+}
+
+export interface AdminAnalytics {
+  dailyRevenue: Array<{ date: string; revenue: number; orders: number }>;
+  topServices: Array<{ name: string; count: number; revenue: number }>;
+  topCountries: Array<{ name: string; flag: string; count: number }>;
+  txBreakdown: { recharge: number; purchase: number; refund: number };
+  userGrowth: Array<{ date: string; newUsers: number }>;
+  totalRevenue30d: number;
+  totalOrders30d: number;
+  avgOrderValue: number;
+}
+
+export interface ProviderTestResult {
+  success: boolean;
+  message: string;
+  latencyMs?: number;
+  balance?: number;
+  details?: Record<string, unknown>;
 }
 
 export interface AdminUser {
