@@ -61,14 +61,14 @@ const REGION: Record<string, string> = {
 type RegionTab = "Populaires" | "Europe" | "Amériques" | "Asie-Pacifique" | "Moyen-Orient" | "Afrique" | "Tous";
 const TABS: RegionTab[] = ["Populaires", "Europe", "Amériques", "Asie-Pacifique", "Moyen-Orient", "Afrique", "Tous"];
 
-const TAB_META: Record<RegionTab, { emoji: string; color: string }> = {
-  "Populaires":     { emoji: "⭐", color: "#F59E0B" },
-  "Europe":         { emoji: "🇪🇺", color: "#3B82F6" },
-  "Amériques":      { emoji: "🌎", color: "#10B981" },
-  "Asie-Pacifique": { emoji: "🌏", color: "#8B5CF6" },
-  "Moyen-Orient":   { emoji: "🌙", color: "#F97316" },
-  "Afrique":        { emoji: "🌍", color: "#EC4899" },
-  "Tous":           { emoji: "🌐", color: "#6B7280" },
+const TAB_META: Record<RegionTab, { label: string; color: string }> = {
+  "Populaires":     { label: "★", color: "#F59E0B" },
+  "Europe":         { label: "EU", color: "#3B82F6" },
+  "Amériques":      { label: "AM", color: "#10B981" },
+  "Asie-Pacifique": { label: "AS", color: "#8B5CF6" },
+  "Moyen-Orient":   { label: "ME", color: "#F97316" },
+  "Afrique":        { label: "AF", color: "#EC4899" },
+  "Tous":           { label: "...", color: "#6B7280" },
 };
 
 export default function Countries() {
@@ -185,7 +185,7 @@ function CountriesContent() {
                   }`}
                   style={isActive ? { backgroundColor: meta.color, borderColor: meta.color } : {}}
                 >
-                  <span>{meta.emoji}</span>
+                  <span className="font-bold text-xs">{meta.label}</span>
                   <span>{tab}</span>
                   {count > 0 && (
                     <span
@@ -243,7 +243,7 @@ function CountriesContent() {
         {/* Section header for non-popular tabs */}
         {!search && activeTab !== "Populaires" && (
           <div className="flex items-center gap-2 mb-4">
-            <span className="text-xl">{TAB_META[activeTab].emoji}</span>
+            <span className="text-sm font-bold" style={{ color: TAB_META[activeTab].color }}>{TAB_META[activeTab].label}</span>
             <h2 className="text-base font-bold text-foreground">{activeTab}</h2>
             <span className="text-xs text-muted-foreground ml-1">({filteredCountries.length} pays)</span>
           </div>

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Link, useLocation } from "wouter";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -9,13 +9,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
-import { Eye, EyeOff, ChevronLeft, Shield, User, Mail, Phone, Lock, AtSign } from "lucide-react";
+import { Eye, EyeOff, ChevronLeft, Shield, User, Mail, Phone, Lock, AtSign, Search } from "lucide-react";
 import { motion } from "framer-motion";
 
 const formSchema = z.object({
   fullName: z.string().min(2, "Le nom complet est requis (min 2 caractères)"),
   email: z.string().email("Adresse email invalide"),
-  username: z.string().min(3, "Le nom d'utilisateur doit faire au moins 3 caractères").max(20, "Max 20 caractères").regex(/^[a-zA-Z0-9_]+$/, "Lettres, chiffres et _ uniquement").optional().or(z.literal("")),
+  username: z.string().min(3, "Le nom d'utilisateur doit faire au moins 3 caractères").max(20, "Max 20 caractères").regex(/^[a-zA-Z0-9]+$/, "Lettres et chiffres uniquement").optional().or(z.literal("")),
   phone: z.string().min(6, "Le numéro de téléphone est requis"),
   password: z.string().min(6, "Le mot de passe doit contenir au moins 6 caractères"),
   confirmPassword: z.string(),
@@ -25,19 +25,81 @@ const formSchema = z.object({
   path: ["confirmPassword"],
 });
 
-const COUNTRY_CODES = [
-  { flag: "🇨🇮", code: "+225", label: "Côte d'Ivoire" },
-  { flag: "🇸🇳", code: "+221", label: "Sénégal" },
-  { flag: "🇲🇱", code: "+223", label: "Mali" },
-  { flag: "🇧🇫", code: "+226", label: "Burkina Faso" },
-  { flag: "🇬🇳", code: "+224", label: "Guinée" },
-  { flag: "🇹🇬", code: "+228", label: "Togo" },
-  { flag: "🇧🇯", code: "+229", label: "Bénin" },
-  { flag: "🇳🇪", code: "+227", label: "Niger" },
-  { flag: "🇨🇲", code: "+237", label: "Cameroun" },
-  { flag: "🇫🇷", code: "+33", label: "France" },
-  { flag: "🌍", code: "+1", label: "Autre" },
+const ALL_COUNTRIES = [
+  { code: "ci", dial: "+225", label: "Côte d'Ivoire" },
+  { code: "sn", dial: "+221", label: "Sénégal" },
+  { code: "ml", dial: "+223", label: "Mali" },
+  { code: "bf", dial: "+226", label: "Burkina Faso" },
+  { code: "gn", dial: "+224", label: "Guinée" },
+  { code: "tg", dial: "+228", label: "Togo" },
+  { code: "bj", dial: "+229", label: "Bénin" },
+  { code: "ne", dial: "+227", label: "Niger" },
+  { code: "cm", dial: "+237", label: "Cameroun" },
+  { code: "ng", dial: "+234", label: "Nigéria" },
+  { code: "gh", dial: "+233", label: "Ghana" },
+  { code: "ke", dial: "+254", label: "Kenya" },
+  { code: "tz", dial: "+255", label: "Tanzanie" },
+  { code: "ug", dial: "+256", label: "Ouganda" },
+  { code: "rw", dial: "+250", label: "Rwanda" },
+  { code: "ma", dial: "+212", label: "Maroc" },
+  { code: "dz", dial: "+213", label: "Algérie" },
+  { code: "tn", dial: "+216", label: "Tunisie" },
+  { code: "eg", dial: "+20", label: "Égypte" },
+  { code: "ly", dial: "+218", label: "Libye" },
+  { code: "sd", dial: "+249", label: "Soudan" },
+  { code: "ss", dial: "+211", label: "Soudan du Sud" },
+  { code: "et", dial: "+251", label: "Éthiopie" },
+  { code: "so", dial: "+252", label: "Somalie" },
+  { code: "dj", dial: "+253", label: "Djibouti" },
+  { code: "er", dial: "+291", label: "Érythrée" },
+  { code: "za", dial: "+27", label: "Afrique du Sud" },
+  { code: "mz", dial: "+258", label: "Mozambique" },
+  { code: "zm", dial: "+260", label: "Zambie" },
+  { code: "zw", dial: "+263", label: "Zimbabwe" },
+  { code: "mw", dial: "+265", label: "Malawi" },
+  { code: "bw", dial: "+267", label: "Botswana" },
+  { code: "na", dial: "+264", label: "Namibie" },
+  { code: "sz", dial: "+268", label: "Eswatini" },
+  { code: "ls", dial: "+266", label: "Lesotho" },
+  { code: "mg", dial: "+261", label: "Madagascar" },
+  { code: "mu", dial: "+230", label: "Maurice" },
+  { code: "sc", dial: "+248", label: "Seychelles" },
+  { code: "km", dial: "+269", label: "Comores" },
+  { code: "ga", dial: "+241", label: "Gabon" },
+  { code: "gq", dial: "+240", label: "Guinée Équatoriale" },
+  { code: "st", dial: "+239", label: "Sao Tomé-et-Príncipe" },
+  { code: "cf", dial: "+236", label: "Centrafrique" },
+  { code: "td", dial: "+235", label: "Tchad" },
+  { code: "cg", dial: "+242", label: "Congo" },
+  { code: "cd", dial: "+243", label: "Congo RDC" },
+  { code: "ao", dial: "+244", label: "Angola" },
+  { code: "gw", dial: "+245", label: "Guinée-Bissau" },
+  { code: "cv", dial: "+238", label: "Cap-Vert" },
+  { code: "gm", dial: "+220", label: "Gambie" },
+  { code: "sl", dial: "+232", label: "Sierra Leone" },
+  { code: "lr", dial: "+231", label: "Liberia" },
+  { code: "bi", dial: "+257", label: "Burundi" },
+  { code: "mr", dial: "+222", label: "Mauritanie" },
+  { code: "fr", dial: "+33", label: "France" },
+  { code: "gb", dial: "+44", label: "Royaume-Uni" },
+  { code: "be", dial: "+32", label: "Belgique" },
+  { code: "us", dial: "+1", label: "États-Unis" },
+  { code: "ca", dial: "+1", label: "Canada" },
 ];
+
+function FlagImg({ code }: { code: string }) {
+  const [err, setErr] = useState(false);
+  if (err) return <span className="text-base w-5 inline-block text-center">{code.toUpperCase()}</span>;
+  return (
+    <img
+      src={`https://flagcdn.com/20x15/${code.toLowerCase()}.png`}
+      srcSet={`https://flagcdn.com/40x30/${code.toLowerCase()}.png 2x`}
+      alt={code}
+      onError={() => setErr(true)}
+      className="w-5 h-3.5 object-cover rounded-sm flex-shrink-0"
+    />
+  );
+}
 
 export default function Register() {
   const [, setLocation] = useLocation();
@@ -46,10 +108,19 @@ export default function Register() {
   const registerMutation = useRegister();
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [selectedCountryCode, setSelectedCountryCode] = useState("+225");
+  const [selectedCountryCode, setSelectedCountryCode] = useState("ci");
   const [showCountryPicker, setShowCountryPicker] = useState(false);
+  const [countrySearch, setCountrySearch] = useState("");
 
-  const selectedCountry = COUNTRY_CODES.find(c => c.code === selectedCountryCode) ?? COUNTRY_CODES[0];
+  const selectedCountry = ALL_COUNTRIES.find(c => c.code === selectedCountryCode) ?? ALL_COUNTRIES[0];
+
+  const filteredCountries = useMemo(() => {
+    if (!countrySearch.trim()) return ALL_COUNTRIES;
+    return ALL_COUNTRIES.filter(c =>
+      c.label.toLowerCase().includes(countrySearch.toLowerCase()) ||
+      c.dial.includes(countrySearch)
+    );
+  }, [countrySearch]);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -63,7 +134,7 @@ export default function Register() {
           fullName: values.fullName,
           phone: values.phone,
           password: values.password,
-          countryCode: selectedCountryCode,
+          countryCode: selectedCountry.dial,
           email: values.email,
         }
       });
@@ -91,14 +162,13 @@ export default function Register() {
 
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="flex-1 flex flex-col max-w-sm w-full mx-auto z-10 pb-8">
         <div className="mb-6">
-          <h1 className="text-2xl font-bold text-foreground mb-1">Bienvenue sur Simix !</h1>
+          <h1 className="text-2xl font-bold text-foreground mb-1">Bienvenue sur Simix</h1>
           <p className="text-sm text-muted-foreground">Inscrivez-vous gratuitement en quelques secondes.</p>
         </div>
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
 
-            {/* Full Name */}
             <FormField control={form.control} name="fullName" render={({ field }) => (
               <FormItem>
                 <FormLabel className="text-sm font-medium text-foreground">Nom complet <span className="text-red-500">*</span></FormLabel>
@@ -112,7 +182,6 @@ export default function Register() {
               </FormItem>
             )} />
 
-            {/* Email */}
             <FormField control={form.control} name="email" render={({ field }) => (
               <FormItem>
                 <FormLabel className="text-sm font-medium text-foreground">Email <span className="text-red-500">*</span></FormLabel>
@@ -126,7 +195,6 @@ export default function Register() {
               </FormItem>
             )} />
 
-            {/* Username (optional) */}
             <FormField control={form.control} name="username" render={({ field }) => (
               <FormItem>
                 <FormLabel className="text-sm font-medium text-foreground flex items-center gap-1">
@@ -135,43 +203,59 @@ export default function Register() {
                 <FormControl>
                   <div className="relative h-14">
                     <AtSign className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                    <Input placeholder="jean_konan" className="pl-11 bg-card border-card-border focus-visible:ring-primary h-full rounded-xl" {...field} />
+                    <Input placeholder="jeankonan" className="pl-11 bg-card border-card-border focus-visible:ring-primary h-full rounded-xl" {...field} />
                   </div>
                 </FormControl>
                 <FormMessage />
               </FormItem>
             )} />
 
-            {/* Phone */}
             <FormField control={form.control} name="phone" render={({ field }) => (
               <FormItem>
                 <FormLabel className="text-sm font-medium text-foreground">Téléphone <span className="text-red-500">*</span></FormLabel>
                 <FormControl>
-                  <div className="flex h-14 bg-card border border-card-border rounded-xl overflow-hidden focus-within:ring-1 focus-within:ring-primary focus-within:border-primary transition-all relative">
+                  <div className="flex h-14 bg-card border border-card-border rounded-xl overflow-visible focus-within:ring-1 focus-within:ring-primary focus-within:border-primary transition-all relative">
                     <button
                       type="button"
-                      onClick={() => setShowCountryPicker(p => !p)}
-                      className="flex items-center gap-1.5 px-3 bg-secondary/50 border-r border-card-border text-sm font-medium text-foreground hover:bg-secondary transition-colors shrink-0"
+                      onClick={() => { setShowCountryPicker(p => !p); setCountrySearch(""); }}
+                      className="flex items-center gap-1.5 px-3 bg-secondary/50 border-r border-card-border text-sm font-medium text-foreground hover:bg-secondary transition-colors shrink-0 rounded-l-xl"
                     >
-                      <span>{selectedCountry.flag}</span>
-                      <span>{selectedCountry.code}</span>
+                      <FlagImg code={selectedCountry.code} />
+                      <span className="font-mono text-xs">{selectedCountry.dial}</span>
                       <span className="text-muted-foreground text-xs">▾</span>
                     </button>
-                    <input {...field} type="tel" className="flex-1 bg-transparent border-none px-3 text-foreground focus:outline-none placeholder:text-muted-foreground text-sm" placeholder="0701234567" />
+                    <input {...field} type="tel" className="flex-1 bg-transparent border-none px-3 text-foreground focus:outline-none placeholder:text-muted-foreground text-sm rounded-r-xl" placeholder="07 01 23 45 67" />
                     {showCountryPicker && (
-                      <div className="absolute top-full left-0 mt-1 w-64 bg-card border border-card-border rounded-xl shadow-xl z-50 overflow-hidden">
-                        {COUNTRY_CODES.map(c => (
-                          <button
-                            key={c.code}
-                            type="button"
-                            onClick={() => { setSelectedCountryCode(c.code); setShowCountryPicker(false); }}
-                            className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm text-left hover:bg-secondary transition-colors ${selectedCountryCode === c.code ? "bg-primary/10 text-primary" : "text-foreground"}`}
-                          >
-                            <span>{c.flag}</span>
-                            <span className="flex-1">{c.label}</span>
-                            <span className="text-muted-foreground font-mono">{c.code}</span>
-                          </button>
-                        ))}
+                      <div className="absolute top-full left-0 mt-1 w-72 bg-card border border-card-border rounded-xl shadow-2xl z-50 overflow-hidden">
+                        <div className="p-2 border-b border-card-border">
+                          <div className="relative">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+                            <input
+                              type="text"
+                              value={countrySearch}
+                              onChange={e => setCountrySearch(e.target.value)}
+                              placeholder="Rechercher un pays..."
+                              className="w-full pl-8 pr-3 py-2 text-xs bg-secondary rounded-lg border-none focus:outline-none text-foreground placeholder:text-muted-foreground"
+                              autoFocus
+                            />
+                          </div>
+                        </div>
+                        <div className="max-h-56 overflow-y-auto">
+                          {filteredCountries.length === 0 ? (
+                            <div className="py-6 text-center text-xs text-muted-foreground">Aucun pays trouvé</div>
+                          ) : filteredCountries.map(c => (
+                            <button
+                              key={c.code}
+                              type="button"
+                              onClick={() => { setSelectedCountryCode(c.code); setShowCountryPicker(false); setCountrySearch(""); }}
+                              className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm text-left hover:bg-secondary transition-colors ${selectedCountryCode === c.code ? "bg-primary/10 text-primary" : "text-foreground"}`}
+                            >
+                              <FlagImg code={c.code} />
+                              <span className="flex-1 text-sm">{c.label}</span>
+                              <span className="text-muted-foreground font-mono text-xs">{c.dial}</span>
+                            </button>
+                          ))}
+                        </div>
                       </div>
                     )}
                   </div>
@@ -180,14 +264,13 @@ export default function Register() {
               </FormItem>
             )} />
 
-            {/* Password */}
             <FormField control={form.control} name="password" render={({ field }) => (
               <FormItem>
                 <FormLabel className="text-sm font-medium text-foreground">Mot de passe <span className="text-red-500">*</span></FormLabel>
                 <FormControl>
                   <div className="relative h-14">
                     <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                    <Input type={showPassword ? "text" : "password"} placeholder="••••••••" className="pl-11 pr-12 bg-card border-card-border focus-visible:ring-primary h-full rounded-xl" {...field} />
+                    <Input type={showPassword ? "text" : "password"} placeholder="Minimum 6 caractères" className="pl-11 pr-12 bg-card border-card-border focus-visible:ring-primary h-full rounded-xl" {...field} />
                     <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors">
                       {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
@@ -197,14 +280,13 @@ export default function Register() {
               </FormItem>
             )} />
 
-            {/* Confirm Password */}
             <FormField control={form.control} name="confirmPassword" render={({ field }) => (
               <FormItem>
                 <FormLabel className="text-sm font-medium text-foreground">Confirmer le mot de passe <span className="text-red-500">*</span></FormLabel>
                 <FormControl>
                   <div className="relative h-14">
                     <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                    <Input type={showConfirmPassword ? "text" : "password"} placeholder="••••••••" className="pl-11 pr-12 bg-card border-card-border focus-visible:ring-primary h-full rounded-xl" {...field} />
+                    <Input type={showConfirmPassword ? "text" : "password"} placeholder="Répétez votre mot de passe" className="pl-11 pr-12 bg-card border-card-border focus-visible:ring-primary h-full rounded-xl" {...field} />
                     <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors">
                       {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
@@ -214,7 +296,6 @@ export default function Register() {
               </FormItem>
             )} />
 
-            {/* Terms */}
             <FormField control={form.control} name="terms" render={({ field }) => (
               <FormItem className="flex flex-row items-start space-x-3 space-y-0 pt-1">
                 <FormControl>
@@ -244,7 +325,7 @@ export default function Register() {
         <div className="relative my-6">
           <div className="absolute inset-0 flex items-center"><span className="w-full border-t border-card-border" /></div>
           <div className="relative flex justify-center text-xs tracking-wider font-medium text-muted-foreground uppercase">
-            <span className="bg-background px-4">OU CONTINUER AVEC</span>
+            <span className="bg-background px-4">Ou continuer avec</span>
           </div>
         </div>
 
@@ -260,7 +341,7 @@ export default function Register() {
         </div>
 
         <div className="mt-6 text-center text-sm font-medium text-muted-foreground">
-          Déjà un compte ?{" "}
+          Vous avez déjà un compte ?{" "}
           <Link href="/login" className="text-primary hover:underline font-semibold">Se connecter</Link>
         </div>
       </motion.div>

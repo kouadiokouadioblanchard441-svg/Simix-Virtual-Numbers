@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Link, useLocation } from "wouter";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
 import { FaGoogle, FaApple, FaFacebook } from "react-icons/fa";
-import { Phone, User, Eye, EyeOff } from "lucide-react";
+import { Phone, User, Eye, EyeOff, Search } from "lucide-react";
 import { motion } from "framer-motion";
 import { SimixLogo } from "@/components/simix-logo";
 
@@ -19,6 +19,82 @@ const formSchema = z.object({
   password: z.string().min(6, "Le mot de passe est requis"),
 });
 
+const ALL_COUNTRIES = [
+  { code: "ci", dial: "+225", label: "Côte d'Ivoire" },
+  { code: "sn", dial: "+221", label: "Sénégal" },
+  { code: "ml", dial: "+223", label: "Mali" },
+  { code: "bf", dial: "+226", label: "Burkina Faso" },
+  { code: "gn", dial: "+224", label: "Guinée" },
+  { code: "tg", dial: "+228", label: "Togo" },
+  { code: "bj", dial: "+229", label: "Bénin" },
+  { code: "ne", dial: "+227", label: "Niger" },
+  { code: "cm", dial: "+237", label: "Cameroun" },
+  { code: "ng", dial: "+234", label: "Nigéria" },
+  { code: "gh", dial: "+233", label: "Ghana" },
+  { code: "ke", dial: "+254", label: "Kenya" },
+  { code: "tz", dial: "+255", label: "Tanzanie" },
+  { code: "ug", dial: "+256", label: "Ouganda" },
+  { code: "rw", dial: "+250", label: "Rwanda" },
+  { code: "ma", dial: "+212", label: "Maroc" },
+  { code: "dz", dial: "+213", label: "Algérie" },
+  { code: "tn", dial: "+216", label: "Tunisie" },
+  { code: "eg", dial: "+20", label: "Égypte" },
+  { code: "ly", dial: "+218", label: "Libye" },
+  { code: "sd", dial: "+249", label: "Soudan" },
+  { code: "ss", dial: "+211", label: "Soudan du Sud" },
+  { code: "et", dial: "+251", label: "Éthiopie" },
+  { code: "so", dial: "+252", label: "Somalie" },
+  { code: "dj", dial: "+253", label: "Djibouti" },
+  { code: "er", dial: "+291", label: "Érythrée" },
+  { code: "za", dial: "+27", label: "Afrique du Sud" },
+  { code: "mz", dial: "+258", label: "Mozambique" },
+  { code: "zm", dial: "+260", label: "Zambie" },
+  { code: "zw", dial: "+263", label: "Zimbabwe" },
+  { code: "mw", dial: "+265", label: "Malawi" },
+  { code: "bw", dial: "+267", label: "Botswana" },
+  { code: "na", dial: "+264", label: "Namibie" },
+  { code: "sz", dial: "+268", label: "Eswatini" },
+  { code: "ls", dial: "+266", label: "Lesotho" },
+  { code: "mg", dial: "+261", label: "Madagascar" },
+  { code: "mu", dial: "+230", label: "Maurice" },
+  { code: "sc", dial: "+248", label: "Seychelles" },
+  { code: "km", dial: "+269", label: "Comores" },
+  { code: "ga", dial: "+241", label: "Gabon" },
+  { code: "gq", dial: "+240", label: "Guinée Équatoriale" },
+  { code: "st", dial: "+239", label: "Sao Tomé-et-Príncipe" },
+  { code: "cf", dial: "+236", label: "Centrafrique" },
+  { code: "td", dial: "+235", label: "Tchad" },
+  { code: "cg", dial: "+242", label: "Congo" },
+  { code: "cd", dial: "+243", label: "Congo RDC" },
+  { code: "ao", dial: "+244", label: "Angola" },
+  { code: "gw", dial: "+245", label: "Guinée-Bissau" },
+  { code: "cv", dial: "+238", label: "Cap-Vert" },
+  { code: "gm", dial: "+220", label: "Gambie" },
+  { code: "sl", dial: "+232", label: "Sierra Leone" },
+  { code: "lr", dial: "+231", label: "Liberia" },
+  { code: "bi", dial: "+257", label: "Burundi" },
+  { code: "mr", dial: "+222", label: "Mauritanie" },
+  { code: "fr", dial: "+33", label: "France" },
+  { code: "gb", dial: "+44", label: "Royaume-Uni" },
+  { code: "be", dial: "+32", label: "Belgique" },
+  { code: "us", dial: "+1", label: "États-Unis" },
+  { code: "ca", dial: "+1", label: "Canada" },
+];
+
+function FlagImg({ code }: { code: string }) {
+  const [err, setErr] = useState(false);
+  if (err) return <span className="text-sm w-5 inline-block text-center">{code.toUpperCase()}</span>;
+  return (
+    <img
+      src={`https://flagcdn.com/20x15/${code.toLowerCase()}.png`}
+      srcSet={`https://flagcdn.com/40x30/${code.toLowerCase()}.png 2x`}
+      alt={code}
+      onError={() => setErr(true)}
+      className="w-5 h-3.5 object-cover rounded-sm flex-shrink-0"
+    />
+  );
+}
+
 export default function Login() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
@@ -26,13 +102,23 @@ export default function Login() {
   const loginMutation = useLogin();
   const [method, setMethod] = useState<"phone" | "username">("phone");
   const [showPassword, setShowPassword] = useState(false);
+  const [selectedCountryCode, setSelectedCountryCode] = useState("ci");
+  const [showCountryPicker, setShowCountryPicker] = useState(false);
+  const [countrySearch, setCountrySearch] = useState("");
+
+  const selectedCountry = ALL_COUNTRIES.find(c => c.code === selectedCountryCode) ?? ALL_COUNTRIES[0];
+
+  const filteredCountries = useMemo(() => {
+    if (!countrySearch.trim()) return ALL_COUNTRIES;
+    return ALL_COUNTRIES.filter(c =>
+      c.label.toLowerCase().includes(countrySearch.toLowerCase()) ||
+      c.dial.includes(countrySearch)
+    );
+  }, [countrySearch]);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
-    defaultValues: {
-      identifier: "",
-      password: "",
-    },
+    defaultValues: { identifier: "", password: "" },
   });
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
@@ -49,7 +135,7 @@ export default function Login() {
     } catch (error: any) {
       toast({
         title: "Erreur de connexion",
-        description: error?.message || "Identifiants incorrects",
+        description: error?.message || "Identifiants incorrects. Veuillez vérifier vos informations.",
         variant: "destructive",
       });
     }
@@ -58,32 +144,32 @@ export default function Login() {
   return (
     <div className="min-h-[100dvh] bg-background flex flex-col px-6 py-12 relative overflow-hidden">
       <div className="absolute top-0 right-0 w-64 h-64 bg-primary/10 blur-[100px] rounded-full pointer-events-none" />
-      
+
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="flex-1 flex flex-col max-w-sm w-full mx-auto z-10 pt-4">
         <div className="flex justify-center mb-10">
           <SimixLogo size={28} />
         </div>
-        
+
         <div className="mb-8">
           <h1 className="text-2xl font-bold text-white mb-2 tracking-tight">Connexion</h1>
-          <p className="text-foreground text-base font-semibold mb-1">Bienvenue de retour !</p>
+          <p className="text-foreground text-base font-semibold mb-1">Bienvenue de retour</p>
           <p className="text-sm text-muted-foreground">Connectez-vous à votre compte pour continuer.</p>
         </div>
 
         <div className="flex p-1 bg-card border border-card-border rounded-full mb-8 h-12 items-center">
-          <button 
+          <button
             type="button"
             className={`flex-1 h-full flex items-center justify-center gap-2 text-sm font-medium rounded-full transition-all ${method === "phone" ? "bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-md" : "text-muted-foreground"}`}
             onClick={() => { setMethod("phone"); form.reset(); }}
           >
             <Phone className="w-4 h-4" /> Téléphone
           </button>
-          <button 
+          <button
             type="button"
             className={`flex-1 h-full flex items-center justify-center gap-2 text-sm font-medium rounded-full transition-all ${method === "username" ? "bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-md" : "text-muted-foreground"}`}
             onClick={() => { setMethod("username"); form.reset(); }}
           >
-            <User className="w-4 h-4" /> Nom d'utilisateur
+            <User className="w-4 h-4" /> Identifiant
           </button>
         </div>
 
@@ -94,24 +180,66 @@ export default function Login() {
               name="identifier"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-sm font-medium text-foreground">{method === "phone" ? "Numéro de téléphone" : "Nom d'utilisateur"}</FormLabel>
+                  <FormLabel className="text-sm font-medium text-foreground">
+                    {method === "phone" ? "Numéro de téléphone" : "Nom d'utilisateur ou email"}
+                  </FormLabel>
                   <FormControl>
                     {method === "phone" ? (
-                      <div className="flex h-14 bg-card border border-card-border rounded-xl overflow-hidden focus-within:ring-1 focus-within:ring-primary focus-within:border-primary transition-all">
-                        <div className="flex items-center justify-center px-4 bg-card border-r border-card-border text-sm font-medium text-foreground cursor-pointer hover:bg-secondary transition-colors">
-                          <span className="mr-1">🇨🇮</span> +225 ▾
-                        </div>
+                      <div className="flex h-14 bg-card border border-card-border rounded-xl overflow-visible focus-within:ring-1 focus-within:ring-primary focus-within:border-primary transition-all relative">
+                        <button
+                          type="button"
+                          onClick={() => { setShowCountryPicker(p => !p); setCountrySearch(""); }}
+                          className="flex items-center gap-1.5 px-3 bg-secondary/50 border-r border-card-border text-sm font-medium text-foreground hover:bg-secondary transition-colors shrink-0 rounded-l-xl"
+                        >
+                          <FlagImg code={selectedCountry.code} />
+                          <span className="font-mono text-xs">{selectedCountry.dial}</span>
+                          <span className="text-muted-foreground text-xs">▾</span>
+                        </button>
                         <input
                           {...field}
-                          className="flex-1 bg-transparent border-none px-4 text-foreground focus:outline-none placeholder:text-muted-foreground"
-                          placeholder="0701234567"
+                          type="tel"
+                          className="flex-1 bg-transparent border-none px-4 text-foreground focus:outline-none placeholder:text-muted-foreground rounded-r-xl"
+                          placeholder="07 01 23 45 67"
                         />
+                        {showCountryPicker && (
+                          <div className="absolute top-full left-0 mt-1 w-72 bg-card border border-card-border rounded-xl shadow-2xl z-50 overflow-hidden">
+                            <div className="p-2 border-b border-card-border">
+                              <div className="relative">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+                                <input
+                                  type="text"
+                                  value={countrySearch}
+                                  onChange={e => setCountrySearch(e.target.value)}
+                                  placeholder="Rechercher un pays..."
+                                  className="w-full pl-8 pr-3 py-2 text-xs bg-secondary rounded-lg border-none focus:outline-none text-foreground placeholder:text-muted-foreground"
+                                  autoFocus
+                                />
+                              </div>
+                            </div>
+                            <div className="max-h-56 overflow-y-auto">
+                              {filteredCountries.length === 0 ? (
+                                <div className="py-6 text-center text-xs text-muted-foreground">Aucun pays trouvé</div>
+                              ) : filteredCountries.map(c => (
+                                <button
+                                  key={c.code}
+                                  type="button"
+                                  onClick={() => { setSelectedCountryCode(c.code); setShowCountryPicker(false); setCountrySearch(""); }}
+                                  className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm text-left hover:bg-secondary transition-colors ${selectedCountryCode === c.code ? "bg-primary/10 text-primary" : "text-foreground"}`}
+                                >
+                                  <FlagImg code={c.code} />
+                                  <span className="flex-1 text-sm">{c.label}</span>
+                                  <span className="text-muted-foreground font-mono text-xs">{c.dial}</span>
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     ) : (
-                      <Input 
-                        placeholder="Entrez votre nom d'utilisateur" 
+                      <Input
+                        placeholder="Nom d'utilisateur ou adresse email"
                         className="bg-card border-card-border focus-visible:ring-primary h-14 rounded-xl"
-                        {...field} 
+                        {...field}
                       />
                     )}
                   </FormControl>
@@ -127,13 +255,13 @@ export default function Login() {
                   <FormLabel className="text-sm font-medium text-foreground">Mot de passe</FormLabel>
                   <FormControl>
                     <div className="relative h-14">
-                      <Input 
-                        type={showPassword ? "text" : "password"} 
-                        placeholder="••••••••" 
+                      <Input
+                        type={showPassword ? "text" : "password"}
+                        placeholder="Votre mot de passe"
                         className="bg-card border-card-border focus-visible:ring-primary h-full rounded-xl pr-12"
-                        {...field} 
+                        {...field}
                       />
-                      <button 
+                      <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
                         className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
@@ -146,13 +274,13 @@ export default function Login() {
                 </FormItem>
               )}
             />
-            
+
             <div className="flex justify-end pt-1 mb-6">
-              <Link href="#" className="text-sm text-primary font-medium">Mot de passe oublié ?</Link>
+              <Link href="#" className="text-sm text-primary font-medium hover:underline">Mot de passe oublié ?</Link>
             </div>
 
             <Button type="submit" className="w-full h-14 rounded-2xl text-base font-semibold bg-gradient-to-r from-violet-600 to-indigo-600 hover:opacity-90 text-white shadow-lg shadow-primary/25" disabled={loginMutation.isPending}>
-              {loginMutation.isPending ? "Connexion..." : "Se connecter"}
+              {loginMutation.isPending ? "Connexion en cours..." : "Se connecter"}
             </Button>
           </form>
         </Form>
@@ -162,7 +290,7 @@ export default function Login() {
             <span className="w-full border-t border-card-border" />
           </div>
           <div className="relative flex justify-center text-xs tracking-wider font-medium text-muted-foreground uppercase">
-            <span className="bg-background px-4">OU CONTINUER AVEC</span>
+            <span className="bg-background px-4">Ou continuer avec</span>
           </div>
         </div>
 
@@ -179,8 +307,8 @@ export default function Login() {
         </div>
 
         <div className="mt-auto pt-8 text-center text-sm font-medium text-muted-foreground">
-          Pas de compte ?{" "}
-          <Link href="/register" className="text-primary hover:underline">S'inscrire</Link>
+          Pas encore de compte ?{" "}
+          <Link href="/register" className="text-primary hover:underline font-semibold">Créer un compte</Link>
         </div>
       </motion.div>
     </div>

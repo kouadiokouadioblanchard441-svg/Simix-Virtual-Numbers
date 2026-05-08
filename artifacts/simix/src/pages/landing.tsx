@@ -1,115 +1,201 @@
-import { useEffect, useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { motion } from "framer-motion";
-import { useGetMe } from "@workspace/api-client-react";
 import { SimixLogo } from "@/components/simix-logo";
+import { ServiceIcon } from "@/components/service-icon";
 import phone3d from "@/assets/simix_phone_3d.png";
-import phonechat3d from "@/assets/simix_phone_chat_3d.png";
 import wallet3d from "@/assets/simix_wallet_3d.png";
 import screenDash from "@/assets/screen-dashboard.png";
 import screenWallet from "@/assets/screen-wallet.png";
 import screenCountries from "@/assets/screen-countries.png";
-import screenAuth from "@/assets/screen-auth.png";
 import {
   Shield, Zap, Globe, Smartphone, Lock, CheckCircle,
-  ArrowRight, Star, ChevronRight, MessageSquare, Users,
+  ArrowRight, ChevronRight, MessageSquare, Users,
   TrendingUp, Wifi, CreditCard, RefreshCw, Eye, Clock,
 } from "lucide-react";
 
 /* ─── Data ─── */
 const AFRICA_COUNTRIES = [
-  { flag: "🇩🇿", name: "Algérie" },
-  { flag: "🇦🇴", name: "Angola" },
-  { flag: "🇧🇯", name: "Bénin" },
-  { flag: "🇧🇼", name: "Botswana" },
-  { flag: "🇧🇫", name: "Burkina Faso" },
-  { flag: "🇧🇮", name: "Burundi" },
-  { flag: "🇨🇲", name: "Cameroun" },
-  { flag: "🇨🇻", name: "Cap-Vert" },
-  { flag: "🇨🇫", name: "Centrafrique" },
-  { flag: "🇰🇲", name: "Comores" },
-  { flag: "🇨🇬", name: "Congo" },
-  { flag: "🇨🇩", name: "Congo RDC" },
-  { flag: "🇨🇮", name: "Côte d'Ivoire" },
-  { flag: "🇩🇯", name: "Djibouti" },
-  { flag: "🇪🇬", name: "Égypte" },
-  { flag: "🇪🇷", name: "Érythrée" },
-  { flag: "🇸🇿", name: "Eswatini" },
-  { flag: "🇪🇹", name: "Éthiopie" },
-  { flag: "🇬🇦", name: "Gabon" },
-  { flag: "🇬🇲", name: "Gambie" },
-  { flag: "🇬🇭", name: "Ghana" },
-  { flag: "🇬🇳", name: "Guinée" },
-  { flag: "🇬🇶", name: "Guinée Éq." },
-  { flag: "🇬🇼", name: "Guinée-Bissau" },
-  { flag: "🇰🇪", name: "Kenya" },
-  { flag: "🇱🇸", name: "Lesotho" },
-  { flag: "🇱🇷", name: "Liberia" },
-  { flag: "🇱🇾", name: "Libye" },
-  { flag: "🇲🇬", name: "Madagascar" },
-  { flag: "🇲🇼", name: "Malawi" },
-  { flag: "🇲🇱", name: "Mali" },
-  { flag: "🇲🇦", name: "Maroc" },
-  { flag: "🇲🇷", name: "Mauritanie" },
-  { flag: "🇲🇺", name: "Maurice" },
-  { flag: "🇲🇿", name: "Mozambique" },
-  { flag: "🇳🇦", name: "Namibie" },
-  { flag: "🇳🇪", name: "Niger" },
-  { flag: "🇳🇬", name: "Nigéria" },
-  { flag: "🇺🇬", name: "Ouganda" },
-  { flag: "🇷🇼", name: "Rwanda" },
-  { flag: "🇸🇹", name: "São Tomé" },
-  { flag: "🇸🇳", name: "Sénégal" },
-  { flag: "🇸🇨", name: "Seychelles" },
-  { flag: "🇸🇱", name: "Sierra Leone" },
-  { flag: "🇸🇴", name: "Somalie" },
-  { flag: "🇿🇦", name: "Afrique du Sud" },
-  { flag: "🇸🇩", name: "Soudan" },
-  { flag: "🇸🇸", name: "Soudan du Sud" },
-  { flag: "🇹🇿", name: "Tanzanie" },
-  { flag: "🇹🇩", name: "Tchad" },
-  { flag: "🇹🇬", name: "Togo" },
-  { flag: "🇹🇳", name: "Tunisie" },
-  { flag: "🇿🇲", name: "Zambie" },
-  { flag: "🇿🇼", name: "Zimbabwe" },
+  { code: "dz", name: "Algérie" },
+  { code: "ao", name: "Angola" },
+  { code: "bj", name: "Bénin" },
+  { code: "bw", name: "Botswana" },
+  { code: "bf", name: "Burkina Faso" },
+  { code: "bi", name: "Burundi" },
+  { code: "cm", name: "Cameroun" },
+  { code: "cv", name: "Cap-Vert" },
+  { code: "cf", name: "Centrafrique" },
+  { code: "td", name: "Tchad" },
+  { code: "km", name: "Comores" },
+  { code: "cg", name: "Congo" },
+  { code: "cd", name: "Congo RDC" },
+  { code: "ci", name: "Côte d'Ivoire" },
+  { code: "dj", name: "Djibouti" },
+  { code: "eg", name: "Égypte" },
+  { code: "gq", name: "Guinée Équatoriale" },
+  { code: "er", name: "Érythrée" },
+  { code: "sz", name: "Eswatini" },
+  { code: "et", name: "Éthiopie" },
+  { code: "ga", name: "Gabon" },
+  { code: "gm", name: "Gambie" },
+  { code: "gh", name: "Ghana" },
+  { code: "gn", name: "Guinée" },
+  { code: "gw", name: "Guinée-Bissau" },
+  { code: "ke", name: "Kenya" },
+  { code: "ls", name: "Lesotho" },
+  { code: "lr", name: "Liberia" },
+  { code: "ly", name: "Libye" },
+  { code: "mg", name: "Madagascar" },
+  { code: "mw", name: "Malawi" },
+  { code: "ml", name: "Mali" },
+  { code: "ma", name: "Maroc" },
+  { code: "mr", name: "Mauritanie" },
+  { code: "mu", name: "Maurice" },
+  { code: "mz", name: "Mozambique" },
+  { code: "na", name: "Namibie" },
+  { code: "ne", name: "Niger" },
+  { code: "ng", name: "Nigéria" },
+  { code: "ug", name: "Ouganda" },
+  { code: "rw", name: "Rwanda" },
+  { code: "st", name: "Sao Tomé" },
+  { code: "sn", name: "Sénégal" },
+  { code: "sc", name: "Seychelles" },
+  { code: "sl", name: "Sierra Leone" },
+  { code: "so", name: "Somalie" },
+  { code: "za", name: "Afrique du Sud" },
+  { code: "sd", name: "Soudan" },
+  { code: "ss", name: "Soudan du Sud" },
+  { code: "tz", name: "Tanzanie" },
+  { code: "tg", name: "Togo" },
+  { code: "tn", name: "Tunisie" },
+  { code: "zm", name: "Zambie" },
+  { code: "zw", name: "Zimbabwe" },
 ];
 
 const OPERATORS = [
-  { name: "Orange Money", abbr: "OM", color: "#FF7A00", countries: "CI · SN · ML · BF · CM · GN", logoUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c8/Orange_logo.svg/200px-Orange_logo.svg.png" },
-  { name: "MTN Mobile Money", abbr: "MTN", color: "#FFCC00", countries: "GH · NG · CI · CM · UG · RW", logoUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9e/MTN_Logo.svg/200px-MTN_Logo.svg.png" },
-  { name: "Wave", abbr: "W", color: "#1BC5F4", countries: "SN · CI · BF · ML · GN", logoUrl: null },
-  { name: "Moov Money", abbr: "MV", color: "#E2001A", countries: "CI · BF · TG · BJ · NE", logoUrl: null },
-  { name: "M-Pesa", abbr: "MP", color: "#4CAF50", countries: "KE · TZ · MZ · UG · RW", logoUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/a/ab/M-pesa_logo.svg/200px-M-pesa_logo.svg.png" },
-  { name: "Airtel Money", abbr: "AM", color: "#FF0000", countries: "KE · NG · UG · TZ · ZM", logoUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8a/Airtel_logo.svg/200px-Airtel_logo.svg.png" },
-  { name: "Free Money", abbr: "FM", color: "#E30613", countries: "Sénégal", logoUrl: null },
-  { name: "Zamtel Kwacha", abbr: "ZK", color: "#007EC4", countries: "Zambie", logoUrl: null },
+  {
+    name: "Orange Money",
+    abbr: "OM",
+    color: "#FF7A00",
+    countries: "CI · SN · ML · BF · CM · GN · MR · MG",
+    logoUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c8/Orange_logo.svg/200px-Orange_logo.svg.png",
+    bg: "#FF7A00",
+  },
+  {
+    name: "MTN Mobile Money",
+    abbr: "MTN",
+    color: "#FFCC00",
+    countries: "GH · NG · CI · CM · UG · RW · BJ · GN",
+    logoUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9e/MTN_Logo.svg/200px-MTN_Logo.svg.png",
+    bg: "#FFCC00",
+  },
+  {
+    name: "Wave",
+    abbr: "WV",
+    color: "#1BC5F4",
+    countries: "SN · CI · BF · ML · GN · GM",
+    logoUrl: null,
+    bg: "#1BC5F4",
+  },
+  {
+    name: "Moov Money",
+    abbr: "MV",
+    color: "#E2001A",
+    countries: "CI · BF · TG · BJ · NE · MG",
+    logoUrl: null,
+    bg: "#E2001A",
+  },
+  {
+    name: "M-Pesa",
+    abbr: "MP",
+    color: "#4CAF50",
+    countries: "KE · TZ · MZ · UG · RW · GH · CD",
+    logoUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/a/ab/M-pesa_logo.svg/200px-M-pesa_logo.svg.png",
+    bg: "#4CAF50",
+  },
+  {
+    name: "Airtel Money",
+    abbr: "AM",
+    color: "#FF0000",
+    countries: "KE · NG · UG · TZ · ZM · MW · MG",
+    logoUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8a/Airtel_logo.svg/200px-Airtel_logo.svg.png",
+    bg: "#FF0000",
+  },
+  {
+    name: "Free Money",
+    abbr: "FM",
+    color: "#E30613",
+    countries: "Sénégal",
+    logoUrl: null,
+    bg: "#E30613",
+  },
+  {
+    name: "EcoCash",
+    abbr: "EC",
+    color: "#F7941D",
+    countries: "Zimbabwe",
+    logoUrl: null,
+    bg: "#F7941D",
+  },
+  {
+    name: "Zamtel Kwacha",
+    abbr: "ZK",
+    color: "#007EC4",
+    countries: "Zambie",
+    logoUrl: null,
+    bg: "#007EC4",
+  },
+  {
+    name: "Vodacom M-Pesa",
+    abbr: "VM",
+    color: "#E60000",
+    countries: "TZ · MZ · CD · LS",
+    logoUrl: null,
+    bg: "#E60000",
+  },
+  {
+    name: "Tigo Pesa",
+    abbr: "TP",
+    color: "#0078C8",
+    countries: "TZ · GH · SN",
+    logoUrl: null,
+    bg: "#0078C8",
+  },
+  {
+    name: "Equitel",
+    abbr: "EQ",
+    color: "#00A651",
+    countries: "Kenya",
+    logoUrl: null,
+    bg: "#00A651",
+  },
 ];
 
 const SERVICES = [
-  { name: "WhatsApp", color: "#25D366", icon: "💬" },
-  { name: "Telegram", color: "#2AABEE", icon: "✈️" },
-  { name: "Google", color: "#4285F4", icon: "🔍" },
-  { name: "Facebook", color: "#1877F2", icon: "📘" },
-  { name: "Instagram", color: "#E1306C", icon: "📸" },
-  { name: "TikTok", color: "#FF0050", icon: "🎵" },
-  { name: "X / Twitter", color: "#1a1a1a", icon: "🐦" },
-  { name: "Netflix", color: "#E50914", icon: "🎬" },
-  { name: "Amazon", color: "#FF9900", icon: "📦" },
-  { name: "PayPal", color: "#003087", icon: "💳" },
-  { name: "Binance", color: "#F3BA2F", icon: "₿" },
-  { name: "Discord", color: "#5865F2", icon: "🎮" },
-  { name: "Snapchat", color: "#FFFC00", textDark: true, icon: "👻" },
-  { name: "Spotify", color: "#1DB954", icon: "🎵" },
-  { name: "Uber", color: "#000000", icon: "🚗" },
-  { name: "LinkedIn", color: "#0077B5", icon: "💼" },
-  { name: "Microsoft", color: "#0078D4", icon: "🪟" },
-  { name: "Steam", color: "#1b2838", icon: "🎮" },
-  { name: "Coinbase", color: "#0052FF", icon: "🪙" },
-  { name: "Airbnb", color: "#FF5A5F", icon: "🏠" },
-  { name: "Booking", color: "#003580", icon: "🛏️" },
-  { name: "Shein", color: "#000000", icon: "👗" },
-  { name: "OLX", color: "#3F2A8F", icon: "🛒" },
-  { name: "+500 autres", color: "#7C3AED", icon: "✨" },
+  { name: "WhatsApp", slug: "whatsapp", color: "#25D366", logoUrl: null },
+  { name: "Telegram", slug: "telegram", color: "#2AABEE", logoUrl: null },
+  { name: "Google", slug: "google", color: "#4285F4", logoUrl: null },
+  { name: "Facebook", slug: "facebook", color: "#1877F2", logoUrl: null },
+  { name: "Instagram", slug: "instagram", color: "#E1306C", logoUrl: null },
+  { name: "TikTok", slug: "tiktok", color: "#FF0050", logoUrl: null },
+  { name: "X / Twitter", slug: "x", color: "#1a1a1a", logoUrl: null },
+  { name: "Discord", slug: "discord", color: "#5865F2", logoUrl: null },
+  { name: "Snapchat", slug: "snapchat", color: "#FFFC00", logoUrl: null },
+  { name: "Microsoft", slug: "microsoft", color: "#0078D4", logoUrl: null },
+  { name: "Netflix", slug: "netflix", color: "#E50914", logoUrl: "https://cdn.simpleicons.org/netflix/E50914" },
+  { name: "Amazon", slug: "amazon", color: "#FF9900", logoUrl: "https://cdn.simpleicons.org/amazon/FF9900" },
+  { name: "PayPal", slug: "paypal", color: "#003087", logoUrl: "https://cdn.simpleicons.org/paypal/003087" },
+  { name: "Binance", slug: "binance", color: "#F3BA2F", logoUrl: "https://cdn.simpleicons.org/binance/F3BA2F" },
+  { name: "Spotify", slug: "spotify", color: "#1DB954", logoUrl: "https://cdn.simpleicons.org/spotify/1DB954" },
+  { name: "Uber", slug: "uber", color: "#000000", logoUrl: "https://cdn.simpleicons.org/uber/FFFFFF" },
+  { name: "LinkedIn", slug: "linkedin", color: "#0077B5", logoUrl: "https://cdn.simpleicons.org/linkedin/0077B5" },
+  { name: "Steam", slug: "steam", color: "#1b2838", logoUrl: "https://cdn.simpleicons.org/steam/FFFFFF" },
+  { name: "Coinbase", slug: "coinbase", color: "#0052FF", logoUrl: "https://cdn.simpleicons.org/coinbase/0052FF" },
+  { name: "Airbnb", slug: "airbnb", color: "#FF5A5F", logoUrl: "https://cdn.simpleicons.org/airbnb/FF5A5F" },
+  { name: "Booking.com", slug: "booking", color: "#003580", logoUrl: "https://cdn.simpleicons.org/bookingdotcom/FFFFFF" },
+  { name: "Shein", slug: "shein", color: "#000000", logoUrl: "https://cdn.simpleicons.org/shein/FFFFFF" },
+  { name: "OLX", slug: "olx", color: "#3F2A8F", logoUrl: "https://cdn.simpleicons.org/olx/FFFFFF" },
+  { name: "+500 autres", slug: "", color: "#7C3AED", logoUrl: null },
 ];
 
 const STEPS = [
@@ -117,7 +203,7 @@ const STEPS = [
     number: "01",
     icon: <Globe className="w-6 h-6" />,
     title: "Choisissez un pays et un service",
-    desc: "Sélectionnez le pays du numéro désiré parmi 54 nations africaines et au-delà, puis choisissez le service (WhatsApp, Google, Telegram…).",
+    desc: "Sélectionnez le pays du numéro désiré parmi 54 nations africaines et au-delà, puis choisissez le service à vérifier.",
     color: "#7C3AED",
   },
   {
@@ -131,7 +217,7 @@ const STEPS = [
     number: "03",
     icon: <CreditCard className="w-6 h-6" />,
     title: "Payez via Mobile Money en FCFA",
-    desc: "Rechargez votre solde avec Orange Money, MTN, Wave ou tout autre opérateur local. Pas de carte bancaire requise.",
+    desc: "Rechargez votre solde avec Orange Money, MTN, Wave ou tout autre opérateur local. Aucune carte bancaire requise.",
     color: "#F59E0B",
   },
 ];
@@ -145,15 +231,70 @@ const SECURITY_FEATURES = [
   { icon: <CheckCircle className="w-5 h-5" />, title: "Numéros vérifiés actifs", desc: "Chaque numéro est testé et vérifié avant d'être proposé à la vente." },
 ];
 
-/* ─── Small logo component ─── */
+/* ─── Flag image ─── */
+function FlagImg({ code, size = 24 }: { code: string; size?: number }) {
+  const [err, setErr] = useState(false);
+  if (err) {
+    return <span className="text-base">{String.fromCodePoint(...[...code.toUpperCase()].map(c => 0x1F1E6 + c.charCodeAt(0) - 65))}</span>;
+  }
+  return (
+    <img
+      src={`https://flagcdn.com/24x18/${code.toLowerCase()}.png`}
+      srcSet={`https://flagcdn.com/48x36/${code.toLowerCase()}.png 2x`}
+      alt={code}
+      onError={() => setErr(true)}
+      style={{ width: size, height: Math.round(size * 0.75) }}
+      className="object-cover rounded-sm flex-shrink-0"
+    />
+  );
+}
+
+/* ─── Operator logo ─── */
 function OperatorLogoImg({ op }: { op: typeof OPERATORS[0] }) {
   const [err, setErr] = useState(false);
   if (op.logoUrl && !err) {
-    return <img src={op.logoUrl} alt={op.name} onError={() => setErr(true)} className="w-9 h-9 object-contain" />;
+    return (
+      <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center overflow-hidden p-1 flex-shrink-0">
+        <img src={op.logoUrl} alt={op.name} onError={() => setErr(true)} className="w-full h-full object-contain" />
+      </div>
+    );
   }
   return (
-    <div className="w-9 h-9 rounded-lg flex items-center justify-center text-white font-bold text-xs" style={{ backgroundColor: op.color }}>
+    <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-xs flex-shrink-0" style={{ backgroundColor: op.color }}>
       {op.abbr}
+    </div>
+  );
+}
+
+/* ─── Service logo for landing grid ─── */
+function LandingServiceIcon({ service }: { service: typeof SERVICES[0] }) {
+  const [err, setErr] = useState(false);
+  const knownSlugs = ["whatsapp","telegram","facebook","instagram","tiktok","x","discord","snapchat","signal","apple","google","microsoft"];
+
+  if (!service.slug) {
+    return (
+      <div className="w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold text-lg" style={{ background: "linear-gradient(135deg,#7C3AED,#6366F1)" }}>
+        +
+      </div>
+    );
+  }
+
+  if (knownSlugs.includes(service.slug)) {
+    return <ServiceIcon name={service.name} slug={service.slug} size={48} rounded="xl" />;
+  }
+
+  if (service.logoUrl && !err) {
+    const darkBg = ["uber","steam","shein","olx","booking"].includes(service.slug);
+    return (
+      <div className="w-12 h-12 rounded-xl flex items-center justify-center overflow-hidden p-2 flex-shrink-0" style={{ background: darkBg ? service.color : "#fff" }}>
+        <img src={service.logoUrl} alt={service.name} onError={() => setErr(true)} className="w-full h-full object-contain" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold text-xl" style={{ background: service.color }}>
+      {service.name.charAt(0)}
     </div>
   );
 }
@@ -163,34 +304,68 @@ function Section({ children, className = "", id }: { children: React.ReactNode; 
   return <section id={id} className={`px-4 sm:px-8 lg:px-16 xl:px-24 ${className}`}>{children}</section>;
 }
 
-/* ─── Marquee ticker ─── */
+/* ─── Countries ticker ─── */
 function CountriesTicker() {
   const doubled = [...AFRICA_COUNTRIES, ...AFRICA_COUNTRIES];
   const doubled2 = [...AFRICA_COUNTRIES, ...AFRICA_COUNTRIES];
   return (
     <div className="py-10 overflow-hidden border-y border-zinc-800/60 bg-zinc-950/50">
       <div className="flex items-center gap-6 mb-4 px-4 sm:px-8 lg:px-16 xl:px-24">
-        <span className="text-zinc-400 text-sm font-semibold uppercase tracking-widest whitespace-nowrap">54 pays africains</span>
+        <span className="text-zinc-400 text-sm font-semibold uppercase tracking-widest whitespace-nowrap">54 pays africains couverts</span>
         <div className="h-px flex-1 bg-gradient-to-r from-violet-600/40 to-transparent" />
       </div>
-      {/* Row 1 — left */}
       <div className="overflow-hidden mb-3">
         <div className="marquee-track">
           {doubled.map((c, i) => (
-            <div key={i} className="flex items-center gap-2 px-4 py-2 mx-1.5 bg-zinc-900/80 border border-zinc-800/60 rounded-full whitespace-nowrap flex-shrink-0">
-              <span className="text-lg">{c.flag}</span>
+            <div key={i} className="flex items-center gap-2.5 px-4 py-2 mx-1.5 bg-zinc-900/80 border border-zinc-800/60 rounded-full whitespace-nowrap flex-shrink-0">
+              <FlagImg code={c.code} size={22} />
               <span className="text-sm text-zinc-300 font-medium">{c.name}</span>
             </div>
           ))}
         </div>
       </div>
-      {/* Row 2 — right (reverse) */}
       <div className="overflow-hidden">
         <div className="marquee-track-reverse">
           {doubled2.map((c, i) => (
-            <div key={i} className="flex items-center gap-2 px-4 py-2 mx-1.5 bg-zinc-900/60 border border-violet-900/30 rounded-full whitespace-nowrap flex-shrink-0">
-              <span className="text-lg">{c.flag}</span>
+            <div key={i} className="flex items-center gap-2.5 px-4 py-2 mx-1.5 bg-zinc-900/60 border border-violet-900/30 rounded-full whitespace-nowrap flex-shrink-0">
+              <FlagImg code={c.code} size={22} />
               <span className="text-sm text-zinc-400 font-medium">{c.name}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ─── Operators ticker ─── */
+function OperatorsTicker() {
+  const doubled = [...OPERATORS, ...OPERATORS];
+  const doubled2 = [...OPERATORS, ...OPERATORS];
+  return (
+    <div className="py-10 overflow-hidden bg-zinc-950/30">
+      <div className="overflow-hidden mb-3">
+        <div className="marquee-track">
+          {doubled.map((op, i) => (
+            <div key={i} className="flex items-center gap-3 px-4 py-2.5 mx-2 bg-zinc-900/80 border border-zinc-800/60 rounded-2xl whitespace-nowrap flex-shrink-0 min-w-[180px]">
+              <OperatorLogoImg op={op} />
+              <div className="min-w-0">
+                <div className="text-sm font-bold text-white truncate">{op.name}</div>
+                <div className="text-xs text-zinc-500 truncate">{op.countries}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className="overflow-hidden">
+        <div className="marquee-track-reverse">
+          {doubled2.map((op, i) => (
+            <div key={i} className="flex items-center gap-3 px-4 py-2.5 mx-2 bg-zinc-900/60 border border-amber-900/20 rounded-2xl whitespace-nowrap flex-shrink-0 min-w-[180px]">
+              <OperatorLogoImg op={op} />
+              <div className="min-w-0">
+                <div className="text-sm font-bold text-white truncate">{op.name}</div>
+                <div className="text-xs text-zinc-500 truncate">{op.countries}</div>
+              </div>
             </div>
           ))}
         </div>
@@ -225,7 +400,7 @@ function Navbar() {
             Se connecter
           </button>
           <button onClick={() => setLocation("/register")} className="px-4 py-2 text-sm font-semibold bg-violet-600 hover:bg-violet-500 text-white rounded-xl transition-colors shadow-lg shadow-violet-600/20">
-            S'inscrire
+            Commencer gratuitement
           </button>
         </div>
       </div>
@@ -238,16 +413,13 @@ function Hero() {
   const [, setLocation] = useLocation();
   return (
     <div className="relative min-h-[100dvh] flex flex-col justify-center landing-grid overflow-hidden pt-24 pb-16">
-      {/* Glow orbs */}
       <div className="glow-orb absolute -top-20 -left-20 w-[600px] h-[600px] bg-violet-600/15" />
       <div className="glow-orb absolute top-1/2 -right-40 w-[500px] h-[400px] bg-purple-800/20" />
       <div className="glow-orb absolute bottom-0 left-1/3 w-[400px] h-[300px] bg-pink-900/15" />
 
       <Section className="relative z-10">
         <div className="grid lg:grid-cols-2 gap-12 items-center">
-          {/* Left — text */}
           <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7 }}>
-            {/* Badge */}
             <div className="inline-flex items-center gap-2 px-4 py-2 bg-violet-600/15 border border-violet-600/30 rounded-full text-violet-300 text-sm font-medium mb-6">
               <span className="w-1.5 h-1.5 rounded-full bg-violet-400 animate-pulse" />
               Fintech 100% Africaine — Paiements Mobile Money
@@ -267,7 +439,6 @@ function Hero() {
               payés en <strong className="text-white">FCFA via Orange Money, MTN, Wave</strong> et tous les opérateurs Mobile Money du continent.
             </p>
 
-            {/* CTAs */}
             <div className="flex flex-wrap gap-3 mb-10">
               <button
                 onClick={() => setLocation("/register")}
@@ -283,15 +454,14 @@ function Hero() {
               </button>
             </div>
 
-            {/* Trust stats */}
             <div className="grid grid-cols-3 gap-4">
               {[
-                { value: "54", label: "Pays africains", icon: "🌍" },
-                { value: "11+", label: "Opérateurs Mobile Money", icon: "💳" },
-                { value: "500+", label: "Services supportés", icon: "✅" },
+                { value: "54", label: "Pays africains", icon: <Globe className="w-5 h-5 text-violet-400" /> },
+                { value: "11+", label: "Opérateurs Mobile Money", icon: <CreditCard className="w-5 h-5 text-pink-400" /> },
+                { value: "500+", label: "Services supportés", icon: <CheckCircle className="w-5 h-5 text-emerald-400" /> },
               ].map((s, i) => (
                 <div key={i} className="text-center p-3 rounded-xl bg-zinc-900/60 border border-zinc-800/60">
-                  <div className="text-xl mb-0.5">{s.icon}</div>
+                  <div className="flex justify-center mb-1">{s.icon}</div>
                   <div className="text-xl font-bold text-white">{s.value}</div>
                   <div className="text-xs text-zinc-500 leading-tight">{s.label}</div>
                 </div>
@@ -299,7 +469,6 @@ function Hero() {
             </div>
           </motion.div>
 
-          {/* Right — phone mockups */}
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -307,36 +476,31 @@ function Hero() {
             className="hidden lg:flex items-center justify-center relative"
           >
             <div className="relative w-full max-w-[440px] h-[520px]">
-              {/* Main phone */}
               <div className="absolute left-1/2 -translate-x-1/2 top-0 z-10 float-slow">
                 <img src={phone3d} alt="Simix App" className="w-[240px] drop-shadow-2xl" />
               </div>
-              {/* Dashboard screen card */}
               <div className="absolute right-0 top-24 z-20 float-fast">
                 <div className="glass rounded-2xl overflow-hidden shadow-2xl shadow-violet-900/30 w-[130px]">
                   <img src={screenDash} alt="Dashboard" className="w-full" />
                 </div>
               </div>
-              {/* Wallet screen card */}
               <div className="absolute left-0 bottom-8 z-20 float-slow" style={{ animationDelay: "1s" }}>
                 <div className="glass rounded-2xl overflow-hidden shadow-2xl shadow-purple-900/30 w-[120px]">
                   <img src={screenWallet} alt="Wallet" className="w-full" />
                 </div>
               </div>
-              {/* Notification bubble */}
               <div className="absolute right-4 bottom-28 z-30">
                 <div className="glass px-4 py-2.5 rounded-2xl shadow-lg border border-emerald-500/20 flex items-center gap-2">
                   <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
                   <div>
-                    <div className="text-xs font-semibold text-white">SMS reçu !</div>
+                    <div className="text-xs font-semibold text-white">SMS reçu</div>
                     <div className="text-[10px] text-zinc-400">Code : <span className="text-emerald-400 font-mono font-bold">847291</span></div>
                   </div>
                 </div>
               </div>
-              {/* Currency bubble */}
               <div className="absolute left-4 top-20 z-30">
                 <div className="glass px-3 py-2 rounded-xl shadow-lg border border-amber-500/20 flex items-center gap-1.5">
-                  <span className="text-base">💰</span>
+                  <Zap className="w-4 h-4 text-amber-400" />
                   <div>
                     <div className="text-xs text-zinc-400">Solde</div>
                     <div className="text-sm font-bold text-white">5 000 <span className="text-[10px] text-zinc-500">FCFA</span></div>
@@ -348,7 +512,6 @@ function Hero() {
         </div>
       </Section>
 
-      {/* Scroll hint */}
       <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1 text-zinc-600">
         <div className="w-5 h-9 border-2 border-zinc-700 rounded-full flex justify-center pt-1.5">
           <motion.div animate={{ y: [0, 8, 0] }} transition={{ duration: 1.5, repeat: Infinity }} className="w-1 h-1.5 bg-zinc-500 rounded-full" />
@@ -364,7 +527,7 @@ function StatsBar() {
     { icon: <Globe className="w-5 h-5 text-violet-400" />, value: "54", label: "Pays africains couverts" },
     { icon: <Smartphone className="w-5 h-5 text-pink-400" />, value: "11+", label: "Opérateurs Mobile Money" },
     { icon: <MessageSquare className="w-5 h-5 text-emerald-400" />, value: "500+", label: "Services vérifiables" },
-    { icon: <Zap className="w-5 h-5 text-amber-400" />, value: "< 30s", label: "Réception du SMS" },
+    { icon: <Zap className="w-5 h-5 text-amber-400" />, value: "Moins de 30s", label: "Réception du SMS" },
     { icon: <TrendingUp className="w-5 h-5 text-sky-400" />, value: "100%", label: "Paiement Mobile Money" },
     { icon: <Shield className="w-5 h-5 text-rose-400" />, value: "SSL", label: "Connexion sécurisée" },
   ];
@@ -375,7 +538,7 @@ function StatsBar() {
           {stats.map((s, i) => (
             <div key={i} className="flex flex-col items-center py-6 gap-2 text-center px-3">
               {s.icon}
-              <div className="text-2xl font-extrabold text-white">{s.value}</div>
+              <div className="text-xl font-extrabold text-white">{s.value}</div>
               <div className="text-xs text-zinc-500 leading-tight">{s.label}</div>
             </div>
           ))}
@@ -391,7 +554,7 @@ function HowItWorks() {
     <Section className="py-24" id="comment">
       <div className="text-center mb-14">
         <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-violet-600/10 border border-violet-600/20 rounded-full text-violet-400 text-xs font-semibold uppercase tracking-widest mb-4">
-          Simple & rapide
+          Simple et rapide
         </div>
         <h2 className="text-3xl sm:text-4xl font-extrabold text-white mb-4">Comment ça marche ?</h2>
         <p className="text-zinc-400 text-lg max-w-2xl mx-auto">
@@ -400,9 +563,7 @@ function HowItWorks() {
       </div>
 
       <div className="grid md:grid-cols-3 gap-8 relative">
-        {/* connector line */}
         <div className="hidden md:block absolute top-16 left-[22%] right-[22%] h-px bg-gradient-to-r from-violet-600/40 via-pink-600/40 to-amber-500/40" />
-
         {STEPS.map((step, i) => (
           <motion.div
             key={i}
@@ -412,7 +573,6 @@ function HowItWorks() {
             transition={{ delay: i * 0.15 }}
             className="relative bg-zinc-900/60 border border-zinc-800 rounded-2xl p-7 hover:border-zinc-700 transition-colors"
           >
-            {/* Step number badge */}
             <div className="absolute -top-3 left-6">
               <span className="px-2.5 py-0.5 text-xs font-bold rounded-full text-white" style={{ backgroundColor: step.color }}>
                 {step.number}
@@ -433,48 +593,30 @@ function HowItWorks() {
 /* ─── Payment Operators ─── */
 function PaymentOperators() {
   return (
-    <Section className="py-24 bg-gradient-to-b from-transparent via-zinc-950/50 to-transparent" id="operateurs">
-      <div className="text-center mb-14">
-        <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-amber-500/10 border border-amber-500/20 rounded-full text-amber-400 text-xs font-semibold uppercase tracking-widest mb-4">
-          Mobile Money
+    <div id="operateurs" className="py-24 bg-gradient-to-b from-transparent via-zinc-950/50 to-transparent">
+      <Section>
+        <div className="text-center mb-14">
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-amber-500/10 border border-amber-500/20 rounded-full text-amber-400 text-xs font-semibold uppercase tracking-widest mb-4">
+            Mobile Money
+          </div>
+          <h2 className="text-3xl sm:text-4xl font-extrabold text-white mb-4">Payez avec votre opérateur local</h2>
+          <p className="text-zinc-400 text-lg max-w-2xl mx-auto">
+            Tous les grands opérateurs Mobile Money d'Afrique acceptés. Aucune carte bancaire, aucune devise étrangère requise.
+          </p>
         </div>
-        <h2 className="text-3xl sm:text-4xl font-extrabold text-white mb-4">Payez avec votre opérateur local</h2>
-        <p className="text-zinc-400 text-lg max-w-2xl mx-auto">
-          Tous les grands opérateurs Mobile Money d'Afrique acceptés. Pas de carte bancaire, pas de devises étrangères.
-        </p>
-      </div>
+      </Section>
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-        {OPERATORS.map((op, i) => (
-          <motion.div
-            key={i}
-            initial={{ opacity: 0, scale: 0.95 }}
-            whileInView={{ opacity: 1, scale: 1 }}
-            viewport={{ once: true }}
-            transition={{ delay: i * 0.07 }}
-            className="service-card bg-zinc-900/80 border border-zinc-800 rounded-2xl p-5 hover:border-zinc-700 transition-colors cursor-default"
-          >
-            <div className="flex items-center gap-3 mb-3">
-              <OperatorLogoImg op={op} />
-              <div className="min-w-0">
-                <div className="font-bold text-white text-sm truncate">{op.name}</div>
-              </div>
-            </div>
-            <div className="text-xs text-zinc-500 leading-relaxed">{op.countries}</div>
-            <div className="mt-3 h-1 rounded-full" style={{ background: `linear-gradient(to right, ${op.color}40, ${op.color}15)` }}>
-              <div className="h-full rounded-full w-3/4" style={{ backgroundColor: op.color }} />
-            </div>
-          </motion.div>
-        ))}
-      </div>
+      <OperatorsTicker />
 
-      <div className="mt-10 text-center">
-        <p className="text-zinc-500 text-sm">
-          🌍 Disponible dans <strong className="text-white">54 pays africains</strong> — Paiements en{" "}
-          <strong className="text-violet-400">FCFA, KES, GHS, NGN</strong> et toutes monnaies locales
-        </p>
-      </div>
-    </Section>
+      <Section className="mt-10">
+        <div className="text-center">
+          <p className="text-zinc-500 text-sm">
+            Disponible dans <strong className="text-white">54 pays africains</strong> — Paiements en{" "}
+            <strong className="text-violet-400">FCFA, KES, GHS, NGN</strong> et toutes monnaies locales
+          </p>
+        </div>
+      </Section>
+    </div>
   );
 }
 
@@ -489,7 +631,7 @@ function AppShowcase() {
               Interface intuitive
             </div>
             <h2 className="text-3xl sm:text-4xl font-extrabold text-white mb-5">
-              Une app pensée pour <span className="text-violet-400">l'Afrique</span>
+              Une application pensée pour <span className="text-violet-400">l'Afrique</span>
             </h2>
             <p className="text-zinc-400 text-lg leading-relaxed mb-8">
               Interface claire, légère et optimisée pour les connexions mobiles africaines. Fonctionne même avec une connexion 3G.
@@ -497,8 +639,8 @@ function AppShowcase() {
             <ul className="space-y-4">
               {[
                 { icon: <Smartphone className="w-4 h-4" />, text: "Interface mobile-first, compatible tous smartphones" },
-                { icon: <Wifi className="w-4 h-4" />, text: "Optimisé pour les réseaux 3G/4G africains" },
-                { icon: <Globe className="w-4 h-4" />, text: "Disponible en français, anglais, et bientôt en langue locales" },
+                { icon: <Wifi className="w-4 h-4" />, text: "Optimisé pour les réseaux 3G et 4G africains" },
+                { icon: <Globe className="w-4 h-4" />, text: "Disponible en français, anglais, et bientôt en langues locales" },
                 { icon: <Users className="w-4 h-4" />, text: "Adapté aux usages quotidiens des Africains connectés" },
               ].map((item, i) => (
                 <li key={i} className="flex items-start gap-3">
@@ -511,7 +653,6 @@ function AppShowcase() {
             </ul>
           </motion.div>
 
-          {/* Screenshots */}
           <motion.div
             initial={{ opacity: 0, x: 30 }}
             whileInView={{ opacity: 1, x: 0 }}
@@ -545,7 +686,6 @@ function AfricaVision() {
   return (
     <Section className="py-24">
       <div className="relative rounded-3xl overflow-hidden border border-zinc-800/60">
-        {/* Background photo */}
         <div
           className="absolute inset-0 bg-cover bg-center bg-no-repeat"
           style={{ backgroundImage: "url(https://images.unsplash.com/photo-1561336313-0bd5e0b27ec8?w=1400&q=80&auto=format&fit=crop)" }}
@@ -554,7 +694,7 @@ function AfricaVision() {
         <div className="relative z-10 p-8 sm:p-12 lg:p-16 grid lg:grid-cols-2 gap-10 items-center">
           <div>
             <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-amber-500/15 border border-amber-500/30 rounded-full text-amber-400 text-xs font-semibold uppercase tracking-widest mb-6">
-              🌍 Notre vision pour l'Afrique
+              Notre vision pour l'Afrique
             </div>
             <h2 className="text-3xl sm:text-4xl font-extrabold text-white mb-6 leading-tight">
               L'inclusion numérique,{" "}
@@ -574,7 +714,7 @@ function AfricaVision() {
               {[
                 { value: "800M+", label: "Utilisateurs Mobile Money en Afrique", color: "text-amber-400" },
                 { value: "54", label: "Nations africaines, une seule plateforme", color: "text-violet-400" },
-                { value: "0 XAF", label: "Frais de création de compte", color: "text-emerald-400" },
+                { value: "Gratuit", label: "Création de compte sans frais", color: "text-emerald-400" },
                 { value: "30s", label: "Temps moyen de livraison SMS", color: "text-pink-400" },
               ].map((s, i) => (
                 <div key={i} className="glass p-4 rounded-xl">
@@ -585,7 +725,6 @@ function AfricaVision() {
             </div>
           </div>
 
-          {/* Right side: floating wallet */}
           <div className="hidden lg:flex justify-center items-center">
             <div className="relative">
               <div className="float-slow">
@@ -611,7 +750,7 @@ function ServicesGrid() {
     <Section className="py-24" id="services">
       <div className="text-center mb-14">
         <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-emerald-600/10 border border-emerald-600/20 rounded-full text-emerald-400 text-xs font-semibold uppercase tracking-widest mb-4">
-          500+ plateformes
+          Plus de 500 plateformes
         </div>
         <h2 className="text-3xl sm:text-4xl font-extrabold text-white mb-4">Vérifiez n'importe quel service</h2>
         <p className="text-zinc-400 text-lg max-w-2xl mx-auto">
@@ -634,8 +773,10 @@ function ServicesGrid() {
               className="absolute inset-0 opacity-0 group-hover:opacity-10 transition-opacity"
               style={{ background: `radial-gradient(circle at center, ${s.color}, transparent)` }}
             />
-            <span className="text-2xl relative z-10">{s.icon}</span>
-            <span className={`text-xs font-semibold text-center leading-tight relative z-10 ${s.textDark ? "text-zinc-800" : "text-zinc-300"}`}>{s.name}</span>
+            <div className="relative z-10 flex-shrink-0">
+              <LandingServiceIcon service={s} />
+            </div>
+            <span className="text-xs font-semibold text-center leading-tight relative z-10 text-zinc-300">{s.name}</span>
             <div className="absolute bottom-0 left-0 right-0 h-0.5 opacity-60" style={{ backgroundColor: s.color }} />
           </motion.div>
         ))}
@@ -651,7 +792,7 @@ function Security() {
       <div className="grid lg:grid-cols-2 gap-16 items-center">
         <motion.div initial={{ opacity: 0, x: -20 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }}>
           <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-sky-600/10 border border-sky-600/20 rounded-full text-sky-400 text-xs font-semibold uppercase tracking-widest mb-4">
-            Confiance & Sécurité
+            Confiance et Sécurité
           </div>
           <h2 className="text-3xl sm:text-4xl font-extrabold text-white mb-5">
             Votre sécurité,{" "}
@@ -706,7 +847,9 @@ function FinalCTA() {
       >
         <div className="glow-orb absolute -top-20 left-1/2 -translate-x-1/2 w-[500px] h-[300px] bg-violet-600/20" />
         <div className="relative z-10">
-          <div className="text-5xl mb-4">🚀</div>
+          <div className="w-16 h-16 rounded-2xl bg-violet-600/20 border border-violet-500/30 flex items-center justify-center mx-auto mb-6">
+            <Zap className="w-8 h-8 text-violet-400" />
+          </div>
           <h2 className="text-3xl sm:text-5xl font-extrabold text-white mb-5 leading-tight">
             Rejoignez la révolution<br />
             <span className="bg-gradient-to-r from-violet-400 via-pink-400 to-amber-400 bg-clip-text text-transparent">
@@ -753,9 +896,9 @@ function Footer() {
             <p className="text-zinc-500 text-sm mt-3 leading-relaxed max-w-xs">
               La plateforme de numéros virtuels SMS pensée pour les Africains. Paiements 100% Mobile Money.
             </p>
-            <div className="flex gap-3 mt-4">
-              {["🇨🇮", "🇸🇳", "🇨🇲", "🇬🇭", "🇳🇬", "🇰🇪"].map(f => (
-                <span key={f} className="text-xl">{f}</span>
+            <div className="flex gap-2 mt-4 flex-wrap">
+              {["ci","sn","cm","gh","ng","ke"].map(code => (
+                <FlagImg key={code} code={code} size={28} />
               ))}
             </div>
           </div>
@@ -796,7 +939,7 @@ function Footer() {
             <span className="hover:text-zinc-400 cursor-pointer transition-colors">CGU</span>
             <span className="hover:text-zinc-400 cursor-pointer transition-colors">Mentions légales</span>
           </div>
-          <p className="text-xs text-zinc-700">Made with 🤍 for Africa</p>
+          <p className="text-xs text-zinc-700">Conçu pour l'Afrique</p>
         </div>
       </Section>
     </footer>
@@ -805,15 +948,6 @@ function Footer() {
 
 /* ─── Main export ─── */
 export default function Landing() {
-  const [, setLocation] = useLocation();
-  const { data: user, isLoading } = useGetMe();
-
-  useEffect(() => {
-    if (!isLoading && user) {
-      setLocation("/dashboard");
-    }
-  }, [user, isLoading, setLocation]);
-
   return (
     <div className="min-h-[100dvh] bg-black text-white overflow-x-hidden">
       <Navbar />
