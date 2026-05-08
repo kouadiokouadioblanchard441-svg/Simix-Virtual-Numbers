@@ -129,6 +129,13 @@ router.post("/auth/login", async (req, res): Promise<void> => {
     return;
   }
 
+  if (!user.passwordHash) {
+    res.status(401).json({
+      error: "Ce compte utilise la connexion Google. Veuillez vous connecter avec Google.",
+    });
+    return;
+  }
+
   const ok = await bcrypt.compare(password, user.passwordHash);
   if (!ok) {
     isRateLimited(`login_fail_ip:${ip}`, 99999, 15 * 60_000);

@@ -15,7 +15,7 @@ export function toUser(
   return {
     id: user.id,
     fullName: user.fullName,
-    phone: user.phone,
+    phone: user.phone ?? undefined,
     email: user.email,
     username: user.username ?? undefined,
     balance: user.balance,
@@ -23,6 +23,8 @@ export function toUser(
     status: user.status,
     isAdmin: user.isAdmin,
     riskScore: user.riskScore,
+    authProvider: user.authProvider,
+    avatar: user.avatar ?? undefined,
     createdAt: user.createdAt.toISOString(),
     totalSpent: totals?.totalSpent ?? 0,
     transactionsCount: totals?.transactionsCount ?? 0,
