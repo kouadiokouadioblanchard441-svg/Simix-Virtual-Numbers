@@ -11,6 +11,7 @@ import {
   ArrowLeft, CheckCircle2, Shield, Loader2,
   ChevronDown, ChevronUp, Search, X, AlertCircle, Clock,
 } from "lucide-react";
+import { PaymentLogo } from "@/components/payment-logo";
 import { useLocation } from "wouter";
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useToast } from "@/hooks/use-toast";
@@ -284,16 +285,21 @@ function MethodGrid({
             key={m.slug}
             type="button"
             onClick={() => onSelect(m)}
-            className={`relative flex flex-col items-center gap-2.5 p-4 rounded-2xl border transition-all active:scale-95 ${
+            className={`relative flex flex-col items-center gap-3 p-4 rounded-2xl border-2 transition-all active:scale-95 overflow-hidden ${
               isSelected
-                ? "shadow-lg"
-                : "bg-card border-card-border hover:bg-secondary/60"
+                ? "shadow-xl"
+                : "bg-card border-card-border hover:border-opacity-60 hover:bg-secondary/50"
             }`}
-            style={isSelected ? { backgroundColor: `${m.color}15`, borderColor: `${m.color}60` } : {}}
+            style={isSelected ? {
+              backgroundColor: `${m.color}12`,
+              borderColor: `${m.color}80`,
+              boxShadow: `0 8px 24px ${m.color}25`,
+            } : {}}
           >
+            {/* Selected check badge */}
             {isSelected && (
               <div
-                className="absolute top-2 right-2 w-5 h-5 rounded-full flex items-center justify-center shadow-sm"
+                className="absolute top-2.5 right-2.5 w-5 h-5 rounded-full flex items-center justify-center shadow-md"
                 style={{ backgroundColor: m.color }}
               >
                 <svg className="w-3 h-3 text-white" viewBox="0 0 12 12" fill="none">
@@ -301,10 +307,34 @@ function MethodGrid({
                 </svg>
               </div>
             )}
-            <MethodLogo method={m} size={48} />
-            <span className="text-sm font-bold text-foreground text-center leading-tight">{m.name}</span>
+
+            {/* Colored glow behind logo when selected */}
+            {isSelected && (
+              <div
+                className="absolute top-0 left-1/2 -translate-x-1/2 w-24 h-12 blur-2xl opacity-30 pointer-events-none"
+                style={{ backgroundColor: m.color }}
+              />
+            )}
+
+            <PaymentLogo slug={m.slug} name={m.name} color={m.color} logoUrl={m.logoUrl} size={52} />
+
+            <div className="text-center">
+              <span className="text-[13px] font-bold text-foreground leading-tight block">{m.name}</span>
+              {m.description && (
+                <span className="text-[10px] text-muted-foreground leading-tight block mt-0.5 truncate max-w-[110px]">{m.description}</span>
+              )}
+            </div>
+
             {m.recommended && (
-              <span className="text-[10px] bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded-full font-semibold">Recommandé</span>
+              <span className="text-[10px] bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded-full font-semibold border border-amber-500/20">
+                ⭐ Recommandé
+              </span>
+            )}
+
+            {m.minDeposit > 0 && (
+              <span className="text-[10px] text-muted-foreground/70">
+                Min {m.minDeposit.toLocaleString("fr-FR")} FCFA
+              </span>
             )}
           </button>
         );

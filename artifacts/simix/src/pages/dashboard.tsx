@@ -14,18 +14,15 @@ import { motion } from "framer-motion";
 import {
   Bell,
   Plus,
-  ShieldCheck,
-  Globe,
-  Zap,
   ChevronRight,
   Eye,
   ShoppingBag,
-  Phone,
   MessageCircle,
   ArrowRight,
   TrendingUp,
   Star,
   LayoutDashboard,
+  Zap,
 } from "lucide-react";
 import { Link } from "wouter";
 import { SimixLogo } from "@/components/simix-logo";
@@ -54,7 +51,8 @@ function DashboardContent() {
     query: { queryKey: getListPopularCountriesQueryKey() },
   });
 
-  const firstName = (me?.username || me?.phone || "").split(" ")[0] || "Bienvenue";
+  const firstName = (me?.fullName || me?.username || me?.phone || "").split(" ")[0] || "Bienvenue";
+  const initials = firstName.replace(/[^A-Za-z0-9]/g, "").slice(0, 2).toUpperCase() || "S";
 
   return (
     <div className="flex-1 w-full bg-background overflow-y-auto overflow-x-hidden pt-5 pb-28">
@@ -63,9 +61,15 @@ function DashboardContent() {
       {/* Header */}
       <div className="relative z-10 flex justify-between items-center mb-5 px-5">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-violet-500 to-violet-700 flex items-center justify-center text-white font-bold text-sm shadow-lg shadow-violet-500/30">
-            {firstName.replace(/[^A-Za-z0-9]/g, "").slice(0, 2).toUpperCase() || "S"}
-          </div>
+          {me?.avatar ? (
+            <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-violet-500/40 shadow-md">
+              <img src={me.avatar} alt="avatar" className="w-full h-full object-cover" />
+            </div>
+          ) : (
+            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-violet-500 to-violet-700 flex items-center justify-center text-white font-bold text-sm shadow-lg shadow-violet-500/30">
+              {initials}
+            </div>
+          )}
           <div>
             <p className="text-[11px] text-muted-foreground leading-tight">Bonjour 👋</p>
             <p className="text-sm font-bold text-foreground leading-tight">{firstName}</p>
@@ -74,7 +78,7 @@ function DashboardContent() {
         <div className="flex items-center gap-2">
           {me?.isAdmin && (
             <Link href="/admin">
-              <button className="w-10 h-10 rounded-full bg-violet-600/20 border border-violet-500/30 flex items-center justify-center text-violet-400 hover:bg-violet-600/30 transition-colors" title="Admin Panel">
+              <button className="w-10 h-10 rounded-full bg-violet-600/20 border border-violet-500/30 flex items-center justify-center text-violet-400 hover:bg-violet-600/30 transition-colors" title="Admin">
                 <LayoutDashboard className="w-[18px] h-[18px]" />
               </button>
             </Link>
@@ -163,7 +167,7 @@ function DashboardContent() {
         </div>
       </motion.div>
 
-      {/* Trust Stats */}
+      {/* Trust Stats — using 3D PNG icons */}
       <motion.div
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
@@ -171,14 +175,12 @@ function DashboardContent() {
         className="relative z-10 mx-5 grid grid-cols-3 gap-3 mb-6"
       >
         {[
-          { icon: ShieldCheck, color: "text-emerald-500", bg: "bg-emerald-500/10", value: "98%", label: "Réussite SMS" },
-          { icon: Zap, color: "text-amber-500", bg: "bg-amber-500/10", value: "< 30s", label: "Délai moyen" },
-          { icon: Globe, color: "text-violet-500", bg: "bg-violet-500/10", value: "20+", label: "Pays" },
-        ].map(({ icon: Icon, color, bg, value, label }) => (
-          <div key={label} className="bg-card border border-card-border rounded-2xl p-3 flex flex-col items-center text-center gap-1.5">
-            <div className={`w-8 h-8 rounded-xl ${bg} flex items-center justify-center`}>
-              <Icon className={`w-4 h-4 ${color}`} />
-            </div>
+          { icon: "/3d/icon-shield.png", value: "98%", label: "Réussite SMS", bg: "from-emerald-500/15 to-emerald-900/5" },
+          { icon: "/3d/icon-lightning.png", value: "< 30s", label: "Délai moyen", bg: "from-amber-500/15 to-amber-900/5" },
+          { icon: "/3d/step-globe.png", value: "20+", label: "Pays", bg: "from-violet-500/15 to-violet-900/5" },
+        ].map(({ icon, value, label, bg }) => (
+          <div key={label} className={`bg-gradient-to-br ${bg} border border-card-border rounded-2xl p-3 flex flex-col items-center text-center gap-1.5`}>
+            <img src={icon} alt={label} className="w-8 h-8 object-contain drop-shadow-md" />
             <span className="text-base font-black text-foreground leading-none">{value}</span>
             <span className="text-[10px] text-muted-foreground leading-tight font-medium">{label}</span>
           </div>
@@ -207,14 +209,14 @@ function DashboardContent() {
               <div key={i} className="aspect-[1/1.15] bg-card border border-card-border rounded-2xl animate-pulse" />
             ))
           ) : (
-            popularServices?.slice(0, 6).map((service) => (
+            popularServices?.slice(0, 6).map((service: any) => (
               <Link
                 key={service.id}
                 href={`/countries?serviceId=${service.id}`}
                 className="group relative bg-card border border-card-border rounded-2xl p-2.5 flex flex-col items-center text-center hover:border-violet-500/40 hover:bg-secondary/40 transition-all hover:-translate-y-0.5"
               >
                 <ServiceIcon name={service.name} slug={service.slug} size={44} rounded="xl" />
-                <p className="text-[12px] font-bold text-foreground leading-tight mt-2 w-full">
+                <p className="text-[12px] font-bold text-foreground leading-tight mt-2 w-full truncate">
                   {service.name}
                 </p>
                 <p className="text-[10px] font-semibold text-violet-400 leading-tight mt-0.5">
@@ -247,11 +249,11 @@ function DashboardContent() {
             ? Array.from({ length: 5 }).map((_, i) => (
                 <div key={i} className="min-w-[92px] h-28 bg-card border border-card-border rounded-2xl animate-pulse snap-start" />
               ))
-            : popularCountries?.slice(0, 8).map((country) => (
+            : popularCountries?.slice(0, 8).map((country: any) => (
                 <Link
                   key={country.id}
                   href={`/services?countryId=${country.id}`}
-                  className="min-w-[92px] bg-card border border-card-border rounded-2xl p-3 flex flex-col items-center justify-center gap-1.5 snap-start hover:border-violet-500/40 hover:bg-secondary/40 transition-all hover:-translate-y-0.5"
+                  className="min-w-[92px] bg-card border border-card-border rounded-2xl p-3 flex flex-col items-center justify-center gap-1.5 snap-start hover:border-violet-500/40 hover:bg-secondary/40 transition-all hover:-translate-y-0.5 flex-shrink-0"
                 >
                   <span className="text-[28px] leading-none">{country.flag}</span>
                   <span className="text-[12px] font-bold text-foreground truncate w-full text-center leading-tight">
@@ -271,32 +273,25 @@ function DashboardContent() {
         className="relative z-10 mx-5 mb-7"
       >
         <h2 className="text-[17px] font-extrabold text-foreground mb-3 leading-tight">Comment ça marche ?</h2>
-        <div className="bg-card border border-card-border rounded-2xl p-4 space-y-3">
+        <div className="bg-card border border-card-border rounded-2xl p-4 space-y-0 divide-y divide-card-border/50">
           {[
-            { n: "01", icon: ShoppingBag, color: "violet", title: "Choisissez un service", desc: "WhatsApp, Telegram, Google…" },
-            { n: "02", icon: Phone, color: "blue", title: "Sélectionnez un pays", desc: "20+ pays disponibles" },
-            { n: "03", icon: MessageCircle, color: "emerald", title: "Recevez votre SMS", desc: "En moins de 30 secondes" },
-          ].map((step) => {
-            const Icon = step.icon;
-            return (
-              <div key={step.n} className="flex items-center gap-3">
-                <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
-                  step.color === "violet" ? "bg-violet-500/10 text-violet-500" :
-                  step.color === "blue" ? "bg-blue-500/10 text-blue-500" :
-                  "bg-emerald-500/10 text-emerald-500"
-                }`}>
-                  <Icon className="w-[18px] h-[18px]" />
-                </div>
-                <div className="flex-1">
-                  <p className="text-[13px] font-bold text-foreground leading-tight">
-                    <span className="text-muted-foreground font-semibold mr-1.5">{step.n}.</span>
-                    {step.title}
-                  </p>
-                  <p className="text-[11px] text-muted-foreground leading-tight mt-0.5">{step.desc}</p>
-                </div>
+            { n: "01", icon: "/3d/step-globe.png", title: "Choisissez un service", desc: "WhatsApp, Telegram, Google, TikTok…" },
+            { n: "02", icon: "/3d/step-phone.png", title: "Sélectionnez un pays", desc: "20+ pays disponibles" },
+            { n: "03", icon: "/3d/step-payment.png", title: "Recevez votre SMS", desc: "En moins de 30 secondes" },
+          ].map((step) => (
+            <div key={step.n} className="flex items-center gap-3 py-3">
+              <div className="w-10 h-10 flex items-center justify-center shrink-0">
+                <img src={step.icon} alt={step.title} className="w-9 h-9 object-contain drop-shadow-lg" />
               </div>
-            );
-          })}
+              <div className="flex-1">
+                <p className="text-[13px] font-bold text-foreground leading-tight">
+                  <span className="text-muted-foreground font-semibold mr-1.5">{step.n}.</span>
+                  {step.title}
+                </p>
+                <p className="text-[11px] text-muted-foreground leading-tight mt-0.5">{step.desc}</p>
+              </div>
+            </div>
+          ))}
         </div>
       </motion.div>
 
@@ -307,9 +302,7 @@ function DashboardContent() {
         transition={{ delay: 0.36 }}
         className="relative z-10 mx-5 bg-gradient-to-br from-card to-secondary/50 border border-card-border rounded-2xl p-4 flex items-center gap-3"
       >
-        <div className="w-10 h-10 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-500 shrink-0">
-          <Star className="w-5 h-5 fill-emerald-500" />
-        </div>
+        <img src="/3d/icon-check.png" alt="Trust" className="w-10 h-10 object-contain drop-shadow-md flex-shrink-0" />
         <div className="flex-1">
           <p className="text-[13px] font-bold text-foreground leading-tight">+12 000 utilisateurs satisfaits</p>
           <p className="text-[11px] text-muted-foreground leading-tight mt-0.5">

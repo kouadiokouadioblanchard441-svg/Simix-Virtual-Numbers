@@ -171,6 +171,53 @@ router.post("/auth/logout", async (req, res): Promise<void> => {
   res.json({ success: true });
 });
 
+router.patch("/auth/me/avatar", requireAuth, async (req, res): Promise<void> => {
+  const { avatar } = req.body;
+  if (!avatar || typeof avatar !== "string") {
+    res.status(400).json({ error: "Avatar requis" });
+    return;
+  }
+  const isDataUrl = avatar.startsWith("data:image/");
+  const isHttps = avatar.startsWith("https://");
+  if (!isDataUrl && !isHttps) {
+    res.status(400).json({ error: "Format invalide. Utilisez une image ou URL HTTPS." });
+    return;
+  }
+  if (isDataUrl && avatar.length > 3_000_000) {
+    res.status(400).json({ error: "Image trop grande (max 2MB)" });
+    return;
+  }
+  const [user] = await db
+    .update(usersTable)
+    .set({ avatar })
+    .where(eq(usersTable.id, req.user!.id))
+    .returning();
+  if (!user) { res.status(404).json({ error: "Utilisateur non trouvé" }); return; }
+  res.json({ avatar: user.avatar });
+});
+
+router.patch("/auth/me/profile", requireAuth, async (req, res): Promise<void> => {
+  const { fullName, email, username } = req.body;
+  const updates: Record<string, unknown> = {};
+  if (fullName && typeof fullName === "string") updates.fullName = fullName.trim();
+  if (email && typeof email === "string" && email.includes("@")) updates.email = email.trim().toLowerCase();
+  if (username && typeof username === "string") {
+    const clean = username.toLowerCase().replace(/[^a-z0-9_]/g, "");
+    if (clean.length >= 3) updates.username = clean;
+  }
+  if (Object.keys(updates).length === 0) {
+    res.status(400).json({ error: "Aucun champ valide à mettre à jour" });
+    return;
+  }
+  const [user] = await db
+    .update(usersTable)
+    .set(updates as any)
+    .where(eq(usersTable.id, req.user!.id))
+    .returning();
+  if (!user) { res.status(404).json({ error: "Utilisateur non trouvé" }); return; }
+  res.json({ user: toUser(user) });
+});
+
 router.get("/auth/me", requireAuth, async (req, res): Promise<void> => {
   const user = req.user!;
   const allTx = await db
