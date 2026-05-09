@@ -20,7 +20,7 @@ import {
   sessionsTable,
   countryPaymentConfigsTable,
 } from "@workspace/db";
-import { requireAuth } from "../lib/auth";
+
 import { blockUser, logSecurityEvent } from "../lib/fraud-detection";
 import { logger } from "../lib/logger";
 import { clearSettingsCache } from "../lib/settings";
@@ -32,9 +32,16 @@ const router: IRouter = Router();
 router.use(requireAdminJwt);
 
 function requireAdmin(req: Request, res: Response, next: NextFunction): void {
+  /* requireAdminJwt already verified the JWT — if adminPayload is set, access is granted */
+  if (req.adminPayload) { next(); return; }
+  /* Fallback: legacy session-based check */
   if (!req.user) { res.status(401).json({ error: "Authentication required" }); return; }
   if (!req.user.isAdmin) { res.status(403).json({ error: "Accès réservé aux administrateurs" }); return; }
   next();
+}
+
+function adminId(req: Request): string {
+  return req.adminPayload?.sub ?? req.user?.id ?? "unknown";
 }
 
 async function logAdminAction(
@@ -49,7 +56,7 @@ async function logAdminAction(
 }
 
 /* ─────────────────── DASHBOARD STATS ─────────────────── */
-router.get("/admin/stats", requireAuth, requireAdmin, async (req, res): Promise<void> => {
+router.get("/admin/stats", requireAdmin, async (req, res): Promise<void> => {
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
@@ -103,7 +110,7 @@ router.get("/admin/stats", requireAuth, requireAdmin, async (req, res): Promise<
 });
 
 /* ─────────────────── USER MANAGEMENT ─────────────────── */
-router.get("/admin/users", requireAuth, requireAdmin, async (req, res): Promise<void> => {
+router.get("/admin/users", requireAdmin, async (req, res): Promise<void> => {
   const limit = Math.min(Number(req.query.limit) || 50, 200);
   const offset = Number(req.query.offset) || 0;
   const search = req.query.search as string | undefined;
@@ -151,7 +158,7 @@ router.get("/admin/users", requireAuth, requireAdmin, async (req, res): Promise<
   res.json({ users: rows, total: totalRow?.c ?? 0 });
 });
 
-router.get("/admin/users/:userId", requireAuth, requireAdmin, async (req, res): Promise<void> => {
+router.get("/admin/users/:userId", requireAdmin, async (req, res): Promise<void> => {
   const userId = String(req.params.userId);
   const [user] = await db.select().from(usersTable).where(eq(usersTable.id, userId)).limit(1);
   if (!user) { res.status(404).json({ error: "Utilisateur introuvable" }); return; }
@@ -172,40 +179,40 @@ router.get("/admin/users/:userId", requireAuth, requireAdmin, async (req, res): 
   res.json({ user: safeUser, numbers, transactions, securityEvents });
 });
 
-router.post("/admin/users/:userId/block", requireAuth, requireAdmin, async (req, res): Promise<void> => {
+router.post("/admin/users/:userId/block", requireAdmin, async (req, res): Promise<void> => {
   const userId = String(req.params.userId);
   const reason = String(req.body?.reason || "Bloqué par un administrateur");
   await blockUser(userId, reason);
   await logSecurityEvent({ userId, eventType: "admin_block_user", severity: "high", ip: req.ip, details: { reason, adminId: req.user!.id } });
-  await logAdminAction(req.user!.id, "block_user", req.ip, "user", userId, { reason });
+  await logAdminAction(adminId(req), "block_user", req.ip, "user", userId, { reason });
   logger.warn({ userId, adminId: req.user!.id, reason }, "[ADMIN] User blocked");
   res.json({ success: true, message: "Utilisateur bloqué" });
 });
 
-router.post("/admin/users/:userId/unblock", requireAuth, requireAdmin, async (req, res): Promise<void> => {
+router.post("/admin/users/:userId/unblock", requireAdmin, async (req, res): Promise<void> => {
   const userId = String(req.params.userId);
   await db.update(usersTable).set({ status: "Standard", blockedReason: null }).where(eq(usersTable.id, userId));
   await logSecurityEvent({ userId, eventType: "admin_unblock_user", severity: "low", ip: req.ip, details: { adminId: req.user!.id } });
-  await logAdminAction(req.user!.id, "unblock_user", req.ip, "user", userId);
+  await logAdminAction(adminId(req), "unblock_user", req.ip, "user", userId);
   res.json({ success: true, message: "Utilisateur débloqué" });
 });
 
-router.post("/admin/users/:userId/promote", requireAuth, requireAdmin, async (req, res): Promise<void> => {
+router.post("/admin/users/:userId/promote", requireAdmin, async (req, res): Promise<void> => {
   const userId = String(req.params.userId);
   await db.update(usersTable).set({ isAdmin: true }).where(eq(usersTable.id, userId));
-  await logAdminAction(req.user!.id, "promote_admin", req.ip, "user", userId);
+  await logAdminAction(adminId(req), "promote_admin", req.ip, "user", userId);
   res.json({ success: true });
 });
 
-router.post("/admin/users/:userId/demote", requireAuth, requireAdmin, async (req, res): Promise<void> => {
+router.post("/admin/users/:userId/demote", requireAdmin, async (req, res): Promise<void> => {
   const userId = String(req.params.userId);
   if (userId === req.user!.id) { res.status(400).json({ error: "Impossible de se rétrograder soi-même" }); return; }
   await db.update(usersTable).set({ isAdmin: false }).where(eq(usersTable.id, userId));
-  await logAdminAction(req.user!.id, "demote_admin", req.ip, "user", userId);
+  await logAdminAction(adminId(req), "demote_admin", req.ip, "user", userId);
   res.json({ success: true });
 });
 
-router.post("/admin/users/:userId/adjust-balance", requireAuth, requireAdmin, async (req, res): Promise<void> => {
+router.post("/admin/users/:userId/adjust-balance", requireAdmin, async (req, res): Promise<void> => {
   const userId = String(req.params.userId);
   const amount = Number(req.body?.amount);
   const reason = String(req.body?.reason || "Ajustement administrateur");
@@ -224,11 +231,11 @@ router.post("/admin/users/:userId/adjust-balance", requireAuth, requireAdmin, as
     status: "completed",
     description: reason,
   });
-  await logAdminAction(req.user!.id, "adjust_balance", req.ip, "user", userId, { amount, reason, newBalance });
+  await logAdminAction(adminId(req), "adjust_balance", req.ip, "user", userId, { amount, reason, newBalance });
   res.json({ success: true, newBalance });
 });
 
-router.post("/admin/users/:userId/set-limits", requireAuth, requireAdmin, async (req, res): Promise<void> => {
+router.post("/admin/users/:userId/set-limits", requireAdmin, async (req, res): Promise<void> => {
   const userId = String(req.params.userId);
   const { maxPurchasesPerMin, maxBalance, isRestricted } = req.body;
 
@@ -243,11 +250,11 @@ router.post("/admin/users/:userId/set-limits", requireAuth, requireAdmin, async 
   if (!user) { res.status(404).json({ error: "Utilisateur introuvable" }); return; }
 
   await db.update(usersTable).set(updates).where(eq(usersTable.id, userId));
-  await logAdminAction(req.user!.id, "set_user_limits", req.ip, "user", userId, updates);
+  await logAdminAction(adminId(req), "set_user_limits", req.ip, "user", userId, updates);
   res.json({ success: true, limits: updates });
 });
 
-router.post("/admin/users/:userId/reset-password", requireAuth, requireAdmin, async (req, res): Promise<void> => {
+router.post("/admin/users/:userId/reset-password", requireAdmin, async (req, res): Promise<void> => {
   const userId = String(req.params.userId);
 
   const [user] = await db.select({ id: usersTable.id, fullName: usersTable.fullName }).from(usersTable).where(eq(usersTable.id, userId)).limit(1);
@@ -258,38 +265,38 @@ router.post("/admin/users/:userId/reset-password", requireAuth, requireAdmin, as
   const passwordHash = await bcrypt.hash(newPassword, 10);
 
   await db.update(usersTable).set({ passwordHash }).where(eq(usersTable.id, userId));
-  await logAdminAction(req.user!.id, "reset_password", req.ip, "user", userId, { note: "Password was reset by admin" });
+  await logAdminAction(adminId(req), "reset_password", req.ip, "user", userId, { note: "Password was reset by admin" });
   logger.warn({ userId, adminId: req.user!.id }, "[ADMIN] User password reset");
 
   res.json({ success: true, newPassword, message: `Le mot de passe de ${user.fullName} a été réinitialisé` });
 });
 
-router.post("/admin/users/:userId/force-logout", requireAuth, requireAdmin, async (req, res): Promise<void> => {
+router.post("/admin/users/:userId/force-logout", requireAdmin, async (req, res): Promise<void> => {
   const userId = String(req.params.userId);
 
   const [user] = await db.select({ id: usersTable.id, fullName: usersTable.fullName }).from(usersTable).where(eq(usersTable.id, userId)).limit(1);
   if (!user) { res.status(404).json({ error: "Utilisateur introuvable" }); return; }
 
   await db.delete(sessionsTable).where(eq(sessionsTable.userId, userId));
-  await logAdminAction(req.user!.id, "force_logout", req.ip, "user", userId);
+  await logAdminAction(adminId(req), "force_logout", req.ip, "user", userId);
   res.json({ success: true, message: `${user.fullName} a été déconnecté de force` });
 });
 
-router.delete("/admin/users/:userId", requireAuth, requireAdmin, async (req, res): Promise<void> => {
+router.delete("/admin/users/:userId", requireAdmin, async (req, res): Promise<void> => {
   const userId = String(req.params.userId);
   if (userId === req.user!.id) { res.status(400).json({ error: "Impossible de supprimer votre propre compte" }); return; }
   await db.delete(usersTable).where(eq(usersTable.id, userId));
-  await logAdminAction(req.user!.id, "delete_user", req.ip, "user", userId);
+  await logAdminAction(adminId(req), "delete_user", req.ip, "user", userId);
   res.json({ success: true });
 });
 
 /* ─────────────────── SERVICES MANAGEMENT ─────────────────── */
-router.get("/admin/services", requireAuth, requireAdmin, async (_req, res): Promise<void> => {
+router.get("/admin/services", requireAdmin, async (_req, res): Promise<void> => {
   const rows = await db.select().from(servicesTable).orderBy(servicesTable.sortOrder, servicesTable.name);
   res.json(rows);
 });
 
-router.put("/admin/services/:serviceId", requireAuth, requireAdmin, async (req, res): Promise<void> => {
+router.put("/admin/services/:serviceId", requireAdmin, async (req, res): Promise<void> => {
   const serviceId = String(req.params.serviceId);
   const { name, price, providerPrice, margin, available, color, category, popular, scope, enabled } = req.body;
 
@@ -314,17 +321,17 @@ router.put("/admin/services/:serviceId", requireAuth, requireAdmin, async (req, 
   }
 
   await db.update(servicesTable).set(updates).where(eq(servicesTable.id, serviceId));
-  await logAdminAction(req.user!.id, "update_service", req.ip, "service", serviceId, updates);
+  await logAdminAction(adminId(req), "update_service", req.ip, "service", serviceId, updates);
   res.json({ success: true });
 });
 
 /* ─────────────────── COUNTRIES MANAGEMENT ─────────────────── */
-router.get("/admin/countries", requireAuth, requireAdmin, async (_req, res): Promise<void> => {
+router.get("/admin/countries", requireAdmin, async (_req, res): Promise<void> => {
   const rows = await db.select().from(countriesTable).orderBy(countriesTable.sortOrder, countriesTable.name);
   res.json(rows);
 });
 
-router.put("/admin/countries/:countryId", requireAuth, requireAdmin, async (req, res): Promise<void> => {
+router.put("/admin/countries/:countryId", requireAdmin, async (req, res): Promise<void> => {
   const countryId = String(req.params.countryId);
   const { price, available, popular } = req.body;
 
@@ -335,12 +342,12 @@ router.put("/admin/countries/:countryId", requireAuth, requireAdmin, async (req,
 
   if (Object.keys(updates).length === 0) { res.status(400).json({ error: "Aucun champ à mettre à jour" }); return; }
   await db.update(countriesTable).set(updates).where(eq(countriesTable.id, countryId));
-  await logAdminAction(req.user!.id, "update_country", req.ip, "country", countryId, updates);
+  await logAdminAction(adminId(req), "update_country", req.ip, "country", countryId, updates);
   res.json({ success: true });
 });
 
 /* ─────────────────── AFRICAN COUNTRIES SEEDING ─────────────────── */
-router.post("/admin/countries/seed-africa", requireAuth, requireAdmin, async (req, res): Promise<void> => {
+router.post("/admin/countries/seed-africa", requireAdmin, async (req, res): Promise<void> => {
   const AFRICAN_COUNTRIES = [
     { code: "CI", name: "Côte d'Ivoire",        dialCode: "+225", popular: true,  sortOrder: 1 },
     { code: "SN", name: "Sénégal",               dialCode: "+221", popular: true,  sortOrder: 2 },
@@ -421,17 +428,17 @@ router.post("/admin/countries/seed-africa", requireAuth, requireAdmin, async (re
     }
   }
 
-  await logAdminAction(req.user!.id, "seed_african_countries", req.ip, "countries", "bulk", { inserted, updated: skipped });
+  await logAdminAction(adminId(req), "seed_african_countries", req.ip, "countries", "bulk", { inserted, updated: skipped });
   res.json({ success: true, inserted, updated: skipped, total: AFRICAN_COUNTRIES.length });
 });
 
 /* ─────────────────── PAYMENT METHODS MANAGEMENT ─────────────────── */
-router.get("/admin/payment-methods", requireAuth, requireAdmin, async (_req, res): Promise<void> => {
+router.get("/admin/payment-methods", requireAdmin, async (_req, res): Promise<void> => {
   const rows = await db.select().from(paymentMethodsTable).orderBy(paymentMethodsTable.sortOrder, paymentMethodsTable.name);
   res.json(rows);
 });
 
-router.post("/admin/payment-methods", requireAuth, requireAdmin, async (req, res): Promise<void> => {
+router.post("/admin/payment-methods", requireAdmin, async (req, res): Promise<void> => {
   const { name, slug, description, color, logoUrl, recommended, sortOrder } = req.body;
   if (!name || !slug) { res.status(400).json({ error: "Nom et slug requis" }); return; }
 
@@ -448,11 +455,11 @@ router.post("/admin/payment-methods", requireAuth, requireAdmin, async (req, res
     sortOrder: Number(sortOrder || 100),
   }).returning();
 
-  await logAdminAction(req.user!.id, "create_payment_method", req.ip, "payment_method", method.id, { name, slug });
+  await logAdminAction(adminId(req), "create_payment_method", req.ip, "payment_method", method.id, { name, slug });
   res.status(201).json(method);
 });
 
-router.put("/admin/payment-methods/:methodId", requireAuth, requireAdmin, async (req, res): Promise<void> => {
+router.put("/admin/payment-methods/:methodId", requireAdmin, async (req, res): Promise<void> => {
   const methodId = String(req.params.methodId);
   const { name, description, color, logoUrl, recommended, sortOrder } = req.body;
 
@@ -467,19 +474,19 @@ router.put("/admin/payment-methods/:methodId", requireAuth, requireAdmin, async 
   if (Object.keys(updates).length === 0) { res.status(400).json({ error: "Aucun champ à mettre à jour" }); return; }
 
   await db.update(paymentMethodsTable).set(updates).where(eq(paymentMethodsTable.id, methodId));
-  await logAdminAction(req.user!.id, "update_payment_method", req.ip, "payment_method", methodId, updates);
+  await logAdminAction(adminId(req), "update_payment_method", req.ip, "payment_method", methodId, updates);
   res.json({ success: true });
 });
 
-router.delete("/admin/payment-methods/:methodId", requireAuth, requireAdmin, async (req, res): Promise<void> => {
+router.delete("/admin/payment-methods/:methodId", requireAdmin, async (req, res): Promise<void> => {
   const methodId = String(req.params.methodId);
   await db.delete(paymentMethodsTable).where(eq(paymentMethodsTable.id, methodId));
-  await logAdminAction(req.user!.id, "delete_payment_method", req.ip, "payment_method", methodId);
+  await logAdminAction(adminId(req), "delete_payment_method", req.ip, "payment_method", methodId);
   res.json({ success: true });
 });
 
 /* ─────────────────── COUNTRY PAYMENT CONFIGS ─────────────────── */
-router.get("/admin/payment-configs", requireAuth, requireAdmin, async (_req, res): Promise<void> => {
+router.get("/admin/payment-configs", requireAdmin, async (_req, res): Promise<void> => {
   const configs = await db.select().from(countryPaymentConfigsTable);
   const countries = await db.select({
     code: countriesTable.code,
@@ -490,7 +497,7 @@ router.get("/admin/payment-configs", requireAuth, requireAdmin, async (_req, res
   res.json({ configs, countries, methods });
 });
 
-router.put("/admin/payment-configs", requireAuth, requireAdmin, async (req, res): Promise<void> => {
+router.put("/admin/payment-configs", requireAdmin, async (req, res): Promise<void> => {
   const { countryCode, methodSlug, enabled, minDeposit, feePercent } = req.body;
 
   if (!countryCode || !methodSlug) {
@@ -514,12 +521,12 @@ router.put("/admin/payment-configs", requireAuth, requireAdmin, async (req, res)
       set: { enabled: values.enabled, minDeposit: values.minDeposit, feePercent: values.feePercent },
     });
 
-  await logAdminAction(req.user!.id, "update_payment_config", req.ip, "payment_config", undefined, values);
+  await logAdminAction(adminId(req), "update_payment_config", req.ip, "payment_config", undefined, values);
   res.json({ success: true });
 });
 
 /* ─────────────────── ORDERS MANAGEMENT ─────────────────── */
-router.get("/admin/orders", requireAuth, requireAdmin, async (req, res): Promise<void> => {
+router.get("/admin/orders", requireAdmin, async (req, res): Promise<void> => {
   const limit = Math.min(Number(req.query.limit) || 50, 200);
   const offset = Number(req.query.offset) || 0;
 
@@ -550,7 +557,7 @@ router.get("/admin/orders", requireAuth, requireAdmin, async (req, res): Promise
   res.json({ orders: rows, total: totalRow?.c ?? 0 });
 });
 
-router.post("/admin/orders/:orderId/cancel", requireAuth, requireAdmin, async (req, res): Promise<void> => {
+router.post("/admin/orders/:orderId/cancel", requireAdmin, async (req, res): Promise<void> => {
   const orderId = String(req.params.orderId);
   const [order] = await db.select().from(virtualNumbersTable).where(eq(virtualNumbersTable.id, orderId)).limit(1);
   if (!order) { res.status(404).json({ error: "Commande introuvable" }); return; }
@@ -566,12 +573,12 @@ router.post("/admin/orders/:orderId/cancel", requireAuth, requireAdmin, async (r
     status: "completed",
     description: `Remboursement commande ${order.phoneNumber} (annulée par admin)`,
   });
-  await logAdminAction(req.user!.id, "cancel_order", req.ip, "order", orderId, { phoneNumber: order.phoneNumber, price: order.price });
+  await logAdminAction(adminId(req), "cancel_order", req.ip, "order", orderId, { phoneNumber: order.phoneNumber, price: order.price });
   res.json({ success: true, message: "Commande annulée et remboursée" });
 });
 
 /* ─────────────────── ANALYTICS ─────────────────── */
-router.get("/admin/analytics", requireAuth, requireAdmin, async (req, res): Promise<void> => {
+router.get("/admin/analytics", requireAdmin, async (req, res): Promise<void> => {
   const days = Math.min(Number(req.query.days) || 30, 365);
   const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
 
@@ -668,12 +675,12 @@ router.get("/admin/analytics", requireAuth, requireAdmin, async (req, res): Prom
 });
 
 /* ─────────────────── API PROVIDERS ─────────────────── */
-router.get("/admin/api-providers", requireAuth, requireAdmin, async (_req, res): Promise<void> => {
+router.get("/admin/api-providers", requireAdmin, async (_req, res): Promise<void> => {
   const rows = await db.select().from(apiProvidersTable).orderBy(apiProvidersTable.priority);
   res.json(rows);
 });
 
-router.post("/admin/api-providers", requireAuth, requireAdmin, async (req, res): Promise<void> => {
+router.post("/admin/api-providers", requireAdmin, async (req, res): Promise<void> => {
   const { name, slug, apiKey, baseUrl, active, priority, markup } = req.body;
   if (!name || !slug) { res.status(400).json({ error: "Nom et slug requis" }); return; }
 
@@ -687,11 +694,11 @@ router.post("/admin/api-providers", requireAuth, requireAdmin, async (req, res):
     markup: Number(markup || 20),
   }).returning();
 
-  await logAdminAction(req.user!.id, "create_provider", req.ip, "provider", provider.id, { name, slug });
+  await logAdminAction(adminId(req), "create_provider", req.ip, "provider", provider.id, { name, slug });
   res.status(201).json(provider);
 });
 
-router.put("/admin/api-providers/:providerId", requireAuth, requireAdmin, async (req, res): Promise<void> => {
+router.put("/admin/api-providers/:providerId", requireAdmin, async (req, res): Promise<void> => {
   const providerId = String(req.params.providerId);
   const { name, apiKey, baseUrl, active, priority, markup } = req.body;
 
@@ -705,19 +712,19 @@ router.put("/admin/api-providers/:providerId", requireAuth, requireAdmin, async 
 
   if (Object.keys(updates).length === 0) { res.status(400).json({ error: "Aucun champ à mettre à jour" }); return; }
   await db.update(apiProvidersTable).set(updates).where(eq(apiProvidersTable.id, providerId));
-  await logAdminAction(req.user!.id, "update_provider", req.ip, "provider", providerId, updates);
+  await logAdminAction(adminId(req), "update_provider", req.ip, "provider", providerId, updates);
   res.json({ success: true });
 });
 
-router.delete("/admin/api-providers/:providerId", requireAuth, requireAdmin, async (req, res): Promise<void> => {
+router.delete("/admin/api-providers/:providerId", requireAdmin, async (req, res): Promise<void> => {
   const providerId = String(req.params.providerId);
   await db.delete(apiProvidersTable).where(eq(apiProvidersTable.id, providerId));
-  await logAdminAction(req.user!.id, "delete_provider", req.ip, "provider", providerId);
+  await logAdminAction(adminId(req), "delete_provider", req.ip, "provider", providerId);
   res.json({ success: true });
 });
 
 /* ─── Test provider connection ─── */
-router.post("/admin/api-providers/:providerId/test", requireAuth, requireAdmin, async (req, res): Promise<void> => {
+router.post("/admin/api-providers/:providerId/test", requireAdmin, async (req, res): Promise<void> => {
   const providerId = String(req.params.providerId);
   const [provider] = await db.select().from(apiProvidersTable).where(eq(apiProvidersTable.id, providerId)).limit(1);
   if (!provider) { res.status(404).json({ error: "Fournisseur introuvable" }); return; }
@@ -733,7 +740,7 @@ router.post("/admin/api-providers/:providerId/test", requireAuth, requireAdmin, 
     try {
       const profile = await client.getProfile();
       const latencyMs = Date.now() - start;
-      await logAdminAction(req.user!.id, "test_provider", req.ip, "provider", providerId, { success: true, latencyMs });
+      await logAdminAction(adminId(req), "test_provider", req.ip, "provider", providerId, { success: true, latencyMs });
       res.json({
         success: true,
         message: `Connexion réussie (${latencyMs}ms)`,
@@ -760,7 +767,7 @@ router.post("/admin/api-providers/:providerId/test", requireAuth, requireAdmin, 
 });
 
 /* ─── Get provider balance ─── */
-router.get("/admin/api-providers/:providerId/balance", requireAuth, requireAdmin, async (req, res): Promise<void> => {
+router.get("/admin/api-providers/:providerId/balance", requireAdmin, async (req, res): Promise<void> => {
   const providerId = String(req.params.providerId);
   const [provider] = await db.select().from(apiProvidersTable).where(eq(apiProvidersTable.id, providerId)).limit(1);
   if (!provider) { res.status(404).json({ error: "Fournisseur introuvable" }); return; }
@@ -782,7 +789,7 @@ router.get("/admin/api-providers/:providerId/balance", requireAuth, requireAdmin
 });
 
 /* ─── Sync 5sim products ─── */
-router.post("/admin/api-providers/:providerId/sync-products", requireAuth, requireAdmin, async (req, res): Promise<void> => {
+router.post("/admin/api-providers/:providerId/sync-products", requireAdmin, async (req, res): Promise<void> => {
   const providerId = String(req.params.providerId);
   const [provider] = await db.select().from(apiProvidersTable).where(eq(apiProvidersTable.id, providerId)).limit(1);
   if (!provider) { res.status(404).json({ error: "Fournisseur introuvable" }); return; }
@@ -819,7 +826,7 @@ router.post("/admin/api-providers/:providerId/sync-products", requireAuth, requi
       }
     }
 
-    await logAdminAction(req.user!.id, "sync_products", req.ip, "provider", providerId, { synced, total: productNames.length });
+    await logAdminAction(adminId(req), "sync_products", req.ip, "provider", providerId, { synced, total: productNames.length });
     res.json({ synced, message: `${synced} nouveaux services synchronisés depuis 5sim` });
   } catch (e) {
     res.status(503).json({ error: (e as Error).message });
@@ -827,14 +834,14 @@ router.post("/admin/api-providers/:providerId/sync-products", requireAuth, requi
 });
 
 /* ─────────────────── SYSTEM SETTINGS ─────────────────── */
-router.get("/admin/settings", requireAuth, requireAdmin, async (_req, res): Promise<void> => {
+router.get("/admin/settings", requireAdmin, async (_req, res): Promise<void> => {
   const rows = await db.select().from(systemSettingsTable);
   const settings: Record<string, string> = {};
   for (const row of rows) { settings[row.key] = row.value; }
   res.json(settings);
 });
 
-router.put("/admin/settings", requireAuth, requireAdmin, async (req, res): Promise<void> => {
+router.put("/admin/settings", requireAdmin, async (req, res): Promise<void> => {
   const updates = req.body as Record<string, string>;
   if (!updates || typeof updates !== "object") { res.status(400).json({ error: "Données invalides" }); return; }
 
@@ -848,12 +855,12 @@ router.put("/admin/settings", requireAuth, requireAdmin, async (req, res): Promi
   /* Invalidate settings cache so changes apply within 30s */
   clearSettingsCache();
 
-  await logAdminAction(req.user!.id, "update_settings", req.ip, "settings", undefined, updates);
+  await logAdminAction(adminId(req), "update_settings", req.ip, "settings", undefined, updates);
   res.json({ success: true });
 });
 
 /* ─────────────────── SECURITY EVENTS ─────────────────── */
-router.get("/admin/security-events", requireAuth, requireAdmin, async (req, res): Promise<void> => {
+router.get("/admin/security-events", requireAdmin, async (req, res): Promise<void> => {
   const limit = Math.min(Number(req.query.limit) || 50, 200);
   const severity = req.query.severity as string | undefined;
 
@@ -868,7 +875,7 @@ router.get("/admin/security-events", requireAuth, requireAdmin, async (req, res)
 });
 
 /* ─────────────────── ADMIN LOGS ─────────────────── */
-router.get("/admin/logs", requireAuth, requireAdmin, async (req, res): Promise<void> => {
+router.get("/admin/logs", requireAdmin, async (req, res): Promise<void> => {
   const limit = Math.min(Number(req.query.limit) || 50, 200);
   const rows = await db
     .select({
@@ -889,7 +896,7 @@ router.get("/admin/logs", requireAuth, requireAdmin, async (req, res): Promise<v
 });
 
 /* ─────────────────── TRANSACTIONS ─────────────────── */
-router.get("/admin/transactions", requireAuth, requireAdmin, async (req, res): Promise<void> => {
+router.get("/admin/transactions", requireAdmin, async (req, res): Promise<void> => {
   const limit = Math.min(Number(req.query.limit) || 50, 200);
   const offset = Number(req.query.offset) || 0;
 
