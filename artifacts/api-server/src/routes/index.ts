@@ -9,6 +9,7 @@ import walletRouter from "./wallet";
 import dashboardRouter from "./dashboard";
 import adminRouter from "./admin";
 import configRouter from "./config";
+import supportRouter from "./support";
 
 const router: IRouter = Router();
 
@@ -22,5 +23,6 @@ router.use(numbersRouter);
 router.use(walletRouter);
 router.use(dashboardRouter);
 router.use(adminRouter);
+router.use(supportRouter);
 
 export default router;

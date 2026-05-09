@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useEffect } from "react";
+import SupportChat from "@/components/support/SupportChat";
 import NotFound from "@/pages/not-found";
 
 // Landing
@@ -117,6 +118,7 @@ function App() {
             <InnerRouter />
           </WouterRouter>
           <Toaster />
+          <SupportChat />
         </TooltipProvider>
       </ThemeProvider>
     </QueryClientProvider>
