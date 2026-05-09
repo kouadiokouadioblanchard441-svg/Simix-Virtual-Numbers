@@ -86,9 +86,10 @@ router.post(
       .where(eq(paymentMethodsTable.slug, methodSlug))
       .limit(1);
 
+    const phoneDisplay = phoneNumber ? ` — ${dialCode ?? ""}${phoneNumber}` : "";
     const description = method
-      ? `Recharge via ${method.name}`
-      : "Recharge du portefeuille";
+      ? `Recharge via ${method.name}${phoneDisplay}`
+      : `Recharge du portefeuille${phoneDisplay}`;
 
     /* ── Try PawaPay for mobile money methods ── */
     const isMobileMoney = methodSlug && ["orange", "mtn", "wave", "moov", "airtel", "mpesa"].some(k => methodSlug.toLowerCase().includes(k));

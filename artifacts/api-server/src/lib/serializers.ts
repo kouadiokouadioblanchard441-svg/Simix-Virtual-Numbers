@@ -81,6 +81,7 @@ export function toMessage(m: SmsMessage) {
 }
 
 export function toTransaction(t: Transaction) {
+  const phoneMatch = t.description?.match(/—\s*(\+[\d\s]+)$/);
   return {
     id: t.id,
     type: t.type,
@@ -88,6 +89,8 @@ export function toTransaction(t: Transaction) {
     status: t.status,
     method: t.method ?? undefined,
     description: t.description ?? undefined,
+    externalDepositId: t.externalDepositId ?? undefined,
+    phoneNumber: phoneMatch?.[1]?.trim() ?? undefined,
     createdAt: t.createdAt.toISOString(),
   };
 }
