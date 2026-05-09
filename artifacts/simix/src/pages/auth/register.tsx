@@ -11,6 +11,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { useToast } from "@/hooks/use-toast";
 import { Eye, EyeOff, ChevronLeft, Shield, User, Mail, Lock, AtSign, Search } from "lucide-react";
 import { motion } from "framer-motion";
+import { SimixLogo } from "@/components/simix-logo";
 
 const formSchema = z.object({
   fullName: z.string().min(2, "Le nom complet est requis (min 2 caractères)"),
@@ -154,7 +155,7 @@ export default function Register() {
         <Link href="/login" className="w-10 h-10 rounded-xl bg-card border border-card-border flex items-center justify-center text-foreground hover:bg-secondary transition-colors">
           <ChevronLeft className="w-5 h-5" />
         </Link>
-        <span className="text-base font-bold text-foreground">Créer un compte</span>
+        <SimixLogo size={32} />
         <div className="w-10 h-10 rounded-xl border border-primary/30 flex items-center justify-center bg-primary/10">
           <Shield className="w-4 h-4 text-primary" />
         </div>

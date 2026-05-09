@@ -147,7 +147,7 @@ export default function Login() {
 
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="flex-1 flex flex-col max-w-sm w-full mx-auto z-10 pt-4">
         <div className="flex justify-center mb-10">
-          <SimixLogo size={28} />
+          <SimixLogo size={40} />
         </div>
 
         <div className="mb-8">

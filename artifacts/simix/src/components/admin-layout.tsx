@@ -68,12 +68,9 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
   return (
     <div className="flex flex-col h-full">
       <div className="flex items-center gap-3 px-4 py-5 border-b border-zinc-800/80">
-        <div className="w-9 h-9 rounded-xl bg-violet-600/20 border border-violet-500/30 flex items-center justify-center">
-          <SimixLogo size={20} />
-        </div>
-        <div>
-          <div className="text-white font-bold text-sm leading-none">Simix</div>
-          <div className="text-violet-400 text-[11px] mt-0.5 font-medium">Admin Panel</div>
+        <SimixLogo size={30} />
+        <div className="text-violet-400 text-[11px] font-semibold tracking-widest uppercase border border-violet-500/30 bg-violet-500/10 rounded-md px-2 py-0.5">
+          Admin
         </div>
       </div>
 
