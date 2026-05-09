@@ -42,6 +42,32 @@ const SETTINGS_SCHEMA = [
     ],
   },
   {
+    group: "Réseaux Sociaux",
+    fields: [
+      {
+        key: "social_telegram_url",
+        label: "Lien canal Telegram",
+        placeholder: "https://t.me/simix_officiel",
+        type: "url",
+        hint: "Laissez vide pour masquer l'icône sur la vitrine",
+      },
+      {
+        key: "social_whatsapp_url",
+        label: "Lien groupe / canal WhatsApp",
+        placeholder: "https://wa.me/2250700000000",
+        type: "url",
+        hint: "Numéro ou lien de groupe WhatsApp",
+      },
+      {
+        key: "social_facebook_url",
+        label: "Lien page Facebook",
+        placeholder: "https://facebook.com/simix",
+        type: "url",
+        hint: "URL complète de la page Facebook officielle",
+      },
+    ],
+  },
+  {
     group: "PawaPay — Mobile Money",
     fields: [
       { key: "pawapay_api_token", label: "Token API PawaPay", placeholder: "eyJ...", type: "password", hint: "Obtenez votre token sur le portail PawaPay" },

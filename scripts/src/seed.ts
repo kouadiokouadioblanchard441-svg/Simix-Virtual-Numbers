@@ -277,6 +277,10 @@ async function upsertSystemSettings() {
     { key: "pawapay_api_token",      value: "" },
     { key: "pawapay_env",            value: "sandbox" },
     { key: "pawapay_webhook_secret", value: "" },
+    /* Réseaux sociaux */
+    { key: "social_telegram_url",    value: "" },
+    { key: "social_whatsapp_url",    value: "" },
+    { key: "social_facebook_url",    value: "" },
   ];
   for (const s of settings) {
     await db

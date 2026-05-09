@@ -8,10 +8,12 @@ import numbersRouter from "./numbers";
 import walletRouter from "./wallet";
 import dashboardRouter from "./dashboard";
 import adminRouter from "./admin";
+import configRouter from "./config";
 
 const router: IRouter = Router();
 
 router.use(healthRouter);
+router.use(configRouter);
 router.use(authRouter);
 router.use(googleAuthRouter);
 router.use(servicesRouter);

@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
+import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { SimixLogo } from "@/components/simix-logo";
 import { ServiceIcon } from "@/components/service-icon";
@@ -11,6 +12,7 @@ import screenCountries from "@/assets/screen-countries.png";
 import {
   ArrowRight, ChevronRight, CheckCircle,
 } from "lucide-react";
+import { FaTelegram, FaWhatsapp, FaFacebook } from "react-icons/fa";
 
 /* ─── Icon 3D paths (public folder) ─── */
 const I = {
@@ -1198,6 +1200,47 @@ function FooterOpBadge({ op }: { op: typeof OPERATORS[0] }) {
 /* ─── Footer ─── */
 function Footer() {
   const [, setLocation] = useLocation();
+
+  const { data: config } = useQuery<{
+    platformName: string;
+    social: { telegram: string; whatsapp: string; facebook: string };
+  }>({
+    queryKey: ["public-config"],
+    queryFn: async () => {
+      const res = await fetch("/api/config");
+      if (!res.ok) throw new Error("config unavailable");
+      return res.json();
+    },
+    staleTime: 60_000,
+  });
+
+  const social = config?.social;
+  const hasSocial = social && (social.telegram || social.whatsapp || social.facebook);
+
+  const SOCIAL_LINKS = [
+    {
+      key: "telegram",
+      url: social?.telegram ?? "",
+      Icon: FaTelegram,
+      label: "Telegram",
+      color: "hover:text-sky-400 hover:bg-sky-400/10",
+    },
+    {
+      key: "whatsapp",
+      url: social?.whatsapp ?? "",
+      Icon: FaWhatsapp,
+      label: "WhatsApp",
+      color: "hover:text-emerald-400 hover:bg-emerald-400/10",
+    },
+    {
+      key: "facebook",
+      url: social?.facebook ?? "",
+      Icon: FaFacebook,
+      label: "Facebook",
+      color: "hover:text-blue-400 hover:bg-blue-400/10",
+    },
+  ].filter(l => l.url);
+
   return (
     <footer className="border-t border-zinc-800/60 bg-zinc-950/80">
       <Section className="py-10">
@@ -1212,6 +1255,23 @@ function Footer() {
                 <FlagImg key={code} code={code} size={28} />
               ))}
             </div>
+            {hasSocial && (
+              <div className="flex gap-2 mt-5">
+                {SOCIAL_LINKS.map(({ key, url, Icon, label, color }) => (
+                  <a
+                    key={key}
+                    href={url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label={label}
+                    title={label}
+                    className={`flex items-center justify-center w-9 h-9 rounded-xl border border-zinc-700/60 text-zinc-400 bg-zinc-800/60 transition-all duration-200 ${color}`}
+                  >
+                    <Icon size={18} />
+                  </a>
+                ))}
+              </div>
+            )}
           </div>
           <div>
             <div className="text-xs font-semibold text-zinc-300 uppercase tracking-widest mb-3">Produit</div>
