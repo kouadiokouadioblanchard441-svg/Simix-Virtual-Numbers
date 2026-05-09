@@ -238,7 +238,7 @@ export const ISO_TO_5SIM: Record<string, string> = {
   UA: "ukraine", AE: "uae", US: "usa", UY: "uruguay", UZ: "uzbekistan",
   VE: "venezuela", VN: "vietnam", ZM: "zambia",
   // Additional African countries
-  ML: "mali", BF2: "burkinafaso", NE: "niger", SD: "sudan", LY: "libya",
+  ML: "mali", NE: "niger", SD: "sudan", LY: "libya",
 };
 
 /* ─── Service slug mapping: our slug → 5sim product name ───────────── */

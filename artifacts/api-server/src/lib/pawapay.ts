@@ -158,11 +158,7 @@ export class PawaPayClient {
 }
 
 export function generateDepositId(): string {
-  const hex = () => Math.floor(Math.random() * 16).toString(16);
-  const s = () => Array.from({ length: 8 }, hex).join("");
-  const s4 = () => Array.from({ length: 4 }, hex).join("");
-  const v4variant = () => (Math.floor(Math.random() * 4) + 8).toString(16);
-  return `${s()}-${s4()}-4${Array.from({ length: 3 }, hex).join("")}-${v4variant()}${Array.from({ length: 3 }, hex).join("")}-${Array.from({ length: 12 }, hex).join("")}`;
+  return crypto.randomUUID();
 }
 
 export function normalizeMSISDN(phone: string): string {

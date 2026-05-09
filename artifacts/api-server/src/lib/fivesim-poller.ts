@@ -20,19 +20,23 @@ import {
 import { FiveSimClient, FiveSimError } from "./fivesim";
 import { logger } from "./logger";
 
-const POLL_INTERVAL_MS = 15_000;   // every 15 seconds
-const MAX_CONCURRENT_POLLS = 10;   // max parallel API calls per tick
+const POLL_INTERVAL_MS = 15_000;    // every 15 seconds (normal)
+const ERROR_BACKOFF_MS  = 60_000;   // wait 60s after DB/network error
+
+const MAX_CONCURRENT_POLLS = 10;
 
 let pollerTimer: ReturnType<typeof setTimeout> | null = null;
 let running = false;
+let consecutiveDbErrors = 0;
 
 /* ─── Start / Stop ────────────────────────────────────────────── */
 
 export function startFiveSimPoller(): void {
   if (running) return;
   running = true;
+  consecutiveDbErrors = 0;
   logger.info("[5sim-poller] Started background SMS polling (interval: 15s)");
-  scheduleNext();
+  schedule(POLL_INTERVAL_MS);
 }
 
 export function stopFiveSimPoller(): void {
@@ -41,31 +45,47 @@ export function stopFiveSimPoller(): void {
   logger.info("[5sim-poller] Stopped");
 }
 
-function scheduleNext(): void {
+/** Schedule exactly one next tick, cancelling any pending timer first. */
+function schedule(delayMs: number): void {
   if (!running) return;
-  pollerTimer = setTimeout(() => void pollAll(), POLL_INTERVAL_MS);
+  if (pollerTimer) clearTimeout(pollerTimer);
+  pollerTimer = setTimeout(() => void pollAll(), delayMs);
 }
 
-/* ─── Main poll loop ─────────────────────────────────────────── */
+/* ─── Main poll loop (no finally — explicit scheduling in every path) ── */
 
 async function pollAll(): Promise<void> {
+  /* 1. Get active 5sim provider */
+  let provider: (typeof apiProvidersTable.$inferSelect) | undefined;
   try {
-    /* 1. Get active 5sim client */
-    const [provider] = await db
+    [provider] = await db
       .select()
       .from(apiProvidersTable)
       .where(and(eq(apiProvidersTable.slug, "5sim"), eq(apiProvidersTable.active, true)))
       .limit(1);
+    consecutiveDbErrors = 0;
+  } catch (e) {
+    consecutiveDbErrors++;
+    const backoff = consecutiveDbErrors >= 3 ? ERROR_BACKOFF_MS : POLL_INTERVAL_MS;
+    logger.error(
+      { err: (e as Error).message, consecutiveDbErrors, nextRetryMs: backoff },
+      "[5sim-poller] DB error — backing off",
+    );
+    schedule(backoff);
+    return;
+  }
 
-    if (!provider?.apiKey) {
-      scheduleNext();
-      return;
-    }
+  if (!provider?.apiKey) {
+    schedule(POLL_INTERVAL_MS);
+    return;
+  }
 
-    const client = new FiveSimClient(provider.apiKey);
+  const client = new FiveSimClient(provider.apiKey);
 
-    /* 2. Find all numbers waiting for SMS with a real 5sim order ID */
-    const pendingNumbers = await db
+  /* 2. Find all numbers waiting for SMS */
+  let pendingNumbers: (typeof virtualNumbersTable.$inferSelect)[];
+  try {
+    pendingNumbers = await db
       .select()
       .from(virtualNumbersTable)
       .where(
@@ -75,24 +95,30 @@ async function pollAll(): Promise<void> {
           gt(virtualNumbersTable.expiresAt, new Date()),
         ),
       );
+  } catch (e) {
+    logger.warn({ err: (e as Error).message }, "[5sim-poller] Failed to load pending numbers");
+    schedule(POLL_INTERVAL_MS);
+    return;
+  }
 
-    if (pendingNumbers.length === 0) {
-      scheduleNext();
-      return;
-    }
+  if (pendingNumbers.length === 0) {
+    schedule(POLL_INTERVAL_MS);
+    return;
+  }
 
-    logger.debug({ count: pendingNumbers.length }, "[5sim-poller] Polling active orders");
+  logger.debug({ count: pendingNumbers.length }, "[5sim-poller] Polling active orders");
 
-    /* 3. Process in batches */
+  /* 3. Process in batches */
+  try {
     for (let i = 0; i < pendingNumbers.length; i += MAX_CONCURRENT_POLLS) {
       const batch = pendingNumbers.slice(i, i + MAX_CONCURRENT_POLLS);
       await Promise.allSettled(batch.map(vn => pollSingleOrder(client, vn)));
     }
   } catch (e) {
-    logger.error({ err: (e as Error).message }, "[5sim-poller] Unexpected error in poll loop");
-  } finally {
-    scheduleNext();
+    logger.warn({ err: (e as Error).message }, "[5sim-poller] Batch error");
   }
+
+  schedule(POLL_INTERVAL_MS);
 }
 
 /* ─── Poll a single order ────────────────────────────────────── */
@@ -107,7 +133,6 @@ async function pollSingleOrder(
   try {
     const order = await client.checkOrder(orderId);
 
-    /* ── Handle terminal states ── */
     if (order.status === "TIMEOUT") {
       await handleExpiredOrder(vn);
       return;
@@ -120,7 +145,6 @@ async function pollSingleOrder(
 
     /* ── Save new SMS messages ── */
     if (order.sms && order.sms.length > 0) {
-      /* Load existing bodies to avoid duplicates (UUID ids are auto-generated) */
       const existingMsgs = await db
         .select({ body: smsMessagesTable.body })
         .from(smsMessagesTable)
@@ -138,32 +162,22 @@ async function pollSingleOrder(
             code: sms.code || extractCode(sms.text) || "",
           });
           newSmsCount++;
-          logger.info(
-            { numberId: vn.id, orderId, sender: sms.sender },
-            "[5sim-poller] New SMS saved",
-          );
+          logger.info({ numberId: vn.id, orderId, sender: sms.sender }, "[5sim-poller] New SMS saved");
         }
       }
 
-      /* ── Mark number as received and finish the order ── */
-      if (
-        newSmsCount > 0 ||
-        order.status === "RECEIVED" ||
-        order.status === "FINISHED"
-      ) {
+      if (newSmsCount > 0 || order.status === "RECEIVED" || order.status === "FINISHED") {
         await db
           .update(virtualNumbersTable)
           .set({ status: "received" })
           .where(eq(virtualNumbersTable.id, vn.id));
 
-        /* Call finishOrder only if status is RECEIVED (not already FINISHED) */
         if (order.status === "RECEIVED") {
           try {
             await client.finishOrder(orderId);
             logger.info({ orderId }, "[5sim-poller] Order marked as FINISHED on 5sim");
-          } catch (e) {
+          } catch {
             /* Non-critical — may already be finished */
-            logger.debug({ err: (e as Error).message, orderId }, "[5sim-poller] finishOrder skipped");
           }
         }
       }
@@ -173,7 +187,7 @@ async function pollSingleOrder(
       if (e.isNotFound) {
         await handleExpiredOrder(vn);
       } else if (e.isUnauthorized) {
-        logger.error("[5sim-poller] Unauthorised API key — stopping poller");
+        logger.error("[5sim-poller] Unauthorised 5sim API key — stopping poller");
         stopFiveSimPoller();
       } else {
         logger.warn({ err: e.message, orderId, numberId: vn.id }, "[5sim-poller] Poll error");
@@ -222,7 +236,6 @@ async function handleCancelledOrder(vn: typeof virtualNumbersTable.$inferSelect)
     .set({ status: "cancelled", expiresAt: new Date() })
     .where(eq(virtualNumbersTable.id, vn.id));
 
-  /* Refund if no SMS was received */
   if ((msgCount?.c ?? 0) === 0) {
     await db
       .update(usersTable)
@@ -238,14 +251,11 @@ async function handleCancelledOrder(vn: typeof virtualNumbersTable.$inferSelect)
       description: "Remboursement automatique (5sim annulé)",
     });
 
-    logger.info(
-      { numberId: vn.id, userId: vn.userId, amount: vn.price },
-      "[5sim-poller] Auto-refund issued for cancelled order",
-    );
+    logger.info({ numberId: vn.id, userId: vn.userId, amount: vn.price }, "[5sim-poller] Auto-refund issued");
   }
 }
 
-/** Extract 4-8 digit code from SMS text */
+/** Extract 4-8 digit verification code from SMS text */
 function extractCode(text: string): string | null {
   const match = text.match(/\b(\d{4,8})\b/);
   return match ? match[1]! : null;
