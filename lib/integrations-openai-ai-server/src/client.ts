@@ -1,18 +1,25 @@
 import OpenAI from "openai";
 
-if (!process.env.AI_INTEGRATIONS_OPENAI_BASE_URL) {
+const directKey = process.env.OPENAI_API_KEY_DIRECT;
+const proxyKey = process.env.AI_INTEGRATIONS_OPENAI_API_KEY;
+const proxyUrl = process.env.AI_INTEGRATIONS_OPENAI_BASE_URL;
+
+const apiKey = directKey || proxyKey;
+const baseURL = directKey ? "https://api.openai.com/v1" : proxyUrl;
+
+if (!apiKey) {
   throw new Error(
-    "AI_INTEGRATIONS_OPENAI_BASE_URL must be set. Did you forget to provision the OpenAI AI integration?",
+    "OPENAI_API_KEY_DIRECT or AI_INTEGRATIONS_OPENAI_API_KEY must be set.",
   );
 }
 
-if (!process.env.AI_INTEGRATIONS_OPENAI_API_KEY) {
+if (!baseURL) {
   throw new Error(
-    "AI_INTEGRATIONS_OPENAI_API_KEY must be set. Did you forget to provision the OpenAI AI integration?",
+    "AI_INTEGRATIONS_OPENAI_BASE_URL must be set.",
   );
 }
 
 export const openai = new OpenAI({
-  apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
-  baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
+  apiKey,
+  baseURL,
 });

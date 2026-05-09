@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
-import { useGetMe } from "@workspace/api-client-react";
 import { adminToken } from "@/lib/admin-token";
+import { AdminSessionContext } from "@/components/admin-secure-guard";
 import {
   LayoutDashboard,
   Users,
@@ -80,11 +80,11 @@ async function secureLogout() {
   }
   adminToken.clear();
   sessionStorage.removeItem("simix_admin_access_granted");
-  window.location.href = BASE + "/login";
+  window.location.href = BASE + "/";
 }
 
 function SidebarContent({ onClose }: { onClose?: () => void }) {
-  const { data: user } = useGetMe();
+  const admin = AdminSessionContext.get();
   const secsRemaining = adminToken.getSecondsRemaining();
   const hoursLeft = Math.floor(secsRemaining / 3600);
   const minsLeft = Math.floor((secsRemaining % 3600) / 60);
@@ -119,10 +119,10 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
         </Link>
         <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-zinc-800/40 border border-zinc-800/80">
           <div className="w-8 h-8 rounded-full bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center text-white text-xs font-bold flex-shrink-0 shadow-sm">
-            {user?.fullName?.[0]?.toUpperCase() ?? "A"}
+            {admin?.name?.[0]?.toUpperCase() ?? "A"}
           </div>
           <div className="flex-1 min-w-0">
-            <div className="text-white text-xs font-semibold truncate">{user?.fullName}</div>
+            <div className="text-white text-xs font-semibold truncate">{admin?.name ?? "Administrateur"}</div>
             <div className="text-emerald-400 text-[10px]">
               {secsRemaining > 0 ? `Session: ${hoursLeft}h${minsLeft}m` : "Administrateur"}
             </div>
