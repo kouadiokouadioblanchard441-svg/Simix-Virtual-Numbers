@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { useGetMe } from "@workspace/api-client-react";
+import { adminToken } from "@/lib/admin-token";
 import {
   LayoutDashboard,
   Users,
@@ -62,8 +63,26 @@ function NavLink({ href, label, icon: Icon, onClick }: { href: string; label: st
   );
 }
 
+const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
+
+async function secureLogout() {
+  const token = adminToken.get();
+  if (token) {
+    await fetch(`${BASE}/api/admin-auth/logout`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+    }).catch(() => {});
+  }
+  adminToken.clear();
+  sessionStorage.removeItem("simix_admin_access_granted");
+  window.location.href = BASE + "/login";
+}
+
 function SidebarContent({ onClose }: { onClose?: () => void }) {
   const { data: user } = useGetMe();
+  const secsRemaining = adminToken.getSecondsRemaining();
+  const hoursLeft = Math.floor(secsRemaining / 3600);
+  const minsLeft = Math.floor((secsRemaining % 3600) / 60);
 
   return (
     <div className="flex flex-col h-full">
@@ -99,11 +118,13 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
           </div>
           <div className="flex-1 min-w-0">
             <div className="text-white text-xs font-semibold truncate">{user?.fullName}</div>
-            <div className="text-violet-400 text-[10px]">Administrateur</div>
+            <div className="text-emerald-400 text-[10px]">
+              {secsRemaining > 0 ? `Session: ${hoursLeft}h${minsLeft}m` : "Administrateur"}
+            </div>
           </div>
-          <Link href="/login">
+          <button onClick={() => { onClose?.(); void secureLogout(); }} title="Déconnexion sécurisée">
             <LogOut className="w-4 h-4 text-zinc-600 hover:text-red-400 transition-colors cursor-pointer" />
-          </Link>
+          </button>
         </div>
       </div>
     </div>

@@ -14,8 +14,12 @@ import {
 } from "@workspace/db";
 import { requireAuth } from "../lib/auth";
 import { logger } from "../lib/logger";
+import { requireAdminJwt } from "../lib/admin-jwt-middleware";
 
 const router: IRouter = Router();
+
+/* JWT must be verified first on all admin support routes */
+router.use(requireAdminJwt);
 
 function requireAdmin(req: Request, res: Response, next: NextFunction): void {
   if (!req.user) { res.status(401).json({ error: "Authentication required" }); return; }

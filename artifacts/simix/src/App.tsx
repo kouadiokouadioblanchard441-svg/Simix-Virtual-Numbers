@@ -5,6 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { useEffect } from "react";
 import SupportChat from "@/components/support/SupportChat";
 import NotFound from "@/pages/not-found";
+import { AdminSecureGuard } from "@/components/admin-secure-guard";
 
 // Landing
 import Landing from "@/pages/landing";
@@ -42,6 +43,10 @@ import AdminPaymentConfig from "@/pages/admin/payment-config";
 import AdminAnalytics from "@/pages/admin/analytics";
 import AdminSupport from "@/pages/admin/support";
 
+// Admin secure access pages (no guard — self-contained auth)
+import Console from "@/pages/admin/console";
+import SecureLogin from "@/pages/admin/secure-login";
+
 const queryClient = new QueryClient();
 
 function ThemeProvider({ children }: { children: React.ReactNode }) {
@@ -53,20 +58,22 @@ function ThemeProvider({ children }: { children: React.ReactNode }) {
 
 function AdminRoutes() {
   return (
-    <Switch>
-      <Route path="/admin" component={AdminDashboard} />
-      <Route path="/admin/users" component={AdminUsers} />
-      <Route path="/admin/orders" component={AdminOrders} />
-      <Route path="/admin/transactions" component={AdminTransactions} />
-      <Route path="/admin/services" component={AdminServices} />
-      <Route path="/admin/providers" component={AdminProviders} />
-      <Route path="/admin/security" component={AdminSecurity} />
-      <Route path="/admin/logs" component={AdminLogs} />
-      <Route path="/admin/analytics" component={AdminAnalytics} />
-      <Route path="/admin/payment-config" component={AdminPaymentConfig} />
-      <Route path="/admin/support" component={AdminSupport} />
-      <Route path="/admin/settings" component={AdminSettings} />
-    </Switch>
+    <AdminSecureGuard>
+      <Switch>
+        <Route path="/admin" component={AdminDashboard} />
+        <Route path="/admin/users" component={AdminUsers} />
+        <Route path="/admin/orders" component={AdminOrders} />
+        <Route path="/admin/transactions" component={AdminTransactions} />
+        <Route path="/admin/services" component={AdminServices} />
+        <Route path="/admin/providers" component={AdminProviders} />
+        <Route path="/admin/security" component={AdminSecurity} />
+        <Route path="/admin/logs" component={AdminLogs} />
+        <Route path="/admin/analytics" component={AdminAnalytics} />
+        <Route path="/admin/payment-config" component={AdminPaymentConfig} />
+        <Route path="/admin/support" component={AdminSupport} />
+        <Route path="/admin/settings" component={AdminSettings} />
+      </Switch>
+    </AdminSecureGuard>
   );
 }
 
@@ -74,6 +81,11 @@ function InnerRouter() {
   const [location] = useLocation();
   const isAdmin = location.startsWith("/admin");
   const isLanding = location === "/";
+  const isSecurePage = location === "/console" || location === "/admin-login";
+
+  /* ── Secure admin entry points (no wrapper, no mobile container) ── */
+  if (location === "/console") return <Console />;
+  if (location === "/admin-login") return <SecureLogin />;
 
   if (isAdmin) {
     return <AdminRoutes />;
@@ -111,16 +123,26 @@ function InnerRouter() {
   );
 }
 
+function AppShell() {
+  const [location] = useLocation();
+  const hideChat = location.startsWith("/admin") || location === "/console" || location === "/admin-login";
+  return (
+    <>
+      <InnerRouter />
+      <Toaster />
+      {!hideChat && <SupportChat />}
+    </>
+  );
+}
+
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
         <TooltipProvider>
           <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
-            <InnerRouter />
+            <AppShell />
           </WouterRouter>
-          <Toaster />
-          <SupportChat />
         </TooltipProvider>
       </ThemeProvider>
     </QueryClientProvider>

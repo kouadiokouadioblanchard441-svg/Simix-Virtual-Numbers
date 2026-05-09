@@ -1,10 +1,16 @@
+import { adminToken } from "./admin-token";
+
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
 async function req<T>(method: string, path: string, body?: unknown): Promise<T> {
+  const headers: Record<string, string> = {
+    ...adminToken.getHeader(),
+    ...(body ? { "content-type": "application/json" } : {}),
+  };
   const res = await fetch(`${BASE}/api${path}`, {
     method,
     credentials: "include",
-    headers: body ? { "content-type": "application/json" } : {},
+    headers,
     body: body ? JSON.stringify(body) : undefined,
   });
   if (!res.ok) {

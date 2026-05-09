@@ -24,8 +24,12 @@ import { requireAuth } from "../lib/auth";
 import { blockUser, logSecurityEvent } from "../lib/fraud-detection";
 import { logger } from "../lib/logger";
 import { clearSettingsCache } from "../lib/settings";
+import { requireAdminJwt } from "../lib/admin-jwt-middleware";
 
 const router: IRouter = Router();
+
+/* JWT must be verified first on all admin routes */
+router.use(requireAdminJwt);
 
 function requireAdmin(req: Request, res: Response, next: NextFunction): void {
   if (!req.user) { res.status(401).json({ error: "Authentication required" }); return; }
