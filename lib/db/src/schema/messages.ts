@@ -1,23 +1,23 @@
-import {
-  pgTable,
-  text,
-  uuid,
-  timestamp,
-} from "drizzle-orm/pg-core";
-import { virtualNumbersTable } from "./numbers";
+import { integer, pgTable, serial, text, timestamp } from "drizzle-orm/pg-core";
+import { createInsertSchema } from "drizzle-zod";
+import { z } from "zod/v4";
 
-export const smsMessagesTable = pgTable("sms_messages", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  numberId: uuid("number_id")
+import { conversations } from "./conversations";
+
+export const messages = pgTable("messages", {
+  id: serial("id").primaryKey(),
+  conversationId: integer("conversation_id")
     .notNull()
-    .references(() => virtualNumbersTable.id, { onDelete: "cascade" }),
-  sender: text("sender").notNull(),
-  body: text("body").notNull(),
-  code: text("code").notNull(),
-  receivedAt: timestamp("received_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
+    .references(() => conversations.id, { onDelete: "cascade" }),
+  role: text("role").notNull(),
+  content: text("content").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
-export type SmsMessage = typeof smsMessagesTable.$inferSelect;
-export type InsertSmsMessage = typeof smsMessagesTable.$inferInsert;
+export const insertMessageSchema = createInsertSchema(messages).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type Message = typeof messages.$inferSelect;
+export type InsertMessage = z.infer<typeof insertMessageSchema>;
