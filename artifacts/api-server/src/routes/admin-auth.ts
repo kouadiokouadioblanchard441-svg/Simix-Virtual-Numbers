@@ -145,7 +145,7 @@ router.post("/admin-auth/login", async (req: Request, res: Response): Promise<vo
     return;
   }
 
-  const passwordMatch = await bcrypt.compare(password, user.password);
+  const passwordMatch = await bcrypt.compare(password, user.passwordHash ?? "");
   if (!passwordMatch) {
     isRateLimited(loginKey, 5, 15 * 60_000);
     await logAccess(ip, "login_failed_bad_password", false, email, { userId: user.id }, ua);
