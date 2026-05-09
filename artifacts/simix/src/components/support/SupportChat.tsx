@@ -150,16 +150,27 @@ export default function SupportChat() {
     if (!isOpen || messages.length > 0) return;
     (async () => {
       try {
-        const res = await fetch(`${getApiBase()}/support/history/${sessionId.current}`);
-        const data = await res.json();
-        if (data.messages?.length > 0) {
-          setMessages(data.messages.map((m: Message) => ({ ...m, createdAt: new Date(m.createdAt) })));
+        const lang = navigator.language.startsWith("en") ? "en" : "fr";
+
+        /* Fetch personalized greeting + history in parallel */
+        const [historyRes, configRes] = await Promise.all([
+          fetch(`${getApiBase()}/support/history/${sessionId.current}`, { credentials: "include" }),
+          fetch(`${getApiBase()}/support/config`, { credentials: "include" }),
+        ]);
+        const historyData = await historyRes.json();
+        const configData = await configRes.json().catch(() => ({}));
+
+        const greeting = lang === "en"
+          ? (configData.greetingEn ?? "Hello! I'm Simia, your Simix advisor. How can I help you today?")
+          : (configData.greetingFr ?? "Bonjour ! Je suis Simia, votre conseillère Simix. Comment puis-je vous aider aujourd'hui ?");
+
+        if (historyData.messages?.length > 0) {
+          setMessages(historyData.messages.map((m: Message) => ({ ...m, createdAt: new Date(m.createdAt) })));
         } else {
-          /* Welcome message */
           setMessages([{
             id: crypto.randomUUID(),
             role: "assistant",
-            content: "👋 Bonjour ! Je suis **Simia**, votre assistante Simix. Comment puis-je vous aider aujourd'hui ?\n\nVous pouvez me poser des questions sur vos numéros, votre solde, les paiements ou tout autre sujet. 😊",
+            content: greeting,
             createdAt: new Date(),
           }]);
         }
@@ -167,7 +178,7 @@ export default function SupportChat() {
         setMessages([{
           id: crypto.randomUUID(),
           role: "assistant",
-          content: "👋 Bonjour ! Je suis Simia, votre assistante Simix. Comment puis-je vous aider ?",
+          content: "Bonjour ! Je suis Simia, votre conseillère Simix. Comment puis-je vous aider ?",
           createdAt: new Date(),
         }]);
       }
