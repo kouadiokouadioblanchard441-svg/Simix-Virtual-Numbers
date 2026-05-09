@@ -33,6 +33,7 @@ const NAV_ITEMS = [
   { href: "/admin/payment-config", label: "Paiements / Pays", icon: MapPin },
   { href: "/admin/providers", label: "Fournisseurs API", icon: Zap },
   { href: "/admin/support", label: "Support IA", icon: MessageSquare },
+  { href: "/admin/footer", label: "Footer & Vitrine", icon: Globe },
   { href: "/admin/security", label: "Sécurité", icon: Shield },
   { href: "/admin/logs", label: "Journaux", icon: FileText },
   { href: "/admin/settings", label: "Paramètres", icon: Settings },

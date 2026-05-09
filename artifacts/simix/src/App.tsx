@@ -42,6 +42,7 @@ import AdminSettings from "@/pages/admin/settings";
 import AdminPaymentConfig from "@/pages/admin/payment-config";
 import AdminAnalytics from "@/pages/admin/analytics";
 import AdminSupport from "@/pages/admin/support";
+import AdminFooter from "@/pages/admin/footer";
 
 // Admin secure access pages (no guard — self-contained auth)
 import Console from "@/pages/admin/console";
@@ -71,6 +72,7 @@ function AdminRoutes() {
         <Route path="/admin/analytics" component={AdminAnalytics} />
         <Route path="/admin/payment-config" component={AdminPaymentConfig} />
         <Route path="/admin/support" component={AdminSupport} />
+        <Route path="/admin/footer" component={AdminFooter} />
         <Route path="/admin/settings" component={AdminSettings} />
       </Switch>
     </AdminSecureGuard>

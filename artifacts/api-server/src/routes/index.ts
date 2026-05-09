@@ -11,6 +11,7 @@ import adminRouter from "./admin";
 import adminSupportRouter from "./admin-support";
 import adminAuthRouter from "./admin-auth";
 import configRouter from "./config";
+import footerRouter from "./footer";
 import supportRouter from "./support";
 
 const router: IRouter = Router();
@@ -25,6 +26,7 @@ router.use(numbersRouter);
 router.use(walletRouter);
 router.use(dashboardRouter);
 router.use(adminAuthRouter);
+router.use(footerRouter);
 router.use(adminRouter);
 router.use(adminSupportRouter);
 router.use(supportRouter);

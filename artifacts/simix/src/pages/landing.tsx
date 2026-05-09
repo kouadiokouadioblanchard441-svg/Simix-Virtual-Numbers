@@ -12,7 +12,10 @@ import screenCountries from "@/assets/screen-countries.png";
 import {
   ArrowRight, ChevronRight, CheckCircle,
 } from "lucide-react";
-import { FaTelegram, FaWhatsapp, FaFacebook } from "react-icons/fa";
+import {
+  FaTelegram, FaWhatsapp, FaFacebook,
+  FaTwitter, FaInstagram, FaYoutube, FaTiktok, FaLinkedin, FaDiscord,
+} from "react-icons/fa";
 
 /* ─── Icon 3D paths (public folder) ─── */
 const I = {
@@ -1181,7 +1184,97 @@ function FinalCTA() {
   );
 }
 
-/* ─── Footer operator badge ─── */
+/* ─── Social icon registry ─── */
+const SOCIAL_ICONS: Record<string, { Icon: React.ElementType; color: string }> = {
+  telegram:  { Icon: FaTelegram,  color: "#2AABEE" },
+  whatsapp:  { Icon: FaWhatsapp,  color: "#25D366" },
+  facebook:  { Icon: FaFacebook,  color: "#1877F2" },
+  twitter:   { Icon: FaTwitter,   color: "#1DA1F2" },
+  instagram: { Icon: FaInstagram, color: "#E1306C" },
+  youtube:   { Icon: FaYoutube,   color: "#FF0000" },
+  tiktok:    { Icon: FaTiktok,    color: "#FF0050" },
+  linkedin:  { Icon: FaLinkedin,  color: "#0A66C2" },
+  discord:   { Icon: FaDiscord,   color: "#5865F2" },
+};
+
+/* ─── Types returned by /api/footer ─── */
+interface FooterSocialLink { id: string; platform: string; name: string; url: string; color: string }
+interface FooterOperator { id: string; name: string; logoUrl: string | null; logoData: string | null; websiteUrl: string | null; countries: string | null; bgColor: string }
+
+/* ─── Premium Social Icons row ─── */
+function PremiumSocialIcons({ links }: { links: FooterSocialLink[] }) {
+  if (!links.length) return null;
+  return (
+    <div className="flex gap-3 mt-5 flex-wrap">
+      {links.map(link => {
+        const entry = SOCIAL_ICONS[link.platform];
+        const Icon = entry?.Icon ?? FaTelegram;
+        const color = entry?.color ?? link.color ?? "#8B5CF6";
+        return (
+          <a
+            key={link.id}
+            href={link.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label={link.name}
+            title={link.name}
+            className="group relative flex items-center justify-center w-11 h-11 rounded-2xl transition-all duration-300"
+            style={{
+              background: `${color}12`,
+              border: `1px solid ${color}25`,
+            }}
+            onMouseEnter={e => {
+              const el = e.currentTarget;
+              el.style.background = `${color}22`;
+              el.style.border = `1px solid ${color}55`;
+              el.style.boxShadow = `0 0 18px ${color}40, 0 0 6px ${color}25`;
+              el.style.transform = "translateY(-2px) scale(1.07)";
+            }}
+            onMouseLeave={e => {
+              const el = e.currentTarget;
+              el.style.background = `${color}12`;
+              el.style.border = `1px solid ${color}25`;
+              el.style.boxShadow = "none";
+              el.style.transform = "translateY(0) scale(1)";
+            }}
+          >
+            <span style={{ color, filter: "drop-shadow(0 0 4px currentColor)" }}>
+              <Icon size={20} />
+            </span>
+          </a>
+        );
+      })}
+    </div>
+  );
+}
+
+/* ─── Footer operator logo ─── */
+function FooterOpLogo({ op }: { op: FooterOperator }) {
+  const logoSrc = op.logoData ?? op.logoUrl ?? null;
+  const shortName = op.name.replace("Mobile Money", "MoMo").replace(" Money", "").replace("Vodacom ", "");
+  if (logoSrc) {
+    return (
+      <div className="flex items-center gap-2.5">
+        <div className="w-8 h-8 rounded-lg overflow-hidden flex-shrink-0 flex items-center justify-center p-0.5" style={{ background: op.bgColor }}>
+          <img src={logoSrc} alt={op.name} className="w-full h-full object-contain" />
+        </div>
+        <span className="text-xs text-zinc-400 leading-tight">{shortName}</span>
+      </div>
+    );
+  }
+  /* Fallback: colored badge with initials */
+  const initials = op.name.split(" ").map(w => w[0]).join("").slice(0, 3).toUpperCase();
+  return (
+    <div className="flex items-center gap-2.5">
+      <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: op.bgColor }}>
+        <span className="text-white text-[9px] font-black">{initials}</span>
+      </div>
+      <span className="text-xs text-zinc-400 leading-tight">{shortName}</span>
+    </div>
+  );
+}
+
+/* ─── Static fallback op badge (used when API hasn't loaded) ─── */
 function FooterOpBadge({ op }: { op: typeof OPERATORS[0] }) {
   const shortName = op.name
     .replace("Mobile Money", "MoMo")
@@ -1201,50 +1294,117 @@ function FooterOpBadge({ op }: { op: typeof OPERATORS[0] }) {
 function Footer() {
   const [, setLocation] = useLocation();
 
-  const { data: config } = useQuery<{
-    platformName: string;
-    social: { telegram: string; whatsapp: string; facebook: string };
+  const { data: footerData } = useQuery<{
+    socialLinks: FooterSocialLink[];
+    operators: FooterOperator[];
   }>({
-    queryKey: ["public-config"],
+    queryKey: ["public-footer"],
     queryFn: async () => {
-      const res = await fetch("/api/config");
-      if (!res.ok) throw new Error("config unavailable");
+      const res = await fetch("/api/footer");
+      if (!res.ok) throw new Error("footer unavailable");
       return res.json();
     },
-    staleTime: 60_000,
+    staleTime: 120_000,
   });
 
-  const social = config?.social;
-  const hasSocial = social && (social.telegram || social.whatsapp || social.facebook);
+  const socialLinks = footerData?.socialLinks ?? [];
+  const footerOperators = footerData?.operators ?? [];
 
-  const SOCIAL_LINKS = [
-    {
-      key: "telegram",
-      url: social?.telegram ?? "",
-      Icon: FaTelegram,
-      label: "Telegram",
-      color: "hover:text-sky-400 hover:bg-sky-400/10",
-    },
-    {
-      key: "whatsapp",
-      url: social?.whatsapp ?? "",
-      Icon: FaWhatsapp,
-      label: "WhatsApp",
-      color: "hover:text-emerald-400 hover:bg-emerald-400/10",
-    },
-    {
-      key: "facebook",
-      url: social?.facebook ?? "",
-      Icon: FaFacebook,
-      label: "Facebook",
-      color: "hover:text-blue-400 hover:bg-blue-400/10",
-    },
-  ].filter(l => l.url);
+  /* Use DB operators if available, else fall back to static OPERATORS */
+  const showDbOperators = footerOperators.length > 0;
 
   return (
-    <footer className="border-t border-zinc-800/60 bg-zinc-950/80">
+    <footer className="relative border-t border-zinc-800/50 bg-gradient-to-b from-zinc-950 to-black overflow-hidden">
+      {/* Ambient glow top */}
+      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-violet-500/30 to-transparent" />
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-96 h-32 bg-violet-600/5 blur-3xl pointer-events-none" />
+
+      {/* ─ Social & Partners band ─ */}
+      {(socialLinks.length > 0 || showDbOperators) && (
+        <div className="border-b border-zinc-800/40">
+          <Section className="py-7">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-6">
+              {/* Social links */}
+              {socialLinks.length > 0 && (
+                <div className="flex items-center gap-4">
+                  <span className="text-xs font-semibold text-zinc-500 uppercase tracking-widest whitespace-nowrap">Nous suivre</span>
+                  <div className="flex gap-2.5">
+                    {socialLinks.map(link => {
+                      const entry = SOCIAL_ICONS[link.platform];
+                      const Icon = entry?.Icon ?? FaTelegram;
+                      const color = entry?.color ?? link.color ?? "#8B5CF6";
+                      return (
+                        <a
+                          key={link.id}
+                          href={link.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          aria-label={link.name}
+                          title={link.name}
+                          className="flex items-center justify-center w-10 h-10 rounded-2xl transition-all duration-300"
+                          style={{ background: `${color}12`, border: `1px solid ${color}25` }}
+                          onMouseEnter={e => {
+                            const el = e.currentTarget;
+                            el.style.background = `${color}22`;
+                            el.style.border = `1px solid ${color}55`;
+                            el.style.boxShadow = `0 0 20px ${color}45, 0 0 8px ${color}30`;
+                            el.style.transform = "translateY(-3px) scale(1.1)";
+                          }}
+                          onMouseLeave={e => {
+                            const el = e.currentTarget;
+                            el.style.background = `${color}12`;
+                            el.style.border = `1px solid ${color}25`;
+                            el.style.boxShadow = "none";
+                            el.style.transform = "translateY(0) scale(1)";
+                          }}
+                        >
+                          <span style={{ color, filter: "drop-shadow(0 0 5px currentColor)" }}>
+                            <Icon size={20} />
+                          </span>
+                        </a>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Partners logos strip */}
+              {showDbOperators && (
+                <div className="flex items-center gap-4 flex-wrap justify-center sm:justify-end">
+                  <span className="text-xs font-semibold text-zinc-500 uppercase tracking-widest whitespace-nowrap">Partenaires</span>
+                  <div className="flex gap-2.5 flex-wrap">
+                    {footerOperators.slice(0, 8).map(op => {
+                      const logoSrc = op.logoData ?? op.logoUrl ?? null;
+                      return (
+                        <div
+                          key={op.id}
+                          title={op.name}
+                          className="w-10 h-10 rounded-xl overflow-hidden flex items-center justify-center flex-shrink-0 transition-all duration-200 hover:scale-110 hover:shadow-lg"
+                          style={{ background: op.bgColor, border: "1px solid rgba(255,255,255,0.06)" }}
+                        >
+                          {logoSrc ? (
+                            <img src={logoSrc} alt={op.name} className="w-full h-full object-contain p-1" />
+                          ) : (
+                            <span className="text-white text-[9px] font-black">
+                              {op.name.split(" ").map(w => w[0]).join("").slice(0, 3).toUpperCase()}
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+          </Section>
+        </div>
+      )}
+
+      {/* ─ Main footer grid ─ */}
       <Section className="py-10">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-7 mb-8">
+
+          {/* Brand column */}
           <div className="col-span-2 md:col-span-1">
             <SimixLogo size={24} />
             <p className="text-zinc-400 text-sm mt-3 leading-relaxed max-w-xs">
@@ -1255,24 +1415,11 @@ function Footer() {
                 <FlagImg key={code} code={code} size={28} />
               ))}
             </div>
-            {hasSocial && (
-              <div className="flex gap-2 mt-5">
-                {SOCIAL_LINKS.map(({ key, url, Icon, label, color }) => (
-                  <a
-                    key={key}
-                    href={url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    aria-label={label}
-                    title={label}
-                    className={`flex items-center justify-center w-9 h-9 rounded-xl border border-zinc-700/60 text-zinc-400 bg-zinc-800/60 transition-all duration-200 ${color}`}
-                  >
-                    <Icon size={18} />
-                  </a>
-                ))}
-              </div>
-            )}
+            {/* Social icons under brand */}
+            <PremiumSocialIcons links={socialLinks} />
           </div>
+
+          {/* Produit */}
           <div>
             <div className="text-xs font-semibold text-zinc-300 uppercase tracking-widest mb-3">Produit</div>
             <ul className="space-y-2 text-sm text-zinc-400">
@@ -1282,6 +1429,8 @@ function Footer() {
               <li><a href="#operateurs" className="hover:text-white transition-colors">Opérateurs</a></li>
             </ul>
           </div>
+
+          {/* Ressources */}
           <div>
             <div className="text-xs font-semibold text-zinc-300 uppercase tracking-widest mb-3">Ressources</div>
             <ul className="space-y-2 text-sm text-zinc-400">
@@ -1291,23 +1440,28 @@ function Footer() {
               <li><span className="cursor-default">Support</span></li>
             </ul>
           </div>
+
+          {/* Paiements acceptés — dynamic or static fallback */}
           <div>
             <div className="text-xs font-semibold text-zinc-400 uppercase tracking-widest mb-3">Paiements acceptés</div>
             <div className="flex flex-col gap-2">
-              {OPERATORS.slice(0, 6).map(op => (
-                <FooterOpBadge key={op.name} op={op} />
-              ))}
+              {showDbOperators
+                ? footerOperators.slice(0, 6).map(op => <FooterOpLogo key={op.id} op={op} />)
+                : OPERATORS.slice(0, 6).map(op => <FooterOpBadge key={op.name} op={op} />)
+              }
             </div>
           </div>
         </div>
-        <div className="border-t border-zinc-800/60 pt-5 flex flex-col sm:flex-row items-center justify-between gap-3">
+
+        {/* ─ Bottom bar ─ */}
+        <div className="border-t border-zinc-800/50 pt-5 flex flex-col sm:flex-row items-center justify-between gap-3">
           <p className="text-xs text-zinc-500">© 2026 Simix. Tous droits réservés.</p>
           <div className="flex gap-4 text-xs text-zinc-500">
             <span className="hover:text-zinc-300 cursor-pointer transition-colors">Confidentialité</span>
             <span className="hover:text-zinc-300 cursor-pointer transition-colors">CGU</span>
             <span className="hover:text-zinc-300 cursor-pointer transition-colors">Mentions légales</span>
           </div>
-          <p className="text-xs text-zinc-500">Conçu pour l'Afrique</p>
+          <p className="text-xs text-zinc-500">Conçu pour l'Afrique 🌍</p>
         </div>
       </Section>
     </footer>
