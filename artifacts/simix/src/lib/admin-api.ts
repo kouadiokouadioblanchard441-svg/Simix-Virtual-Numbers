@@ -84,6 +84,21 @@ export const adminApi = {
 
   getSettings: () => req<Record<string, string>>("GET", "/admin/settings"),
   updateSettings: (data: Record<string, string>) => req("PUT", "/admin/settings", data),
+  getPendingPawaPayDeposits: () => req<Array<{
+    id: string;
+    externalDepositId: string;
+    amount: number;
+    status: string;
+    method: string;
+    createdAt: string;
+    userId: string;
+    userFullName: string;
+    userPhone: string;
+  }>>("GET", "/admin/pawapay/pending-deposits"),
+  simulatePawaPayDeposit: (depositId: string, status: "COMPLETED" | "FAILED", depositedAmount?: string) =>
+    req<{ success: boolean; message: string; depositId?: string; userId?: string; amount?: number; status?: string }>(
+      "POST", "/admin/pawapay/simulate-deposit", { depositId, status, depositedAmount }
+    ),
   testPawaPay: (token?: string, env?: string) => req<{
     success: boolean;
     message: string;

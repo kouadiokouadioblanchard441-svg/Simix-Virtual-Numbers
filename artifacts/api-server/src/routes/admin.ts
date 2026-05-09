@@ -907,6 +907,96 @@ router.post("/admin/pawapay/test", requireAdmin, async (req, res): Promise<void>
   }
 });
 
+/* ─────────────────── PAWAPAY PENDING DEPOSITS ─────────────────── */
+router.get("/admin/pawapay/pending-deposits", requireAdmin, async (_req, res): Promise<void> => {
+  const rows = await db
+    .select({
+      id: transactionsTable.id,
+      externalDepositId: transactionsTable.externalDepositId,
+      amount: transactionsTable.amount,
+      status: transactionsTable.status,
+      method: transactionsTable.method,
+      createdAt: transactionsTable.createdAt,
+      userId: transactionsTable.userId,
+      userFullName: usersTable.fullName,
+      userPhone: usersTable.phone,
+    })
+    .from(transactionsTable)
+    .leftJoin(usersTable, eq(transactionsTable.userId, usersTable.id))
+    .where(and(
+      eq(transactionsTable.status, "pending"),
+      eq(transactionsTable.type, "recharge"),
+      sql`${transactionsTable.externalDepositId} IS NOT NULL`,
+    ))
+    .orderBy(desc(transactionsTable.createdAt))
+    .limit(50);
+  res.json(rows);
+});
+
+/* ─────────────────── PAWAPAY DEPOSIT SIMULATION ─────────────────── */
+router.post("/admin/pawapay/simulate-deposit", requireAdmin, async (req, res): Promise<void> => {
+  const { depositId, status = "COMPLETED", depositedAmount } = req.body as {
+    depositId?: string;
+    status?: string;
+    depositedAmount?: string;
+  };
+
+  if (!depositId) { res.status(400).json({ error: "depositId requis" }); return; }
+
+  /* Find the pending transaction */
+  const [tx] = await db.select().from(transactionsTable)
+    .where(eq(transactionsTable.externalDepositId, depositId))
+    .limit(1);
+
+  if (!tx) {
+    res.status(404).json({ error: `Transaction avec depositId ${depositId} introuvable` });
+    return;
+  }
+
+  if (tx.status !== "pending") {
+    res.status(400).json({ error: `La transaction est déjà en statut "${tx.status}"` });
+    return;
+  }
+
+  if (status === "COMPLETED") {
+    const actualAmount = depositedAmount ? Math.round(Number(depositedAmount)) : tx.amount;
+
+    await db.update(transactionsTable)
+      .set({ status: "completed" })
+      .where(eq(transactionsTable.id, tx.id));
+
+    await db.update(usersTable)
+      .set({ balance: sql`${usersTable.balance} + ${actualAmount}` })
+      .where(eq(usersTable.id, tx.userId));
+
+    logger.info({ depositId, userId: tx.userId, amount: actualAmount }, "[PawaPay SIM] Deposit simulated as COMPLETED");
+
+    res.json({
+      success: true,
+      message: `Dépôt simulé comme COMPLÉTÉ — ${actualAmount} FCFA crédités`,
+      depositId,
+      userId: tx.userId,
+      amount: actualAmount,
+      status: "completed",
+    });
+  } else if (status === "FAILED") {
+    await db.update(transactionsTable)
+      .set({ status: "failed" })
+      .where(eq(transactionsTable.id, tx.id));
+
+    logger.info({ depositId }, "[PawaPay SIM] Deposit simulated as FAILED");
+
+    res.json({
+      success: true,
+      message: `Dépôt simulé comme ÉCHOUÉ`,
+      depositId,
+      status: "failed",
+    });
+  } else {
+    res.status(400).json({ error: "status doit être COMPLETED ou FAILED" });
+  }
+});
+
 /* ─────────────────── SECURITY EVENTS ─────────────────── */
 router.get("/admin/security-events", requireAdmin, async (req, res): Promise<void> => {
   const limit = Math.min(Number(req.query.limit) || 50, 200);

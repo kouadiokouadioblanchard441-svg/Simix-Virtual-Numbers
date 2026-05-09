@@ -25,11 +25,9 @@ import { getMinDepositFcfa, getMaxBalanceFcfa } from "../lib/settings";
 const router: IRouter = Router();
 
 async function getPawaPayClient(): Promise<{ client: PawaPayClient; env: string } | null> {
-  /* 1. Try environment variable first */
   let token = process.env.PAWAPAY_API_TOKEN ?? null;
   let env: "sandbox" | "production" = (process.env.PAWAPAY_ENV as "sandbox" | "production") ?? "sandbox";
 
-  /* 2. Fall back to DB system settings */
   if (!token) {
     const rows = await db.select().from(systemSettingsTable).where(
       eq(systemSettingsTable.key, "pawapay_api_token")
@@ -66,14 +64,12 @@ router.post(
     const user = req.user!;
     const { amount, methodSlug, phoneNumber, countryCode, dialCode } = parsed.data;
 
-    /* ── Validate amount against platform minimums ── */
     const minDeposit = await getMinDepositFcfa();
     if (amount < minDeposit) {
       res.status(400).json({ error: `Le montant minimum de recharge est ${minDeposit} FCFA.` });
       return;
     }
 
-    /* ── Validate max balance ── */
     const maxBalance = await getMaxBalanceFcfa();
     if (user.balance + amount > maxBalance) {
       res.status(400).json({ error: `Ce rechargement dépasserait le solde maximum autorisé (${maxBalance} FCFA).` });
@@ -91,7 +87,6 @@ router.post(
       ? `Recharge via ${method.name}${phoneDisplay}`
       : `Recharge du portefeuille${phoneDisplay}`;
 
-    /* ── Try PawaPay for mobile money methods ── */
     const isMobileMoney = methodSlug && ["orange", "mtn", "wave", "moov", "airtel", "mpesa"].some(k => methodSlug.toLowerCase().includes(k));
 
     if (isMobileMoney && phoneNumber && countryCode) {
@@ -104,7 +99,6 @@ router.post(
         if (correspondent) {
           try {
             const depositId = generateDepositId();
-            /* Prepend country dial code if not already present */
             const rawPhone = dialCode
               ? `${dialCode.replace(/^\+/, "")}${phoneNumber.replace(/^\+/, "").replace(/^0+/, "")}`
               : phoneNumber;
@@ -125,7 +119,6 @@ router.post(
             });
 
             if (depositRes.status === "ACCEPTED") {
-              /* Create pending transaction */
               const [tx] = await db.insert(transactionsTable).values({
                 userId: user.id,
                 type: "recharge",
@@ -194,52 +187,110 @@ router.post("/wallet/predict-correspondent", requireAuth, async (req, res): Prom
   }
 });
 
-/* ── PawaPay webhook — called by PawaPay when payment confirmed ── */
+/* ─────────────────────────────────────────────────────────────────
+ * PawaPay sends callbacks as a JSON ARRAY:
+ *   [{depositId, status, requestedAmount, depositedAmount, ...}]
+ * We must handle both array and single-object formats for safety.
+ * ─────────────────────────────────────────────────────────────── */
+
+async function processDepositCallback(payload: {
+  depositId?: string;
+  status?: string;
+  depositedAmount?: string;
+  requestedAmount?: string;
+  failureReason?: { failureCode: string; failureMessage: string };
+}): Promise<void> {
+  const { depositId, status, depositedAmount, requestedAmount } = payload;
+  if (!depositId || !status) return;
+
+  logger.info({ depositId, status }, "[PawaPay] Deposit callback processing");
+
+  if (status === "COMPLETED") {
+    const [tx] = await db.select().from(transactionsTable)
+      .where(and(
+        eq(transactionsTable.externalDepositId, depositId),
+        eq(transactionsTable.status, "pending"),
+      ))
+      .limit(1);
+
+    if (tx) {
+      const actualAmount = depositedAmount
+        ? Math.round(Number(depositedAmount))
+        : requestedAmount
+          ? Math.round(Number(requestedAmount))
+          : tx.amount;
+
+      await db.update(transactionsTable)
+        .set({ status: "completed" })
+        .where(eq(transactionsTable.id, tx.id));
+
+      await db.update(usersTable)
+        .set({ balance: sql`${usersTable.balance} + ${actualAmount}` })
+        .where(eq(usersTable.id, tx.userId));
+
+      logger.info({ depositId, userId: tx.userId, amount: actualAmount }, "[PawaPay] Deposit completed — balance credited");
+    } else {
+      logger.warn({ depositId }, "[PawaPay] Deposit callback: transaction not found or already processed");
+    }
+  } else if (status === "FAILED") {
+    await db.update(transactionsTable)
+      .set({ status: "failed" })
+      .where(and(
+        eq(transactionsTable.externalDepositId, depositId),
+        eq(transactionsTable.status, "pending"),
+      ));
+    logger.warn({ depositId, reason: payload.failureReason }, "[PawaPay] Deposit failed");
+  }
+}
+
+/* ── Deposit callback — URL: /api/wallet/pawapay/webhook ── */
 router.post("/wallet/pawapay/webhook", async (req, res): Promise<void> => {
   try {
-    const { depositId, status, depositedAmount } = req.body;
-
-    if (!depositId || !status) {
-      res.status(400).json({ error: "Invalid webhook payload" });
-      return;
-    }
-
-    logger.info({ depositId, status }, "[PawaPay] Webhook received");
-
-    if (status === "COMPLETED") {
-      const [tx] = await db.select().from(transactionsTable)
-        .where(and(
-          eq(transactionsTable.externalDepositId, depositId),
-          eq(transactionsTable.status, "pending"),
-        ))
-        .limit(1);
-
-      if (tx) {
-        const actualAmount = depositedAmount ? Math.round(Number(depositedAmount)) : tx.amount;
-        await db.update(transactionsTable)
-          .set({ status: "completed" })
-          .where(eq(transactionsTable.id, tx.id));
-
-        await db.update(usersTable)
-          .set({ balance: sql`${usersTable.balance} + ${actualAmount}` })
-          .where(eq(usersTable.id, tx.userId));
-
-        logger.info({ depositId, userId: tx.userId, amount: actualAmount }, "[PawaPay] Deposit completed, balance credited");
-      }
-    } else if (status === "FAILED") {
-      await db.update(transactionsTable)
-        .set({ status: "failed" })
-        .where(eq(transactionsTable.externalDepositId, depositId));
-    }
-
     res.status(200).json({ received: true });
+
+    /* PawaPay sends an array; handle both array and single object */
+    const body = req.body;
+    const items: unknown[] = Array.isArray(body) ? body : [body];
+
+    for (const item of items) {
+      await processDepositCallback(item as Parameters<typeof processDepositCallback>[0]);
+    }
   } catch (e) {
-    logger.error({ error: (e as Error).message }, "[PawaPay] Webhook error");
-    res.status(500).json({ error: "Internal error" });
+    logger.error({ error: (e as Error).message }, "[PawaPay] Deposit webhook error");
   }
 });
 
-/* ── Check PawaPay deposit status ── */
+/* ── Refund/Payout callback — URL: /api/wallet/pawapay/refund-webhook ── */
+router.post("/wallet/pawapay/refund-webhook", async (req, res): Promise<void> => {
+  try {
+    res.status(200).json({ received: true });
+
+    const body = req.body;
+    const items: unknown[] = Array.isArray(body) ? body : [body];
+
+    for (const item of items) {
+      const { refundId, depositId, status, amount } = item as {
+        refundId?: string;
+        depositId?: string;
+        status?: string;
+        amount?: string;
+      };
+
+      logger.info({ refundId, depositId, status }, "[PawaPay] Refund callback received");
+
+      /* Refunds in Simix are managed internally (admin/user cancel).
+       * If PawaPay confirms a refund, we just log it.
+       * Extend this if you initiate refunds via PawaPay API. */
+      if (refundId && status) {
+        logger.info({ refundId, depositId, status, amount }, "[PawaPay] Refund status updated");
+      }
+    }
+  } catch (e) {
+    logger.error({ error: (e as Error).message }, "[PawaPay] Refund webhook error");
+  }
+});
+
+/* ── Check PawaPay deposit status (polling by frontend) ── */
 router.get("/wallet/deposit/:depositId/status", requireAuth, async (req, res): Promise<void> => {
   const depositId = String(req.params.depositId);
   const user = req.user!;
@@ -253,14 +304,16 @@ router.get("/wallet/deposit/:depositId/status", requireAuth, async (req, res): P
 
   if (!tx) { res.status(404).json({ error: "Dépôt introuvable" }); return; }
 
-  /* Poll PawaPay for live status */
+  /* Poll PawaPay for live status if still pending */
   const pawaPayCtx = await getPawaPayClient();
   if (pawaPayCtx && tx.status === "pending") {
     try {
       const statuses = await pawaPayCtx.client.getDepositStatus(depositId);
-      const latest = statuses[0];
+      const latest = Array.isArray(statuses) ? statuses[0] : statuses;
       if (latest?.status === "COMPLETED") {
-        const actualAmount = latest.depositedAmount ? Math.round(Number(latest.depositedAmount)) : tx.amount;
+        const actualAmount = latest.depositedAmount
+          ? Math.round(Number(latest.depositedAmount))
+          : tx.amount;
         await db.update(transactionsTable).set({ status: "completed" }).where(eq(transactionsTable.id, tx.id));
         await db.update(usersTable).set({ balance: sql`${usersTable.balance} + ${actualAmount}` }).where(eq(usersTable.id, user.id));
         tx.status = "completed";
@@ -269,7 +322,7 @@ router.get("/wallet/deposit/:depositId/status", requireAuth, async (req, res): P
         tx.status = "failed";
       }
     } catch (e) {
-      logger.warn({ error: (e as Error).message }, "[PawaPay] Status check failed");
+      logger.warn({ error: (e as Error).message }, "[PawaPay] Status poll failed");
     }
   }
 

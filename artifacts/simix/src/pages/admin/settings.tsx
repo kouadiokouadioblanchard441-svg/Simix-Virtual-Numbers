@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { adminApi } from "@/lib/admin-api";
 import { AdminGuard } from "@/components/admin-guard";
 import { AdminLayout } from "@/components/admin-layout";
-import { Loader2, Save, Wifi, WifiOff, CheckCircle2, XCircle, ChevronDown, ChevronUp } from "lucide-react";
+import { Loader2, Save, Wifi, WifiOff, CheckCircle2, XCircle, ChevronDown, ChevronUp, FlaskConical, RefreshCw, CheckCheck, Ban } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 const SETTINGS_SCHEMA = [
@@ -180,6 +180,97 @@ function PawaPayTestButton({ token, env }: { token: string; env: string }) {
   );
 }
 
+function PawaPaySimulator() {
+  const { toast } = useToast();
+  const qc = useQueryClient();
+
+  const { data: pending = [], isLoading, refetch, isFetching } = useQuery({
+    queryKey: ["admin-pawapay-pending"],
+    queryFn: adminApi.getPendingPawaPayDeposits,
+    refetchInterval: 15000,
+  });
+
+  const simulate = useMutation({
+    mutationFn: ({ depositId, status }: { depositId: string; status: "COMPLETED" | "FAILED" }) =>
+      adminApi.simulatePawaPayDeposit(depositId, status),
+    onSuccess: (data) => {
+      toast({ title: data.success ? "Simulation réussie" : "Erreur", description: data.message, variant: data.success ? "default" : "destructive" });
+      qc.invalidateQueries({ queryKey: ["admin-pawapay-pending"] });
+    },
+    onError: (e) => toast({ title: "Erreur", description: (e as Error).message, variant: "destructive" }),
+  });
+
+  return (
+    <div className="mt-6 border-t border-zinc-800 pt-6">
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <FlaskConical className="w-4 h-4 text-violet-400" />
+          <h3 className="text-sm font-semibold text-white">Simulateur de dépôts</h3>
+          <span className="text-[10px] px-2 py-0.5 rounded-full bg-violet-500/15 text-violet-400 border border-violet-500/20 font-medium">TEST</span>
+        </div>
+        <button onClick={() => refetch()} disabled={isFetching} className="flex items-center gap-1.5 text-xs text-zinc-400 hover:text-zinc-200 transition-colors">
+          <RefreshCw className={`w-3.5 h-3.5 ${isFetching ? "animate-spin" : ""}`} />
+          Actualiser
+        </button>
+      </div>
+
+      <p className="text-xs text-zinc-500 mb-4">
+        Simule la réponse de PawaPay pour un dépôt en attente — utile pour tester l'intégration sans vrai paiement mobile.
+      </p>
+
+      {isLoading ? (
+        <div className="flex items-center gap-2 text-zinc-500 text-xs"><Loader2 className="w-4 h-4 animate-spin" /> Chargement…</div>
+      ) : pending.length === 0 ? (
+        <div className="bg-zinc-800/50 border border-zinc-700/50 rounded-lg px-4 py-6 text-center">
+          <p className="text-zinc-500 text-sm">Aucun dépôt en attente PawaPay pour l'instant.</p>
+          <p className="text-zinc-600 text-xs mt-1">Initie un dépôt depuis l'app pour le voir apparaître ici.</p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {pending.map(dep => (
+            <div key={dep.id} className="flex items-center gap-3 bg-zinc-800/60 border border-zinc-700/50 rounded-xl px-4 py-3">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-sm text-white font-medium">{dep.userFullName || "—"}</span>
+                  <span className="text-xs text-zinc-500">{dep.userPhone || ""}</span>
+                  <span className="text-xs font-mono text-amber-400 bg-amber-900/30 px-1.5 py-0.5 rounded">
+                    {dep.amount.toLocaleString()} FCFA
+                  </span>
+                  <span className="text-xs text-zinc-600">{dep.method}</span>
+                </div>
+                <div className="text-[10px] text-zinc-600 mt-0.5 font-mono truncate">
+                  ID: {dep.externalDepositId}
+                </div>
+                <div className="text-[10px] text-zinc-600">
+                  {new Date(dep.createdAt).toLocaleString("fr-FR")}
+                </div>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  onClick={() => simulate.mutate({ depositId: dep.externalDepositId, status: "COMPLETED" })}
+                  disabled={simulate.isPending}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-xs font-medium rounded-lg transition-colors"
+                >
+                  <CheckCheck className="w-3.5 h-3.5" />
+                  Compléter
+                </button>
+                <button
+                  onClick={() => simulate.mutate({ depositId: dep.externalDepositId, status: "FAILED" })}
+                  disabled={simulate.isPending}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-red-700/80 hover:bg-red-700 disabled:opacity-50 text-white text-xs font-medium rounded-lg transition-colors"
+                >
+                  <Ban className="w-3.5 h-3.5" />
+                  Échouer
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function SettingsContent() {
   const [values, setValues] = useState<Record<string, string>>({});
   const [dirty, setDirty] = useState(false);
@@ -255,7 +346,11 @@ function SettingsContent() {
                   <a href="https://dashboard.pawapay.io" target="_blank" rel="noreferrer" className="text-orange-400 hover:underline">dashboard.pawapay.io</a>.
                   Utilisez <code className="text-violet-400">sandbox</code> pour les tests et <code className="text-violet-400">production</code> pour le live.
                 </p>
-                <p>URL webhook à configurer sur PawaPay : <code className="text-emerald-400">/api/wallet/pawapay/webhook</code></p>
+                <p className="flex flex-col gap-0.5">
+                  <span>URLs webhook à configurer sur PawaPay Dashboard :</span>
+                  <span>• Dépôts : <code className="text-emerald-400">/api/wallet/pawapay/webhook</code></span>
+                  <span>• Remboursements : <code className="text-emerald-400">/api/wallet/pawapay/refund-webhook</code></span>
+                </p>
               </div>
             )}
 
@@ -277,10 +372,13 @@ function SettingsContent() {
             </div>
 
             {group === "PawaPay — Mobile Money" && (
-              <PawaPayTestButton
-                token={values["pawapay_api_token"] ?? ""}
-                env={values["pawapay_env"] ?? "sandbox"}
-              />
+              <>
+                <PawaPayTestButton
+                  token={values["pawapay_api_token"] ?? ""}
+                  env={values["pawapay_env"] ?? "sandbox"}
+                />
+                <PawaPaySimulator />
+              </>
             )}
           </div>
         ))}
