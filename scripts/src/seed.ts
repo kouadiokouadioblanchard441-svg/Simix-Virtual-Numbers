@@ -4,8 +4,10 @@
  * Target: Supabase (SUPABASE_DATABASE_URL)
  */
 import bcrypt from "bcryptjs";
+import { drizzle } from "drizzle-orm/node-postgres";
+import pg from "pg";
+import * as schema from "@workspace/db/schema";
 import {
-  db,
   countriesTable,
   paymentMethodsTable,
   servicesTable,
@@ -14,8 +16,34 @@ import {
   apiProvidersTable,
   systemSettingsTable,
   countryPaymentConfigsTable,
-} from "@workspace/db";
+} from "@workspace/db/schema";
 import { eq, sql } from "drizzle-orm";
+
+const { Pool } = pg;
+
+if (!process.env.SUPABASE_DATABASE_URL) {
+  throw new Error("SUPABASE_DATABASE_URL must be set.");
+}
+
+function parseUrl(raw: string): pg.PoolConfig {
+  const p = new URL(raw);
+  return {
+    host: p.hostname,
+    port: Number(p.port) || 6543,
+    database: p.pathname.replace(/^\//, ""),
+    user: decodeURIComponent(p.username),
+    password: decodeURIComponent(p.password),
+    ssl: { rejectUnauthorized: false },
+  };
+}
+
+const pool = new Pool({
+  ...parseUrl(process.env.SUPABASE_DATABASE_URL),
+  max: 3,
+  connectionTimeoutMillis: 15000,
+});
+
+const db = drizzle(pool, { schema });
 
 type ServiceSeed = {
   name: string;
@@ -239,7 +267,7 @@ async function upsertSystemSettings() {
 
 async function ensureDemoUser() {
   console.log("→ Seeding demo user...");
-  const phone = "+22507012345 67".replace(/\s+/g, "");
+  const phone = "+2250701234567";
   const [existing] = await db.select().from(usersTable).where(eq(usersTable.phone, phone)).limit(1);
   if (existing) {
     await db.update(usersTable).set({ balance: sql`GREATEST(${usersTable.balance}, 12450)` }).where(eq(usersTable.id, existing.id));
@@ -274,6 +302,12 @@ async function ensureDemoUser() {
 
 async function main() {
   console.log("🚀 Seeding Supabase database...\n");
+
+  const client = await pool.connect();
+  await client.query("SELECT 1");
+  client.release();
+  console.log("  ✓ Database connection verified\n");
+
   await upsertServices();
   await upsertCountries();
   await upsertPaymentMethods();
@@ -286,10 +320,12 @@ async function main() {
   console.log("  1. Add your 5sim API key via the admin panel → Fournisseurs → 5sim → Modifier");
   console.log("  2. Add your PawaPay token via l'admin → Fournisseurs → PawaPay → Modifier");
   console.log("  3. Activer les fournisseurs après avoir ajouté les clés");
+  await pool.end();
   process.exit(0);
 }
 
-main().catch((err) => {
+main().catch(async (err) => {
   console.error("❌ Seed failed:", err);
+  await pool.end();
   process.exit(1);
 });
