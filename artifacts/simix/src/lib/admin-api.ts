@@ -84,6 +84,15 @@ export const adminApi = {
 
   getSettings: () => req<Record<string, string>>("GET", "/admin/settings"),
   updateSettings: (data: Record<string, string>) => req("PUT", "/admin/settings", data),
+  testPawaPay: (token?: string, env?: string) => req<{
+    success: boolean;
+    message: string;
+    latencyMs?: number;
+    env?: string;
+    activeCount?: number;
+    totalCount?: number;
+    operators?: { name: string; country: string; currency: string }[];
+  }>("POST", "/admin/pawapay/test", { token, env }),
 
   getSecurityEvents: (severity?: string) => {
     const q = severity ? `?severity=${severity}` : "";

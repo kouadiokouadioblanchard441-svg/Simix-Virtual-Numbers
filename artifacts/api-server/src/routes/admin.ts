@@ -859,6 +859,54 @@ router.put("/admin/settings", requireAdmin, async (req, res): Promise<void> => {
   res.json({ success: true });
 });
 
+/* ─────────────────── PAWAPAY CONNECTION TEST ─────────────────── */
+router.post("/admin/pawapay/test", requireAdmin, async (req, res): Promise<void> => {
+  /* Read token + env from request body (unsaved form values) or fall back to DB */
+  const bodyToken = (req.body as { token?: string; env?: string }).token;
+  const bodyEnv   = (req.body as { token?: string; env?: string }).env as "sandbox" | "production" | undefined;
+
+  let token = bodyToken?.trim() || null;
+  let env: "sandbox" | "production" = bodyEnv === "production" ? "production" : "sandbox";
+
+  if (!token) {
+    const rows = await db.select().from(systemSettingsTable).where(eq(systemSettingsTable.key, "pawapay_api_token")).limit(1);
+    token = rows[0]?.value ?? null;
+    const envRow = await db.select().from(systemSettingsTable).where(eq(systemSettingsTable.key, "pawapay_env")).limit(1);
+    env = (envRow[0]?.value as "sandbox" | "production") ?? "sandbox";
+  }
+
+  if (!token) {
+    res.status(400).json({ success: false, message: "Aucun token PawaPay configuré." });
+    return;
+  }
+
+  const { PawaPayClient } = await import("../lib/pawapay");
+  const client = new PawaPayClient(token, env);
+  const start = Date.now();
+
+  try {
+    const correspondents = await client.getActiveCorrespondents();
+    const latencyMs = Date.now() - start;
+    const active = correspondents.filter(c => c.active);
+
+    res.json({
+      success: true,
+      latencyMs,
+      env,
+      message: `Connexion réussie (${latencyMs}ms) — ${active.length} opérateur(s) actif(s)`,
+      activeCount: active.length,
+      totalCount: correspondents.length,
+      operators: active.slice(0, 10).map(c => ({ name: c.name, country: c.country, currency: c.currency })),
+    });
+  } catch (e) {
+    res.json({
+      success: false,
+      latencyMs: Date.now() - start,
+      message: (e as Error).message,
+    });
+  }
+});
+
 /* ─────────────────── SECURITY EVENTS ─────────────────── */
 router.get("/admin/security-events", requireAdmin, async (req, res): Promise<void> => {
   const limit = Math.min(Number(req.query.limit) || 50, 200);
