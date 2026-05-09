@@ -4,30 +4,32 @@ import * as schema from "./schema";
 
 const { Pool } = pg;
 
-if (!process.env.SUPABASE_DATABASE_URL) {
+const dbUrl = process.env.SUPABASE_DATABASE_URL ?? process.env.DATABASE_URL;
+
+if (!dbUrl) {
   throw new Error(
-    "SUPABASE_DATABASE_URL must be set. Supabase is the primary database for this application.",
+    "DATABASE_URL or SUPABASE_DATABASE_URL must be set.",
   );
 }
 
-function parseSupabaseUrl(url: string): pg.PoolConfig {
+function parseDbUrl(url: string): pg.PoolConfig {
   try {
     const parsed = new URL(url);
     return {
       host: parsed.hostname,
-      port: Number(parsed.port) || 6543,
+      port: Number(parsed.port) || 5432,
       database: parsed.pathname.replace(/^\//, ""),
       user: decodeURIComponent(parsed.username),
       password: decodeURIComponent(parsed.password),
-      ssl: { rejectUnauthorized: false },
+      ssl: parsed.hostname.includes("supabase") ? { rejectUnauthorized: false } : false,
     };
   } catch {
-    return { connectionString: url, ssl: { rejectUnauthorized: false } };
+    return { connectionString: url };
   }
 }
 
 export const pool = new Pool({
-  ...parseSupabaseUrl(process.env.SUPABASE_DATABASE_URL),
+  ...parseDbUrl(dbUrl),
   max: 10,
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 10000,

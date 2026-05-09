@@ -1,8 +1,10 @@
 import { defineConfig } from "drizzle-kit";
 import path from "path";
 
-if (!process.env.SUPABASE_DATABASE_URL) {
-  throw new Error("SUPABASE_DATABASE_URL must be set. Supabase is the primary database.");
+const dbUrl = process.env.SUPABASE_DATABASE_URL ?? process.env.DATABASE_URL;
+
+if (!dbUrl) {
+  throw new Error("DATABASE_URL or SUPABASE_DATABASE_URL must be set.");
 }
 
 function buildCleanUrl(url: string): string {
@@ -20,6 +22,6 @@ export default defineConfig({
   schema: path.join(__dirname, "./src/schema/index.ts"),
   dialect: "postgresql",
   dbCredentials: {
-    url: buildCleanUrl(process.env.SUPABASE_DATABASE_URL),
+    url: buildCleanUrl(dbUrl),
   },
 });
