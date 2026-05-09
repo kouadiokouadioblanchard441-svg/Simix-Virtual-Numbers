@@ -28,6 +28,10 @@ import ProfileNotifications from "@/pages/profile-notifications";
 import ProfilePaiement from "@/pages/profile-paiement";
 import ProfileConfidentialite from "@/pages/profile-confidentialite";
 import ProfileAide from "@/pages/profile-aide";
+import ProfilePolitiqueConfidentialite from "@/pages/profile-politique-confidentialite";
+import ProfileCGU from "@/pages/profile-cgu";
+import ProfileCookies from "@/pages/profile-cookies";
+import ProfileMentionsLegales from "@/pages/profile-mentions-legales";
 
 // Admin pages
 import AdminDashboard from "@/pages/admin/dashboard";
@@ -122,6 +126,10 @@ function InnerRouter() {
           <Route path="/profile/paiement" component={ProfilePaiement} />
           <Route path="/profile/confidentialite" component={ProfileConfidentialite} />
           <Route path="/profile/aide" component={ProfileAide} />
+          <Route path="/profile/politique-confidentialite" component={ProfilePolitiqueConfidentialite} />
+          <Route path="/profile/cgu" component={ProfileCGU} />
+          <Route path="/profile/cookies" component={ProfileCookies} />
+          <Route path="/profile/mentions-legales" component={ProfileMentionsLegales} />
           <Route component={NotFound} />
         </Switch>
       </div>

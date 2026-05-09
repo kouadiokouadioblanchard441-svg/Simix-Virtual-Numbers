@@ -3,7 +3,7 @@ import { AppLayout } from "@/components/layout/app-layout";
 import { AuthGuard } from "@/components/auth-guard";
 import { useLocation } from "wouter";
 import { motion } from "framer-motion";
-import { ArrowLeft, Lock, Eye, Database, Trash2, Download, ChevronRight, Shield, AlertTriangle } from "lucide-react";
+import { ArrowLeft, Lock, Eye, Database, Trash2, Download, ChevronRight, Shield, AlertTriangle, FileText, Cookie, Building2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 function Toggle({ value, onChange }: { value: boolean; onChange: (v: boolean) => void }) {
@@ -105,13 +105,16 @@ function ConfidentialiteContent() {
           </div>
           <div className="space-y-1">
             {[
-              { label: "Politique de confidentialité", date: "Mise à jour jan. 2026" },
-              { label: "Conditions générales d'utilisation", date: "Mise à jour jan. 2026" },
-              { label: "Politique des cookies", date: "Mise à jour jan. 2026" },
-              { label: "Mentions légales", date: "Mise à jour jan. 2026" },
-            ].map(({ label, date }) => (
-              <button key={label} className="w-full flex items-center justify-between py-3 text-left hover:bg-secondary/50 transition-colors rounded-xl px-2">
-                <div>
+              { label: "Politique de confidentialité", date: "Mise à jour jan. 2026", href: "/profile/politique-confidentialite", icon: Shield, color: "text-primary bg-primary/10" },
+              { label: "Conditions générales d'utilisation", date: "Mise à jour jan. 2026", href: "/profile/cgu", icon: FileText, color: "text-blue-400 bg-blue-500/10" },
+              { label: "Politique des cookies", date: "Mise à jour jan. 2026", href: "/profile/cookies", icon: Cookie, color: "text-amber-400 bg-amber-500/10" },
+              { label: "Mentions légales", date: "Mise à jour jan. 2026", href: "/profile/mentions-legales", icon: Building2, color: "text-violet-400 bg-violet-500/10" },
+            ].map(({ label, date, href, icon: Icon, color }) => (
+              <button key={label} onClick={() => setLocation(href)} className="w-full flex items-center gap-3 py-3 text-left hover:bg-secondary/50 transition-colors rounded-xl px-2">
+                <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${color.split(" ")[1]}`}>
+                  <Icon className={`w-4 h-4 ${color.split(" ")[0]}`} />
+                </div>
+                <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-foreground">{label}</p>
                   <p className="text-xs text-muted-foreground">{date}</p>
                 </div>

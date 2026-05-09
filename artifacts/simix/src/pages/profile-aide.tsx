@@ -3,8 +3,28 @@ import { AppLayout } from "@/components/layout/app-layout";
 import { AuthGuard } from "@/components/auth-guard";
 import { useLocation } from "wouter";
 import { motion } from "framer-motion";
-import { ArrowLeft, ChevronRight, MessageCircle, Mail, HelpCircle, ExternalLink, Star, FileText, Phone } from "lucide-react";
+import { ArrowLeft, ChevronRight, HelpCircle, ExternalLink, Star, FileText, Phone } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+
+function WhatsAppLogo({ size = 24 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path fillRule="evenodd" clipRule="evenodd" d="M24 4C13.0 4 4 13.0 4 24c0 3.56.96 6.9 2.64 9.76L4 44l10.56-2.6A19.9 19.9 0 0024 44c11.0 0 20-9.0 20-20S35.0 4 24 4z" fill="#25D366"/>
+      <path fillRule="evenodd" clipRule="evenodd" d="M19.2 15.6c-.4-1-.8-1-.12-1h-.88c-.28 0-.76.1-1.16.52-.4.4-1.52 1.48-1.52 3.6s1.56 4.18 1.78 4.48c.2.28 3.04 4.8 7.46 6.52 1.04.4 1.84.64 2.48.82.04.02 1.04.28 2 .18.96-.1 2.02-.6 2.26-1.16.24-.56.24-1.04.16-1.14-.08-.1-.28-.16-.56-.3-.28-.14-1.64-.8-1.9-.9-.26-.1-.44-.14-.62.14-.18.28-.7.9-.86 1.08-.16.18-.32.2-.6.08-.28-.14-1.18-.44-2.24-1.38-.82-.72-1.38-1.62-1.54-1.9-.16-.28-.02-.42.12-.56.12-.12.28-.32.42-.48.14-.16.18-.28.28-.46.1-.18.04-.34-.02-.48-.08-.14-.62-1.52-.86-2.08-.24-.56-.48-.48-.62-.48h-.54z" fill="white"/>
+    </svg>
+  );
+}
+
+function EmailLogo({ size = 24 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect width="48" height="48" rx="10" fill="white" fillOpacity="0"/>
+      <path d="M6 12L24 27L42 12" stroke="#4285F4" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
+      <path d="M6 12h36v26a2 2 0 01-2 2H8a2 2 0 01-2-2V12z" stroke="#4285F4" strokeWidth="3" strokeLinejoin="round" fill="none"/>
+      <path d="M6 38l13-14M42 38L29 24" stroke="#4285F4" strokeWidth="2.5" strokeLinecap="round"/>
+    </svg>
+  );
+}
 
 const FAQ = [
   {
@@ -85,18 +105,18 @@ function AideContent() {
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-5">
         {/* Contact rapide */}
         <div className="grid grid-cols-2 gap-3">
-          <button onClick={handleWhatsApp} className="flex flex-col items-center gap-2 p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl hover:bg-emerald-500/20 transition-colors">
-            <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 flex items-center justify-center">
-              <MessageCircle className="w-6 h-6 text-emerald-400" />
+          <button onClick={handleWhatsApp} className="flex flex-col items-center gap-2 p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl hover:bg-emerald-500/20 transition-colors active:scale-95">
+            <div className="w-14 h-14 rounded-2xl bg-white/5 flex items-center justify-center drop-shadow-md">
+              <WhatsAppLogo size={44} />
             </div>
             <div className="text-center">
               <p className="text-sm font-bold text-emerald-400">WhatsApp</p>
               <p className="text-[10px] text-muted-foreground">Réponse en ~15 min</p>
             </div>
           </button>
-          <button onClick={handleEmail} className="flex flex-col items-center gap-2 p-4 bg-blue-500/10 border border-blue-500/20 rounded-2xl hover:bg-blue-500/20 transition-colors">
-            <div className="w-12 h-12 rounded-2xl bg-blue-500/20 flex items-center justify-center">
-              <Mail className="w-6 h-6 text-blue-400" />
+          <button onClick={handleEmail} className="flex flex-col items-center gap-2 p-4 bg-blue-500/10 border border-blue-500/20 rounded-2xl hover:bg-blue-500/20 transition-colors active:scale-95">
+            <div className="w-14 h-14 rounded-2xl bg-white/5 flex items-center justify-center drop-shadow-md">
+              <EmailLogo size={44} />
             </div>
             <div className="text-center">
               <p className="text-sm font-bold text-blue-400">Email</p>
