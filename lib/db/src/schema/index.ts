@@ -4,7 +4,6 @@ export * from "./countries";
 export * from "./payment_methods";
 export * from "./numbers";
 export * from "./sms_messages";
-export * from "./messages";
 export * from "./transactions";
 export * from "./sessions";
 export * from "./security";
