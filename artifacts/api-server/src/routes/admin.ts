@@ -339,6 +339,92 @@ router.put("/admin/countries/:countryId", requireAuth, requireAdmin, async (req,
   res.json({ success: true });
 });
 
+/* ─────────────────── AFRICAN COUNTRIES SEEDING ─────────────────── */
+router.post("/admin/countries/seed-africa", requireAuth, requireAdmin, async (req, res): Promise<void> => {
+  const AFRICAN_COUNTRIES = [
+    { code: "CI", name: "Côte d'Ivoire",        dialCode: "+225", popular: true,  sortOrder: 1 },
+    { code: "SN", name: "Sénégal",               dialCode: "+221", popular: true,  sortOrder: 2 },
+    { code: "BF", name: "Burkina Faso",           dialCode: "+226", popular: true,  sortOrder: 3 },
+    { code: "ML", name: "Mali",                   dialCode: "+223", popular: true,  sortOrder: 4 },
+    { code: "GN", name: "Guinée",                 dialCode: "+224", popular: false, sortOrder: 5 },
+    { code: "TG", name: "Togo",                   dialCode: "+228", popular: false, sortOrder: 6 },
+    { code: "BJ", name: "Bénin",                  dialCode: "+229", popular: false, sortOrder: 7 },
+    { code: "NE", name: "Niger",                  dialCode: "+227", popular: false, sortOrder: 8 },
+    { code: "CM", name: "Cameroun",               dialCode: "+237", popular: true,  sortOrder: 9 },
+    { code: "CD", name: "RD Congo",               dialCode: "+243", popular: true,  sortOrder: 10 },
+    { code: "CG", name: "Congo-Brazzaville",      dialCode: "+242", popular: false, sortOrder: 11 },
+    { code: "GA", name: "Gabon",                  dialCode: "+241", popular: false, sortOrder: 12 },
+    { code: "TD", name: "Tchad",                  dialCode: "+235", popular: false, sortOrder: 13 },
+    { code: "CF", name: "Centrafrique",           dialCode: "+236", popular: false, sortOrder: 14 },
+    { code: "GH", name: "Ghana",                  dialCode: "+233", popular: true,  sortOrder: 15 },
+    { code: "NG", name: "Nigeria",                dialCode: "+234", popular: true,  sortOrder: 16 },
+    { code: "KE", name: "Kenya",                  dialCode: "+254", popular: true,  sortOrder: 17 },
+    { code: "TZ", name: "Tanzanie",               dialCode: "+255", popular: false, sortOrder: 18 },
+    { code: "UG", name: "Ouganda",                dialCode: "+256", popular: false, sortOrder: 19 },
+    { code: "RW", name: "Rwanda",                 dialCode: "+250", popular: false, sortOrder: 20 },
+    { code: "ZA", name: "Afrique du Sud",         dialCode: "+27",  popular: true,  sortOrder: 21 },
+    { code: "ZM", name: "Zambie",                 dialCode: "+260", popular: false, sortOrder: 22 },
+    { code: "MZ", name: "Mozambique",             dialCode: "+258", popular: false, sortOrder: 23 },
+    { code: "MG", name: "Madagascar",             dialCode: "+261", popular: false, sortOrder: 24 },
+    { code: "MU", name: "Maurice",                dialCode: "+230", popular: false, sortOrder: 25 },
+    { code: "DZ", name: "Algérie",                dialCode: "+213", popular: false, sortOrder: 26 },
+    { code: "MA", name: "Maroc",                  dialCode: "+212", popular: true,  sortOrder: 27 },
+    { code: "TN", name: "Tunisie",                dialCode: "+216", popular: false, sortOrder: 28 },
+    { code: "EG", name: "Égypte",                 dialCode: "+20",  popular: true,  sortOrder: 29 },
+    { code: "ET", name: "Éthiopie",               dialCode: "+251", popular: false, sortOrder: 30 },
+    { code: "AO", name: "Angola",                 dialCode: "+244", popular: false, sortOrder: 31 },
+    { code: "GW", name: "Guinée-Bissau",          dialCode: "+245", popular: false, sortOrder: 32 },
+    { code: "SL", name: "Sierra Leone",           dialCode: "+232", popular: false, sortOrder: 33 },
+    { code: "LR", name: "Liberia",                dialCode: "+231", popular: false, sortOrder: 34 },
+    { code: "GM", name: "Gambie",                 dialCode: "+220", popular: false, sortOrder: 35 },
+    { code: "MR", name: "Mauritanie",             dialCode: "+222", popular: false, sortOrder: 36 },
+    { code: "NA", name: "Namibie",                dialCode: "+264", popular: false, sortOrder: 37 },
+    { code: "BW", name: "Botswana",               dialCode: "+267", popular: false, sortOrder: 38 },
+    { code: "SD", name: "Soudan",                 dialCode: "+249", popular: false, sortOrder: 39 },
+    { code: "SS", name: "Soudan du Sud",          dialCode: "+211", popular: false, sortOrder: 40 },
+    { code: "SO", name: "Somalie",                dialCode: "+252", popular: false, sortOrder: 41 },
+    { code: "DJ", name: "Djibouti",               dialCode: "+253", popular: false, sortOrder: 42 },
+    { code: "ER", name: "Érythrée",               dialCode: "+291", popular: false, sortOrder: 43 },
+    { code: "BI", name: "Burundi",                dialCode: "+257", popular: false, sortOrder: 44 },
+    { code: "ZW", name: "Zimbabwe",               dialCode: "+263", popular: false, sortOrder: 45 },
+    { code: "MW", name: "Malawi",                 dialCode: "+265", popular: false, sortOrder: 46 },
+    { code: "KM", name: "Comores",                dialCode: "+269", popular: false, sortOrder: 47 },
+    { code: "CV", name: "Cap-Vert",               dialCode: "+238", popular: false, sortOrder: 48 },
+    { code: "GQ", name: "Guinée équatoriale",     dialCode: "+240", popular: false, sortOrder: 49 },
+    { code: "ST", name: "São Tomé-et-Príncipe",   dialCode: "+239", popular: false, sortOrder: 50 },
+    { code: "SC", name: "Seychelles",             dialCode: "+248", popular: false, sortOrder: 51 },
+    { code: "LY", name: "Libye",                  dialCode: "+218", popular: false, sortOrder: 52 },
+    { code: "SZ", name: "Eswatini",               dialCode: "+268", popular: false, sortOrder: 53 },
+    { code: "LS", name: "Lesotho",                dialCode: "+266", popular: false, sortOrder: 54 },
+  ];
+
+  function flagEmoji(code: string): string {
+    return [...code.toUpperCase()].map(c => String.fromCodePoint(0x1F1E6 - 65 + c.charCodeAt(0))).join("");
+  }
+
+  let inserted = 0;
+  let skipped = 0;
+
+  for (const c of AFRICAN_COUNTRIES) {
+    const existing = await db.select({ id: countriesTable.id }).from(countriesTable).where(eq(countriesTable.code, c.code));
+    if (existing.length > 0) {
+      await db.update(countriesTable).set({
+        name: c.name, dialCode: c.dialCode, flag: flagEmoji(c.code), popular: c.popular, sortOrder: c.sortOrder,
+      }).where(eq(countriesTable.code, c.code));
+      skipped++;
+    } else {
+      await db.insert(countriesTable).values({
+        code: c.code, name: c.name, dialCode: c.dialCode, flag: flagEmoji(c.code),
+        popular: c.popular, sortOrder: c.sortOrder, available: 0, price: 0,
+      });
+      inserted++;
+    }
+  }
+
+  await logAdminAction(req.user!.id, "seed_african_countries", req.ip, "countries", "bulk", { inserted, updated: skipped });
+  res.json({ success: true, inserted, updated: skipped, total: AFRICAN_COUNTRIES.length });
+});
+
 /* ─────────────────── PAYMENT METHODS MANAGEMENT ─────────────────── */
 router.get("/admin/payment-methods", requireAuth, requireAdmin, async (_req, res): Promise<void> => {
   const rows = await db.select().from(paymentMethodsTable).orderBy(paymentMethodsTable.sortOrder, paymentMethodsTable.name);

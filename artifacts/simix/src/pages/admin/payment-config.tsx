@@ -6,7 +6,7 @@ import { AdminLayout } from "@/components/admin-layout";
 import { formatFCFA } from "@/lib/format";
 import {
   Loader2, ToggleLeft, ToggleRight, Globe, Search, Plus, Pencil, Check, X,
-  Trash2, Image, Link, ExternalLink, Star, ArrowUpDown, CreditCard,
+  Trash2, Image, Link, ExternalLink, Star, ArrowUpDown, CreditCard, MapPin,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -416,8 +416,20 @@ type Tab = "operators" | "matrix";
 
 function PaymentConfigContent() {
   const [tab, setTab] = useState<Tab>("operators");
+  const { toast } = useToast();
+  const qc = useQueryClient();
   const { data: methods } = useQuery({ queryKey: ["admin-payment-methods"], queryFn: adminApi.getPaymentMethods });
   const { data: configData } = useQuery({ queryKey: ["admin-payment-configs"], queryFn: adminApi.getPaymentConfigs });
+
+  const seedMutation = useMutation({
+    mutationFn: adminApi.seedAfricanCountries,
+    onSuccess: (result) => {
+      toast({ title: `🌍 Pays africains ajoutés`, description: `${result.inserted} insérés, ${result.updated} mis à jour sur ${result.total} pays` });
+      qc.invalidateQueries({ queryKey: ["admin-payment-configs"] });
+      qc.invalidateQueries({ queryKey: ["admin-countries"] });
+    },
+    onError: (e) => toast({ title: "Erreur", description: (e as Error).message, variant: "destructive" }),
+  });
 
   const TABS: { id: Tab; label: string; count?: number }[] = [
     { id: "operators", label: "Opérateurs & Logos", count: methods?.length },
@@ -434,14 +446,29 @@ function PaymentConfigContent() {
             Configurez les logos des opérateurs et leur disponibilité par pays
           </p>
         </div>
-        {/* Operator logo preview strip */}
-        <div className="flex items-center gap-2 bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-2.5">
-          {(methods ?? []).slice(0, 6).map(m => (
-            <OperatorLogo key={m.id} method={m} size={28} />
-          ))}
-          {(methods?.length ?? 0) > 6 && (
-            <span className="text-xs text-zinc-500 font-medium">+{(methods?.length ?? 0) - 6}</span>
-          )}
+        <div className="flex items-center gap-3">
+          {/* Seed African countries button */}
+          <button
+            onClick={() => {
+              if (confirm("Ajouter / mettre à jour les 54 pays africains dans la base de données ?")) {
+                seedMutation.mutate();
+              }
+            }}
+            disabled={seedMutation.isPending}
+            className="flex items-center gap-2 px-3 py-2 text-sm font-medium bg-emerald-600/20 border border-emerald-600/30 text-emerald-400 rounded-xl hover:bg-emerald-600/30 transition-colors disabled:opacity-50"
+          >
+            {seedMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <MapPin className="w-4 h-4" />}
+            Seed pays africains
+          </button>
+          {/* Operator logo preview strip */}
+          <div className="flex items-center gap-2 bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-2.5">
+            {(methods ?? []).slice(0, 6).map(m => (
+              <OperatorLogo key={m.id} method={m} size={28} />
+            ))}
+            {(methods?.length ?? 0) > 6 && (
+              <span className="text-xs text-zinc-500 font-medium">+{(methods?.length ?? 0) - 6}</span>
+            )}
+          </div>
         </div>
       </div>
 
