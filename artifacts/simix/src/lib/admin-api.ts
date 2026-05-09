@@ -83,6 +83,32 @@ export const adminApi = {
     return req<SecurityEvent[]>("GET", `/admin/security-events${q}`);
   },
   getLogs: () => req<AdminLogEntry[]>("GET", "/admin/logs"),
+
+  /* ── Support IA ── */
+  getSupportStats: () => req<SupportStats>("GET", "/admin/support/stats"),
+  getSupportConversations: (params?: { limit?: number; offset?: number; status?: string }) => {
+    const q = new URLSearchParams();
+    if (params?.limit) q.set("limit", String(params.limit));
+    if (params?.offset) q.set("offset", String(params.offset));
+    if (params?.status) q.set("status", params.status);
+    return req<{ conversations: SupportConversation[]; total: number }>("GET", `/admin/support/conversations?${q}`);
+  },
+  getSupportMessages: (convId: string) => req<{ messages: SupportMessage[] }>("GET", `/admin/support/conversations/${convId}/messages`),
+  sendSupportMessage: (convId: string, content: string, imageData?: string) =>
+    req<{ message: SupportMessage }>("POST", `/admin/support/conversations/${convId}/messages`, { content, imageData }),
+  updateConversationStatus: (convId: string, data: { status?: string; isHumanTakeover?: boolean; agentNote?: string; priority?: string }) =>
+    req("PUT", `/admin/support/conversations/${convId}/status`, data),
+  deleteConversation: (convId: string) => req("DELETE", `/admin/support/conversations/${convId}`),
+  getKnowledge: (category?: string) => {
+    const q = category ? `?category=${encodeURIComponent(category)}` : "";
+    return req<KnowledgeEntry[]>("GET", `/admin/support/knowledge${q}`);
+  },
+  createKnowledge: (data: { category: string; title: string; content: string; isActive?: boolean; sortOrder?: number }) =>
+    req<KnowledgeEntry>("POST", "/admin/support/knowledge", data),
+  updateKnowledge: (id: string, data: Partial<KnowledgeEntry>) => req<KnowledgeEntry>("PUT", `/admin/support/knowledge/${id}`, data),
+  deleteKnowledge: (id: string) => req("DELETE", `/admin/support/knowledge/${id}`),
+  getAiConfig: () => req<AiConfigEntry[]>("GET", "/admin/support/config"),
+  updateAiConfig: (data: Record<string, string>) => req("PUT", "/admin/support/config", data),
 };
 
 export interface AdminStats {
@@ -256,4 +282,62 @@ export interface AdminLogEntry {
   ip?: string;
   createdAt: string;
   adminName?: string;
+}
+
+export interface SupportStats {
+  totalConversations: number;
+  activeConversations: number;
+  takeoverConversations: number;
+  resolvedConversations: number;
+  weeklyConversations: number;
+  dailyConversations: number;
+  totalMessages: number;
+  adminMessages: number;
+  knowledgeEntries: number;
+  activeKnowledgeEntries: number;
+}
+
+export interface SupportConversation {
+  id: string;
+  sessionId: string;
+  status: string;
+  language: string;
+  userName?: string;
+  userEmail?: string;
+  isHumanTakeover: boolean;
+  priority: string;
+  agentNote?: string;
+  userId?: string;
+  createdAt: string;
+  updatedAt: string;
+  userFullName?: string;
+  userPhone?: string;
+}
+
+export interface SupportMessage {
+  id: string;
+  conversationId: string;
+  role: string;
+  content: string;
+  imageData?: string;
+  sentByAdmin: boolean;
+  createdAt: string;
+}
+
+export interface KnowledgeEntry {
+  id: string;
+  category: string;
+  title: string;
+  content: string;
+  isActive: boolean;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AiConfigEntry {
+  key: string;
+  value: string;
+  label: string;
+  group: string;
 }

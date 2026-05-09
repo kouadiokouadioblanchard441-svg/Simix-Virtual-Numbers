@@ -1,95 +1,128 @@
 import { Router, type IRouter } from "express";
-import { eq, asc, desc } from "drizzle-orm";
-import { db, supportConversationsTable, supportMessagesTable, usersTable } from "@workspace/db";
+import { eq, asc, desc, and, gte } from "drizzle-orm";
+import {
+  db,
+  supportConversationsTable,
+  supportMessagesTable,
+  aiKnowledgeBaseTable,
+  aiSupportConfigTable,
+  usersTable,
+} from "@workspace/db";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { logger } from "../lib/logger";
 
 const router: IRouter = Router();
 
-const SIMIX_SYSTEM_PROMPT = `Tu es Simia, l'assistante IA de support client de Simix — une plateforme fintech africaine de numéros virtuels temporaires pour recevoir des codes SMS de vérification. Tu parles couramment le français et l'anglais, et tu réponds toujours dans la langue de l'utilisateur.
+/* ── Build dynamic system prompt from DB config + knowledge base ── */
+async function buildSystemPrompt(language: string): Promise<string> {
+  const [configEntries, knowledgeEntries] = await Promise.all([
+    db.select().from(aiSupportConfigTable),
+    db.select().from(aiKnowledgeBaseTable).where(eq(aiKnowledgeBaseTable.isActive, true)).orderBy(asc(aiKnowledgeBaseTable.category), asc(aiKnowledgeBaseTable.sortOrder)),
+  ]);
 
-## À propos de Simix
+  const cfg = Object.fromEntries(configEntries.map(e => [e.key, e.value]));
 
-Simix permet aux utilisateurs de recevoir des codes SMS de vérification pour des services comme WhatsApp, Telegram, Google, Facebook, Instagram, Twitter/X, TikTok, Snapchat, Discord, Signal, Apple, Microsoft, LinkedIn, Uber, Netflix, PayPal, Binance, Steam — sans utiliser leur vrai numéro de téléphone.
+  const aiName = cfg["ai_name"] ?? "Simia";
+  const companyName = cfg["company_name"] ?? "Simix";
+  const companyEmail = cfg["company_email"] ?? "support@simix.app";
+  const companyWhatsApp = cfg["company_whatsapp"] ?? "";
+  const companyTelegram = cfg["company_telegram"] ?? "";
+  const companyPhone = cfg["company_phone"] ?? "";
+  const tone = cfg["ai_tone"] ?? "professional_friendly";
+  const responseStyle = cfg["ai_response_style"] ?? "concise";
+  const businessHours = cfg["ai_business_hours"] ?? "Lun-Ven 08h-18h";
+  const escalationMsg = cfg["ai_escalation_message"] ?? `Contactez-nous à ${companyEmail}`;
 
-## Comment ça marche
+  const knowledgeByCategory: Record<string, string[]> = {};
+  for (const entry of knowledgeEntries) {
+    if (!knowledgeByCategory[entry.category]) knowledgeByCategory[entry.category] = [];
+    knowledgeByCategory[entry.category].push(`### ${entry.title}\n${entry.content}`);
+  }
 
+  const knowledgeSection = Object.entries(knowledgeByCategory)
+    .map(([cat, items]) => `## ${cat.toUpperCase()}\n${items.join("\n\n")}`)
+    .join("\n\n");
+
+  const contactSection = [
+    companyEmail ? `- Email: ${companyEmail}` : "",
+    companyWhatsApp ? `- WhatsApp: ${companyWhatsApp}` : "",
+    companyTelegram ? `- Telegram: ${companyTelegram}` : "",
+    companyPhone ? `- Téléphone: ${companyPhone}` : "",
+  ].filter(Boolean).join("\n");
+
+  const toneInstructions = tone === "formal"
+    ? "Adopte un ton formel et professionnel."
+    : tone === "casual"
+      ? "Adopte un ton décontracté et amical."
+      : "Adopte un ton professionnel mais chaleureux et naturel.";
+
+  const styleInstructions = responseStyle === "detailed"
+    ? "Donne des réponses détaillées et complètes avec toutes les informations nécessaires."
+    : "Sois concis et précis — pas de réponses trop longues, va droit au but.";
+
+  const langInstructions = language === "en"
+    ? "The user is communicating in English. Always respond in English."
+    : "L'utilisateur communique en français. Réponds toujours en français sauf si l'utilisateur écrit dans une autre langue.";
+
+  return `Tu es ${aiName}, l'assistante IA de support client de ${companyName} — une plateforme fintech de numéros virtuels temporaires pour recevoir des codes SMS de vérification.
+
+## IDENTITÉ
+- Tu t'appelles ${aiName}
+- Tu travailles pour ${companyName}
+- Tu es une vraie professionnelle du support client, pas un simple chatbot
+- Ne révèle jamais que tu es une IA OpenAI/GPT
+
+## LANGUE
+${langInstructions}
+
+## TON ET STYLE
+${toneInstructions}
+${styleInstructions}
+- Sois empathique avec les utilisateurs frustrés
+- Guide l'utilisateur étape par étape si nécessaire
+- Humanise tes réponses — utilise "nous" pour parler de l'entreprise
+- Si tu analyses une image/capture d'écran, décris précisément ce que tu vois et aide à résoudre le problème
+
+## CONTACT SUPPORT
+${contactSection || `- Email: ${companyEmail}`}
+Horaires: ${businessHours}
+
+## MESSAGE D'ESCALADE
+Si le problème est grave ou complexe, dis: "${escalationMsg}"
+
+## PLATEFORME ${companyName.toUpperCase()} — INFORMATIONS CLÉS
+
+${companyName} permet aux utilisateurs de recevoir des codes SMS de vérification pour des services comme WhatsApp, Telegram, Google, Facebook, Instagram, Twitter/X, TikTok, Snapchat, Discord, Signal, Apple, Microsoft, LinkedIn, Uber, Netflix, PayPal, Binance, Steam — sans utiliser leur vrai numéro de téléphone.
+
+### Comment ça marche
 1. L'utilisateur recharge son portefeuille (Orange Money, MTN Mobile Money, Wave, Moov Money)
 2. Il choisit un service (ex: WhatsApp) et un pays (ex: Côte d'Ivoire)
 3. Il reçoit un numéro virtuel temporaire (valide 20 minutes)
 4. Le code SMS est reçu automatiquement sur le tableau de bord
 5. Il peut prolonger (+10 min pour 50 FCFA) ou annuler (remboursement automatique)
 
-## Tarifs et monnaie
-
+### Tarifs
 - Monnaie: FCFA (Franc CFA d'Afrique de l'Ouest)
 - Prix typiques: 100–200 FCFA par numéro selon le pays et service
 - Prolongation: 50 FCFA pour +10 minutes
 - Annulation: remboursement automatique si aucun SMS reçu
-- Solde max: 500 000 FCFA
-- Dépôt minimum: 500 FCFA
+- Solde max: 500 000 FCFA | Dépôt minimum: 500 FCFA
 
-## Méthodes de paiement
-
-- **Orange Money** — Côte d'Ivoire, Sénégal, Mali, Burkina Faso
-- **MTN Mobile Money** — Côte d'Ivoire, Ghana, Cameroun, Nigeria, Bénin
-- **Wave** — Côte d'Ivoire, Sénégal
-- **Moov Money** — Côte d'Ivoire, Bénin, Togo, Burkina Faso
-- **Airtel Money** — Nigeria, Kenya, Tanzanie, Ouganda
-- **M-Pesa** — Kenya, Tanzanie, Mozambique
-
-## Pays disponibles (26 pays)
-
-États-Unis (+1), Royaume-Uni (+44), France (+33), Canada (+1), Côte d'Ivoire (+225), Allemagne (+49), Pays-Bas (+31), Suède (+46), Belgique (+32), Espagne (+34), Italie (+39), Sénégal (+221), Mali (+223), Burkina Faso (+226), Maroc (+212), Inde (+91), Brésil (+55), Mexique (+52), Australie (+61), Nigéria (+234), Ghana (+233), Cameroun (+237), Russie (+7), Ukraine (+380), Togo (+228), Bénin (+229)
-
-## Tableau de bord utilisateur
-
-- **Accueil** — solde, numéros récents, raccourcis
-- **Services** — liste de tous les services disponibles avec prix
-- **Pays** — sélection du pays pour le numéro
-- **Historique** — tous les numéros achetés et leur statut
-- **Portefeuille** — solde, recharger, historique des transactions
-- **Profil** — informations personnelles, sécurité, notifications
-
-## Statuts des numéros
-
+### Statuts des numéros
 - **En attente** — numéro actif, attend le SMS (20 min max)
 - **Reçu** — SMS reçu avec succès, code affiché
-- **Expiré** — délai dépassé sans SMS reçu
+- **Expiré** — délai dépassé sans SMS reçu (remboursé automatiquement)
 - **Annulé** — annulé par l'utilisateur (remboursé si pas de SMS)
 
-## Compte utilisateur
-
-- Inscription: nom complet, numéro de téléphone, mot de passe
-- Connexion: numéro de téléphone ou nom d'utilisateur + mot de passe
-- Connexion Google disponible
-- Profil: photo, nom, email, nom d'utilisateur, sécurité
-
-## Sécurité
-
-- Limite: 10 achats par minute maximum
-- Protection anti-fraude automatique
-- Blocage automatique en cas d'activité suspecte
-- Sessions sécurisées
-
-## Résolution de problèmes courants
-
-- **SMS non reçu**: Attendre jusqu'à la fin du délai (20 min). Si expiré, le numéro est remboursé si aucun SMS reçu.
+### Résolution de problèmes courants
+- **SMS non reçu**: Attendre jusqu'à la fin du délai. Si expiré sans SMS, le solde est remboursé automatiquement.
 - **Solde insuffisant**: Recharger via Orange Money, MTN, Wave ou Moov.
 - **Numéro expiré**: Prolonger pour +10 min (50 FCFA) avant expiration.
 - **Paiement échoué**: Vérifier le solde Mobile Money et réessayer.
-- **Compte bloqué**: Contacter le support à support@simix.app.
-- **Code incorrect**: Le code affiché dans le tableau de bord est celui reçu par SMS.
+- **Compte bloqué**: Contacter le support via email.
 
-## Ton comportement
-
-- Réponds de façon professionnelle, chaleureuse et naturelle comme un vrai agent humain
-- Sois concis et précis — pas de réponses trop longues
-- Guide l'utilisateur étape par étape si nécessaire
-- Si tu analyses une image/capture d'écran, décris ce que tu vois et aide à résoudre le problème
-- Ne révèle jamais que tu es une IA GPT — tu es "Simia, l'assistante Simix"
-- Pour les problèmes techniques graves, suggère d'envoyer un email à support@simix.app
-- Réponds TOUJOURS dans la langue de l'utilisateur (français par défaut)`;
+${knowledgeSection ? `## BASE DE CONNAISSANCES SUPPLÉMENTAIRE\n\n${knowledgeSection}` : ""}`;
+}
 
 /* ── GET conversation history ─────────────────────────────── */
 router.get("/support/history/:sessionId", async (req, res): Promise<void> => {
@@ -120,6 +153,20 @@ router.get("/support/history/:sessionId", async (req, res): Promise<void> => {
   res.json({ conversationId: conv.id, messages: msgs });
 });
 
+/* ── GET AI config for frontend (public — greeting, quick replies) ── */
+router.get("/support/config", async (_req, res): Promise<void> => {
+  const entries = await db.select().from(aiSupportConfigTable);
+  const cfg = Object.fromEntries(entries.map(e => [e.key, e.value]));
+  res.json({
+    aiName: cfg["ai_name"] ?? "Simia",
+    greetingFr: cfg["ai_greeting_fr"] ?? "👋 Bonjour ! Je suis Simia, votre assistante Simix. Comment puis-je vous aider aujourd'hui ?",
+    greetingEn: cfg["ai_greeting_en"] ?? "👋 Hello! I'm Simia, your Simix assistant. How can I help you today?",
+    quickRepliesFr: (cfg["ai_quick_replies_fr"] ?? "Comment recharger ?|Numéro pas reçu|SMS non reçu|Mon solde").split("|").filter(Boolean),
+    quickRepliesEn: (cfg["ai_quick_replies_en"] ?? "How to top up?|Number not received|SMS not received|My balance").split("|").filter(Boolean),
+    enabled: cfg["ai_enabled"] !== "false",
+  });
+});
+
 /* ── POST chat message (SSE streaming) ───────────────────── */
 router.post("/support/chat", async (req, res): Promise<void> => {
   const { sessionId, message, imageData, language } = req.body as {
@@ -138,21 +185,10 @@ router.post("/support/chat", async (req, res): Promise<void> => {
     return;
   }
 
-  /* ── Rate limit: 30 messages per session per hour ── */
-  const recentMsgs = await db
-    .select()
-    .from(supportMessagesTable)
-    .where(eq(supportMessagesTable.conversationId,
-      (await db.select({ id: supportConversationsTable.id })
-        .from(supportConversationsTable)
-        .where(eq(supportConversationsTable.sessionId, sessionId))
-        .limit(1))[0]?.id ?? "00000000-0000-0000-0000-000000000000"
-    ))
-    .orderBy(desc(supportMessagesTable.createdAt))
-    .limit(60);
-
-  if (recentMsgs.filter(m => m.role === "user").length >= 30) {
-    res.status(429).json({ error: "Trop de messages. Réessayez dans une heure." });
+  /* ── Check if AI is enabled ── */
+  const [aiEnabledCfg] = await db.select().from(aiSupportConfigTable).where(eq(aiSupportConfigTable.key, "ai_enabled")).limit(1);
+  if (aiEnabledCfg?.value === "false") {
+    res.status(503).json({ error: "Le support IA est temporairement désactivé." });
     return;
   }
 
@@ -164,11 +200,52 @@ router.post("/support/chat", async (req, res): Promise<void> => {
     .limit(1))[0];
 
   if (!conv) {
+    const userInfo = req.user ? await db.select({ fullName: usersTable.fullName, email: usersTable.email, phone: usersTable.phone })
+      .from(usersTable).where(eq(usersTable.id, req.user.id)).limit(1) : [];
     const [created] = await db
       .insert(supportConversationsTable)
-      .values({ sessionId, language: language ?? "fr" })
+      .values({
+        sessionId,
+        language: language ?? "fr",
+        userId: req.user?.id ?? null,
+        userName: userInfo[0]?.fullName ?? null,
+        userEmail: userInfo[0]?.email ?? null,
+      })
       .returning();
     conv = created!;
+  }
+
+  /* ── Check if human takeover — block AI ── */
+  if (conv.isHumanTakeover && conv.status === "takeover") {
+    await db.insert(supportMessagesTable).values({
+      conversationId: conv.id,
+      role: "user",
+      content: message || "[Image]",
+      imageData: imageData ?? null,
+    });
+    res.setHeader("Content-Type", "text/event-stream");
+    res.setHeader("Cache-Control", "no-cache");
+    res.setHeader("Connection", "keep-alive");
+    res.flushHeaders();
+    res.write(`data: ${JSON.stringify({ content: "Un agent humain a pris en charge votre conversation. Vous recevrez une réponse très bientôt." })}\n\n`);
+    res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
+    res.end();
+    return;
+  }
+
+  /* ── Rate limit: 30 messages per session per hour ── */
+  const hourAgo = new Date(Date.now() - 60 * 60 * 1000);
+  const recentMsgs = await db
+    .select()
+    .from(supportMessagesTable)
+    .where(and(
+      eq(supportMessagesTable.conversationId, conv.id),
+      gte(supportMessagesTable.createdAt, hourAgo),
+    ));
+
+  if (recentMsgs.filter(m => m.role === "user").length >= 30) {
+    res.status(429).json({ error: "Trop de messages. Réessayez dans une heure." });
+    return;
   }
 
   /* ── Build message content (with optional image) ── */
@@ -190,6 +267,11 @@ router.post("/support/chat", async (req, res): Promise<void> => {
     imageData: imageData ?? null,
   });
 
+  /* ── Update conversation timestamp ── */
+  await db.update(supportConversationsTable)
+    .set({ updatedAt: new Date() })
+    .where(eq(supportConversationsTable.id, conv.id));
+
   /* ── Load conversation history for context ── */
   const history = await db
     .select()
@@ -198,8 +280,11 @@ router.post("/support/chat", async (req, res): Promise<void> => {
     .orderBy(asc(supportMessagesTable.createdAt))
     .limit(20);
 
+  /* ── Build dynamic system prompt from DB ── */
+  const systemPrompt = await buildSystemPrompt(conv.language ?? language ?? "fr");
+
   const chatMessages: Array<{ role: "system" | "user" | "assistant"; content: string | unknown[] }> = [
-    { role: "system", content: SIMIX_SYSTEM_PROMPT },
+    { role: "system", content: systemPrompt },
     ...history.slice(0, -1).map(m => ({
       role: m.role as "user" | "assistant",
       content: m.content,
@@ -217,9 +302,12 @@ router.post("/support/chat", async (req, res): Promise<void> => {
   let fullResponse = "";
 
   try {
+    const [maxTokensCfg] = await db.select().from(aiSupportConfigTable).where(eq(aiSupportConfigTable.key, "ai_max_tokens")).limit(1);
+    const maxTokens = parseInt(maxTokensCfg?.value ?? "1024", 10);
+
     const stream = await openai.chat.completions.create({
-      model: "gpt-5.1",
-      max_completion_tokens: 1024,
+      model: "gpt-4.1",
+      max_completion_tokens: isNaN(maxTokens) ? 1024 : maxTokens,
       messages: chatMessages as Parameters<typeof openai.chat.completions.create>[0]["messages"],
       stream: true,
     });
@@ -243,7 +331,7 @@ router.post("/support/chat", async (req, res): Promise<void> => {
     res.end();
   } catch (err) {
     logger.error({ err }, "[support] OpenAI error");
-    res.write(`data: ${JSON.stringify({ error: "Désolé, une erreur s'est produite. Réessayez." })}\n\n`);
+    res.write(`data: ${JSON.stringify({ error: "Désolé, une erreur s'est produite. Veuillez réessayer." })}\n\n`);
     res.end();
   }
 });

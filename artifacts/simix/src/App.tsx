@@ -40,6 +40,7 @@ import AdminLogs from "@/pages/admin/logs";
 import AdminSettings from "@/pages/admin/settings";
 import AdminPaymentConfig from "@/pages/admin/payment-config";
 import AdminAnalytics from "@/pages/admin/analytics";
+import AdminSupport from "@/pages/admin/support";
 
 const queryClient = new QueryClient();
 
@@ -63,6 +64,7 @@ function AdminRoutes() {
       <Route path="/admin/logs" component={AdminLogs} />
       <Route path="/admin/analytics" component={AdminAnalytics} />
       <Route path="/admin/payment-config" component={AdminPaymentConfig} />
+      <Route path="/admin/support" component={AdminSupport} />
       <Route path="/admin/settings" component={AdminSettings} />
     </Switch>
   );

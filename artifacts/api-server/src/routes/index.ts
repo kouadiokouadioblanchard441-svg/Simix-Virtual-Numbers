@@ -8,6 +8,7 @@ import numbersRouter from "./numbers";
 import walletRouter from "./wallet";
 import dashboardRouter from "./dashboard";
 import adminRouter from "./admin";
+import adminSupportRouter from "./admin-support";
 import configRouter from "./config";
 import supportRouter from "./support";
 
@@ -23,6 +24,7 @@ router.use(numbersRouter);
 router.use(walletRouter);
 router.use(dashboardRouter);
 router.use(adminRouter);
+router.use(adminSupportRouter);
 router.use(supportRouter);
 
 export default router;
