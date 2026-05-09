@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { X, Send, ImagePlus, Trash2, Minimize2, Maximize2, Bot, Loader2, ChevronDown } from "lucide-react";
+import { motion, AnimatePresence, useDragControls, useMotionValue } from "framer-motion";
+import { X, Send, ImagePlus, Trash2, Minimize2, Maximize2, Bot, Loader2, ChevronDown, GripVertical } from "lucide-react";
 
 /* ── Types ───────────────────────────────────────────────── */
 interface Message {
@@ -10,6 +10,17 @@ interface Message {
   imageData?: string;
   createdAt: Date;
   streaming?: boolean;
+}
+
+interface SupportConfig {
+  aiName: string;
+  aiDisplayTitle: string;
+  aiAvatarUrl: string;
+  greetingFr: string;
+  greetingEn: string;
+  quickRepliesFr: string[];
+  quickRepliesEn: string[];
+  enabled: boolean;
 }
 
 /* ── Helpers ─────────────────────────────────────────────── */
@@ -32,30 +43,66 @@ function formatTime(d: Date): string {
 }
 
 /* ── Avatar ──────────────────────────────────────────────── */
-function SimiaAvatar({ size = 40, pulse = false }: { size?: number; pulse?: boolean }) {
+function SimiaAvatar({
+  size = 40,
+  pulse = false,
+  avatarUrl = "",
+  name = "S",
+}: {
+  size?: number;
+  pulse?: boolean;
+  avatarUrl?: string;
+  name?: string;
+}) {
+  const [imgError, setImgError] = useState(false);
+  const showImage = avatarUrl && !imgError;
+
   return (
-    <div className="relative" style={{ width: size, height: size }}>
+    <div className="relative flex-shrink-0" style={{ width: size, height: size }}>
       {pulse && (
         <span className="absolute inset-0 rounded-full bg-purple-500 opacity-30 animate-ping" />
       )}
       <div
-        className="relative flex items-center justify-center rounded-full text-white font-bold"
+        className="relative flex items-center justify-center rounded-full overflow-hidden"
         style={{
           width: size,
           height: size,
-          background: "linear-gradient(135deg, #7C3AED 0%, #A855F7 50%, #EC4899 100%)",
-          fontSize: size * 0.4,
+          background: showImage ? "transparent" : "linear-gradient(135deg, #7C3AED 0%, #A855F7 50%, #EC4899 100%)",
           boxShadow: "0 0 20px rgba(124,58,237,0.5)",
+          border: "2px solid rgba(124,58,237,0.4)",
         }}
       >
-        <Bot size={size * 0.5} />
+        {showImage ? (
+          <img
+            src={avatarUrl}
+            alt={name}
+            className="w-full h-full object-cover"
+            onError={() => setImgError(true)}
+          />
+        ) : (
+          <Bot size={size * 0.5} color="white" />
+        )}
       </div>
+      {pulse && (
+        <span
+          className="absolute bottom-0 right-0 rounded-full bg-green-400 border-2 border-[#0f0a1e]"
+          style={{ width: size * 0.28, height: size * 0.28 }}
+        />
+      )}
     </div>
   );
 }
 
 /* ── Message bubble ───────────────────────────────────────── */
-function MessageBubble({ msg }: { msg: Message }) {
+function MessageBubble({
+  msg,
+  avatarUrl,
+  aiName,
+}: {
+  msg: Message;
+  avatarUrl: string;
+  aiName: string;
+}) {
   const isUser = msg.role === "user";
   return (
     <motion.div
@@ -66,7 +113,7 @@ function MessageBubble({ msg }: { msg: Message }) {
     >
       {!isUser && (
         <div className="flex-shrink-0 mb-1">
-          <SimiaAvatar size={28} />
+          <SimiaAvatar size={28} avatarUrl={avatarUrl} name={aiName} />
         </div>
       )}
       <div className={`flex flex-col gap-1 max-w-[78%] ${isUser ? "items-end" : "items-start"}`}>
@@ -98,7 +145,7 @@ function MessageBubble({ msg }: { msg: Message }) {
 }
 
 /* ── Typing indicator ────────────────────────────────────── */
-function TypingIndicator() {
+function TypingIndicator({ avatarUrl, aiName }: { avatarUrl: string; aiName: string }) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 8 }}
@@ -106,7 +153,7 @@ function TypingIndicator() {
       exit={{ opacity: 0, y: 8 }}
       className="flex items-end gap-2 mb-3"
     >
-      <SimiaAvatar size={28} />
+      <SimiaAvatar size={28} avatarUrl={avatarUrl} name={aiName} />
       <div className="bg-white/10 backdrop-blur-sm border border-white/10 rounded-2xl rounded-bl-sm px-4 py-3">
         <div className="flex gap-1 items-center h-3">
           {[0, 1, 2].map(i => (
@@ -134,12 +181,54 @@ export default function SupportChat() {
   const [isStreaming, setIsStreaming] = useState(false);
   const [unread, setUnread] = useState(0);
   const [showScrollBtn, setShowScrollBtn] = useState(false);
+  const [config, setConfig] = useState<SupportConfig>({
+    aiName: "Simia",
+    aiDisplayTitle: "Support Simix",
+    aiAvatarUrl: "/support-avatar.png",
+    greetingFr: "Bonjour ! Je suis Simia, votre conseillère Simix. Comment puis-je vous aider ?",
+    greetingEn: "Hello! I'm Simia, your Simix advisor. How can I help you?",
+    quickRepliesFr: ["Comment recharger ?", "Numéro pas reçu", "SMS non reçu", "Mon solde"],
+    quickRepliesEn: ["How to top up?", "Number not received", "SMS not received", "My balance"],
+    enabled: true,
+  });
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const sessionId = useRef(getSessionId());
+
+  /* Drag for the floating button */
+  const btnX = useMotionValue(0);
+  const btnY = useMotionValue(0);
+
+  /* Drag controls for chat window (header-only drag handle) */
+  const chatDragControls = useDragControls();
+  const chatX = useMotionValue(0);
+  const chatY = useMotionValue(0);
+
+  /* Detect if a drag occurred to suppress click on button */
+  const btnDragging = useRef(false);
+
+  /* Load config on mount */
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch(`${getApiBase()}/support/config`, { credentials: "include" });
+        const data = await res.json();
+        setConfig({
+          aiName: data.aiName ?? "Simia",
+          aiDisplayTitle: data.aiDisplayTitle ?? "Support Simix",
+          aiAvatarUrl: data.aiAvatarUrl || "/support-avatar.png",
+          greetingFr: data.greetingFr ?? "Bonjour ! Je suis Simia, votre conseillère Simix. Comment puis-je vous aider ?",
+          greetingEn: data.greetingEn ?? "Hello! I'm Simia, your Simix advisor. How can I help you?",
+          quickRepliesFr: data.quickRepliesFr ?? ["Comment recharger ?", "Numéro pas reçu", "SMS non reçu", "Mon solde"],
+          quickRepliesEn: data.quickRepliesEn ?? ["How to top up?", "Number not received", "SMS not received", "My balance"],
+          enabled: data.enabled !== false,
+        });
+      } catch { /* use defaults */ }
+    })();
+  }, []);
 
   const scrollToBottom = useCallback((smooth = true) => {
     messagesEndRef.current?.scrollIntoView({ behavior: smooth ? "smooth" : "instant" });
@@ -151,18 +240,10 @@ export default function SupportChat() {
     (async () => {
       try {
         const lang = navigator.language.startsWith("en") ? "en" : "fr";
-
-        /* Fetch personalized greeting + history in parallel */
-        const [historyRes, configRes] = await Promise.all([
-          fetch(`${getApiBase()}/support/history/${sessionId.current}`, { credentials: "include" }),
-          fetch(`${getApiBase()}/support/config`, { credentials: "include" }),
-        ]);
+        const historyRes = await fetch(`${getApiBase()}/support/history/${sessionId.current}`, { credentials: "include" });
         const historyData = await historyRes.json();
-        const configData = await configRes.json().catch(() => ({}));
 
-        const greeting = lang === "en"
-          ? (configData.greetingEn ?? "Hello! I'm Simia, your Simix advisor. How can I help you today?")
-          : (configData.greetingFr ?? "Bonjour ! Je suis Simia, votre conseillère Simix. Comment puis-je vous aider aujourd'hui ?");
+        const greeting = lang === "en" ? config.greetingEn : config.greetingFr;
 
         if (historyData.messages?.length > 0) {
           setMessages(historyData.messages.map((m: Message) => ({ ...m, createdAt: new Date(m.createdAt) })));
@@ -178,7 +259,7 @@ export default function SupportChat() {
         setMessages([{
           id: crypto.randomUUID(),
           role: "assistant",
-          content: "Bonjour ! Je suis Simia, votre conseillère Simix. Comment puis-je vous aider ?",
+          content: config.greetingFr,
           createdAt: new Date(),
         }]);
       }
@@ -211,6 +292,7 @@ export default function SupportChat() {
   }, [messages, isOpen]);
 
   const handleOpen = () => {
+    if (btnDragging.current) return;
     setIsOpen(true);
     setIsMinimized(false);
     setUnread(0);
@@ -342,242 +424,273 @@ export default function SupportChat() {
     }]);
   };
 
+  const lang = typeof navigator !== "undefined" && navigator.language.startsWith("en") ? "en" : "fr";
+  const quickReplies = lang === "en" ? config.quickRepliesEn : config.quickRepliesFr;
+
   return (
     <>
-      {/* ── Floating button ── */}
+      {/* ── Floating button (draggable) ── */}
       <AnimatePresence>
         {!isOpen && (
-          <motion.button
+          <motion.div
+            drag
+            dragMomentum={false}
+            dragElastic={0}
+            style={{ x: btnX, y: btnY, position: "fixed", bottom: 24, right: 24, zIndex: 50 }}
+            onDragStart={() => { btnDragging.current = true; }}
+            onDragEnd={() => { setTimeout(() => { btnDragging.current = false; }, 100); }}
             initial={{ scale: 0, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0, opacity: 0 }}
             transition={{ type: "spring", stiffness: 300, damping: 20 }}
-            onClick={handleOpen}
-            className="fixed bottom-6 right-6 z-50 flex items-center justify-center rounded-full shadow-2xl cursor-pointer group"
-            style={{
-              width: 60,
-              height: 60,
-              background: "linear-gradient(135deg, #7C3AED, #A855F7, #EC4899)",
-              boxShadow: "0 0 30px rgba(124,58,237,0.6), 0 8px 24px rgba(0,0,0,0.4)",
-            }}
-            aria-label="Ouvrir le support"
+            className="cursor-grab active:cursor-grabbing"
           >
-            <motion.div
-              animate={{ rotate: [0, 5, -5, 0] }}
-              transition={{ duration: 3, repeat: Infinity, repeatDelay: 2 }}
+            <button
+              onClick={handleOpen}
+              className="flex items-center justify-center rounded-full shadow-2xl group relative"
+              style={{
+                width: 60,
+                height: 60,
+                boxShadow: "0 0 30px rgba(124,58,237,0.6), 0 8px 24px rgba(0,0,0,0.4)",
+                overflow: "hidden",
+              }}
+              aria-label="Ouvrir le support"
             >
-              <Bot size={28} color="white" />
-            </motion.div>
-            {unread > 0 && (
-              <motion.div
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center"
-              >
-                {unread > 9 ? "9+" : unread}
-              </motion.div>
-            )}
-            {/* Pulse ring */}
-            <span className="absolute inset-0 rounded-full border-2 border-purple-400 opacity-0 group-hover:opacity-100 animate-ping" />
-          </motion.button>
+              <SimiaAvatar size={60} pulse avatarUrl={config.aiAvatarUrl} name={config.aiName} />
+              {unread > 0 && (
+                <motion.div
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center z-10"
+                >
+                  {unread > 9 ? "9+" : unread}
+                </motion.div>
+              )}
+              <span className="absolute inset-0 rounded-full border-2 border-purple-400 opacity-0 group-hover:opacity-100 animate-ping" />
+            </button>
+          </motion.div>
         )}
       </AnimatePresence>
 
-      {/* ── Chat window ── */}
+      {/* ── Chat window (draggable by header) ── */}
       <AnimatePresence>
         {isOpen && (
           <motion.div
-            initial={{ opacity: 0, y: 40, scale: 0.92 }}
-            animate={isMinimized
-              ? { opacity: 1, y: 0, scale: 1, height: "auto" }
-              : { opacity: 1, y: 0, scale: 1 }
-            }
-            exit={{ opacity: 0, y: 40, scale: 0.92 }}
-            transition={{ type: "spring", stiffness: 300, damping: 28 }}
-            className="fixed bottom-6 right-6 z-50 flex flex-col rounded-2xl overflow-hidden"
+            drag
+            dragControls={chatDragControls}
+            dragListener={false}
+            dragMomentum={false}
+            dragElastic={0}
             style={{
+              x: chatX,
+              y: chatY,
+              position: "fixed",
+              bottom: 24,
+              right: 24,
+              zIndex: 50,
               width: "min(420px, calc(100vw - 24px))",
               height: isMinimized ? "auto" : "min(620px, calc(100vh - 100px))",
-              background: "linear-gradient(160deg, rgba(15,10,30,0.97) 0%, rgba(25,15,50,0.97) 100%)",
-              backdropFilter: "blur(24px)",
-              border: "1px solid rgba(124,58,237,0.3)",
-              boxShadow: "0 0 60px rgba(124,58,237,0.25), 0 24px 48px rgba(0,0,0,0.6)",
             }}
+            initial={{ opacity: 0, y: 40, scale: 0.92 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 40, scale: 0.92 }}
+            transition={{ type: "spring", stiffness: 300, damping: 28 }}
+            className="flex flex-col rounded-2xl overflow-hidden"
+            onLayoutMeasure={() => {}}
           >
-            {/* Header */}
+            {/* Inner container with background */}
             <div
-              className="flex items-center gap-3 px-4 py-3 flex-shrink-0"
+              className="flex flex-col w-full h-full rounded-2xl overflow-hidden"
               style={{
-                background: "linear-gradient(90deg, rgba(124,58,237,0.4) 0%, rgba(168,85,247,0.2) 100%)",
-                borderBottom: "1px solid rgba(124,58,237,0.25)",
+                background: "linear-gradient(160deg, rgba(15,10,30,0.97) 0%, rgba(25,15,50,0.97) 100%)",
+                backdropFilter: "blur(24px)",
+                border: "1px solid rgba(124,58,237,0.3)",
+                boxShadow: "0 0 60px rgba(124,58,237,0.25), 0 24px 48px rgba(0,0,0,0.6)",
               }}
             >
-              <SimiaAvatar size={38} pulse={!isStreaming} />
-              <div className="flex-1 min-w-0">
-                <p className="text-white font-semibold text-sm">Simia — Support Simix</p>
-                <div className="flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-green-400 shadow-[0_0_6px_#4ade80]" />
-                  <span className="text-green-400 text-[11px]">En ligne • Répond instantanément</span>
+              {/* Header — drag handle */}
+              <div
+                onPointerDown={(e) => chatDragControls.start(e)}
+                className="flex items-center gap-3 px-4 py-3 flex-shrink-0 select-none cursor-grab active:cursor-grabbing"
+                style={{
+                  background: "linear-gradient(90deg, rgba(124,58,237,0.4) 0%, rgba(168,85,247,0.2) 100%)",
+                  borderBottom: "1px solid rgba(124,58,237,0.25)",
+                  touchAction: "none",
+                }}
+              >
+                <SimiaAvatar size={40} pulse={!isStreaming} avatarUrl={config.aiAvatarUrl} name={config.aiName} />
+                <div className="flex-1 min-w-0">
+                  <p className="text-white font-bold text-sm leading-tight">{config.aiName}</p>
+                  <p className="text-purple-300 text-[11px] leading-tight">{config.aiDisplayTitle}</p>
+                  <div className="flex items-center gap-1.5 mt-0.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-green-400 shadow-[0_0_6px_#4ade80]" />
+                    <span className="text-green-400 text-[10px]">En ligne • Répond instantanément</span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-0.5" onPointerDown={e => e.stopPropagation()}>
+                  <div className="w-4 h-4 text-white/20 mr-1 flex-shrink-0">
+                    <GripVertical size={14} />
+                  </div>
+                  <button
+                    onClick={clearHistory}
+                    className="p-1.5 text-white/40 hover:text-red-400 rounded-lg hover:bg-white/5 transition-colors"
+                    title="Effacer la conversation"
+                  >
+                    <Trash2 size={15} />
+                  </button>
+                  <button
+                    onClick={() => setIsMinimized(v => !v)}
+                    className="p-1.5 text-white/40 hover:text-white rounded-lg hover:bg-white/5 transition-colors"
+                  >
+                    {isMinimized ? <Maximize2 size={15} /> : <Minimize2 size={15} />}
+                  </button>
+                  <button
+                    onClick={() => setIsOpen(false)}
+                    className="p-1.5 text-white/40 hover:text-white rounded-lg hover:bg-white/5 transition-colors"
+                  >
+                    <X size={15} />
+                  </button>
                 </div>
               </div>
-              <div className="flex items-center gap-1">
-                <button
-                  onClick={clearHistory}
-                  className="p-1.5 text-white/40 hover:text-red-400 rounded-lg hover:bg-white/5 transition-colors"
-                  title="Effacer la conversation"
-                >
-                  <Trash2 size={15} />
-                </button>
-                <button
-                  onClick={() => setIsMinimized(v => !v)}
-                  className="p-1.5 text-white/40 hover:text-white rounded-lg hover:bg-white/5 transition-colors"
-                >
-                  {isMinimized ? <Maximize2 size={15} /> : <Minimize2 size={15} />}
-                </button>
-                <button
-                  onClick={() => setIsOpen(false)}
-                  className="p-1.5 text-white/40 hover:text-white rounded-lg hover:bg-white/5 transition-colors"
-                >
-                  <X size={15} />
-                </button>
-              </div>
-            </div>
 
-            {/* Messages */}
-            <AnimatePresence>
-              {!isMinimized && (
-                <motion.div
-                  initial={{ height: 0, opacity: 0 }}
-                  animate={{ height: "auto", opacity: 1 }}
-                  exit={{ height: 0, opacity: 0 }}
-                  transition={{ duration: 0.2 }}
-                  className="flex flex-col flex-1 min-h-0"
-                >
-                  {/* Quick actions */}
-                  {messages.length <= 1 && (
-                    <div className="px-3 py-2 flex flex-wrap gap-1.5 border-b border-white/5">
-                      {[
-                        "Comment recharger ?",
-                        "Numéro pas reçu",
-                        "SMS non reçu",
-                        "Mon solde",
-                      ].map(q => (
-                        <button
-                          key={q}
-                          onClick={() => { setInput(q); inputRef.current?.focus(); }}
-                          className="text-[11px] px-2.5 py-1 rounded-full border border-purple-500/40 text-purple-300 hover:bg-purple-500/20 transition-colors"
-                        >
-                          {q}
-                        </button>
+              {/* Messages */}
+              <AnimatePresence>
+                {!isMinimized && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.2 }}
+                    className="flex flex-col flex-1 min-h-0"
+                  >
+                    {/* Quick actions */}
+                    {messages.length <= 1 && quickReplies.length > 0 && (
+                      <div className="px-3 py-2 flex flex-wrap gap-1.5 border-b border-white/5">
+                        {quickReplies.map(q => (
+                          <button
+                            key={q}
+                            onClick={() => { setInput(q); inputRef.current?.focus(); }}
+                            className="text-[11px] px-2.5 py-1 rounded-full border border-purple-500/40 text-purple-300 hover:bg-purple-500/20 transition-colors"
+                          >
+                            {q}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+
+                    <div
+                      ref={messagesContainerRef}
+                      className="flex-1 overflow-y-auto px-3 py-3 space-y-0 scroll-smooth"
+                      style={{ scrollbarWidth: "thin", scrollbarColor: "rgba(124,58,237,0.3) transparent" }}
+                    >
+                      {messages.map(msg => (
+                        <MessageBubble
+                          key={msg.id}
+                          msg={msg}
+                          avatarUrl={config.aiAvatarUrl}
+                          aiName={config.aiName}
+                        />
                       ))}
+                      {isTyping && <TypingIndicator avatarUrl={config.aiAvatarUrl} aiName={config.aiName} />}
+                      <div ref={messagesEndRef} />
                     </div>
-                  )}
 
-                  <div
-                    ref={messagesContainerRef}
-                    className="flex-1 overflow-y-auto px-3 py-3 space-y-0 scroll-smooth"
-                    style={{ scrollbarWidth: "thin", scrollbarColor: "rgba(124,58,237,0.3) transparent" }}
-                  >
-                    {messages.map(msg => <MessageBubble key={msg.id} msg={msg} />)}
-                    {isTyping && <TypingIndicator />}
-                    <div ref={messagesEndRef} />
-                  </div>
+                    {/* Scroll to bottom button */}
+                    <AnimatePresence>
+                      {showScrollBtn && (
+                        <motion.button
+                          initial={{ opacity: 0, y: 4 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: 4 }}
+                          onClick={() => scrollToBottom()}
+                          className="absolute bottom-24 right-4 p-1.5 rounded-full bg-purple-600/90 text-white shadow-lg"
+                        >
+                          <ChevronDown size={14} />
+                        </motion.button>
+                      )}
+                    </AnimatePresence>
 
-                  {/* Scroll to bottom button */}
-                  <AnimatePresence>
-                    {showScrollBtn && (
-                      <motion.button
-                        initial={{ opacity: 0, y: 4 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: 4 }}
-                        onClick={() => scrollToBottom()}
-                        className="absolute bottom-24 right-4 p-1.5 rounded-full bg-purple-600/90 text-white shadow-lg"
-                      >
-                        <ChevronDown size={14} />
-                      </motion.button>
-                    )}
-                  </AnimatePresence>
+                    {/* Image preview */}
+                    <AnimatePresence>
+                      {imageData && (
+                        <motion.div
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: "auto" }}
+                          exit={{ opacity: 0, height: 0 }}
+                          className="mx-3 mb-2 relative inline-block"
+                        >
+                          <img src={imageData} alt="preview" className="h-16 rounded-xl border border-purple-500/40 object-cover" />
+                          <button
+                            onClick={() => setImageData(null)}
+                            className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 rounded-full text-white flex items-center justify-center text-xs"
+                          >×</button>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
 
-                  {/* Image preview */}
-                  <AnimatePresence>
-                    {imageData && (
-                      <motion.div
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: "auto" }}
-                        exit={{ opacity: 0, height: 0 }}
-                        className="mx-3 mb-2 relative inline-block"
-                      >
-                        <img src={imageData} alt="preview" className="h-16 rounded-xl border border-purple-500/40 object-cover" />
-                        <button
-                          onClick={() => setImageData(null)}
-                          className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 rounded-full text-white flex items-center justify-center text-xs"
-                        >×</button>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-
-                  {/* Input */}
-                  <div
-                    className="flex items-end gap-2 px-3 py-3 flex-shrink-0"
-                    style={{ borderTop: "1px solid rgba(124,58,237,0.2)", background: "rgba(0,0,0,0.2)" }}
-                  >
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={handleImageUpload}
-                    />
-                    <button
-                      onClick={() => fileInputRef.current?.click()}
-                      className="flex-shrink-0 p-2 text-white/40 hover:text-purple-400 rounded-xl hover:bg-white/5 transition-colors"
-                      title="Envoyer une image"
+                    {/* Input */}
+                    <div
+                      className="flex items-end gap-2 px-3 py-3 flex-shrink-0"
+                      style={{ borderTop: "1px solid rgba(124,58,237,0.2)", background: "rgba(0,0,0,0.2)" }}
                     >
-                      <ImagePlus size={18} />
-                    </button>
-                    <textarea
-                      ref={inputRef}
-                      value={input}
-                      onChange={e => setInput(e.target.value)}
-                      onKeyDown={handleKeyDown}
-                      placeholder="Écrivez votre message... (Entrée pour envoyer)"
-                      rows={1}
-                      disabled={isStreaming}
-                      className="flex-1 bg-white/8 text-white placeholder-white/30 text-sm rounded-xl px-3 py-2 outline-none resize-none border border-white/10 focus:border-purple-500/60 transition-colors disabled:opacity-50"
-                      style={{
-                        maxHeight: "100px",
-                        minHeight: "38px",
-                        background: "rgba(255,255,255,0.06)",
-                        scrollbarWidth: "none",
-                      }}
-                      onInput={e => {
-                        const el = e.currentTarget;
-                        el.style.height = "auto";
-                        el.style.height = Math.min(el.scrollHeight, 100) + "px";
-                      }}
-                    />
-                    <button
-                      onClick={sendMessage}
-                      disabled={isStreaming || (!input.trim() && !imageData)}
-                      className="flex-shrink-0 p-2 rounded-xl transition-all disabled:opacity-30 disabled:cursor-not-allowed"
-                      style={{
-                        background: isStreaming || (!input.trim() && !imageData)
-                          ? "rgba(124,58,237,0.3)"
-                          : "linear-gradient(135deg, #7C3AED, #A855F7)",
-                        boxShadow: (!isStreaming && (input.trim() || imageData))
-                          ? "0 0 16px rgba(124,58,237,0.5)"
-                          : "none",
-                      }}
-                    >
-                      {isStreaming
-                        ? <Loader2 size={18} color="white" className="animate-spin" />
-                        : <Send size={18} color="white" />
-                      }
-                    </button>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={handleImageUpload}
+                      />
+                      <button
+                        onClick={() => fileInputRef.current?.click()}
+                        className="flex-shrink-0 p-2 text-white/40 hover:text-purple-400 rounded-xl hover:bg-white/5 transition-colors"
+                        title="Envoyer une image"
+                      >
+                        <ImagePlus size={18} />
+                      </button>
+                      <textarea
+                        ref={inputRef}
+                        value={input}
+                        onChange={e => setInput(e.target.value)}
+                        onKeyDown={handleKeyDown}
+                        placeholder="Écrivez votre message... (Entrée pour envoyer)"
+                        rows={1}
+                        disabled={isStreaming}
+                        className="flex-1 bg-white/8 text-white placeholder-white/30 text-sm rounded-xl px-3 py-2 outline-none resize-none border border-white/10 focus:border-purple-500/60 transition-colors disabled:opacity-50"
+                        style={{
+                          maxHeight: "100px",
+                          minHeight: "38px",
+                          background: "rgba(255,255,255,0.06)",
+                          scrollbarWidth: "none",
+                        }}
+                        onInput={e => {
+                          const el = e.currentTarget;
+                          el.style.height = "auto";
+                          el.style.height = Math.min(el.scrollHeight, 100) + "px";
+                        }}
+                      />
+                      <button
+                        onClick={sendMessage}
+                        disabled={isStreaming || (!input.trim() && !imageData)}
+                        className="flex-shrink-0 p-2 rounded-xl transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                        style={{
+                          background: isStreaming || (!input.trim() && !imageData)
+                            ? "rgba(124,58,237,0.3)"
+                            : "linear-gradient(135deg, #7C3AED, #A855F7)",
+                          boxShadow: (!isStreaming && (input.trim() || imageData))
+                            ? "0 0 16px rgba(124,58,237,0.5)"
+                            : "none",
+                        }}
+                      >
+                        {isStreaming
+                          ? <Loader2 size={18} color="white" className="animate-spin" />
+                          : <Send size={18} color="white" />
+                        }
+                      </button>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>

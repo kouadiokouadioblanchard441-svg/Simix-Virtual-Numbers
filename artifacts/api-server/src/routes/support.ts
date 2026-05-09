@@ -265,6 +265,8 @@ router.get("/support/config", async (req, res): Promise<void> => {
 
   res.json({
     aiName: cfg["ai_name"] ?? "Simia",
+    aiDisplayTitle: cfg["ai_display_title"] ?? "Support Simix",
+    aiAvatarUrl: cfg["ai_avatar_url"] || "/support-avatar.png",
     greetingFr,
     greetingEn,
     quickRepliesFr: (cfg["ai_quick_replies_fr"] ?? "Comment recharger ?|Numéro pas reçu|SMS non reçu|Mon solde").split("|").filter(Boolean),

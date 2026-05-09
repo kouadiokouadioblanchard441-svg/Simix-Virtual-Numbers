@@ -30,6 +30,8 @@ function requireAdmin(req: Request, res: Response, next: NextFunction): void {
 /* ─── DEFAULT AI CONFIG SEED ─────────────────────────────── */
 const DEFAULT_AI_CONFIG: Array<{ key: string; value: string; label: string; group: string }> = [
   { key: "ai_name", value: "Simia", label: "Nom de l'assistante IA", group: "identite" },
+  { key: "ai_display_title", value: "Support Simix", label: "Titre affiché dans le chat (ex: Support Simix)", group: "identite" },
+  { key: "ai_avatar_url", value: "/support-avatar.png", label: "URL de l'avatar (image de profil du service client)", group: "identite" },
   { key: "ai_tone", value: "professional_friendly", label: "Ton (professional_friendly / formal / casual)", group: "comportement" },
   { key: "ai_language_mode", value: "auto", label: "Langue (auto / fr / en)", group: "comportement" },
   { key: "ai_greeting_fr", value: "👋 Bonjour ! Je suis Simia, votre assistante Simix. Comment puis-je vous aider aujourd'hui ? 😊", label: "Message d'accueil (FR)", group: "messages" },

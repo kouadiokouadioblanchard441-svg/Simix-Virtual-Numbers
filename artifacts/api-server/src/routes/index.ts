@@ -27,8 +27,8 @@ router.use(walletRouter);
 router.use(dashboardRouter);
 router.use(adminAuthRouter);
 router.use(footerRouter);
+router.use(supportRouter);
 router.use(adminRouter);
 router.use(adminSupportRouter);
-router.use(supportRouter);
 
 export default router;

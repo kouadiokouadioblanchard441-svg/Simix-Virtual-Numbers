@@ -813,6 +813,30 @@ function ConfigTab() {
                     </button>
                   ))}
                 </div>
+              ) : entry.key === "ai_avatar_url" ? (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-3">
+                    <div className="relative w-14 h-14 rounded-full overflow-hidden border-2 border-violet-500/40 flex-shrink-0 bg-zinc-700">
+                      {(localConfig[entry.key] ?? entry.value) ? (
+                        <img
+                          src={localConfig[entry.key] ?? entry.value}
+                          alt="Avatar aperçu"
+                          className="w-full h-full object-cover"
+                          onError={e => { (e.target as HTMLImageElement).style.display = "none"; }}
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-zinc-500 text-xs">?</div>
+                      )}
+                    </div>
+                    <input
+                      value={localConfig[entry.key] ?? entry.value}
+                      onChange={e => updateLocal(entry.key, e.target.value)}
+                      placeholder="/support-avatar.png ou https://..."
+                      className="flex-1 bg-zinc-700/60 text-white text-sm rounded-xl px-3 py-2 outline-none border border-zinc-600/40 focus:border-violet-500/60"
+                    />
+                  </div>
+                  <p className="text-[11px] text-zinc-500">Entrez l'URL de l'image ou le chemin relatif (ex: /support-avatar.png). L'image par défaut générée est déjà configurée.</p>
+                </div>
               ) : (
                 <input
                   value={localConfig[entry.key] ?? entry.value}
