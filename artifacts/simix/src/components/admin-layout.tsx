@@ -19,6 +19,8 @@ import {
   MapPin,
   BarChart3,
   MessageSquare,
+  Bell,
+  Mail,
 } from "lucide-react";
 import { SimixLogo } from "@/components/simix-logo";
 import { cn } from "@/lib/utils";
@@ -33,6 +35,8 @@ const NAV_ITEMS = [
   { href: "/admin/payment-config", label: "Paiements / Pays", icon: MapPin },
   { href: "/admin/providers", label: "Fournisseurs API", icon: Zap },
   { href: "/admin/support", label: "Support IA", icon: MessageSquare },
+  { href: "/admin/notifications", label: "Notifications", icon: Bell },
+  { href: "/admin/emails", label: "Campagnes Email", icon: Mail },
   { href: "/admin/footer", label: "Footer & Vitrine", icon: Globe },
   { href: "/admin/security", label: "Sécurité", icon: Shield },
   { href: "/admin/logs", label: "Journaux", icon: FileText },

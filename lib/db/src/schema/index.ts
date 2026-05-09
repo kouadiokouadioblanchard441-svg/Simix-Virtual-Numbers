@@ -15,3 +15,5 @@ export * from "./support";
 export * from "./ai_support";
 export * from "./admin_security";
 export * from "./footer";
+export * from "./notifications";
+export * from "./email_campaigns";

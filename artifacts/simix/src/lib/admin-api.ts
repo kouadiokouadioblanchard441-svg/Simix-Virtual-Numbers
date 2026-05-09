@@ -115,6 +115,46 @@ export const adminApi = {
   deleteKnowledge: (id: string) => req("DELETE", `/admin/support/knowledge/${id}`),
   getAiConfig: () => req<AiConfigEntry[]>("GET", "/admin/support/config"),
   updateAiConfig: (data: Record<string, string>) => req("PUT", "/admin/support/config", data),
+
+  /* ── Notifications ── */
+  sendNotification: (data: {
+    title: string;
+    body: string;
+    type?: string;
+    icon?: string;
+    link?: string;
+    recipientsType?: "all" | "specific";
+    userIds?: string[];
+    metadata?: Record<string, unknown>;
+  }) => req<{ created: number; notifications: unknown[] }>("POST", "/admin/notifications", data),
+  getAdminNotifications: (params?: { limit?: number; offset?: number }) => {
+    const q = new URLSearchParams();
+    if (params?.limit) q.set("limit", String(params.limit));
+    if (params?.offset) q.set("offset", String(params.offset));
+    return req<{ notifications: unknown[]; total: number }>("GET", `/admin/notifications?${q}`);
+  },
+  getNotificationStats: () => req<{ total: number; global: number; targeted: number }>("GET", "/admin/notifications/stats"),
+  deleteNotification: (id: string) => req("DELETE", `/admin/notifications/${id}`),
+
+  /* ── Email Campaigns ── */
+  sendEmailCampaign: (data: {
+    subject: string;
+    body?: string;
+    htmlContent?: string;
+    templateType?: string;
+    recipientsType?: "all" | "specific";
+    userIds?: string[];
+  }) => req<{ campaignId: string; totalRecipients: number; message: string }>("POST", "/admin/emails/send", data),
+  getEmailCampaigns: (params?: { limit?: number; offset?: number }) => {
+    const q = new URLSearchParams();
+    if (params?.limit) q.set("limit", String(params.limit));
+    if (params?.offset) q.set("offset", String(params.offset));
+    return req<{ campaigns: unknown[]; total: number }>("GET", `/admin/emails/campaigns?${q}`);
+  },
+  getEmailCampaignLogs: (campaignId: string) =>
+    req<{ logs: unknown[] }>("GET", `/admin/emails/campaigns/${campaignId}/logs`),
+  getEmailStats: () =>
+    req<{ totalCampaigns: number; totalSent: number; totalFailed: number; resendConfigured: boolean }>("GET", "/admin/emails/stats"),
 };
 
 export interface AdminStats {

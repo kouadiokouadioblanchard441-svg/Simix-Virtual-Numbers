@@ -12,7 +12,6 @@ import {
 import { formatFCFA } from "@/lib/format";
 import { motion } from "framer-motion";
 import {
-  Bell,
   Plus,
   ChevronRight,
   Eye,
@@ -24,6 +23,7 @@ import {
   LayoutDashboard,
   Zap,
 } from "lucide-react";
+import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { Link } from "wouter";
 import { SimixLogo } from "@/components/simix-logo";
 import phoneChat3d from "@/assets/simix_phone_chat_3d.png";
@@ -83,10 +83,7 @@ function DashboardContent() {
               </button>
             </Link>
           )}
-          <button className="w-10 h-10 rounded-full bg-card border border-card-border flex items-center justify-center text-foreground relative hover:bg-secondary transition-colors">
-            <Bell className="w-[18px] h-[18px]" />
-            <span className="absolute top-2 right-2.5 w-2 h-2 bg-red-500 border-2 border-card rounded-full" />
-          </button>
+          <NotificationBell isAuthenticated={!!me} />
         </div>
       </div>
 
