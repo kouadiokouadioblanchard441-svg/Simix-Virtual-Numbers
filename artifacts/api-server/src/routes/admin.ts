@@ -23,6 +23,7 @@ import {
 import { requireAuth } from "../lib/auth";
 import { blockUser, logSecurityEvent } from "../lib/fraud-detection";
 import { logger } from "../lib/logger";
+import { clearSettingsCache } from "../lib/settings";
 
 const router: IRouter = Router();
 
@@ -753,6 +754,10 @@ router.put("/admin/settings", requireAuth, requireAdmin, async (req, res): Promi
       .values({ key, value: String(value) })
       .onConflictDoUpdate({ target: systemSettingsTable.key, set: { value: String(value) } });
   }
+
+  /* Invalidate settings cache so changes apply within 30s */
+  clearSettingsCache();
+
   await logAdminAction(req.user!.id, "update_settings", req.ip, "settings", undefined, updates);
   res.json({ success: true });
 });

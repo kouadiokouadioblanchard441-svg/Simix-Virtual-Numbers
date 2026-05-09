@@ -6,7 +6,7 @@ import helmet from "helmet";
 import router from "./routes";
 import { logger } from "./lib/logger";
 import { attachUser } from "./lib/auth";
-import { globalRateLimit, checkUserBlocked } from "./middlewares/security";
+import { globalRateLimit, checkUserBlocked, checkMaintenanceMode } from "./middlewares/security";
 import { startFiveSimPoller } from "./lib/fivesim-poller";
 
 const app: Express = express();
@@ -41,6 +41,9 @@ app.use(cookieParser());
 
 /* ── Global rate limit (200 req/min per IP) ── */
 app.use(globalRateLimit);
+
+/* ── Maintenance mode — returns 503 on all non-admin routes ── */
+app.use(checkMaintenanceMode);
 
 /* ── Attach user from session cookie ── */
 app.use(attachUser);

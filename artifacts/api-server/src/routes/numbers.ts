@@ -25,12 +25,15 @@ import {
 } from "../lib/fraud-detection";
 import { FiveSimClient, FiveSimError, ISO_TO_5SIM, SERVICE_TO_5SIM } from "../lib/fivesim";
 import { logger } from "../lib/logger";
+import {
+  getNumberValidityMinutes,
+  getExtendMinutes,
+  getExtendFee,
+  getMaxOrdersPerMinute,
+  isSmsSimulationEnabled,
+} from "../lib/settings";
 
 const router: IRouter = Router();
-
-const VALIDITY_MINUTES = 20;
-const EXTEND_MINUTES = 10;
-const EXTEND_FEE = 50;
 
 /* ─── Helpers ─────────────────────────────────────────────────────── */
 
@@ -98,6 +101,7 @@ router.get("/numbers/quote", async (req, res): Promise<void> => {
   }
 
   const price = country.price;
+  const validityMinutes = await getNumberValidityMinutes();
   res.json({
     service: {
       id: service.id,
@@ -126,7 +130,7 @@ router.get("/numbers/quote", async (req, res): Promise<void> => {
     price,
     fees: 0,
     total: price,
-    validityMinutes: VALIDITY_MINUTES,
+    validityMinutes,
   });
 });
 
@@ -136,8 +140,9 @@ router.post("/numbers", requireAuth, async (req, res): Promise<void> => {
   const ip = req.ip ?? "unknown";
   const ua = req.headers["user-agent"] ?? "";
 
-  /* Rate limiting */
-  if (isRateLimited(`purchase_rate:${user.id}`, 10, 60_000)) {
+  /* Rate limiting — limit from system_settings (max_orders_per_minute) */
+  const maxPerMin = await getMaxOrdersPerMinute();
+  if (isRateLimited(`purchase_rate:${user.id}`, maxPerMin, 60_000)) {
     await logSecurityEvent({
       userId: user.id, eventType: "purchase_rate_limit", severity: "high",
       ip, userAgent: ua, riskScore: 70, details: { action: "buy_number" },
@@ -185,6 +190,18 @@ router.post("/numbers", requireAuth, async (req, res): Promise<void> => {
     return;
   }
 
+  /* Check if service is enabled */
+  if (service.enabled === false) {
+    res.status(400).json({ error: `Le service ${service.name} est temporairement désactivé.` });
+    return;
+  }
+
+  /* Check if country is available */
+  if (!country.available) {
+    res.status(400).json({ error: `Le pays ${country.name} n'est pas disponible pour le moment.` });
+    return;
+  }
+
   const price = country.price;
   if (user.balance < price) {
     res.status(402).json({ error: "Solde insuffisant. Rechargez votre portefeuille." });
@@ -205,7 +222,8 @@ router.post("/numbers", requireAuth, async (req, res): Promise<void> => {
 
   let phoneNumber: string;
   let externalOrderId: string | null = null;
-  const expiresAt = new Date(Date.now() + VALIDITY_MINUTES * 60 * 1000);
+  const validityMin = await getNumberValidityMinutes();
+  const expiresAt = new Date(Date.now() + validityMin * 60 * 1000);
   let usedReal5sim = false;
   let providerError: string | null = null;
 
@@ -286,8 +304,8 @@ router.post("/numbers", requireAuth, async (req, res): Promise<void> => {
     description: `${service.name} – ${country.name}${usedReal5sim ? " (5sim)" : " (sim)"}`,
   });
 
-  /* ── Schedule simulated SMS if not using real 5sim ── */
-  if (!usedReal5sim) {
+  /* ── Schedule simulated SMS if not using real 5sim AND simulation is enabled ── */
+  if (!usedReal5sim && await isSmsSimulationEnabled()) {
     scheduleSimulatedSms(vn.id, service.name);
   }
 
@@ -504,14 +522,18 @@ router.post("/numbers/:numberId/extend", requireAuth, async (req, res): Promise<
 
   if (!row) { res.status(404).json({ error: "Numéro introuvable" }); return; }
   if (row.n.status === "received") { res.status(400).json({ error: "Ce numéro a déjà reçu un SMS" }); return; }
-  if (user.balance < EXTEND_FEE) { res.status(402).json({ error: `Solde insuffisant (${EXTEND_FEE} FCFA requis)` }); return; }
+
+  const extendFee = await getExtendFee();
+  const extendMinutes = await getExtendMinutes();
+
+  if (user.balance < extendFee) { res.status(402).json({ error: `Solde insuffisant (${extendFee} FCFA requis)` }); return; }
 
   await db.update(usersTable)
-    .set({ balance: sql`${usersTable.balance} - ${EXTEND_FEE}` })
+    .set({ balance: sql`${usersTable.balance} - ${extendFee}` })
     .where(eq(usersTable.id, user.id));
 
   const newExpiresAt = new Date(
-    Math.max(row.n.expiresAt.getTime(), Date.now()) + EXTEND_MINUTES * 60 * 1000,
+    Math.max(row.n.expiresAt.getTime(), Date.now()) + extendMinutes * 60 * 1000,
   );
 
   const [updated] = await db
@@ -526,10 +548,10 @@ router.post("/numbers/:numberId/extend", requireAuth, async (req, res): Promise<
   await db.insert(transactionsTable).values({
     userId: user.id,
     type: "purchase",
-    amount: EXTEND_FEE,
+    amount: extendFee,
     status: "completed",
     method: "wallet",
-    description: `Prolongation +${EXTEND_MINUTES} min`,
+    description: `Prolongation +${extendMinutes} min`,
   });
 
   const messages = await db

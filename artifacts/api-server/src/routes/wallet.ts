@@ -20,6 +20,7 @@ import {
   COUNTRY_CURRENCY,
 } from "../lib/pawapay";
 import { logger } from "../lib/logger";
+import { getMinDepositFcfa, getMaxBalanceFcfa } from "../lib/settings";
 
 const router: IRouter = Router();
 
@@ -64,6 +65,20 @@ router.post(
     }
     const user = req.user!;
     const { amount, methodSlug, phoneNumber, countryCode, dialCode } = parsed.data;
+
+    /* ── Validate amount against platform minimums ── */
+    const minDeposit = await getMinDepositFcfa();
+    if (amount < minDeposit) {
+      res.status(400).json({ error: `Le montant minimum de recharge est ${minDeposit} FCFA.` });
+      return;
+    }
+
+    /* ── Validate max balance ── */
+    const maxBalance = await getMaxBalanceFcfa();
+    if (user.balance + amount > maxBalance) {
+      res.status(400).json({ error: `Ce rechargement dépasserait le solde maximum autorisé (${maxBalance} FCFA).` });
+      return;
+    }
 
     const [method] = await db
       .select()

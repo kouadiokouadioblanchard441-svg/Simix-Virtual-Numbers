@@ -13,11 +13,18 @@ import {
 import { toUser } from "../lib/serializers";
 import { isRateLimited, resetKey } from "../lib/rate-limiter";
 import { assessLoginRisk, logSecurityEvent } from "../lib/fraud-detection";
+import { isRegistrationEnabled } from "../lib/settings";
 
 const router: IRouter = Router();
 
 router.post("/auth/register", async (req, res): Promise<void> => {
   const ip = req.ip ?? "unknown";
+
+  /* Check if registration is currently enabled */
+  if (!(await isRegistrationEnabled())) {
+    res.status(503).json({ error: "Les inscriptions sont temporairement désactivées. Réessayez plus tard." });
+    return;
+  }
 
   /* 5 registrations per hour per IP */
   if (isRateLimited(`register:${ip}`, 5, 60 * 60_000)) {

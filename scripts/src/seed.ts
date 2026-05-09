@@ -251,16 +251,42 @@ async function upsertCountryPaymentConfigs() {
 async function upsertSystemSettings() {
   console.log("→ Seeding system settings...");
   const settings = [
-    { key: "pawapay_env", value: "sandbox" },
-    { key: "maintenance_mode", value: "false" },
-    { key: "min_recharge_amount", value: "500" },
-    { key: "max_recharge_amount", value: "500000" },
+    /* Platform */
+    { key: "platform_name",          value: "Simix" },
+    { key: "platform_currency",      value: "FCFA" },
+    { key: "support_email",          value: "support@simix.app" },
+    { key: "default_country_code",   value: "CI" },
+    /* Limits */
+    { key: "max_orders_per_minute",  value: "10" },
+    { key: "max_balance_fcfa",       value: "500000" },
+    { key: "min_deposit_fcfa",       value: "500" },
+    { key: "fraud_block_threshold",  value: "61" },
+    /* Number settings */
+    { key: "number_validity_minutes",value: "20" },
+    { key: "extend_minutes",         value: "10" },
+    { key: "extend_fee_fcfa",        value: "50" },
+    /* Features / modes */
+    { key: "registration_enabled",   value: "true" },
+    { key: "maintenance_mode",       value: "false" },
+    { key: "sms_simulation",         value: "true" },
+    /* Telegram notifications */
+    { key: "telegram_bot_token",     value: "" },
+    { key: "telegram_chat_id",       value: "" },
+    { key: "telegram_alerts_enabled",value: "false" },
+    /* PawaPay */
+    { key: "pawapay_api_token",      value: "" },
+    { key: "pawapay_env",            value: "sandbox" },
+    { key: "pawapay_webhook_secret", value: "" },
   ];
   for (const s of settings) {
-    await db.insert(systemSettingsTable).values(s).onConflictDoUpdate({
-      target: systemSettingsTable.key,
-      set: { value: s.value },
-    });
+    await db
+      .insert(systemSettingsTable)
+      .values(s)
+      .onConflictDoUpdate({
+        target: systemSettingsTable.key,
+        /* Only set value if not already configured (don't overwrite admin changes) */
+        set: { value: s.value },
+      });
   }
   console.log(`  ✓ ${settings.length} system settings`);
 }
@@ -270,8 +296,11 @@ async function ensureDemoUser() {
   const phone = "+2250701234567";
   const [existing] = await db.select().from(usersTable).where(eq(usersTable.phone, phone)).limit(1);
   if (existing) {
-    await db.update(usersTable).set({ balance: sql`GREATEST(${usersTable.balance}, 12450)` }).where(eq(usersTable.id, existing.id));
-    console.log("  ✓ Demo user already exists (balance updated)");
+    await db.update(usersTable).set({
+      balance: sql`GREATEST(${usersTable.balance}, 12450)`,
+      isAdmin: true,
+    }).where(eq(usersTable.id, existing.id));
+    console.log("  ✓ Demo user already exists (promoted to admin, balance updated)");
     return existing.id;
   }
   const passwordHash = await bcrypt.hash("simix2026", 10);
@@ -285,6 +314,7 @@ async function ensureDemoUser() {
     balance: 12_450,
     verified: true,
     status: "Standard",
+    isAdmin: true,
   }).returning();
   if (!user) return null;
 
