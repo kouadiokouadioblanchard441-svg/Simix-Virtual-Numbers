@@ -820,10 +820,11 @@ router.get("/admin/api-providers/:providerId/balance", requireAdmin, async (req,
   res.json(null);
 });
 
-/* ─── Sync 5sim products ─── */
+/* ─── Sync 5sim products (uses shared fivesim-sync module) ─── */
 router.post("/admin/api-providers/:providerId/sync-products", requireAdmin, async (req, res): Promise<void> => {
   const providerId = String(req.params.providerId);
-  const [provider] = await db.select().from(apiProvidersTable).where(eq(apiProvidersTable.id, providerId)).limit(1);
+  const [provider] = await db.select({ slug: apiProvidersTable.slug, apiKey: apiProvidersTable.apiKey })
+    .from(apiProvidersTable).where(eq(apiProvidersTable.id, providerId)).limit(1);
   if (!provider) { res.status(404).json({ error: "Fournisseur introuvable" }); return; }
 
   if (provider.slug !== "5sim" || !provider.apiKey) {
@@ -831,38 +832,26 @@ router.post("/admin/api-providers/:providerId/sync-products", requireAdmin, asyn
     return;
   }
 
-  const { FiveSimClient } = await import("../lib/fivesim");
-  const client = new FiveSimClient(provider.apiKey);
-
   try {
-    const products = await client.getProducts("france", "any");
-    const productNames = Object.keys(products);
-    let synced = 0;
-
-    for (const productName of productNames.slice(0, 50)) {
-      const existing = await db.select({ id: servicesTable.id }).from(servicesTable)
-        .where(eq(servicesTable.slug, productName)).limit(1);
-      if (existing.length === 0) {
-        const productInfo = products[productName];
-        await db.insert(servicesTable).values({
-          name: productName.charAt(0).toUpperCase() + productName.slice(1),
-          slug: productName,
-          price: Math.round((productInfo?.Price ?? 0) * 655 * (1 + provider.markup / 100)),
-          providerPrice: Math.round((productInfo?.Price ?? 0) * 655),
-          margin: provider.markup,
-          available: productInfo?.Qty ?? 100,
-          enabled: true,
-          sortOrder: 100,
-        }).onConflictDoNothing();
-        synced++;
-      }
-    }
-
-    await logAdminAction(adminId(req), "sync_products", req.ip, "provider", providerId, { synced, total: productNames.length });
-    res.json({ synced, message: `${synced} nouveaux services synchronisés depuis 5sim` });
+    const { syncFiveSimProducts } = await import("../lib/fivesim-sync");
+    const result = await syncFiveSimProducts();
+    await logAdminAction(adminId(req), "sync_products", req.ip, "provider", providerId, result);
+    res.json({ synced: result.added + result.updated, added: result.added, updated: result.updated, total: result.total, message: `${result.added} ajoutés · ${result.updated} mis à jour (${result.total} total)` });
   } catch (e) {
     res.status(503).json({ error: (e as Error).message });
   }
+});
+
+/* ─── Get sync status from system_settings ─── */
+router.get("/admin/api-providers/sync-status", requireAdmin, async (_req, res): Promise<void> => {
+  const rows = await db.select().from(systemSettingsTable)
+    .where(eq(systemSettingsTable.key, "fivesim_last_sync"));
+  const statusRows = await db.select().from(systemSettingsTable)
+    .where(eq(systemSettingsTable.key, "fivesim_sync_status"));
+  res.json({
+    lastSync: rows[0]?.value ?? null,
+    status: statusRows[0]?.value ?? null,
+  });
 });
 
 /* ─────────────────── SYSTEM SETTINGS ─────────────────── */

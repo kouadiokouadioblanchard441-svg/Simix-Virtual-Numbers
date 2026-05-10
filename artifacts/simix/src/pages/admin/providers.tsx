@@ -6,7 +6,7 @@ import { AdminLayout } from "@/components/admin-layout";
 import {
   Loader2, Plus, Pencil, Trash2, X, Eye, EyeOff, Zap,
   CheckCircle2, XCircle, RefreshCw, DollarSign, WifiIcon,
-  Activity, User, Star, Clock, AlertTriangle, Gauge,
+  Activity, User, Star, Clock, AlertTriangle, Gauge, CalendarClock,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -30,8 +30,18 @@ function FiveSimStatusPanel({ provider }: { provider: ApiProvider }) {
 
   const syncProducts = useMutation({
     mutationFn: () => adminApi.syncProviderProducts(provider.id),
-    onSuccess: (res) => toast({ title: "Sync terminée", description: res.message }),
+    onSuccess: (res) => {
+      toast({ title: "Sync terminée", description: res.message });
+      void refetchSyncStatus();
+    },
     onError: (e) => toast({ title: "Erreur de sync", description: (e as Error).message, variant: "destructive" }),
+  });
+
+  const { data: syncStatus, refetch: refetchSyncStatus } = useQuery({
+    queryKey: ["fivesim-sync-status"],
+    queryFn: adminApi.getSyncStatus,
+    staleTime: 30_000,
+    refetchInterval: 60_000,
   });
 
   const result = testConn.data;
@@ -170,10 +180,25 @@ function FiveSimStatusPanel({ provider }: { provider: ApiProvider }) {
         </button>
       </div>
 
-      {/* Markup info */}
-      <div className="flex items-center justify-between text-xs text-zinc-600 pt-1 border-t border-zinc-800/60">
-        <div className="flex items-center gap-1"><Gauge className="w-3 h-3" /> Marge appliquée : <span className="text-violet-400 font-semibold">+{provider.markup}%</span></div>
-        <div className="flex items-center gap-1"><Activity className="w-3 h-3" /> Poller SMS actif toutes les <span className="text-violet-400 font-semibold">15s</span></div>
+      {/* Last sync + markup info */}
+      <div className="space-y-1.5 pt-1 border-t border-zinc-800/60">
+        {syncStatus?.lastSync && (
+          <div className="flex items-center gap-2 text-xs text-zinc-500">
+            <CalendarClock className="w-3.5 h-3.5 flex-shrink-0" />
+            <span>Dernière sync : <span className="text-zinc-300">{new Date(syncStatus.lastSync).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" })}</span></span>
+            {syncStatus.status && <span className="text-zinc-600">· {syncStatus.status}</span>}
+          </div>
+        )}
+        {!syncStatus?.lastSync && (
+          <div className="flex items-center gap-2 text-xs text-zinc-600">
+            <CalendarClock className="w-3.5 h-3.5 flex-shrink-0" />
+            <span>Aucune sync encore effectuée — première sync automatique dans ~30s après démarrage</span>
+          </div>
+        )}
+        <div className="flex items-center justify-between text-xs text-zinc-600">
+          <div className="flex items-center gap-1"><Gauge className="w-3 h-3" /> Marge : <span className="text-violet-400 font-semibold">+{provider.markup}%</span></div>
+          <div className="flex items-center gap-1"><Activity className="w-3 h-3" /> SMS poller : <span className="text-violet-400 font-semibold">15s</span> · Sync auto : <span className="text-violet-400 font-semibold">6h</span></div>
+        </div>
       </div>
     </div>
   );

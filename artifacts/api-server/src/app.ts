@@ -9,6 +9,7 @@ import { attachUser } from "./lib/auth";
 import { globalRateLimit, checkUserBlocked, checkMaintenanceMode } from "./middlewares/security";
 import { startFiveSimPoller } from "./lib/fivesim-poller";
 import { seedProvidersFromEnv } from "./lib/seed-providers";
+import { startFiveSimSyncScheduler } from "./lib/fivesim-sync";
 
 const app: Express = express();
 
@@ -54,7 +55,10 @@ app.use(checkUserBlocked);
 
 app.use("/api", router);
 
-/* ── Seed providers from env vars, then start poller ── */
-void seedProvidersFromEnv().then(() => startFiveSimPoller());
+/* ── Seed providers from env vars, then start poller + sync scheduler ── */
+void seedProvidersFromEnv().then(() => {
+  startFiveSimPoller();
+  startFiveSimSyncScheduler();
+});
 
 export default app;

@@ -82,7 +82,8 @@ export const adminApi = {
   deleteProvider: (id: string) => req("DELETE", `/admin/api-providers/${id}`),
   testProvider: (id: string) => req<ProviderTestResult>("POST", `/admin/api-providers/${id}/test`),
   getProviderBalance: (id: string) => req<{ balance: number; currency: string } | null>("GET", `/admin/api-providers/${id}/balance`),
-  syncProviderProducts: (id: string) => req<{ synced: number; message: string }>("POST", `/admin/api-providers/${id}/sync-products`),
+  syncProviderProducts: (id: string) => req<{ synced: number; added: number; updated: number; total: number; message: string }>("POST", `/admin/api-providers/${id}/sync-products`),
+  getSyncStatus: () => req<{ lastSync: string | null; status: string | null }>("GET", "/admin/api-providers/sync-status"),
 
   getSettings: () => req<Record<string, string>>("GET", "/admin/settings"),
   updateSettings: (data: Record<string, string>) => req("PUT", "/admin/settings", data),
