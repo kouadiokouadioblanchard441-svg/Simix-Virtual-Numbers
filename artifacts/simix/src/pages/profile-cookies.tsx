@@ -3,6 +3,7 @@ import { AuthGuard } from "@/components/auth-guard";
 import { useLocation } from "wouter";
 import { motion } from "framer-motion";
 import { ArrowLeft, Cookie } from "lucide-react";
+import { useContactSettings } from "@/hooks/use-contact-settings";
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -39,6 +40,11 @@ export default function ProfileCookies() {
 
 function CookiesContent() {
   const [, setLocation] = useLocation();
+  const { supportEmail, supportWhatsapp, supportPhone } = useContactSettings();
+
+  const privacyEmail = supportEmail || "privacy@simix.app";
+  const contactPhone = supportWhatsapp || supportPhone || "+225 07 00 00 00";
+
   return (
     <div className="flex-1 w-full bg-background overflow-y-auto pt-0 pb-28 px-5">
       <div className="flex items-center justify-between mb-6 sticky top-0 bg-background/95 backdrop-blur-sm z-20 pt-6 pb-3 border-b border-card-border/50">
@@ -115,8 +121,8 @@ function CookiesContent() {
 
         <Section title="7. Contact">
           <p>Pour toute question relative à notre utilisation des cookies :</p>
-          <p>Email : privacy@simix.app</p>
-          <p>WhatsApp : +225 07 00 00 00</p>
+          <p>Email : {privacyEmail}</p>
+          {contactPhone && <p>WhatsApp / Téléphone : {contactPhone}</p>}
         </Section>
 
         <div className="text-center py-4">

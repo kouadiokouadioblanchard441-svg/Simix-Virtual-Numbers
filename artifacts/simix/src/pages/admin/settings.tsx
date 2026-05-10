@@ -12,8 +12,15 @@ const SETTINGS_SCHEMA = [
     fields: [
       { key: "platform_name", label: "Nom de la plateforme", placeholder: "Simix", type: "text" },
       { key: "platform_currency", label: "Devise", placeholder: "FCFA", type: "text" },
-      { key: "support_email", label: "Email du support", placeholder: "support@simix.app", type: "email" },
       { key: "default_country_code", label: "Pays par défaut", placeholder: "CI", type: "text" },
+    ],
+  },
+  {
+    group: "Contact & Service Client",
+    fields: [
+      { key: "support_email", label: "Email du support", placeholder: "support@simix.app", type: "email", hint: "Apparaît sur toutes les pages d'aide et documents légaux" },
+      { key: "support_phone", label: "Numéro de téléphone", placeholder: "+225 07 00 00 00", type: "text", hint: "Numéro affiché dans l'aide et les mentions légales" },
+      { key: "support_whatsapp", label: "Numéro WhatsApp", placeholder: "+2250101234567", type: "text", hint: "Format international sans espaces pour le lien wa.me" },
     ],
   },
   {

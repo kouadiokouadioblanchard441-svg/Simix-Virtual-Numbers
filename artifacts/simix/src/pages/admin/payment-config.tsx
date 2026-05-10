@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { adminApi, type AdminPaymentMethod, type PaymentConfig } from "@/lib/admin-api";
 import { AdminGuard } from "@/components/admin-guard";
@@ -6,9 +6,70 @@ import { AdminLayout } from "@/components/admin-layout";
 import { formatFCFA } from "@/lib/format";
 import {
   Loader2, ToggleLeft, ToggleRight, Globe, Search, Plus, Pencil, Check, X,
-  Trash2, Image, Link, ExternalLink, Star, ArrowUpDown, CreditCard, MapPin,
+  Trash2, Image, Link, ExternalLink, Star, ArrowUpDown, CreditCard, MapPin, Upload,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+
+function useImageUpload(onUploaded: (url: string) => void) {
+  const [uploading, setUploading] = useState(false);
+  const { toast } = useToast();
+
+  const upload = useCallback(async (file: File) => {
+    if (!file.type.startsWith("image/")) {
+      toast({ title: "Fichier invalide", description: "Veuillez sélectionner une image (PNG, JPG, SVG, WebP).", variant: "destructive" });
+      return;
+    }
+    setUploading(true);
+    try {
+      const metaRes = await fetch("/api/storage/uploads/request-url", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ name: file.name, size: file.size, contentType: file.type }),
+      });
+      if (!metaRes.ok) throw new Error("Impossible d'obtenir l'URL d'upload");
+      const { uploadURL, objectPath } = await metaRes.json();
+      const putRes = await fetch(uploadURL, { method: "PUT", body: file, headers: { "Content-Type": file.type } });
+      if (!putRes.ok) throw new Error("Upload échoué");
+      const serveUrl = `/api/storage${objectPath}`;
+      onUploaded(serveUrl);
+      toast({ title: "Image uploadée", description: "Le logo a été mis à jour." });
+    } catch (e) {
+      toast({ title: "Erreur d'upload", description: (e as Error).message, variant: "destructive" });
+    } finally {
+      setUploading(false);
+    }
+  }, [onUploaded, toast]);
+
+  return { upload, uploading };
+}
+
+function ImageUploadButton({ onUploaded, uploading }: { onUploaded: (url: string) => void; uploading: boolean }) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const { upload, uploading: isUploading } = useImageUpload(onUploaded);
+  const busy = uploading || isUploading;
+  return (
+    <>
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={e => { const f = e.target.files?.[0]; if (f) upload(f); e.target.value = ""; }}
+      />
+      <button
+        type="button"
+        onClick={() => inputRef.current?.click()}
+        disabled={busy}
+        title="Uploader une image depuis votre appareil"
+        className="flex items-center gap-1 px-2 py-1.5 text-xs bg-violet-600/20 border border-violet-500/30 text-violet-400 rounded-lg hover:bg-violet-600/30 transition-colors disabled:opacity-50"
+      >
+        {busy ? <Loader2 className="w-3 h-3 animate-spin" /> : <Upload className="w-3 h-3" />}
+        {busy ? "Upload…" : "Fichier"}
+      </button>
+    </>
+  );
+}
 
 /* ─── Operator Logo Component ─── */
 function OperatorLogo({ method, size = 32 }: { method: Pick<AdminPaymentMethod, "name" | "color" | "logoUrl">; size?: number }) {
@@ -115,13 +176,16 @@ function MethodRow({ method, onSaved, onDeleted }: { method: AdminPaymentMethod;
         <div className="px-4 pb-4 pt-2 bg-zinc-950/50 space-y-3">
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-xs text-zinc-500 font-medium block mb-1 flex items-center gap-1"><Image className="w-3 h-3" />URL du logo</label>
-              <input
-                value={logoUrl}
-                onChange={e => setLogoUrl(e.target.value)}
-                placeholder="https://example.com/logo.png"
-                className="w-full px-3 py-2 text-xs bg-zinc-900 border border-zinc-700 rounded-lg text-white placeholder:text-zinc-600 focus:outline-none focus:border-violet-500"
-              />
+              <label className="text-xs text-zinc-500 font-medium block mb-1 flex items-center gap-1"><Image className="w-3 h-3" />Logo de l'opérateur</label>
+              <div className="flex gap-1.5">
+                <input
+                  value={logoUrl}
+                  onChange={e => setLogoUrl(e.target.value)}
+                  placeholder="https://... ou uploader un fichier →"
+                  className="flex-1 px-3 py-2 text-xs bg-zinc-900 border border-zinc-700 rounded-lg text-white placeholder:text-zinc-600 focus:outline-none focus:border-violet-500"
+                />
+                <ImageUploadButton onUploaded={url => setLogoUrl(url)} uploading={update.isPending} />
+              </div>
               {logoUrl && (
                 <div className="mt-2 flex items-center gap-2">
                   <span className="text-xs text-zinc-500">Aperçu :</span>
@@ -193,8 +257,11 @@ function AddMethodForm({ onDone }: { onDone: () => void }) {
           <input value={slug} onChange={e => setSlug(autoSlug(e.target.value))} placeholder="ex: wave_money" className="w-full px-3 py-2 text-sm bg-zinc-900 border border-zinc-700 rounded-lg text-white font-mono placeholder:text-zinc-600 focus:outline-none focus:border-violet-500" />
         </div>
         <div>
-          <label className="text-xs text-zinc-500 mb-1 block">URL du logo</label>
-          <input value={logoUrl} onChange={e => setLogoUrl(e.target.value)} placeholder="https://..." className="w-full px-3 py-2 text-sm bg-zinc-900 border border-zinc-700 rounded-lg text-white placeholder:text-zinc-600 focus:outline-none focus:border-violet-500" />
+          <label className="text-xs text-zinc-500 mb-1 block">Logo (URL ou fichier)</label>
+          <div className="flex gap-1.5">
+            <input value={logoUrl} onChange={e => setLogoUrl(e.target.value)} placeholder="https://... ou uploader →" className="flex-1 px-3 py-2 text-sm bg-zinc-900 border border-zinc-700 rounded-lg text-white placeholder:text-zinc-600 focus:outline-none focus:border-violet-500" />
+            <ImageUploadButton onUploaded={url => setLogoUrl(url)} uploading={create.isPending} />
+          </div>
         </div>
         <div>
           <label className="text-xs text-zinc-500 mb-1 block">Description</label>

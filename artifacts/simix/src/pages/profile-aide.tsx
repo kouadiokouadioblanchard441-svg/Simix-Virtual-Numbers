@@ -5,6 +5,7 @@ import { useLocation } from "wouter";
 import { motion } from "framer-motion";
 import { ArrowLeft, ChevronRight, HelpCircle, ExternalLink, Star, FileText, Phone } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useContactSettings } from "@/hooks/use-contact-settings";
 
 function WhatsAppLogo({ size = 24 }: { size?: number }) {
   return (
@@ -77,13 +78,17 @@ function AideContent() {
   const [openFaq, setOpenFaq] = useState<number | null>(null);
   const [rating, setRating] = useState(0);
   const [hoverRating, setHoverRating] = useState(0);
+  const { supportEmail, supportPhone, supportWhatsapp } = useContactSettings();
+
+  const whatsappNumber = supportWhatsapp || "+2250101234567";
+  const whatsappUrl = `https://wa.me/${whatsappNumber.replace(/\D/g, "")}?text=Bonjour%2C%20j%27ai%20besoin%20d%27aide%20avec%20Simix.`;
 
   const handleWhatsApp = () => {
-    window.open("https://wa.me/2250101234567?text=Bonjour%2C%20j%27ai%20besoin%20d%27aide%20avec%20Simix.", "_blank");
+    window.open(whatsappUrl, "_blank");
   };
 
   const handleEmail = () => {
-    window.open("mailto:support@simix.app?subject=Demande%20d%27assistance%20Simix", "_blank");
+    window.open(`mailto:${supportEmail}?subject=Demande%20d%27assistance%20Simix`, "_blank");
   };
 
   const handleRating = (r: number) => {
@@ -93,7 +98,6 @@ function AideContent() {
 
   return (
     <div className="flex-1 w-full bg-background overflow-y-auto pt-0 pb-28 px-5">
-      {/* Header */}
       <div className="flex items-center justify-between mb-6 sticky top-0 bg-background/95 backdrop-blur-sm z-20 pt-6 pb-3 border-b border-card-border/50">
         <button onClick={() => setLocation("/profile")} className="w-9 h-9 bg-card border border-card-border rounded-xl flex items-center justify-center hover:bg-secondary transition-colors">
           <ArrowLeft className="w-4 h-4 text-foreground" />
@@ -165,11 +169,11 @@ function AideContent() {
           <h3 className="text-sm font-bold text-foreground mb-3">Ressources</h3>
           <div className="space-y-1">
             {[
-              { label: "Centre d'aide en ligne", sub: "Guides et tutoriels détaillés", icon: ExternalLink },
-              { label: "Signaler un bug", sub: "Aidez-nous à améliorer l'application", icon: FileText },
-              { label: "Nous appeler", sub: "+225 07 00 00 00 · Lun–Sam", icon: Phone },
-            ].map(({ label, sub, icon: Icon }) => (
-              <button key={label} className="w-full flex items-center justify-between py-3 px-2 rounded-xl hover:bg-secondary/50 transition-colors text-left">
+              { label: "Centre d'aide en ligne", sub: "Guides et tutoriels détaillés", icon: ExternalLink, onClick: () => {} },
+              { label: "Signaler un bug", sub: "Aidez-nous à améliorer l'application", icon: FileText, onClick: () => window.open(`mailto:${supportEmail}?subject=Bug%20Simix`, "_blank") },
+              { label: "Nous appeler", sub: supportPhone || "Service client téléphonique", icon: Phone, onClick: () => supportPhone && window.open(`tel:${supportPhone}`, "_blank") },
+            ].map(({ label, sub, icon: Icon, onClick }) => (
+              <button key={label} onClick={onClick} className="w-full flex items-center justify-between py-3 px-2 rounded-xl hover:bg-secondary/50 transition-colors text-left">
                 <div className="flex items-center gap-3">
                   <div className="w-9 h-9 rounded-xl bg-secondary flex items-center justify-center">
                     <Icon className="w-4 h-4 text-foreground" />

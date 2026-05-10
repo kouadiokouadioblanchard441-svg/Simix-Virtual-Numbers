@@ -13,12 +13,16 @@ router.get("/config", async (_req, res): Promise<void> => {
   const [
     platformName,
     supportEmail,
+    supportPhone,
+    supportWhatsapp,
     socialTelegramUrl,
     socialWhatsappUrl,
     socialFacebookUrl,
   ] = await Promise.all([
     getSetting("platform_name", "Simix"),
     getSetting("support_email", "support@simix.app"),
+    getSetting("support_phone", ""),
+    getSetting("support_whatsapp", ""),
     getSetting("social_telegram_url", ""),
     getSetting("social_whatsapp_url", ""),
     getSetting("social_facebook_url", ""),
@@ -27,6 +31,8 @@ router.get("/config", async (_req, res): Promise<void> => {
   res.json({
     platformName,
     supportEmail,
+    supportPhone,
+    supportWhatsapp,
     social: {
       telegram: socialTelegramUrl,
       whatsapp: socialWhatsappUrl,
