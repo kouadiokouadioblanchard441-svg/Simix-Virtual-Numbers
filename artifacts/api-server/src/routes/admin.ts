@@ -917,18 +917,22 @@ router.post("/admin/pawapay/test", requireAdmin, async (req, res): Promise<void>
   const start = Date.now();
 
   try {
-    const correspondents = await client.getActiveCorrespondents();
+    /* v2: getActiveConfiguration returns {companyName, countries:[{providers:[...]}]} */
+    const config = await client.getActiveConfiguration();
     const latencyMs = Date.now() - start;
-    const active = correspondents.filter(c => c.active);
+
+    const providers = config.countries?.flatMap(c =>
+      (c.providers ?? []).map(p => ({ name: p.nameDisplayedToCustomer ?? p.provider, country: c.country, provider: p.provider }))
+    ) ?? [];
 
     res.json({
       success: true,
       latencyMs,
       env,
-      message: `Connexion réussie (${latencyMs}ms) — ${active.length} opérateur(s) actif(s)`,
-      activeCount: active.length,
-      totalCount: correspondents.length,
-      operators: active.slice(0, 10).map(c => ({ name: c.name, country: c.country, currency: c.currency })),
+      message: `Connexion réussie (${latencyMs}ms) — ${providers.length} opérateur(s) configuré(s)`,
+      activeCount: providers.length,
+      totalCount: providers.length,
+      operators: providers.slice(0, 10).map(p => ({ name: p.name, country: p.country, provider: p.provider })),
     });
   } catch (e) {
     res.json({

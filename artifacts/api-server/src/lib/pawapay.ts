@@ -1,78 +1,150 @@
 /**
- * PawaPay API client
- * Docs: https://docs.pawapay.io/
- * Sandbox: https://api.sandbox.pawapay.io/
- * Production: https://api.pawapay.io/
+ * PawaPay Merchant API v2 Client
+ * Docs: https://docs.pawapay.io/v2/docs/
+ * Production: https://api.pawapay.io
+ * Sandbox:    https://api.sandbox.pawapay.io
  *
- * IMPORTANT: PawaPay uses ISO 3166-1 alpha-3 country codes in correspondent names
- * (e.g. ORANGE_CIV not ORANGE_CI, MTN_MOMO_SEN not MTN_MOMO_SN)
- * Always use predict-correspondent API first to get the exact correct code.
+ * KEY v2 DIFFERENCES FROM v1:
+ *  - All paths are prefixed with /v2/ (e.g. /v2/deposits)
+ *  - payer.type is now "MMO" (was "MSISDN")
+ *  - payer.accountDetails replaces payer.address
+ *  - correspondent renamed to provider everywhere
+ *  - customerTimestamp removed from request
+ *  - statementDescription renamed to customerMessage (4–22 chars, ^[a-zA-Z0-9 ]+$)
+ *  - metadata format: [{key: value}] instead of [{fieldName, fieldValue}]
+ *  - Status check returns {status:"FOUND", data:{...}} wrapper
+ *  - Callbacks: single amount field (not requestedAmount/depositedAmount)
+ *  - providerTransactionId replaces correspondentIds
+ *  - predict-provider endpoint (was predict-correspondent)
+ *
+ * PHONE NUMBER RULES (v2):
+ *  - Digits only, no + prefix, no spaces
+ *  - Must include country code
+ *  - Must NOT start with zero
+ *  - Use buildMSISDN() to correctly format from local input
  */
+
+import { createHash } from "node:crypto";
 
 export type PawaPayEnv = "sandbox" | "production";
 
+/* ── v2 Request Types ── */
+
 export interface PawaPayDepositRequest {
-  depositId: string;
-  amount: string;
-  currency: string;
-  correspondent: string;
+  depositId: string;          // UUID v4 — generated before storing in DB
+  amount: string;             // String, no leading zeros except for <1
+  currency: string;           // ISO 4217 (XOF, GHS, KES…)
   payer: {
-    type: "MSISDN";
-    address: { value: string };
+    type: "MMO";
+    accountDetails: {
+      phoneNumber: string;    // E.164 without +, no leading zero
+      provider: string;       // e.g. ORANGE_CIV, MTN_MOMO_ZMB
+    };
   };
-  customerTimestamp: string;
-  statementDescription: string;
-  metadata?: Array<{ fieldName: string; fieldValue: string; isPII?: boolean }>;
+  customerMessage?: string;   // 4–22 chars, ^[a-zA-Z0-9 ]+$ (shown to customer)
+  clientReferenceId?: string; // Optional reference to your system entity
+  metadata?: Record<string, string>[];
 }
 
-export interface PawaPayDepositResponse {
+export interface PawaPayDepositInitResponse {
   depositId: string;
-  status: "ACCEPTED" | "REJECTED";
-  rejectionReason?: {
-    rejectionCode: string;
-    rejectionMessage: string;
-  };
+  status: "ACCEPTED" | "REJECTED" | "DUPLICATE_IGNORED";
   created?: string;
-}
-
-export interface PawaPayDepositStatus {
-  depositId: string;
-  status: "ACCEPTED" | "COMPLETED" | "FAILED" | "DUPLICATE_IGNORED";
-  requestedAmount: string;
-  depositedAmount?: string;
-  currency: string;
-  country: string;
-  correspondent: string;
-  payer: { type: string; address: { value: string } };
-  customerTimestamp: string;
-  statementDescription: string;
-  created: string;
-  respondedByPayer?: string;
-  correspondent_ids?: { PAYER_TRANSACTION_ID?: string; [key: string]: string | undefined };
+  nextStep?: "FINAL_STATUS" | string;   // FINAL_STATUS = wait for callback/poll
   failureReason?: {
     failureCode: string;
     failureMessage: string;
   };
 }
 
-export interface PawaPayCorrespondent {
-  correspondent: string;
-  country: string;
+/* ── v2 Status Check Response ── */
+
+export interface PawaPayDepositData {
+  depositId: string;
+  status: "ACCEPTED" | "PROCESSING" | "COMPLETED" | "FAILED" | "IN_RECONCILIATION" | "DUPLICATE_IGNORED";
+  amount: string;              // Requested amount (single field in v2)
   currency: string;
-  name: string;
-  operationType: string;
-  active: boolean;
-  mobileMoneyVendor: string;
+  country: string;
+  payer: {
+    type: "MMO";
+    accountDetails: {
+      phoneNumber: string;
+      provider: string;
+    };
+  };
+  customerMessage?: string;
+  clientReferenceId?: string;
+  created: string;
+  providerTransactionId?: string;
+  failureReason?: {
+    failureCode: string;
+    failureMessage: string;
+  };
+  metadata?: Record<string, unknown>;
 }
+
+export interface PawaPayDepositSearchResult {
+  status: "FOUND" | "NOT_FOUND";
+  data?: PawaPayDepositData;
+}
+
+/* ── v2 Webhook Callback Body ── */
+
+export interface PawaPayDepositCallback {
+  depositId: string;
+  status: "COMPLETED" | "FAILED";
+  amount: string;
+  currency: string;
+  country: string;
+  payer?: {
+    type: string;
+    accountDetails?: {
+      phoneNumber?: string;
+      provider?: string;
+    };
+  };
+  customerMessage?: string;
+  created?: string;
+  providerTransactionId?: string;
+  failureReason?: {
+    failureCode: string;
+    failureMessage: string;
+  };
+  metadata?: Record<string, unknown>;
+}
+
+/* ── v2 Predict Provider Response ── */
 
 export interface PawaPayPredictResult {
-  correspondent: string;
-  country: string;
-  operator?: string;
-  msisdn?: string;
+  provider: string;           // e.g. ORANGE_CIV
+  country: string;            // ISO 3166-1 alpha-3 (e.g. CIV)
+  phoneNumber?: string;       // Sanitized phone number
 }
 
-/* ── ISO 3166-1 alpha-2 → alpha-3 mapping ── */
+/* ── v2 Active Configuration ── */
+
+export interface PawaPayActiveConfig {
+  companyName: string;
+  countries: Array<{
+    country: string;
+    providers: Array<{
+      provider: string;
+      nameDisplayedToCustomer: string;
+      currencies: Array<{
+        currency: string;
+        operationTypes: {
+          DEPOSIT?: { minAmount: string; maxAmount: string };
+          PAYOUT?: { minAmount: string; maxAmount: string };
+        };
+      }>;
+    }>;
+  }>;
+}
+
+/* ─────────────────────────────────────────────────────────────────
+ * ISO 3166-1 alpha-2 → alpha-3 mapping
+ * PawaPay provider codes use ISO-3 suffixes (CIV, SEN, CMR…)
+ * ─────────────────────────────────────────────────────────────── */
 export const ISO2_TO_ISO3: Record<string, string> = {
   CI: "CIV", SN: "SEN", CM: "CMR", GH: "GHA", NG: "NGA",
   KE: "KEN", TZ: "TZA", UG: "UGA", MZ: "MOZ", ZM: "ZMB",
@@ -83,12 +155,12 @@ export const ISO2_TO_ISO3: Record<string, string> = {
   SL: "SLE", LR: "LBR", CD: "COD", SS: "SSD", SD: "SDN",
 };
 
-/* ── Mobile Money correspondent mapping by country ISO-2 code ──
- * Verified against PawaPay predict-correspondent API responses.
- * Codes use ISO 3166-1 alpha-3 suffixes (CIV, SEN, CMR, etc.)
- * This is used as FALLBACK only — predict-correspondent API is preferred.
- * ─────────────────────────────────────────────────────────────────────── */
-export const COUNTRY_TO_PAWAPAY_CORRESPONDENT: Record<string, string[]> = {
+/* ─────────────────────────────────────────────────────────────────
+ * Provider mapping by country ISO-2 code (FALLBACK only)
+ * Verified against PawaPay predict-provider API.
+ * Always use predictProvider() first — static mapping is fallback.
+ * ─────────────────────────────────────────────────────────────── */
+export const COUNTRY_TO_PAWAPAY_PROVIDER: Record<string, string[]> = {
   CI: ["ORANGE_CIV", "MTN_MOMO_CIV", "MOOV_CIV"],
   SN: ["ORANGE_SEN", "WAVE_SEN", "FREE_SEN", "EXPRESSO_SEN"],
   CM: ["MTN_MOMO_CMR", "ORANGE_CMR"],
@@ -132,6 +204,9 @@ export const COUNTRY_CURRENCY: Record<string, string> = {
   EG: "EGP", MA: "MAD", SL: "SLL",
 };
 
+/* ─────────────────────────────────────────────────────────────────
+ * PawaPay v2 Client
+ * ─────────────────────────────────────────────────────────────── */
 export class PawaPayClient {
   private token: string;
   private baseUrl: string;
@@ -154,78 +229,98 @@ export class PawaPayClient {
       body: body ? JSON.stringify(body) : undefined,
     });
 
+    const text = await res.text();
+    let json: unknown;
+    try { json = JSON.parse(text); } catch { json = text; }
+
     if (!res.ok) {
-      const text = await res.text().catch(() => res.statusText);
-      throw new Error(`PawaPay API error ${res.status}: ${text}`);
+      throw new Error(`PawaPay ${res.status}: ${typeof json === "string" ? json : JSON.stringify(json)}`);
     }
 
-    return res.json() as Promise<T>;
-  }
-
-  async initiateDeposit(params: PawaPayDepositRequest): Promise<PawaPayDepositResponse> {
-    return this.request<PawaPayDepositResponse>("/deposits", "POST", params);
-  }
-
-  async getDepositStatus(depositId: string): Promise<PawaPayDepositStatus[]> {
-    return this.request<PawaPayDepositStatus[]>(`/deposits/${depositId}`);
-  }
-
-  async getActiveCorrespondents(): Promise<PawaPayCorrespondent[]> {
-    return this.request<PawaPayCorrespondent[]>("/active-configuration");
+    return json as T;
   }
 
   /**
-   * Predict the correct correspondent code for a given MSISDN.
-   * This is the most reliable way to get the exact correspondent code.
-   * Returns null if the country is not configured for this merchant.
+   * Initiate a deposit (v2).
+   * IMPORTANT: Store the depositId in your DB BEFORE calling this.
+   * Status ACCEPTED = pending, wait for webhook or poll.
+   * Status REJECTED = payment refused, user must retry.
    */
-  async predictCorrespondent(msisdn: string): Promise<PawaPayPredictResult | null> {
+  async initiateDeposit(params: PawaPayDepositRequest): Promise<PawaPayDepositInitResponse> {
+    return this.request<PawaPayDepositInitResponse>("/v2/deposits", "POST", params);
+  }
+
+  /**
+   * Check the current status of a deposit (v2).
+   * Returns {status:"FOUND", data:{...}} or {status:"NOT_FOUND"}.
+   * Poll only if webhook is not configured or as reconciliation.
+   */
+  async getDepositStatus(depositId: string): Promise<PawaPayDepositSearchResult> {
+    return this.request<PawaPayDepositSearchResult>(`/v2/deposits/${depositId}`);
+  }
+
+  /**
+   * Predict the correct provider code for a given phone number (v2).
+   * Also sanitizes and validates the phone number.
+   * ALWAYS call this before initiating a deposit — most reliable way to get provider.
+   * Returns null if country not configured or phone number invalid.
+   */
+  async predictProvider(phoneNumber: string): Promise<PawaPayPredictResult | null> {
     try {
       const result = await this.request<PawaPayPredictResult & { errorCode?: number; errorMessage?: string }>(
-        "/predict-correspondent", "POST", { msisdn }
+        "/v2/predict-provider", "POST", { phoneNumber }
       );
-      if (result.errorCode) return null;
-      if (result.correspondent) return result;
+      if (result.errorCode) {
+        return null;
+      }
+      if (result.provider) return result;
       return null;
     } catch {
       return null;
     }
   }
 
-  async checkAvailability(): Promise<{ status: string; country?: string }> {
-    try {
-      await this.getActiveCorrespondents();
-      return { status: "ok" };
-    } catch {
-      return { status: "error" };
-    }
+  /**
+   * Get active configuration for this merchant account (v2).
+   * Contains all configured providers, currencies, limits.
+   */
+  async getActiveConfiguration(): Promise<PawaPayActiveConfig> {
+    return this.request<PawaPayActiveConfig>("/v2/active-configuration");
+  }
+
+  /**
+   * Get PawaPay's public keys for signature verification.
+   * Cache the result to avoid repeated calls.
+   */
+  async getPublicKeys(): Promise<Array<{ keyId: string; key: string; algorithm: string }>> {
+    return this.request<Array<{ keyId: string; key: string; algorithm: string }>>("/v2/public-keys");
   }
 }
+
+/* ─────────────────────────────────────────────────────────────────
+ * Utility functions
+ * ─────────────────────────────────────────────────────────────── */
 
 export function generateDepositId(): string {
   return crypto.randomUUID();
 }
 
 /**
- * Normalize a phone number to MSISDN format (no +, no spaces).
- * Prepends dial code if provided separately.
- */
-export function normalizeMSISDN(phone: string): string {
-  const cleaned = phone.replace(/[\s\-().+]/g, "");
-  if (cleaned.startsWith("00")) return cleaned.slice(2);
-  return cleaned;
-}
-
-/**
- * Build a full MSISDN from a local phone number and dial code.
+ * Build a full MSISDN (E.164 without +) from a local phone number and dial code.
  *
- * For African Mobile Money markets, the leading 0 in local numbers is part
- * of the subscriber number (NOT a trunk prefix), so we preserve it.
- *   e.g. phone="0701234567", dialCode="+225" → "2250701234567" (13 digits, CIV)
- *   e.g. phone="07 01 23 45 67", dialCode="+225" → "2250701234567"
- *   e.g. phone="2250701234567" (already E.164 without +) → "2250701234567"
+ * PawaPay v2 phone number rules:
+ *  - Digits only, no +, no spaces
+ *  - Must include country code prefix
+ *  - Must NOT start with zero (the full international number)
  *
- * If the number already starts with the country code digits, it is returned as-is.
+ * For African Mobile Money, local numbers include a leading 0 as part of
+ * the subscriber number (e.g. Ivory Coast: 07 01 23 45 67 → 0701234567).
+ * When the country code is prepended, the result does NOT start with 0.
+ *
+ * Examples:
+ *   buildMSISDN("0701234567", "+225") → "2250701234567"  ✓ (CIV, 13 digits)
+ *   buildMSISDN("783456789",  "+250") → "250783456789"   ✓ (RWA, 12 digits)
+ *   buildMSISDN("2250701234567", "+225") → "2250701234567" ✓ (already full)
  */
 export function buildMSISDN(phoneNumber: string, dialCode?: string): string {
   const digits = phoneNumber.replace(/\D/g, "");
@@ -233,32 +328,55 @@ export function buildMSISDN(phoneNumber: string, dialCode?: string): string {
 
   const countryDigits = dialCode.replace(/\D/g, "");
 
-  // If the number is already in international format (starts with country code), use it as-is
+  // Already in international format (starts with country code and long enough)
   if (digits.startsWith(countryDigits) && digits.length > countryDigits.length + 6) {
     return digits;
   }
 
-  // Concatenate country code + local number (preserve leading zeros)
+  // Prepend country code — preserve all local digits including leading 0
   return `${countryDigits}${digits}`;
 }
 
 /**
- * Get the best correspondent for a country + method slug (FALLBACK only).
- * Prefer using client.predictCorrespondent() instead.
+ * Get the best provider for a country + method slug (STATIC FALLBACK only).
+ * Always prefer client.predictProvider() for accuracy.
  */
-export function getCorrespondentForCountry(countryCode: string, methodSlug: string): string | null {
-  const correspondents = COUNTRY_TO_PAWAPAY_CORRESPONDENT[countryCode.toUpperCase()] ?? [];
-  if (correspondents.length === 0) return null;
+export function getProviderForCountry(countryCode: string, methodSlug: string): string | null {
+  const providers = COUNTRY_TO_PAWAPAY_PROVIDER[countryCode.toUpperCase()] ?? [];
+  if (providers.length === 0) return null;
 
   const slug = methodSlug.toLowerCase();
-  if (slug.includes("orange")) return correspondents.find(c => c.startsWith("ORANGE_")) ?? correspondents[0];
-  if (slug.includes("mtn")) return correspondents.find(c => c.startsWith("MTN_")) ?? correspondents[0];
-  if (slug.includes("wave")) return correspondents.find(c => c.startsWith("WAVE_")) ?? correspondents[0];
-  if (slug.includes("moov")) return correspondents.find(c => c.startsWith("MOOV_")) ?? correspondents[0];
-  if (slug.includes("airtel")) return correspondents.find(c => c.startsWith("AIRTEL_")) ?? correspondents[0];
-  if (slug.includes("mpesa") || slug.includes("m-pesa")) return correspondents.find(c => c.startsWith("MPESA_")) ?? correspondents[0];
-  if (slug.includes("vodafone")) return correspondents.find(c => c.startsWith("VODAFONE_")) ?? correspondents[0];
-  if (slug.includes("free")) return correspondents.find(c => c.startsWith("FREE_")) ?? correspondents[0];
+  if (slug.includes("orange"))   return providers.find(p => p.startsWith("ORANGE_"))   ?? providers[0];
+  if (slug.includes("mtn"))      return providers.find(p => p.startsWith("MTN_"))       ?? providers[0];
+  if (slug.includes("wave"))     return providers.find(p => p.startsWith("WAVE_"))      ?? providers[0];
+  if (slug.includes("moov"))     return providers.find(p => p.startsWith("MOOV_"))      ?? providers[0];
+  if (slug.includes("airtel"))   return providers.find(p => p.startsWith("AIRTEL_"))    ?? providers[0];
+  if (slug.includes("mpesa") || slug.includes("m-pesa")) return providers.find(p => p.startsWith("MPESA_")) ?? providers[0];
+  if (slug.includes("vodafone")) return providers.find(p => p.startsWith("VODAFONE_"))  ?? providers[0];
+  if (slug.includes("free"))     return providers.find(p => p.startsWith("FREE_"))      ?? providers[0];
+  if (slug.includes("tmoney"))   return providers.find(p => p.startsWith("TMONEY_"))    ?? providers[0];
+  if (slug.includes("flooz"))    return providers.find(p => p.startsWith("FLOOZ_"))     ?? providers[0];
+  if (slug.includes("expresso")) return providers.find(p => p.startsWith("EXPRESSO_")) ?? providers[0];
 
-  return correspondents[0];
+  return providers[0];
+}
+
+/**
+ * Verify the Content-Digest header sent by PawaPay in callbacks.
+ * Format: "sha-256=:base64hash:" or "sha-512=:base64hash:"
+ *
+ * Returns true if digest matches or if header is absent (digest not required unless enabled in dashboard).
+ * Returns false if header is present but digest does NOT match (possible tampering).
+ */
+export function verifyContentDigest(rawBody: string, contentDigestHeader: string | undefined): boolean {
+  if (!contentDigestHeader) return true; // Not signed — accept (warn in caller)
+
+  const match = contentDigestHeader.match(/^(sha-256|sha-512)=:([A-Za-z0-9+/=]+):$/);
+  if (!match) return false;
+
+  const [, alg, expectedB64] = match;
+  const hashAlg = alg === "sha-512" ? "sha512" : "sha256";
+
+  const actual = createHash(hashAlg).update(rawBody, "utf8").digest("base64");
+  return actual === expectedB64;
 }
