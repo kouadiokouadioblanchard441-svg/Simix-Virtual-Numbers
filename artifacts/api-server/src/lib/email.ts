@@ -1,6 +1,10 @@
 import { Resend } from "resend";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+function getResend(): Resend | null {
+  const key = process.env.RESEND_API_KEY;
+  if (!key) return null;
+  return new Resend(key);
+}
 
 const FROM_EMAIL = "Simix <noreply@simix.app>";
 
@@ -252,6 +256,11 @@ export async function sendPasswordResetEmail(
   code: string,
   fullName: string,
 ): Promise<void> {
+  const resend = getResend();
+  if (!resend) {
+    console.warn("[email] RESEND_API_KEY not set — skipping password reset email");
+    return;
+  }
   const { error } = await resend.emails.send({
     from: FROM_EMAIL,
     to,
@@ -269,6 +278,11 @@ export async function sendOtpEmail(
   code: string,
   purpose: "register" | "inactivity",
 ): Promise<void> {
+  const resend = getResend();
+  if (!resend) {
+    console.warn("[email] RESEND_API_KEY not set — skipping OTP email");
+    return;
+  }
   const subject =
     purpose === "register"
       ? "Votre code de vérification Simix"
