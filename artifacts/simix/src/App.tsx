@@ -15,6 +15,8 @@ import Splash from "@/pages/splash";
 import Login from "@/pages/auth/login";
 import Register from "@/pages/auth/register";
 import VerifyOtp from "@/pages/auth/verify-otp";
+import ForgotPassword from "@/pages/auth/forgot-password";
+import ResetPassword from "@/pages/auth/reset-password";
 import Dashboard from "@/pages/dashboard";
 import Profile from "@/pages/profile";
 import Wallet from "@/pages/wallet";
@@ -117,6 +119,8 @@ function InnerRouter() {
           <Route path="/login" component={Login} />
           <Route path="/register" component={Register} />
           <Route path="/verify-email" component={VerifyOtp} />
+          <Route path="/forgot-password" component={ForgotPassword} />
+          <Route path="/reset-password" component={ResetPassword} />
           <Route path="/dashboard" component={Dashboard} />
           <Route path="/profile" component={Profile} />
           <Route path="/wallet" component={Wallet} />

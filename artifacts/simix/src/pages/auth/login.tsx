@@ -281,7 +281,7 @@ export default function Login() {
             />
 
             <div className="flex justify-end pt-1 mb-6">
-              <Link href="#" className="text-sm text-primary font-medium hover:underline">Mot de passe oublié ?</Link>
+              <Link href="/forgot-password" className="text-sm text-primary font-medium hover:underline">Mot de passe oublié ?</Link>
             </div>
 
             <Button type="submit" className="w-full h-14 rounded-2xl text-base font-semibold bg-gradient-to-r from-violet-600 to-indigo-600 hover:opacity-90 text-white shadow-lg shadow-primary/25" disabled={loginMutation.isPending}>

@@ -12,7 +12,7 @@ export function generateOtpCode(): string {
 
 export async function createOtp(
   userId: string,
-  purpose: "email_verification" | "inactivity_check",
+  purpose: "email_verification" | "inactivity_check" | "password_reset",
 ): Promise<string> {
   const code = generateOtpCode();
   const expiresAt = new Date(Date.now() + OTP_EXPIRY_MS);
@@ -43,7 +43,7 @@ export async function createOtp(
 export async function verifyOtp(
   userId: string,
   code: string,
-  purpose: "email_verification" | "inactivity_check",
+  purpose: "email_verification" | "inactivity_check" | "password_reset",
 ): Promise<{ success: boolean; error?: string }> {
   const [otp] = await db
     .select()
@@ -93,7 +93,7 @@ export async function verifyOtp(
 
 export async function hasRecentOtp(
   userId: string,
-  purpose: "email_verification" | "inactivity_check",
+  purpose: "email_verification" | "inactivity_check" | "password_reset",
   cooldownSeconds = 60,
 ): Promise<boolean> {
   const cutoff = new Date(Date.now() - cooldownSeconds * 1000);

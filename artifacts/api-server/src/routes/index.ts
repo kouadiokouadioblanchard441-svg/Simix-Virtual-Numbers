@@ -19,6 +19,7 @@ import supportRouter from "./support";
 import notificationsRouter from "./notifications";
 import bannersRouter from "./banners";
 import otpRouter from "./otp";
+import forgotPasswordRouter from "./forgot-password";
 
 const router: IRouter = Router();
 
@@ -38,6 +39,7 @@ router.use(supportRouter);
 router.use(notificationsRouter);
 router.use(bannersRouter);
 router.use(otpRouter);
+router.use(forgotPasswordRouter);
 router.use(adminRouter);
 router.use(adminSupportRouter);
 router.use(adminNotificationsRouter);
