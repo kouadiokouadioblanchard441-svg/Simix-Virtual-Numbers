@@ -25,6 +25,7 @@ import { logger } from "../lib/logger";
 import { getMinDepositFcfa, getMaxBalanceFcfa } from "../lib/settings";
 import { broadcastNotification } from "./notifications";
 import { notificationsTable } from "@workspace/db";
+import { sendDepositConfirmationEmail } from "../lib/email";
 
 const router: IRouter = Router();
 
@@ -281,6 +282,22 @@ router.post(
       })
       .returning();
 
+    /* ── Send deposit confirmation email (non-mobile-money instant credit) ── */
+    if (tx && user.email) {
+      const newBalanceAfter = user.balance + amount;
+      sendDepositConfirmationEmail({
+        userEmail: user.email,
+        userFullName: user.fullName ?? "Utilisateur",
+        amount,
+        method: method?.name ?? methodSlug,
+        phoneNumber: phoneNumber ? `${dialCode ?? ""}${phoneNumber}` : null,
+        transactionId: String(tx.id),
+        depositId: null,
+        createdAt: tx.createdAt ? new Date(tx.createdAt) : new Date(),
+        newBalance: newBalanceAfter,
+      }).catch((e: Error) => logger.warn({ error: e.message }, "[email] Deposit confirmation (manual) non-critical error"));
+    }
+
     res.json(toTransaction(tx!));
   },
 );
@@ -400,6 +417,33 @@ async function processDepositCallback(payload: PawaPayDepositCallback): Promise<
       }).returning();
       if (notif) broadcastNotification(notif);
     } catch { /* non-critical */ }
+
+    /* ── Send deposit confirmation email ── */
+    try {
+      const [userRow] = await db.select({
+        email: usersTable.email,
+        fullName: usersTable.fullName,
+        balance: usersTable.balance,
+      }).from(usersTable).where(eq(usersTable.id, tx.userId)).limit(1);
+
+      if (userRow?.email) {
+        const phoneMatch = tx.description?.match(/[\+\d]{8,}/);
+        await sendDepositConfirmationEmail({
+          userEmail: userRow.email,
+          userFullName: userRow.fullName ?? "Utilisateur",
+          amount: creditAmount,
+          method: tx.method ?? "Mobile Money",
+          phoneNumber: phoneMatch?.[0] ?? null,
+          transactionId: String(tx.id),
+          depositId: tx.externalDepositId ?? depositId,
+          createdAt: tx.createdAt ? new Date(tx.createdAt) : new Date(),
+          newBalance: userRow.balance,
+        });
+        logger.info({ userId: tx.userId, depositId }, "[email] Deposit confirmation email sent ✓");
+      }
+    } catch (e) {
+      logger.warn({ error: (e as Error).message, depositId }, "[email] Failed to send deposit confirmation email (non-critical)");
+    }
 
   } else if (status === "FAILED") {
     const updated = await db.update(transactionsTable)

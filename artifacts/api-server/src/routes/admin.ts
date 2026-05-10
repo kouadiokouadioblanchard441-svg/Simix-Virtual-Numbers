@@ -26,6 +26,7 @@ import {
 import { FiveSimClient } from "../lib/fivesim";
 
 import { blockUser, logSecurityEvent } from "../lib/fraud-detection";
+import { sendDepositConfirmationEmail } from "../lib/email";
 import { logger } from "../lib/logger";
 import { clearSettingsCache } from "../lib/settings";
 import { requireAdminJwt } from "../lib/admin-jwt-middleware";
@@ -228,14 +229,34 @@ router.post("/admin/users/:userId/adjust-balance", requireAdmin, async (req, res
 
   const newBalance = Math.max(0, user.balance + amount);
   await db.update(usersTable).set({ balance: newBalance }).where(eq(usersTable.id, userId));
-  await db.insert(transactionsTable).values({
+  const [tx] = await db.insert(transactionsTable).values({
     userId,
     type: amount > 0 ? "recharge" : "purchase",
     amount: Math.abs(amount),
     status: "completed",
     description: reason,
-  });
+  }).returning();
   await logAdminAction(adminId(req), "adjust_balance", req.ip, "user", userId, { amount, reason, newBalance });
+
+  /* ── Send deposit confirmation email for positive admin top-ups ── */
+  if (amount > 0 && tx) {
+    const [userFull] = await db.select({ email: usersTable.email, fullName: usersTable.fullName })
+      .from(usersTable).where(eq(usersTable.id, userId)).limit(1);
+    if (userFull?.email) {
+      sendDepositConfirmationEmail({
+        userEmail: userFull.email,
+        userFullName: userFull.fullName ?? "Utilisateur",
+        amount: Math.abs(amount),
+        method: "Ajustement administrateur",
+        phoneNumber: null,
+        transactionId: String(tx.id),
+        depositId: null,
+        createdAt: tx.createdAt ? new Date(tx.createdAt) : new Date(),
+        newBalance,
+      }).catch((e: Error) => logger.warn({ error: e.message }, "[email] Admin adjust-balance email non-critical error"));
+    }
+  }
+
   res.json({ success: true, newBalance });
 });
 
@@ -1035,6 +1056,26 @@ router.post("/admin/pawapay/simulate-deposit", requireAdmin, async (req, res): P
       .where(eq(usersTable.id, tx.userId));
 
     logger.info({ depositId, userId: tx.userId, amount: actualAmount }, "[PawaPay SIM] Deposit simulated as COMPLETED");
+
+    /* ── Send deposit confirmation email for simulated deposits ── */
+    try {
+      const [userRow] = await db.select({ email: usersTable.email, fullName: usersTable.fullName, balance: usersTable.balance })
+        .from(usersTable).where(eq(usersTable.id, tx.userId)).limit(1);
+      if (userRow?.email) {
+        const phoneMatch = tx.description?.match(/[\+\d]{8,}/);
+        sendDepositConfirmationEmail({
+          userEmail: userRow.email,
+          userFullName: userRow.fullName ?? "Utilisateur",
+          amount: actualAmount,
+          method: tx.method ?? "Mobile Money",
+          phoneNumber: phoneMatch?.[0] ?? null,
+          transactionId: String(tx.id),
+          depositId: tx.externalDepositId ?? depositId,
+          createdAt: tx.createdAt ? new Date(tx.createdAt) : new Date(),
+          newBalance: userRow.balance + actualAmount,
+        }).catch((e: Error) => logger.warn({ error: e.message }, "[email] Simulate-deposit email non-critical error"));
+      }
+    } catch { /* non-critical */ }
 
     res.json({
       success: true,
