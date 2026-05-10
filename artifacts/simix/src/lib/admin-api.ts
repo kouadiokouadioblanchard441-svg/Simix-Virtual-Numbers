@@ -85,6 +85,11 @@ export const adminApi = {
   syncProviderProducts: (id: string) => req<{ synced: number; added: number; updated: number; total: number; message: string }>("POST", `/admin/api-providers/${id}/sync-products`),
   getSyncStatus: () => req<{ lastSync: string | null; status: string | null }>("GET", "/admin/api-providers/sync-status"),
 
+  bulkEnableServices: (slugs: string[], markPopular?: string[]) =>
+    req<{ enabled: number; message: string }>("POST", "/admin/services/bulk-enable", { slugs, markPopular }),
+  bulkDisableServices: (slugs: string[]) =>
+    req<{ disabled: number; message: string }>("POST", "/admin/services/bulk-disable", { slugs }),
+
   getSettings: () => req<Record<string, string>>("GET", "/admin/settings"),
   updateSettings: (data: Record<string, string>) => req("PUT", "/admin/settings", data),
   testEmail: (email: string) => req<{ success: boolean; message: string; latencyMs?: number; id?: string; error?: string }>("POST", "/admin/emails/test", { email }),

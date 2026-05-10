@@ -7,9 +7,159 @@ import { formatFCFA } from "@/lib/format";
 import { ServiceIcon } from "@/components/service-icon";
 import {
   Loader2, Pencil, Check, X, TrendingUp, ToggleLeft, ToggleRight,
-  Plus, Trash2, Star, Package,
+  Plus, Trash2, Star, Package, Zap, ChevronDown, ChevronUp,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+
+/* ─── Popular services preset ─── */
+const POPULAR_PRESETS: { label: string; emoji: string; slugs: string[]; markPopular: string[] }[] = [
+  {
+    label: "Essentiels",
+    emoji: "⚡",
+    slugs: ["whatsapp", "telegram", "google", "instagram", "facebook", "tiktok", "discord", "twitter", "snapchat"],
+    markPopular: ["whatsapp", "telegram", "google", "instagram", "facebook", "tiktok"],
+  },
+  {
+    label: "Finance & Tech",
+    emoji: "💳",
+    slugs: ["paypal", "binance", "amazon", "microsoft", "apple", "netflix", "steam", "coinbase", "ebay"],
+    markPopular: ["paypal", "binance", "amazon"],
+  },
+  {
+    label: "Afrique & Mobile",
+    emoji: "🌍",
+    slugs: ["viber", "line", "wechat", "uber", "airbnb", "linkedin", "youtube", "signal"],
+    markPopular: ["viber", "uber", "linkedin"],
+  },
+];
+
+const ALL_POPULAR_SLUGS = POPULAR_PRESETS.flatMap(p => p.slugs);
+const ALL_POPULAR_MARK  = POPULAR_PRESETS.flatMap(p => p.markPopular);
+
+/* ─── Bulk Enable Panel ─── */
+function BulkEnablePanel({ services }: { services: AdminService[] }) {
+  const [open, setOpen] = useState(true);
+  const { toast } = useToast();
+  const qc = useQueryClient();
+
+  const existingSlugs = new Set(services.map(s => s.slug));
+  const enabledSlugs  = new Set(services.filter(s => s.enabled).map(s => s.slug));
+
+  const availablePresets = POPULAR_PRESETS.map(p => ({
+    ...p,
+    available: p.slugs.filter(s => existingSlugs.has(s)),
+    alreadyOn: p.slugs.filter(s => enabledSlugs.has(s)),
+  }));
+
+  const totalAvailable = ALL_POPULAR_SLUGS.filter(s => existingSlugs.has(s)).length;
+  const totalEnabled   = ALL_POPULAR_SLUGS.filter(s => enabledSlugs.has(s)).length;
+  const allDone = totalAvailable > 0 && totalEnabled >= totalAvailable;
+
+  const bulk = useMutation({
+    mutationFn: ({ slugs, markPopular }: { slugs: string[]; markPopular: string[] }) =>
+      adminApi.bulkEnableServices(slugs, markPopular),
+    onSuccess: (res) => {
+      toast({ title: "Services activés", description: res.message });
+      qc.invalidateQueries({ queryKey: ["admin-services"] });
+    },
+    onError: (e) => toast({ title: "Erreur", description: (e as Error).message, variant: "destructive" }),
+  });
+
+  const enableAll = () => {
+    const toEnable = ALL_POPULAR_SLUGS.filter(s => existingSlugs.has(s));
+    if (!toEnable.length) { toast({ title: "Aucun service disponible", description: "Lancez d'abord une sync 5sim depuis Fournisseurs." }); return; }
+    bulk.mutate({ slugs: toEnable, markPopular: ALL_POPULAR_MARK });
+  };
+
+  if (allDone) return null;
+
+  return (
+    <div className="bg-gradient-to-br from-violet-950/30 to-zinc-900 border border-violet-700/30 rounded-2xl overflow-hidden">
+      {/* Header */}
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="w-full flex items-center justify-between p-4 hover:bg-violet-950/20 transition-colors"
+      >
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-xl bg-violet-600 flex items-center justify-center flex-shrink-0">
+            <Zap className="w-4 h-4 text-white" />
+          </div>
+          <div className="text-left">
+            <div className="text-white font-semibold text-sm">Activation rapide des services populaires</div>
+            <div className="text-zinc-500 text-xs">
+              {totalAvailable > 0
+                ? `${totalEnabled}/${totalAvailable} services populaires activés`
+                : "Lancez une sync 5sim pour importer les services"}
+            </div>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          {totalAvailable > 0 && (
+            <div className="w-24 h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+              <div className="h-full bg-violet-500 rounded-full transition-all" style={{ width: `${Math.round((totalEnabled / totalAvailable) * 100)}%` }} />
+            </div>
+          )}
+          {open ? <ChevronUp className="w-4 h-4 text-zinc-500" /> : <ChevronDown className="w-4 h-4 text-zinc-500" />}
+        </div>
+      </button>
+
+      {open && (
+        <div className="px-4 pb-4 space-y-3">
+          {/* Preset groups */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {availablePresets.map(preset => {
+              const allOn = preset.available.length > 0 && preset.available.every(s => enabledSlugs.has(s));
+              const someOn = preset.available.some(s => enabledSlugs.has(s));
+              return (
+                <div key={preset.label} className="bg-zinc-900/80 border border-zinc-800 rounded-xl p-3 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-white">{preset.emoji} {preset.label}</span>
+                    <span className={`text-xs px-2 py-0.5 rounded-full ${allOn ? "bg-emerald-500/20 text-emerald-400" : someOn ? "bg-yellow-500/20 text-yellow-400" : "bg-zinc-700 text-zinc-500"}`}>
+                      {allOn ? "Tous actifs" : someOn ? "Partiel" : "Inactif"}
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap gap-1">
+                    {preset.slugs.map(slug => {
+                      const exists  = existingSlugs.has(slug);
+                      const enabled = enabledSlugs.has(slug);
+                      return (
+                        <span key={slug} className={`text-[10px] px-1.5 py-0.5 rounded font-mono ${!exists ? "bg-zinc-800 text-zinc-600" : enabled ? "bg-emerald-500/20 text-emerald-400" : "bg-zinc-800 text-zinc-400"}`}>
+                          {slug}
+                        </span>
+                      );
+                    })}
+                  </div>
+                  <button
+                    onClick={() => bulk.mutate({ slugs: preset.available, markPopular: preset.markPopular })}
+                    disabled={bulk.isPending || allOn || preset.available.length === 0}
+                    className="w-full py-1.5 text-xs font-medium rounded-lg bg-violet-600 hover:bg-violet-700 disabled:opacity-40 disabled:cursor-not-allowed text-white transition-colors flex items-center justify-center gap-1.5"
+                  >
+                    {bulk.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Zap className="w-3 h-3" />}
+                    {allOn ? "Déjà activés" : `Activer ${preset.label}`}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Activate all button */}
+          <button
+            onClick={enableAll}
+            disabled={bulk.isPending || totalAvailable === 0}
+            className="w-full py-2.5 text-sm font-semibold rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 disabled:opacity-40 text-white transition-all flex items-center justify-center gap-2 shadow-lg shadow-violet-900/30"
+          >
+            {bulk.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
+            Tout activer en un clic ({totalAvailable} services populaires)
+          </button>
+
+          <p className="text-[11px] text-zinc-600 text-center">
+            Les services grisés n'ont pas encore été importés depuis 5sim · Allez dans <span className="text-violet-400">Fournisseurs → Sync produits</span>
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
 
 const CATEGORIES = ["Réseaux sociaux", "Messagerie", "Services Google", "Email", "Finance", "Jeux", "Streaming", "Crypto", "Transport", "Autres"];
 
@@ -399,6 +549,11 @@ function ServicesContent() {
       {/* Add form */}
       {showAddForm && tab === "services" && (
         <AddServiceForm onDone={() => setShowAddForm(false)} />
+      )}
+
+      {/* Bulk activation panel — only shown on services tab when there are inactive popular services */}
+      {tab === "services" && services && services.length > 0 && (
+        <BulkEnablePanel services={services} />
       )}
 
       {/* Tabs */}

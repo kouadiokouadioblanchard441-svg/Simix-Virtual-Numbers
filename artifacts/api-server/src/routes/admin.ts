@@ -325,6 +325,42 @@ router.put("/admin/services/:serviceId", requireAdmin, async (req, res): Promise
   res.json({ success: true });
 });
 
+/* ─────────────────── BULK ENABLE SERVICES ─────────────────── */
+router.post("/admin/services/bulk-enable", requireAdmin, async (req, res): Promise<void> => {
+  const { slugs, markPopular } = req.body as { slugs: string[]; markPopular?: string[] };
+  if (!Array.isArray(slugs) || slugs.length === 0) {
+    res.status(400).json({ error: "slugs[] requis" }); return;
+  }
+
+  const popularSet = new Set<string>(Array.isArray(markPopular) ? markPopular : []);
+  let enabled = 0;
+
+  for (const slug of slugs) {
+    const updates: Record<string, unknown> = { enabled: true };
+    if (popularSet.has(slug)) updates.popular = true;
+    const result = await db.update(servicesTable)
+      .set(updates)
+      .where(eq(servicesTable.slug, slug));
+    if ((result as unknown as { rowCount?: number }).rowCount ?? 1) enabled++;
+  }
+
+  await logAdminAction(adminId(req), "bulk_enable_services", req.ip, "service", "bulk", { count: enabled, slugs });
+  res.json({ enabled, message: `${enabled} services activés` });
+});
+
+/* ─────────────────── BULK DISABLE SERVICES ─────────────────── */
+router.post("/admin/services/bulk-disable", requireAdmin, async (req, res): Promise<void> => {
+  const { slugs } = req.body as { slugs: string[] };
+  if (!Array.isArray(slugs) || slugs.length === 0) {
+    res.status(400).json({ error: "slugs[] requis" }); return;
+  }
+  for (const slug of slugs) {
+    await db.update(servicesTable).set({ enabled: false }).where(eq(servicesTable.slug, slug));
+  }
+  await logAdminAction(adminId(req), "bulk_disable_services", req.ip, "service", "bulk", { count: slugs.length });
+  res.json({ disabled: slugs.length, message: `${slugs.length} services désactivés` });
+});
+
 /* ─────────────────── CREATE SERVICE ─────────────────── */
 router.post("/admin/services", requireAdmin, async (req, res): Promise<void> => {
   const { name, slug, category, color, price, providerPrice, margin, available, popular, scope, enabled } = req.body;
