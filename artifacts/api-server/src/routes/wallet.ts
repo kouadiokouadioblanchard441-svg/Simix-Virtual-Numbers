@@ -23,6 +23,8 @@ import {
 } from "../lib/pawapay";
 import { logger } from "../lib/logger";
 import { getMinDepositFcfa, getMaxBalanceFcfa } from "../lib/settings";
+import { broadcastNotification } from "./notifications";
+import { notificationsTable } from "@workspace/db";
 
 const router: IRouter = Router();
 
@@ -384,6 +386,20 @@ async function processDepositCallback(payload: PawaPayDepositCallback): Promise<
       .where(eq(usersTable.id, tx.userId));
 
     logger.info({ depositId, userId: tx.userId, creditAmount }, "[PawaPay Webhook] Deposit COMPLETED — balance credited ✓");
+
+    /* ── Push real-time deposit notification ── */
+    try {
+      const [notif] = await db.insert(notificationsTable).values({
+        userId: tx.userId,
+        title: "💰 Solde rechargé",
+        body: `Votre solde a été crédité de ${creditAmount.toLocaleString("fr-FR")} FCFA avec succès.`,
+        type: "deposit",
+        icon: "wallet",
+        link: `/wallet`,
+        metadata: { amount: creditAmount, depositId },
+      }).returning();
+      if (notif) broadcastNotification(notif);
+    } catch { /* non-critical */ }
 
   } else if (status === "FAILED") {
     const updated = await db.update(transactionsTable)

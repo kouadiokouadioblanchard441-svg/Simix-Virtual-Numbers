@@ -53,6 +53,7 @@ export function useNotifications(enabled = true) {
           setNotifications(prev => [notif, ...prev]);
           setUnreadCount(c => c + 1);
           playNotificationSound();
+          window.dispatchEvent(new CustomEvent("simix:notification", { detail: notif }));
         }
       } catch { /* ignore */ }
     };

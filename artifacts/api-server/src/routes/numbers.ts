@@ -25,6 +25,8 @@ import {
 } from "../lib/fraud-detection";
 import { FiveSimClient, FiveSimError, ISO_TO_5SIM, SERVICE_TO_5SIM } from "../lib/fivesim";
 import { logger } from "../lib/logger";
+import { broadcastNotification } from "./notifications";
+import { notificationsTable } from "@workspace/db";
 import {
   getNumberValidityMinutes,
   getExtendMinutes,
@@ -303,6 +305,20 @@ router.post("/numbers", requireAuth, async (req, res): Promise<void> => {
     method: "wallet",
     description: `${service.name} – ${country.name}${usedReal5sim ? " (5sim)" : " (sim)"}`,
   });
+
+  /* ── Push real-time purchase notification ── */
+  try {
+    const [notif] = await db.insert(notificationsTable).values({
+      userId: user.id,
+      title: "📱 Numéro attribué",
+      body: `Votre numéro ${service.name} (${country.name}) est prêt. En attente de SMS...`,
+      type: "purchase",
+      icon: "phone",
+      link: `/numbers/${vn!.id}`,
+      metadata: { numberId: vn!.id, service: service.name, country: country.name, price },
+    }).returning();
+    if (notif) broadcastNotification(notif);
+  } catch { /* non-critical */ }
 
   /* ── Schedule simulated SMS if not using real 5sim AND simulation is enabled ── */
   if (!usedReal5sim && await isSmsSimulationEnabled()) {

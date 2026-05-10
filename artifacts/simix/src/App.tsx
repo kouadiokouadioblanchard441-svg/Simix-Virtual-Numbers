@@ -4,6 +4,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useEffect } from "react";
 import SupportChat from "@/components/support/SupportChat";
+import { NotificationToast } from "@/components/notifications/NotificationToast";
 import NotFound from "@/pages/not-found";
 import { AdminSecureGuard } from "@/components/admin-secure-guard";
 
@@ -155,6 +156,7 @@ function AppShell() {
       <InnerRouter />
       <Toaster />
       {!hideChat && <SupportChat />}
+      <NotificationToast />
     </>
   );
 }
