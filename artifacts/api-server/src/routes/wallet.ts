@@ -15,7 +15,7 @@ import { toPaymentMethod, toTransaction } from "../lib/serializers";
 import {
   PawaPayClient,
   generateDepositId,
-  normalizeMSISDN,
+  buildMSISDN,
   getCorrespondentForCountry,
   COUNTRY_CURRENCY,
 } from "../lib/pawapay";
@@ -87,23 +87,34 @@ router.post(
       ? `Recharge via ${method.name}${phoneDisplay}`
       : `Recharge du portefeuille${phoneDisplay}`;
 
-    const isMobileMoney = methodSlug && ["orange", "mtn", "wave", "moov", "airtel", "mpesa"].some(k => methodSlug.toLowerCase().includes(k));
+    const isMobileMoney = methodSlug && ["orange", "mtn", "wave", "moov", "airtel", "mpesa", "free", "expresso", "tmoney", "flooz", "mvola"].some(k => methodSlug.toLowerCase().includes(k));
 
     if (isMobileMoney && phoneNumber && countryCode) {
       const pawaPayCtx = await getPawaPayClient();
       if (pawaPayCtx) {
         const { client } = pawaPayCtx;
-        const correspondent = getCorrespondentForCountry(countryCode, methodSlug);
         const currency = COUNTRY_CURRENCY[countryCode.toUpperCase()] ?? "XOF";
 
-        if (correspondent) {
-          try {
-            const depositId = generateDepositId();
-            const rawPhone = dialCode
-              ? `${dialCode.replace(/^\+/, "")}${phoneNumber.replace(/^\+/, "").replace(/^0+/, "")}`
-              : phoneNumber;
-            const msisdn = normalizeMSISDN(rawPhone);
+        try {
+          const depositId = generateDepositId();
+          /* Build MSISDN: always include country dial code, strip local leading zeros */
+          const msisdn = buildMSISDN(phoneNumber, dialCode);
 
+          /* Step 1: Use predict-correspondent for the most accurate code */
+          let correspondent: string | null = null;
+          const predicted = await client.predictCorrespondent(msisdn);
+          if (predicted?.correspondent) {
+            correspondent = predicted.correspondent;
+            logger.info({ msisdn, correspondent }, "[PawaPay] Correspondent predicted");
+          } else {
+            /* Step 2: Fall back to static mapping */
+            correspondent = getCorrespondentForCountry(countryCode, methodSlug);
+            logger.info({ msisdn, correspondent, fallback: true }, "[PawaPay] Using static correspondent mapping");
+          }
+
+          if (!correspondent) {
+            logger.warn({ countryCode, methodSlug }, "[PawaPay] No correspondent found — falling back to instant credit");
+          } else {
             const depositRes = await client.initiateDeposit({
               depositId,
               amount: String(amount),
@@ -111,7 +122,7 @@ router.post(
               correspondent,
               payer: { type: "MSISDN", address: { value: msisdn } },
               customerTimestamp: new Date().toISOString(),
-              statementDescription: `Simix ${description}`.slice(0, 22),
+              statementDescription: `Simix recharge`.slice(0, 22),
               metadata: [
                 { fieldName: "userId", fieldValue: user.id, isPII: false },
                 { fieldName: "methodSlug", fieldValue: methodSlug },
@@ -129,7 +140,7 @@ router.post(
                 externalDepositId: depositId,
               }).returning();
 
-              logger.info({ depositId, userId: user.id, amount, correspondent }, "[PawaPay] Deposit initiated");
+              logger.info({ depositId, userId: user.id, amount, correspondent, msisdn }, "[PawaPay] Deposit initiated successfully");
 
               res.json({
                 ...toTransaction(tx!),
@@ -140,11 +151,15 @@ router.post(
               });
               return;
             } else {
-              logger.warn({ depositRes }, "[PawaPay] Deposit rejected");
+              logger.warn({ depositRes, correspondent, msisdn }, "[PawaPay] Deposit rejected by operator");
+              /* Return a clear error to the user instead of silently falling back */
+              const reason = depositRes.rejectionReason?.rejectionMessage ?? depositRes.rejectionReason?.rejectionCode ?? "Rejeté par l'opérateur";
+              res.status(422).json({ error: `Dépôt refusé : ${reason}. Vérifiez votre numéro et réessayez.` });
+              return;
             }
-          } catch (e) {
-            logger.warn({ error: (e as Error).message }, "[PawaPay] Failed, falling back to instant credit");
           }
+        } catch (e) {
+          logger.warn({ error: (e as Error).message }, "[PawaPay] Exception during deposit — falling back to instant credit");
         }
       }
     }

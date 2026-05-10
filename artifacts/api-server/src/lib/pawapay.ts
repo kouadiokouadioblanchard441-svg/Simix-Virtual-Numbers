@@ -3,6 +3,10 @@
  * Docs: https://docs.pawapay.io/
  * Sandbox: https://api.sandbox.pawapay.io/
  * Production: https://api.pawapay.io/
+ *
+ * IMPORTANT: PawaPay uses ISO 3166-1 alpha-3 country codes in correspondent names
+ * (e.g. ORANGE_CIV not ORANGE_CI, MTN_MOMO_SEN not MTN_MOMO_SN)
+ * Always use predict-correspondent API first to get the exact correct code.
  */
 
 export type PawaPayEnv = "sandbox" | "production";
@@ -26,7 +30,7 @@ export interface PawaPayDepositResponse {
   status: "ACCEPTED" | "REJECTED";
   rejectionReason?: {
     rejectionCode: string;
-    rejectionDescription: string;
+    rejectionMessage: string;
   };
   created?: string;
 }
@@ -61,10 +65,32 @@ export interface PawaPayCorrespondent {
   mobileMoneyVendor: string;
 }
 
-/* ── Mobile Money correspondent mapping by country ISO code ── */
+export interface PawaPayPredictResult {
+  correspondent: string;
+  country: string;
+  operator?: string;
+  msisdn?: string;
+}
+
+/* ── ISO 3166-1 alpha-2 → alpha-3 mapping ── */
+export const ISO2_TO_ISO3: Record<string, string> = {
+  CI: "CIV", SN: "SEN", CM: "CMR", GH: "GHA", NG: "NGA",
+  KE: "KEN", TZ: "TZA", UG: "UGA", MZ: "MOZ", ZM: "ZMB",
+  RW: "RWA", GA: "GAB", CG: "COG", TD: "TCD", BF: "BFA",
+  ML: "MLI", GN: "GIN", TG: "TGO", BJ: "BEN", NE: "NER",
+  MR: "MRT", GW: "GNB", MG: "MDG", ZW: "ZWE", ZA: "ZAF",
+  AO: "AGO", ET: "ETH", MW: "MWI", EG: "EGY", MA: "MAR",
+  SL: "SLE", LR: "LBR", CD: "COD", SS: "SSD", SD: "SDN",
+};
+
+/* ── Mobile Money correspondent mapping by country ISO-2 code ──
+ * Verified against PawaPay predict-correspondent API responses.
+ * Codes use ISO 3166-1 alpha-3 suffixes (CIV, SEN, CMR, etc.)
+ * This is used as FALLBACK only — predict-correspondent API is preferred.
+ * ─────────────────────────────────────────────────────────────────────── */
 export const COUNTRY_TO_PAWAPAY_CORRESPONDENT: Record<string, string[]> = {
-  CI: ["ORANGE_CI", "MTN_MOMO_CIV", "MOOV_CI"],
-  SN: ["ORANGE_SN", "WAVE_SN", "FREE_SN"],
+  CI: ["ORANGE_CIV", "MTN_MOMO_CIV", "MOOV_CIV"],
+  SN: ["ORANGE_SEN", "WAVE_SEN", "FREE_SEN", "EXPRESSO_SEN"],
   CM: ["MTN_MOMO_CMR", "ORANGE_CMR"],
   GH: ["MTN_MOMO_GHA", "VODAFONE_GHA", "AIRTELTIGO_GHA"],
   NG: ["MTN_MOMO_NGA", "AIRTEL_NGA"],
@@ -72,7 +98,7 @@ export const COUNTRY_TO_PAWAPAY_CORRESPONDENT: Record<string, string[]> = {
   TZ: ["MPESA_TZA", "VODACOM_TZA", "AIRTEL_TZA", "TIGO_TZA"],
   UG: ["MTN_MOMO_UGA", "AIRTEL_UGA"],
   MZ: ["MPESA_MOZ", "VODACOM_MOZ"],
-  ZM: ["MTN_MOMO_ZMB", "AIRTEL_ZMB"],
+  ZM: ["AIRTEL_OAPI_ZMB", "MTN_MOMO_ZMB"],
   RW: ["MTN_MOMO_RWA", "AIRTEL_RWA"],
   GA: ["AIRTEL_GAB"],
   CG: ["MTN_MOMO_COG", "AIRTEL_COG"],
@@ -93,6 +119,17 @@ export const COUNTRY_TO_PAWAPAY_CORRESPONDENT: Record<string, string[]> = {
   MW: ["TNM_MWI", "AIRTEL_MWI"],
   EG: ["ORANGE_EGY", "VODAFONE_EGY"],
   MA: ["ORANGE_MAR", "IAM_MAR"],
+  SL: ["ORANGE_SLE"],
+};
+
+/* ── Currency mapping by country ISO-2 ── */
+export const COUNTRY_CURRENCY: Record<string, string> = {
+  CI: "XOF", SN: "XOF", BJ: "XOF", BF: "XOF", ML: "XOF", NE: "XOF", TG: "XOF", GW: "XOF",
+  CM: "XAF", GA: "XAF", CG: "XAF", TD: "XAF", MR: "MRO",
+  GH: "GHS", NG: "NGN", KE: "KES", TZ: "TZS", UG: "UGX",
+  MZ: "MZN", ZM: "ZMW", RW: "RWF", MW: "MWK", ZW: "ZWL",
+  MG: "MGA", GN: "GNF", ZA: "ZAR", AO: "AOA", ET: "ETB",
+  EG: "EGP", MA: "MAD", SL: "SLL",
 };
 
 export class PawaPayClient {
@@ -137,10 +174,18 @@ export class PawaPayClient {
     return this.request<PawaPayCorrespondent[]>("/active-configuration");
   }
 
-  async predictCorrespondent(msisdn: string): Promise<{ correspondent: string; country: string } | null> {
+  /**
+   * Predict the correct correspondent code for a given MSISDN.
+   * This is the most reliable way to get the exact correspondent code.
+   * Returns null if the country is not configured for this merchant.
+   */
+  async predictCorrespondent(msisdn: string): Promise<PawaPayPredictResult | null> {
     try {
-      const result = await this.request<{ correspondent?: string; country?: string }>("/predict-correspondent", "POST", { msisdn });
-      if (result.correspondent) return { correspondent: result.correspondent, country: result.country ?? "" };
+      const result = await this.request<PawaPayPredictResult & { errorCode?: number; errorMessage?: string }>(
+        "/predict-correspondent", "POST", { msisdn }
+      );
+      if (result.errorCode) return null;
+      if (result.correspondent) return result;
       return null;
     } catch {
       return null;
@@ -151,7 +196,7 @@ export class PawaPayClient {
     try {
       await this.getActiveCorrespondents();
       return { status: "ok" };
-    } catch (e) {
+    } catch {
       return { status: "error" };
     }
   }
@@ -161,34 +206,59 @@ export function generateDepositId(): string {
   return crypto.randomUUID();
 }
 
+/**
+ * Normalize a phone number to MSISDN format (no +, no spaces).
+ * Prepends dial code if provided separately.
+ */
 export function normalizeMSISDN(phone: string): string {
   const cleaned = phone.replace(/[\s\-().+]/g, "");
-  if (!cleaned.startsWith("+") && !cleaned.startsWith("00")) {
-    return cleaned;
-  }
-  return cleaned.replace(/^00/, "").replace(/^\+/, "");
+  if (cleaned.startsWith("00")) return cleaned.slice(2);
+  return cleaned;
 }
 
+/**
+ * Build a full MSISDN from a local phone number and dial code.
+ *
+ * For African Mobile Money markets, the leading 0 in local numbers is part
+ * of the subscriber number (NOT a trunk prefix), so we preserve it.
+ *   e.g. phone="0701234567", dialCode="+225" → "2250701234567" (13 digits, CIV)
+ *   e.g. phone="07 01 23 45 67", dialCode="+225" → "2250701234567"
+ *   e.g. phone="2250701234567" (already E.164 without +) → "2250701234567"
+ *
+ * If the number already starts with the country code digits, it is returned as-is.
+ */
+export function buildMSISDN(phoneNumber: string, dialCode?: string): string {
+  const digits = phoneNumber.replace(/\D/g, "");
+  if (!dialCode) return digits;
+
+  const countryDigits = dialCode.replace(/\D/g, "");
+
+  // If the number is already in international format (starts with country code), use it as-is
+  if (digits.startsWith(countryDigits) && digits.length > countryDigits.length + 6) {
+    return digits;
+  }
+
+  // Concatenate country code + local number (preserve leading zeros)
+  return `${countryDigits}${digits}`;
+}
+
+/**
+ * Get the best correspondent for a country + method slug (FALLBACK only).
+ * Prefer using client.predictCorrespondent() instead.
+ */
 export function getCorrespondentForCountry(countryCode: string, methodSlug: string): string | null {
   const correspondents = COUNTRY_TO_PAWAPAY_CORRESPONDENT[countryCode.toUpperCase()] ?? [];
   if (correspondents.length === 0) return null;
 
   const slug = methodSlug.toLowerCase();
-  if (slug.includes("orange")) return correspondents.find(c => c.includes("ORANGE")) ?? correspondents[0];
-  if (slug.includes("mtn")) return correspondents.find(c => c.includes("MTN")) ?? correspondents[0];
-  if (slug.includes("wave")) return correspondents.find(c => c.includes("WAVE")) ?? correspondents[0];
-  if (slug.includes("moov")) return correspondents.find(c => c.includes("MOOV")) ?? correspondents[0];
-  if (slug.includes("airtel")) return correspondents.find(c => c.includes("AIRTEL")) ?? correspondents[0];
+  if (slug.includes("orange")) return correspondents.find(c => c.startsWith("ORANGE_")) ?? correspondents[0];
+  if (slug.includes("mtn")) return correspondents.find(c => c.startsWith("MTN_")) ?? correspondents[0];
+  if (slug.includes("wave")) return correspondents.find(c => c.startsWith("WAVE_")) ?? correspondents[0];
+  if (slug.includes("moov")) return correspondents.find(c => c.startsWith("MOOV_")) ?? correspondents[0];
+  if (slug.includes("airtel")) return correspondents.find(c => c.startsWith("AIRTEL_")) ?? correspondents[0];
+  if (slug.includes("mpesa") || slug.includes("m-pesa")) return correspondents.find(c => c.startsWith("MPESA_")) ?? correspondents[0];
+  if (slug.includes("vodafone")) return correspondents.find(c => c.startsWith("VODAFONE_")) ?? correspondents[0];
+  if (slug.includes("free")) return correspondents.find(c => c.startsWith("FREE_")) ?? correspondents[0];
 
   return correspondents[0];
 }
-
-/* ── Currency mapping by country ISO ── */
-export const COUNTRY_CURRENCY: Record<string, string> = {
-  CI: "XOF", SN: "XOF", BJ: "XOF", BF: "XOF", ML: "XOF", NE: "XOF", TG: "XOF", GW: "XOF",
-  CM: "XAF", GA: "XAF", CG: "XAF", TD: "XAF", MR: "MRO",
-  GH: "GHS", NG: "NGN", KE: "KES", TZ: "TZS", UG: "UGX",
-  MZ: "MZN", ZM: "ZMW", RW: "RWF", MW: "MWK", ZW: "ZWL",
-  MG: "MGA", GN: "GNF", ZA: "ZAR", AO: "AOA", ET: "ETB",
-  EG: "EGP", MA: "MAD",
-};
