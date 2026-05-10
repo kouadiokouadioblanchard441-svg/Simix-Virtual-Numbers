@@ -18,6 +18,7 @@ import footerRouter from "./footer";
 import supportRouter from "./support";
 import notificationsRouter from "./notifications";
 import bannersRouter from "./banners";
+import otpRouter from "./otp";
 
 const router: IRouter = Router();
 
@@ -36,6 +37,7 @@ router.use(footerRouter);
 router.use(supportRouter);
 router.use(notificationsRouter);
 router.use(bannersRouter);
+router.use(otpRouter);
 router.use(adminRouter);
 router.use(adminSupportRouter);
 router.use(adminNotificationsRouter);

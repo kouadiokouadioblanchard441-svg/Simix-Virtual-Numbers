@@ -123,15 +123,19 @@ export default function Login() {
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     try {
-      await loginMutation.mutateAsync({
+      const result = await loginMutation.mutateAsync({
         data: {
           identifier: values.identifier,
           password: values.password,
           method,
         }
-      });
+      }) as { requiresEmailVerification?: boolean; requiresInactivityCheck?: boolean };
       queryClient.invalidateQueries({ queryKey: getGetMeQueryKey() });
-      setLocation("/dashboard");
+      if (result?.requiresEmailVerification || result?.requiresInactivityCheck) {
+        setLocation("/verify-email");
+      } else {
+        setLocation("/dashboard");
+      }
     } catch (error: any) {
       toast({
         title: "Erreur de connexion",

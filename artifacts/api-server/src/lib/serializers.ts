@@ -20,6 +20,7 @@ export function toUser(
     username: user.username ?? undefined,
     balance: user.balance,
     verified: user.verified,
+    emailVerified: user.emailVerified,
     status: user.status,
     isAdmin: user.isAdmin,
     riskScore: user.riskScore,

@@ -10,8 +10,12 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (isError) {
       setLocation("/login");
+      return;
     }
-  }, [isError, setLocation]);
+    if (user && !(user as any).emailVerified) {
+      setLocation("/verify-email");
+    }
+  }, [isError, user, setLocation]);
 
   if (isLoading) {
     return (
@@ -22,6 +26,10 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
   }
 
   if (!user) {
+    return null;
+  }
+
+  if (!(user as any).emailVerified) {
     return null;
   }
 

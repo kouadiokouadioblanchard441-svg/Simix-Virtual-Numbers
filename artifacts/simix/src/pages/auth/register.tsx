@@ -130,7 +130,7 @@ export default function Register() {
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     try {
-      await registerMutation.mutateAsync({
+      const result = await registerMutation.mutateAsync({
         data: {
           fullName: values.fullName,
           phone: values.phone,
@@ -138,9 +138,13 @@ export default function Register() {
           countryCode: selectedCountry.dial,
           email: values.email,
         }
-      });
+      }) as { requiresEmailVerification?: boolean };
       queryClient.invalidateQueries({ queryKey: getGetMeQueryKey() });
-      setLocation("/dashboard");
+      if (result?.requiresEmailVerification) {
+        setLocation("/verify-email");
+      } else {
+        setLocation("/dashboard");
+      }
     } catch (error: unknown) {
       const msg = error instanceof Error ? error.message : "Une erreur est survenue";
       toast({ title: "Erreur d'inscription", description: msg, variant: "destructive" });

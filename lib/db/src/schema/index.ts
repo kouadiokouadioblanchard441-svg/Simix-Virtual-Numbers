@@ -18,3 +18,4 @@ export * from "./footer";
 export * from "./notifications";
 export * from "./email_campaigns";
 export * from "./banners";
+export * from "./email_otp";

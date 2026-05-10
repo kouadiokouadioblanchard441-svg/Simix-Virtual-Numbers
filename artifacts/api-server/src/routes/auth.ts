@@ -14,6 +14,8 @@ import { toUser } from "../lib/serializers";
 import { isRateLimited, resetKey } from "../lib/rate-limiter";
 import { assessLoginRisk, logSecurityEvent } from "../lib/fraud-detection";
 import { isRegistrationEnabled } from "../lib/settings";
+import { createOtp, isUserInactive } from "../lib/otp";
+import { sendOtpEmail } from "../lib/email";
 
 const router: IRouter = Router();
 
@@ -68,6 +70,7 @@ router.post("/auth/register", async (req, res): Promise<void> => {
       email: safeEmail,
       balance: 0,
       verified: false,
+      emailVerified: false,
     })
     .returning();
 
@@ -78,7 +81,15 @@ router.post("/auth/register", async (req, res): Promise<void> => {
 
   const session = await createSession(user.id);
   setSessionCookie(res, session.id, session.expiresAt);
-  res.json({ user: toUser(user), token: session.id });
+
+  try {
+    const otpCode = await createOtp(user.id, "email_verification");
+    await sendOtpEmail(safeEmail, otpCode, "register");
+  } catch (emailErr) {
+    console.error("Failed to send registration OTP email:", emailErr);
+  }
+
+  res.json({ user: toUser(user), token: session.id, requiresEmailVerification: true });
 });
 
 router.post("/auth/login", async (req, res): Promise<void> => {
@@ -169,6 +180,34 @@ router.post("/auth/login", async (req, res): Promise<void> => {
 
   const session = await createSession(user.id);
   setSessionCookie(res, session.id, session.expiresAt);
+
+  /* Check if email is not yet verified */
+  if (!user.emailVerified) {
+    try {
+      const otpCode = await createOtp(user.id, "email_verification");
+      await sendOtpEmail(user.email, otpCode, "register");
+    } catch (emailErr) {
+      console.error("Failed to send email verification OTP:", emailErr);
+    }
+    res.json({ user: toUser(user), token: session.id, requiresEmailVerification: true });
+    return;
+  }
+
+  /* Check inactivity (10+ days) */
+  if (isUserInactive(user.lastLoginAt ?? null)) {
+    try {
+      const otpCode = await createOtp(user.id, "inactivity_check");
+      await sendOtpEmail(user.email, otpCode, "inactivity");
+    } catch (emailErr) {
+      console.error("Failed to send inactivity OTP:", emailErr);
+    }
+    res.json({ user: toUser(user), token: session.id, requiresInactivityCheck: true });
+    return;
+  }
+
+  /* Normal login — update last login timestamp */
+  await db.update(usersTable).set({ lastLoginAt: new Date() }).where(eq(usersTable.id, user.id));
+
   res.json({ user: toUser(user), token: session.id });
 });
 

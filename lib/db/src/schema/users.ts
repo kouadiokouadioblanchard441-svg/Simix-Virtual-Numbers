@@ -28,6 +28,8 @@ export const usersTable = pgTable("users", {
   isRestricted: boolean("is_restricted").notNull().default(false),
   maxPurchasesPerMin: integer("max_purchases_per_min").notNull().default(10),
   maxBalance: integer("max_balance").notNull().default(500000),
+  lastLoginAt: timestamp("last_login_at", { withTimezone: true }),
+  emailVerified: boolean("email_verified").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
