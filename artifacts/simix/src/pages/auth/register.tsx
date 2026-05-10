@@ -308,7 +308,7 @@ export default function Register() {
                 </FormControl>
                 <div className="leading-tight">
                   <FormLabel className="text-sm text-muted-foreground font-normal cursor-pointer">
-                    J'accepte les <Link href="#" className="text-primary hover:underline">Conditions d'utilisation</Link> et la <Link href="#" className="text-primary hover:underline">Politique de confidentialité</Link>
+                    J'accepte les <Link href="/legal/cgu" className="text-primary hover:underline">Conditions d'utilisation</Link> et la <Link href="/legal/politique-confidentialite" className="text-primary hover:underline">Politique de confidentialité</Link>
                   </FormLabel>
                   <FormMessage />
                 </div>

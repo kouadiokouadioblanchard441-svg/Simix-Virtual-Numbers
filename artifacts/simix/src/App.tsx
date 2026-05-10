@@ -56,6 +56,12 @@ import AdminEmails from "@/pages/admin/emails";
 import AdminFooter from "@/pages/admin/footer";
 import AdminBanners from "@/pages/admin/banners";
 
+// Public legal pages (no auth required)
+import LegalCGU from "@/pages/legal/cgu";
+import LegalPolitique from "@/pages/legal/politique-confidentialite";
+import LegalMentions from "@/pages/legal/mentions-legales";
+import LegalCookies from "@/pages/legal/cookies";
+
 // Admin secure access pages (no guard — self-contained auth)
 import Console from "@/pages/admin/console";
 import SecureLogin from "@/pages/admin/secure-login";
@@ -110,6 +116,18 @@ function InnerRouter() {
 
   if (isLanding) {
     return <Landing />;
+  }
+
+  if (location.startsWith("/legal")) {
+    return (
+      <Switch>
+        <Route path="/legal/cgu" component={LegalCGU} />
+        <Route path="/legal/politique-confidentialite" component={LegalPolitique} />
+        <Route path="/legal/mentions-legales" component={LegalMentions} />
+        <Route path="/legal/cookies" component={LegalCookies} />
+        <Route component={NotFound} />
+      </Switch>
+    );
   }
 
   return (

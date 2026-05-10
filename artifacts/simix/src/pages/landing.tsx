@@ -1457,9 +1457,9 @@ function Footer() {
         <div className="border-t border-zinc-800/50 pt-5 flex flex-col sm:flex-row items-center justify-between gap-3">
           <p className="text-xs text-zinc-500">© 2026 Simix. Tous droits réservés.</p>
           <div className="flex gap-4 text-xs text-zinc-500">
-            <span className="hover:text-zinc-300 cursor-pointer transition-colors">Confidentialité</span>
-            <span className="hover:text-zinc-300 cursor-pointer transition-colors">CGU</span>
-            <span className="hover:text-zinc-300 cursor-pointer transition-colors">Mentions légales</span>
+            <a href="/legal/politique-confidentialite" className="hover:text-zinc-300 cursor-pointer transition-colors">Confidentialité</a>
+            <a href="/legal/cgu" className="hover:text-zinc-300 cursor-pointer transition-colors">CGU</a>
+            <a href="/legal/mentions-legales" className="hover:text-zinc-300 cursor-pointer transition-colors">Mentions légales</a>
           </div>
           <p className="text-xs text-zinc-500">Conçu pour l'Afrique 🌍</p>
         </div>
