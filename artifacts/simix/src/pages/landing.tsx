@@ -490,7 +490,7 @@ function Hero() {
           <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7 }}>
             <div className="inline-flex items-center gap-2 px-4 py-2 bg-violet-600/15 border border-violet-600/30 rounded-full text-violet-300 text-sm font-medium mb-5">
               <span className="w-1.5 h-1.5 rounded-full bg-violet-400 animate-pulse" />
-              Fintech 100% Africaine — Paiements Mobile Money
+              Fintech 100% Africaine · Paiements Mobile Money
             </div>
 
             <h1 className="text-4xl sm:text-5xl xl:text-6xl font-extrabold leading-[1.1] text-white mb-5">
@@ -503,7 +503,7 @@ function Hero() {
             </h1>
 
             <p className="text-base text-zinc-400 leading-relaxed mb-7 max-w-xl">
-              Des numéros virtuels temporaires pour vérifier vos comptes WhatsApp, Telegram, Google et bien plus —
+              Des numéros virtuels temporaires pour vérifier vos comptes WhatsApp, Telegram, Google et bien plus,
               payés en <strong className="text-white">FCFA via Orange Money, MTN, Wave</strong> et tous les opérateurs Mobile Money du continent.
             </p>
 
@@ -713,7 +713,7 @@ function PaymentOperators() {
       <Section className="mt-8">
         <div className="text-center">
           <p className="text-zinc-400 text-sm">
-            Disponible dans <strong className="text-white">54 pays africains</strong> — Paiements en{" "}
+            Disponible dans <strong className="text-white">54 pays africains</strong>, paiements en{" "}
             <strong className="text-violet-400">FCFA, KES, GHS, NGN</strong> et toutes monnaies locales
           </p>
         </div>
@@ -994,7 +994,7 @@ function Testimonials() {
           <span className="bg-gradient-to-r from-violet-400 to-pink-400 bg-clip-text text-transparent">Simix</span>
         </h2>
         <p className="text-zinc-400 text-base max-w-2xl mx-auto leading-relaxed">
-          Plus de 5 000 Africains utilisent Simix chaque jour pour accéder aux services numériques du monde entier — payés en Mobile Money local.
+          Plus de 5 000 Africains utilisent Simix chaque jour pour accéder aux services numériques du monde entier, payés en Mobile Money local.
         </p>
         {/* Overall rating bar */}
         <div className="inline-flex items-center gap-3 mt-5 px-5 py-2.5 rounded-full bg-zinc-900/80 border border-zinc-800/60">
