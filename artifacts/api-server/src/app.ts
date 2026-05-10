@@ -8,6 +8,7 @@ import { logger } from "./lib/logger";
 import { attachUser } from "./lib/auth";
 import { globalRateLimit, checkUserBlocked, checkMaintenanceMode } from "./middlewares/security";
 import { startFiveSimPoller } from "./lib/fivesim-poller";
+import { seedProvidersFromEnv } from "./lib/seed-providers";
 
 const app: Express = express();
 
@@ -53,7 +54,7 @@ app.use(checkUserBlocked);
 
 app.use("/api", router);
 
-/* ── Start 5sim background SMS poller ── */
-startFiveSimPoller();
+/* ── Seed providers from env vars, then start poller ── */
+void seedProvidersFromEnv().then(() => startFiveSimPoller());
 
 export default app;
