@@ -13,7 +13,7 @@ import {
 import { toUser } from "../lib/serializers";
 import { isRateLimited, resetKey } from "../lib/rate-limiter";
 import { assessLoginRisk, logSecurityEvent } from "../lib/fraud-detection";
-import { isRegistrationEnabled } from "../lib/settings";
+import { isRegistrationEnabled, isEmailOtpEnabled } from "../lib/settings";
 import { createOtp, isUserInactive } from "../lib/otp";
 import { sendOtpEmail } from "../lib/email";
 
@@ -81,6 +81,13 @@ router.post("/auth/register", async (req, res): Promise<void> => {
 
   const session = await createSession(user.id);
   setSessionCookie(res, session.id, session.expiresAt);
+
+  /* Skip OTP if email verification is disabled by admin */
+  if (!await isEmailOtpEnabled()) {
+    await db.update(usersTable).set({ emailVerified: true, lastLoginAt: new Date() }).where(eq(usersTable.id, user.id));
+    res.json({ user: { ...toUser(user), emailVerified: true }, token: session.id });
+    return;
+  }
 
   try {
     const otpCode = await createOtp(user.id, "email_verification");
@@ -181,8 +188,16 @@ router.post("/auth/login", async (req, res): Promise<void> => {
   const session = await createSession(user.id);
   setSessionCookie(res, session.id, session.expiresAt);
 
+  const otpEnabled = await isEmailOtpEnabled();
+
   /* Check if email is not yet verified */
   if (!user.emailVerified) {
+    if (!otpEnabled) {
+      /* OTP disabled — auto-verify the account and proceed normally */
+      await db.update(usersTable).set({ emailVerified: true, lastLoginAt: new Date() }).where(eq(usersTable.id, user.id));
+      res.json({ user: { ...toUser(user), emailVerified: true }, token: session.id });
+      return;
+    }
     try {
       const otpCode = await createOtp(user.id, "email_verification");
       await sendOtpEmail(user.email, otpCode, "register");
@@ -193,8 +208,8 @@ router.post("/auth/login", async (req, res): Promise<void> => {
     return;
   }
 
-  /* Check inactivity (10+ days) */
-  if (isUserInactive(user.lastLoginAt ?? null)) {
+  /* Check inactivity (10+ days) — also skip if OTP disabled */
+  if (otpEnabled && isUserInactive(user.lastLoginAt ?? null)) {
     try {
       const otpCode = await createOtp(user.id, "inactivity_check");
       await sendOtpEmail(user.email, otpCode, "inactivity");

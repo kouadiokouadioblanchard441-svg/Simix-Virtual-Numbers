@@ -238,6 +238,95 @@ router.get("/admin/emails/campaigns/:id/logs", requireAuth, requireAdmin, async 
   res.json({ logs });
 });
 
+/* ── POST /admin/emails/test ──────────────────────────────── */
+router.post("/admin/emails/test", requireAuth, requireAdmin, async (req: Request, res: Response): Promise<void> => {
+  const { email } = req.body as { email?: string };
+
+  if (!email || typeof email !== "string" || !email.includes("@")) {
+    res.status(400).json({ error: "Adresse email invalide" });
+    return;
+  }
+
+  const resendClient = getResend();
+  if (!resendClient) {
+    res.status(503).json({ error: "RESEND_API_KEY non configuré" });
+    return;
+  }
+
+  const testCode = "748291";
+  const digits = testCode.split("");
+  const html = `<!DOCTYPE html>
+<html lang="fr">
+<head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/><title>Test Email — Simix</title></head>
+<body style="margin:0;padding:0;background:#0a0a0f;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#0a0a0f;padding:40px 20px;">
+    <tr><td align="center">
+      <table width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;background:linear-gradient(145deg,#12121e,#1a1a2e);border-radius:24px;border:1px solid #2a2a4a;overflow:hidden;">
+        <tr><td style="height:4px;background:linear-gradient(90deg,#7c3aed,#6366f1,#8b5cf6);"></td></tr>
+        <tr><td align="center" style="padding:36px 40px 24px;">
+          <table cellpadding="0" cellspacing="0">
+            <tr>
+              <td valign="middle"><div style="width:40px;height:40px;border-radius:10px;background:linear-gradient(135deg,#7c3aed,#6366f1);display:inline-flex;align-items:center;justify-content:center;"><span style="color:white;font-size:22px;font-weight:800;line-height:1;">S</span></div></td>
+              <td valign="middle" style="padding-left:10px;"><span style="color:#ffffff;font-size:22px;font-weight:800;letter-spacing:-0.5px;">imix</span></td>
+            </tr>
+          </table>
+        </td></tr>
+        <tr><td align="center" style="padding:0 40px 20px;">
+          <span style="display:inline-block;background:rgba(6,182,212,0.15);color:#22d3ee;font-size:11px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;padding:6px 16px;border-radius:100px;border:1px solid rgba(6,182,212,0.3);">
+            🧪 Email de test — Admin
+          </span>
+        </td></tr>
+        <tr><td style="padding:0 40px 24px;">
+          <h1 style="color:#ffffff;font-size:24px;font-weight:700;margin:0 0 12px;text-align:center;">Test de configuration Resend</h1>
+          <p style="color:#94a3b8;font-size:14px;line-height:1.7;margin:0;text-align:center;">
+            Cet email confirme que votre intégration <strong style="color:#e2e8f0;">Resend</strong> est correctement configurée sur Simix.<br/>
+            Les utilisateurs recevront des codes OTP dans ce format.
+          </p>
+        </td></tr>
+        <tr><td align="center" style="padding:0 40px 28px;">
+          <p style="color:#64748b;font-size:12px;margin:0 0 14px;text-transform:uppercase;letter-spacing:1px;">Code OTP de démonstration</p>
+          <table cellpadding="0" cellspacing="0"><tr>
+            ${digits.map(d => `<td style="padding:0 4px;"><div style="width:48px;height:56px;background:linear-gradient(135deg,rgba(124,58,237,0.15),rgba(99,102,241,0.1));border:2px solid rgba(124,58,237,0.4);border-radius:14px;display:flex;align-items:center;justify-content:center;text-align:center;"><span style="color:#a78bfa;font-size:26px;font-weight:700;font-family:monospace;line-height:56px;display:block;">${d}</span></div></td>`).join("")}
+          </tr></table>
+        </td></tr>
+        <tr><td style="padding:0 40px 32px;">
+          <div style="background:rgba(6,182,212,0.08);border:1px solid rgba(6,182,212,0.2);border-radius:12px;padding:16px 20px;">
+            <p style="color:#22d3ee;font-size:13px;font-weight:600;margin:0 0 6px;">✅ Resend opérationnel</p>
+            <p style="color:#64748b;font-size:12px;line-height:1.6;margin:0;">
+              Envoyé depuis : <strong style="color:#94a3b8;">noreply@simix.app</strong><br/>
+              Destinataire de test : <strong style="color:#94a3b8;">${email}</strong>
+            </p>
+          </div>
+        </td></tr>
+        <tr><td style="background:#0d0d1a;padding:20px 40px;border-top:1px solid #1e1e3a;">
+          <p style="color:#334155;font-size:11px;text-align:center;margin:0;">Simix — Plateforme Fintech Mobile Money · Email de test généré par le panel Admin</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+
+  const start = Date.now();
+  try {
+    const result = await resendClient.emails.send({
+      from: "Simix <noreply@simix.app>",
+      to: [email],
+      subject: "🧪 Test Resend — Simix Admin",
+      html,
+    });
+
+    const latencyMs = Date.now() - start;
+    logger.info({ email, latencyMs, id: result.data?.id }, "[admin] Test email sent via Resend");
+    res.json({ success: true, message: `Email envoyé avec succès à ${email}`, latencyMs, id: result.data?.id });
+  } catch (err) {
+    const latencyMs = Date.now() - start;
+    const msg = err instanceof Error ? err.message : "Erreur inconnue";
+    logger.error({ err: msg, email, latencyMs }, "[admin] Test email failed");
+    res.status(500).json({ success: false, error: msg, latencyMs });
+  }
+});
+
 /* ── GET /admin/emails/stats ─────────────────────────────── */
 router.get("/admin/emails/stats", requireAuth, requireAdmin, async (_req: Request, res: Response): Promise<void> => {
   const [total] = await db.select({ count: count() }).from(emailCampaignsTable);

@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { adminApi } from "@/lib/admin-api";
 import { AdminGuard } from "@/components/admin-guard";
 import { AdminLayout } from "@/components/admin-layout";
-import { Loader2, Save, Wifi, WifiOff, CheckCircle2, XCircle, ChevronDown, ChevronUp, FlaskConical, RefreshCw, CheckCheck, Ban } from "lucide-react";
+import { Loader2, Save, Wifi, WifiOff, CheckCircle2, XCircle, ChevronDown, ChevronUp, FlaskConical, RefreshCw, CheckCheck, Ban, Mail, ShieldCheck, ShieldOff, Send } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 const SETTINGS_SCHEMA = [
@@ -299,6 +299,160 @@ function PawaPaySimulator() {
   );
 }
 
+/* ── Email OTP Section ───────────────────────────────────── */
+function EmailOtpSection({
+  otpEnabled,
+  onToggle,
+}: {
+  otpEnabled: boolean;
+  onToggle: (val: boolean) => void;
+}) {
+  const { toast } = useToast();
+  const [testEmail, setTestEmail] = useState("");
+  const [testResult, setTestResult] = useState<{ success: boolean; message: string; latencyMs?: number } | null>(null);
+
+  const testMutation = useMutation({
+    mutationFn: () => adminApi.testEmail(testEmail.trim()),
+    onSuccess: (data) => {
+      setTestResult({ success: data.success, message: data.message ?? data.error ?? "", latencyMs: data.latencyMs });
+      toast({ title: data.success ? "Email envoyé ✓" : "Échec de l'envoi", description: data.message ?? data.error, variant: data.success ? "default" : "destructive" });
+    },
+    onError: (e) => {
+      setTestResult({ success: false, message: (e as Error).message });
+      toast({ title: "Erreur", description: (e as Error).message, variant: "destructive" });
+    },
+  });
+
+  return (
+    <div className="bg-zinc-900 border border-violet-500/25 rounded-xl p-5 space-y-5 lg:col-span-2">
+      {/* Header */}
+      <div className="flex items-center gap-2 border-b border-zinc-800 pb-3">
+        <div className="w-5 h-5 rounded-full bg-violet-500/20 border border-violet-500/40 flex items-center justify-center">
+          <Mail className="w-3 h-3 text-violet-400" />
+        </div>
+        <h2 className="text-sm font-semibold text-white">Vérification Email (OTP)</h2>
+        <span className="ml-2 text-[10px] px-2 py-0.5 rounded-full bg-violet-500/15 text-violet-400 border border-violet-500/20 font-medium">Resend</span>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Toggle */}
+        <div>
+          <p className="text-xs text-zinc-400 mb-4 leading-relaxed">
+            Lorsqu'activé, chaque utilisateur doit confirmer son email via un code OTP à 6 chiffres :<br/>
+            — à l'inscription<br/>
+            — à la connexion si l'email n'est pas encore vérifié<br/>
+            — après 10 jours d'inactivité
+          </p>
+
+          <button
+            onClick={() => onToggle(!otpEnabled)}
+            className={`w-full flex items-center gap-4 p-4 rounded-xl border-2 transition-all duration-200 ${
+              otpEnabled
+                ? "bg-violet-900/20 border-violet-500/50 hover:border-violet-400/70"
+                : "bg-zinc-800/60 border-zinc-700/50 hover:border-zinc-600"
+            }`}
+          >
+            {/* Switch visual */}
+            <div className={`relative w-12 h-6 rounded-full transition-all duration-300 flex-shrink-0 ${otpEnabled ? "bg-violet-600" : "bg-zinc-700"}`}>
+              <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow-md transition-transform duration-300 ${otpEnabled ? "translate-x-6" : "translate-x-0.5"}`} />
+            </div>
+
+            <div className="flex-1 text-left">
+              <div className="flex items-center gap-2">
+                {otpEnabled
+                  ? <ShieldCheck className="w-4 h-4 text-violet-400" />
+                  : <ShieldOff className="w-4 h-4 text-zinc-500" />}
+                <span className={`text-sm font-semibold ${otpEnabled ? "text-violet-300" : "text-zinc-400"}`}>
+                  {otpEnabled ? "OTP Email activé" : "OTP Email désactivé"}
+                </span>
+              </div>
+              <p className="text-xs mt-0.5 text-zinc-500">
+                {otpEnabled
+                  ? "Les utilisateurs reçoivent un code email pour se connecter"
+                  : "Connexion directe sans vérification email — les comptes non vérifiés sont auto-validés"}
+              </p>
+            </div>
+          </button>
+
+          {!otpEnabled && (
+            <div className="mt-3 flex items-start gap-2 p-3 bg-yellow-900/20 border border-yellow-700/30 rounded-lg">
+              <ShieldOff className="w-3.5 h-3.5 text-yellow-500 shrink-0 mt-0.5" />
+              <p className="text-xs text-yellow-600 leading-relaxed">
+                Mode développement — la vérification email est désactivée. Réactivez avant la mise en production.
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* Test email */}
+        <div>
+          <label className="text-xs text-zinc-400 mb-2 block font-medium">Tester l'envoi d'email via Resend</label>
+          <p className="text-xs text-zinc-600 mb-3 leading-relaxed">
+            Envoie un vrai email de démonstration OTP à l'adresse saisie pour vérifier que Resend fonctionne correctement.
+          </p>
+
+          <div className="flex gap-2">
+            <input
+              type="email"
+              placeholder="email@test.com"
+              value={testEmail}
+              onChange={e => { setTestEmail(e.target.value); setTestResult(null); }}
+              className="flex-1 px-3 py-2 text-sm bg-zinc-800 border border-zinc-700 rounded-lg text-white placeholder:text-zinc-500 focus:outline-none focus:border-violet-500 transition-colors"
+            />
+            <button
+              onClick={() => { setTestResult(null); testMutation.mutate(); }}
+              disabled={!testEmail.trim().includes("@") || testMutation.isPending}
+              className="flex items-center gap-1.5 px-3 py-2 bg-violet-600 hover:bg-violet-700 disabled:opacity-50 text-white text-sm font-medium rounded-lg transition-colors whitespace-nowrap"
+            >
+              {testMutation.isPending
+                ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Envoi…</>
+                : <><Send className="w-3.5 h-3.5" /> Tester</>}
+            </button>
+          </div>
+
+          {testResult && (
+            <div className={`mt-3 flex items-start gap-2 p-3 rounded-lg border ${
+              testResult.success
+                ? "bg-emerald-950/40 border-emerald-700/40"
+                : "bg-red-950/40 border-red-700/40"
+            }`}>
+              {testResult.success
+                ? <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                : <XCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />}
+              <div>
+                <p className={`text-xs font-medium ${testResult.success ? "text-emerald-300" : "text-red-300"}`}>
+                  {testResult.message}
+                </p>
+                {testResult.latencyMs !== undefined && (
+                  <p className="text-[11px] text-zinc-500 mt-0.5">
+                    Latence Resend : <span className="font-mono text-zinc-400">{testResult.latencyMs}ms</span>
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
+
+          <div className="mt-4 p-3 bg-zinc-800/60 border border-zinc-700/40 rounded-lg space-y-1.5">
+            <p className="text-[11px] text-zinc-500 font-medium uppercase tracking-wide">Configuration Resend</p>
+            <div className="flex items-center gap-2">
+              <div className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+              <span className="text-xs text-zinc-400">From : <code className="text-violet-400">noreply@simix.app</code></span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+              <span className="text-xs text-zinc-400">RESEND_API_KEY : <code className="text-emerald-400">configuré ✓</code></span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-1.5 h-1.5 rounded-full bg-blue-400" />
+              <span className="text-xs text-zinc-400">OTP : 6 chiffres · expiry 10 min · max 5 tentatives</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function SettingsContent() {
   const [values, setValues] = useState<Record<string, string>>({});
   const [dirty, setDirty] = useState(false);
@@ -351,6 +505,11 @@ function SettingsContent() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <EmailOtpSection
+          otpEnabled={values["email_otp_enabled"] !== "false"}
+          onToggle={(val) => set("email_otp_enabled", val ? "true" : "false")}
+        />
+
         {SETTINGS_SCHEMA.map(({ group, fields }) => (
           <div
             key={group}

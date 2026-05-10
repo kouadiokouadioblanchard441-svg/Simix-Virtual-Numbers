@@ -86,6 +86,7 @@ export const adminApi = {
 
   getSettings: () => req<Record<string, string>>("GET", "/admin/settings"),
   updateSettings: (data: Record<string, string>) => req("PUT", "/admin/settings", data),
+  testEmail: (email: string) => req<{ success: boolean; message: string; latencyMs?: number; id?: string; error?: string }>("POST", "/admin/emails/test", { email }),
   getPendingPawaPayDeposits: () => req<Array<{
     id: string;
     externalDepositId: string;

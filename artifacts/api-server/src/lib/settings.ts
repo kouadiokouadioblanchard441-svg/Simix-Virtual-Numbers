@@ -91,3 +91,6 @@ export const getMaxOrdersPerMinute = () => getSettingInt("max_orders_per_minute"
 
 /** Fraud score threshold for auto-block */
 export const getFraudBlockThreshold = () => getSettingInt("fraud_block_threshold", 61);
+
+/** Is email OTP verification active (registration + login + inactivity)? Default ON. */
+export const isEmailOtpEnabled = () => getSettingBool("email_otp_enabled", true);
