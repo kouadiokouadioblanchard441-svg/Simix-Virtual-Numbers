@@ -755,7 +755,7 @@ function ConfigTab() {
           {entries.map(entry => (
             <div key={entry.key}>
               <label className="text-xs text-zinc-400 mb-1.5 block font-medium">{entry.label}</label>
-              {entry.content?.length > 100 || entry.key.includes("greeting") || entry.key.includes("message") || entry.key.includes("replies") ? (
+              {entry.value?.length > 100 || entry.key.includes("greeting") || entry.key.includes("message") || entry.key.includes("replies") ? (
                 <textarea
                   value={localConfig[entry.key] ?? entry.value}
                   onChange={e => updateLocal(entry.key, e.target.value)}

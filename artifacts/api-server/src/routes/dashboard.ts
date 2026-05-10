@@ -57,7 +57,7 @@ router.get(
 
     const totalSpent = allTx
       .filter((t) => t.type === "purchase" && t.status === "completed")
-      .reduce((sum, t) => sum + t.amount, 0);
+      .reduce((sum: number, t) => sum + t.amount, 0);
 
     const totalNumbers = (
       await db

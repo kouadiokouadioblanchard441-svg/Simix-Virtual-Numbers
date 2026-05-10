@@ -229,7 +229,7 @@ export default function Register() {
                       <span className="font-mono text-xs">{selectedCountry.dial}</span>
                       <span className="text-muted-foreground text-xs">▾</span>
                     </button>
-                    <input {...field} type="tel" className="flex-1 bg-transparent border-none px-3 text-foreground focus:outline-none placeholder:text-muted-foreground text-sm rounded-r-xl" placeholder="07 01 23 45 67" />
+                    <input {...field} type="tel" autoComplete="tel" className="flex-1 bg-transparent border-none px-3 text-foreground focus:outline-none placeholder:text-muted-foreground text-sm rounded-r-xl" placeholder="07 01 23 45 67" />
                     {showCountryPicker && (
                       <div className="absolute top-full left-0 mt-1 w-72 bg-card border border-card-border rounded-xl shadow-2xl z-50 overflow-hidden">
                         <div className="p-2 border-b border-card-border">

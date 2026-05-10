@@ -26,7 +26,7 @@ async function loadCache(): Promise<Record<string, string>> {
 
   try {
     const rows = await db.select().from(systemSettingsTable);
-    cache = Object.fromEntries(rows.map(r => [r.key, r.value]));
+    cache = Object.fromEntries(rows.map((r) => [r.key, r.value] as [string, string]));
     cacheExpiresAt = Date.now() + CACHE_TTL_MS;
   } catch (e) {
     logger.warn({ err: (e as Error).message }, "[settings] Failed to load settings, using stale cache or defaults");

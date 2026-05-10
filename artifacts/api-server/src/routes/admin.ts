@@ -70,7 +70,7 @@ router.get("/admin/stats", requireAdmin, async (req, res): Promise<void> => {
     .select({ amount: transactionsTable.amount })
     .from(transactionsTable)
     .where(and(eq(transactionsTable.type, "recharge"), eq(transactionsTable.status, "completed")));
-  const totalRevenue = revenueRows.reduce((s, r) => s + r.amount, 0);
+  const totalRevenue = revenueRows.reduce((s: number, r) => s + r.amount, 0);
 
   const monthlyRevenueRows = await db
     .select({ amount: transactionsTable.amount })
@@ -80,7 +80,7 @@ router.get("/admin/stats", requireAdmin, async (req, res): Promise<void> => {
       eq(transactionsTable.status, "completed"),
       gte(transactionsTable.createdAt, monthAgo),
     ));
-  const monthlyRevenue = monthlyRevenueRows.reduce((s, r) => s + r.amount, 0);
+  const monthlyRevenue = monthlyRevenueRows.reduce((s: number, r) => s + r.amount, 0);
 
   const [newUsersToday] = await db.select({ c: count() }).from(usersTable).where(gte(usersTable.createdAt, today));
   const [weeklyTx] = await db.select({ c: count() }).from(transactionsTable).where(gte(transactionsTable.createdAt, weekAgo));
@@ -699,8 +699,8 @@ router.get("/admin/analytics", requireAdmin, async (req, res): Promise<void> => 
     return { date: key, newUsers: userDayMapFull[key] ?? 0 };
   });
 
-  const totalRevenue30d = dailyRevenue.reduce((s, d) => s + d.revenue, 0);
-  const totalOrders30d = dailyRevenue.reduce((s, d) => s + d.orders, 0);
+  const totalRevenue30d = dailyRevenue.reduce((s: number, d) => s + d.revenue, 0);
+  const totalOrders30d = dailyRevenue.reduce((s: number, d) => s + d.orders, 0);
   const avgOrderValue = totalOrders30d > 0 ? Math.round(totalRevenue30d / totalOrders30d) : 0;
 
   res.json({ dailyRevenue, topServices, topCountries, txBreakdown, userGrowth, totalRevenue30d, totalOrders30d, avgOrderValue });

@@ -289,7 +289,7 @@ router.get("/auth/me", requireAuth, async (req, res): Promise<void> => {
     .where(eq((await import("@workspace/db")).transactionsTable.userId, user.id));
   const totalSpent = allTx
     .filter((t) => t.type === "purchase" && t.status === "completed")
-    .reduce((sum, t) => sum + t.amount, 0);
+    .reduce((sum: number, t) => sum + t.amount, 0);
   res.json(toUser(user, { totalSpent, transactionsCount: allTx.length }));
 });
 

@@ -253,7 +253,7 @@ router.get("/admin/support/config", requireAuth, requireAdmin, async (_req, res)
     return;
   }
 
-  const map = Object.fromEntries(entries.map(e => [e.key, e]));
+  const map = Object.fromEntries(entries.map((e) => [e.key, e] as [string, typeof e]));
   for (const def of DEFAULT_AI_CONFIG) {
     if (!map[def.key]) {
       await db.insert(aiSupportConfigTable).values(def).onConflictDoNothing();

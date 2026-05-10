@@ -202,6 +202,7 @@ export default function Login() {
                         <input
                           {...field}
                           type="tel"
+                          autoComplete="tel"
                           className="flex-1 bg-transparent border-none px-4 text-foreground focus:outline-none placeholder:text-muted-foreground rounded-r-xl"
                           placeholder="07 01 23 45 67"
                         />
@@ -242,6 +243,7 @@ export default function Login() {
                     ) : (
                       <Input
                         placeholder="Nom d'utilisateur ou adresse email"
+                        autoComplete="username"
                         className="bg-card border-card-border focus-visible:ring-primary h-14 rounded-xl"
                         {...field}
                       />
