@@ -1,8 +1,8 @@
 [build]
-buildCommand = "pnpm install && pnpm --filter @workspace/api-server run build"
+builder = "DOCKERFILE"
+dockerfilePath = "artifacts/api-server/Dockerfile"
 
 [deploy]
-startCommand = "node --enable-source-maps ./artifacts/api-server/dist/index.mjs"
 healthcheckPath = "/api/healthz"
 healthcheckTimeout = 300
 restartPolicyType = "ON_FAILURE"

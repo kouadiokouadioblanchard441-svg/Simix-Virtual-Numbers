@@ -1,8 +1,8 @@
 [build]
-buildCommand = "pnpm install && pnpm --filter @workspace/simix run build"
+builder = "DOCKERFILE"
+dockerfilePath = "artifacts/simix/Dockerfile"
 
 [deploy]
-startCommand = "pnpm --filter @workspace/simix run serve"
 healthcheckTimeout = 120
 restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 5

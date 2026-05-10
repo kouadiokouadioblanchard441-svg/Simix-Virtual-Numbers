@@ -1,0 +1,12 @@
+node_modules
+**/node_modules
+**/.git
+.git
+**/dist
+**/.env
+**/.env.*
+**/coverage
+**/*.log
+**/.DS_Store
+attached_assets
+artifacts/mockup-sandbox
