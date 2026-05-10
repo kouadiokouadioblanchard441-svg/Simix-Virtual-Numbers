@@ -4,8 +4,8 @@ import { AuthGuard } from "@/components/auth-guard";
 import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  ArrowLeft, BookOpen, CreditCard, Smartphone, RefreshCw,
-  ShieldCheck, HelpCircle, ChevronRight, ChevronDown, Search,
+  ArrowLeft, BookOpen, CreditCard, Smartphone,
+  ShieldCheck, HelpCircle, ChevronDown, Search,
   Zap, Wallet, MessageCircle, Clock, CheckCircle2,
 } from "lucide-react";
 
