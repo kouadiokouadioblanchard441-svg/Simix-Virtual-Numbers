@@ -22,12 +22,14 @@ import {
   Bell,
   Mail,
   Image,
+  Radio,
 } from "lucide-react";
 import { SimixLogo } from "@/components/simix-logo";
 import { cn } from "@/lib/utils";
 
 const NAV_ITEMS = [
   { href: "/admin", label: "Tableau de bord", icon: LayoutDashboard },
+  { href: "/admin/realtime", label: "Temps réel", icon: Radio },
   { href: "/admin/analytics", label: "Analytiques", icon: BarChart3 },
   { href: "/admin/users", label: "Utilisateurs", icon: Users },
   { href: "/admin/orders", label: "Commandes", icon: ShoppingBag },

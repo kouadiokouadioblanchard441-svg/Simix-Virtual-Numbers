@@ -148,6 +148,7 @@ export const adminApi = {
   updateKnowledge: (id: string, data: Partial<KnowledgeEntry>) => req<KnowledgeEntry>("PUT", `/admin/support/knowledge/${id}`, data),
   deleteKnowledge: (id: string) => req("DELETE", `/admin/support/knowledge/${id}`),
   getAiConfig: () => req<AiConfigEntry[]>("GET", "/admin/support/config"),
+  getRealtimeData: () => req<RealtimeData>("GET", "/admin/realtime"),
   updateAiConfig: (data: Record<string, string>) => req("PUT", "/admin/support/config", data),
 
   /* ── Notifications ── */
@@ -420,4 +421,47 @@ export interface AiConfigEntry {
   value: string;
   label: string;
   group: string;
+}
+
+export interface RealtimeSms {
+  id: string;
+  sender: string;
+  body: string;
+  code: string;
+  receivedAt: string;
+  phoneNumber: string | null;
+  numberId: string;
+  serviceName: string | null;
+  userPhone: string | null;
+  userFullName: string | null;
+}
+
+export interface RealtimeActiveNumber {
+  id: string;
+  phoneNumber: string;
+  status: string;
+  price: number;
+  expiresAt: string;
+  createdAt: string;
+  serviceName: string | null;
+  countryName: string | null;
+  countryFlag: string | null;
+  userPhone: string | null;
+  userFullName: string | null;
+}
+
+export interface RealtimeData {
+  recentSms: RealtimeSms[];
+  activeNumbers: RealtimeActiveNumber[];
+  revenue: {
+    today: number;
+    week: number;
+    month: number;
+    total: number;
+  };
+  smsToday: number;
+  ordersToday: number;
+  activeNumbersCount: number;
+  hourlySms: { hour: string; count: number }[];
+  generatedAt: string;
 }

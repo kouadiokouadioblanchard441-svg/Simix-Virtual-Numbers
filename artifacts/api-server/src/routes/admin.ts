@@ -19,6 +19,7 @@ import {
   paymentMethodsTable,
   sessionsTable,
   countryPaymentConfigsTable,
+  smsMessagesTable,
 } from "@workspace/db";
 
 import { blockUser, logSecurityEvent } from "../lib/fraud-detection";
@@ -1119,6 +1120,106 @@ router.get("/admin/transactions", requireAdmin, async (req, res): Promise<void> 
 
   const [totalRow] = await db.select({ c: count() }).from(transactionsTable);
   res.json({ transactions: rows, total: totalRow?.c ?? 0 });
+});
+
+/* ─────────────────── REALTIME DASHBOARD ─────────────────── */
+router.get("/admin/realtime", requireAdmin, async (req, res): Promise<void> => {
+  const now = new Date();
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+  const monthAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+
+  // Recent SMS (last 40)
+  const recentSms = await db
+    .select({
+      id: smsMessagesTable.id,
+      sender: smsMessagesTable.sender,
+      body: smsMessagesTable.body,
+      code: smsMessagesTable.code,
+      receivedAt: smsMessagesTable.receivedAt,
+      phoneNumber: virtualNumbersTable.phoneNumber,
+      numberId: smsMessagesTable.numberId,
+      serviceId: virtualNumbersTable.serviceId,
+      serviceName: servicesTable.name,
+      userId: virtualNumbersTable.userId,
+      userPhone: usersTable.phone,
+      userFullName: usersTable.fullName,
+    })
+    .from(smsMessagesTable)
+    .leftJoin(virtualNumbersTable, eq(smsMessagesTable.numberId, virtualNumbersTable.id))
+    .leftJoin(servicesTable, eq(virtualNumbersTable.serviceId, servicesTable.id))
+    .leftJoin(usersTable, eq(virtualNumbersTable.userId, usersTable.id))
+    .orderBy(desc(smsMessagesTable.receivedAt))
+    .limit(40);
+
+  // Active numbers (status = waiting)
+  const activeNumbers = await db
+    .select({
+      id: virtualNumbersTable.id,
+      phoneNumber: virtualNumbersTable.phoneNumber,
+      status: virtualNumbersTable.status,
+      price: virtualNumbersTable.price,
+      expiresAt: virtualNumbersTable.expiresAt,
+      createdAt: virtualNumbersTable.createdAt,
+      serviceName: servicesTable.name,
+      countryName: countriesTable.name,
+      countryFlag: countriesTable.flag,
+      userPhone: usersTable.phone,
+      userFullName: usersTable.fullName,
+    })
+    .from(virtualNumbersTable)
+    .leftJoin(servicesTable, eq(virtualNumbersTable.serviceId, servicesTable.id))
+    .leftJoin(countriesTable, eq(virtualNumbersTable.countryId, countriesTable.id))
+    .leftJoin(usersTable, eq(virtualNumbersTable.userId, usersTable.id))
+    .where(eq(virtualNumbersTable.status, "waiting"))
+    .orderBy(desc(virtualNumbersTable.createdAt))
+    .limit(50);
+
+  // Revenue stats
+  const revenueRows = await db
+    .select({ amount: transactionsTable.amount, createdAt: transactionsTable.createdAt })
+    .from(transactionsTable)
+    .where(and(eq(transactionsTable.type, "recharge"), eq(transactionsTable.status, "completed")));
+
+  const todayRevenue = revenueRows.filter(r => r.createdAt >= todayStart).reduce((s, r) => s + r.amount, 0);
+  const weekRevenue = revenueRows.filter(r => r.createdAt >= weekAgo).reduce((s, r) => s + r.amount, 0);
+  const monthRevenue = revenueRows.filter(r => r.createdAt >= monthAgo).reduce((s, r) => s + r.amount, 0);
+  const totalRevenue = revenueRows.reduce((s, r) => s + r.amount, 0);
+
+  // SMS today count
+  const [smsTodayRow] = await db.select({ c: count() }).from(smsMessagesTable)
+    .where(gte(smsMessagesTable.receivedAt, todayStart));
+
+  // Orders today
+  const [ordersTodayRow] = await db.select({ c: count() }).from(virtualNumbersTable)
+    .where(gte(virtualNumbersTable.createdAt, todayStart));
+
+  // Hourly SMS for last 24h (bucketed)
+  const hourlySms = await db
+    .select({
+      hour: sql<string>`to_char(date_trunc('hour', ${smsMessagesTable.receivedAt}), 'HH24:00')`,
+      count: count(),
+    })
+    .from(smsMessagesTable)
+    .where(gte(smsMessagesTable.receivedAt, new Date(Date.now() - 24 * 60 * 60 * 1000)))
+    .groupBy(sql`date_trunc('hour', ${smsMessagesTable.receivedAt})`)
+    .orderBy(sql`date_trunc('hour', ${smsMessagesTable.receivedAt})`);
+
+  res.json({
+    recentSms,
+    activeNumbers,
+    revenue: {
+      today: todayRevenue,
+      week: weekRevenue,
+      month: monthRevenue,
+      total: totalRevenue,
+    },
+    smsToday: smsTodayRow?.c ?? 0,
+    ordersToday: ordersTodayRow?.c ?? 0,
+    activeNumbersCount: activeNumbers.length,
+    hourlySms,
+    generatedAt: new Date().toISOString(),
+  });
 });
 
 export default router;
