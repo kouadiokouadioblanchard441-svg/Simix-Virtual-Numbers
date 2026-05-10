@@ -2,17 +2,41 @@
  * Security middleware:
  * - Maintenance mode check (503 for all non-admin routes)
  * - Blocks users whose status is "Bloqué"
+ * - Blocks IP addresses in the blacklist
  * - Enforces global API rate limit per IP
  */
 import type { Request, Response, NextFunction } from "express";
+import { eq } from "drizzle-orm";
+import { db, ipBlacklistTable } from "@workspace/db";
 import { isRateLimited } from "../lib/rate-limiter";
 import { logSecurityEvent } from "../lib/fraud-detection";
 import { isMaintenanceMode } from "../lib/settings";
 
+/* In-memory cache for blacklisted IPs — avoids DB hit on every request */
+const BLACKLIST_CACHE = new Set<string>();
+let lastBlacklistRefresh = 0;
+const REFRESH_INTERVAL_MS = 60 * 1000; // refresh every 60s
+
+async function refreshIpBlacklist(): Promise<void> {
+  if (Date.now() - lastBlacklistRefresh < REFRESH_INTERVAL_MS) return;
+  lastBlacklistRefresh = Date.now();
+  try {
+    const entries = await db
+      .select({ value: ipBlacklistTable.value, expiresAt: ipBlacklistTable.expiresAt })
+      .from(ipBlacklistTable)
+      .where(eq(ipBlacklistTable.type, "ip"));
+    BLACKLIST_CACHE.clear();
+    for (const e of entries) {
+      if (!e.expiresAt || e.expiresAt.getTime() > Date.now()) {
+        BLACKLIST_CACHE.add(e.value);
+      }
+    }
+  } catch { /* non-fatal */ }
+}
+
 /** Return 503 on all non-admin, non-health routes when maintenance_mode=true */
 export async function checkMaintenanceMode(req: Request, res: Response, next: NextFunction): Promise<void> {
-  /* Admin routes and health check remain accessible during maintenance */
-  if (req.path.startsWith("/api/admin") || req.path === "/api/health") {
+  if (req.path.startsWith("/api/admin") || req.path === "/api/health" || req.path === "/api/healthz") {
     next();
     return;
   }
@@ -21,6 +45,28 @@ export async function checkMaintenanceMode(req: Request, res: Response, next: Ne
       error: "La plateforme est en maintenance. Revenez dans quelques instants.",
       maintenance: true,
     });
+    return;
+  }
+  next();
+}
+
+/** Block requests from IPs in the blacklist (skip admin routes) */
+export async function checkIpBlacklist(req: Request, res: Response, next: NextFunction): Promise<void> {
+  if (req.path.startsWith("/api/admin") || req.path === "/api/healthz") {
+    next();
+    return;
+  }
+  const ip = req.ip ?? "unknown";
+  await refreshIpBlacklist();
+  if (BLACKLIST_CACHE.has(ip)) {
+    void logSecurityEvent({
+      eventType: "blacklisted_ip_attempt",
+      severity: "high",
+      ip,
+      details: { path: req.path },
+      riskScore: 90,
+    });
+    res.status(403).json({ error: "Accès refusé. Votre adresse IP a été bloquée." });
     return;
   }
   next();

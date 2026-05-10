@@ -190,6 +190,34 @@ export const adminApi = {
     req<{ logs: unknown[] }>("GET", `/admin/emails/campaigns/${campaignId}/logs`),
   getEmailStats: () =>
     req<{ totalCampaigns: number; totalSent: number; totalFailed: number; resendConfigured: boolean }>("GET", "/admin/emails/stats"),
+
+  /* ── Blacklist ── */
+  getBlacklist: () => req<BlacklistEntry[]>("GET", "/admin/blacklist"),
+  addBlacklist: (data: { type: string; value: string; reason?: string; permanent?: boolean; expiresAt?: string }) =>
+    req<BlacklistEntry>("POST", "/admin/blacklist", data),
+  removeBlacklist: (id: string) => req("DELETE", `/admin/blacklist/${id}`),
+  checkBlacklist: (value: string) => req<{ banned: boolean; entries: BlacklistEntry[] }>("GET", `/admin/blacklist/check?value=${encodeURIComponent(value)}`),
+
+  /* ── Login History / IP Tracker ── */
+  getLoginHistory: (params?: { userId?: string; limit?: number; offset?: number }) => {
+    const q = new URLSearchParams();
+    if (params?.userId) q.set("userId", params.userId);
+    if (params?.limit) q.set("limit", String(params.limit));
+    if (params?.offset) q.set("offset", String(params.offset));
+    return req<{ entries: LoginHistoryEntry[]; total: number }>("GET", `/admin/login-history?${q}`);
+  },
+  getLoginHistoryStats: () => req<LoginHistoryStats>("GET", "/admin/login-history/stats"),
+
+  /* ── Live Prices (5sim) ── */
+  getLivePrices: (service?: string) => {
+    const q = service ? `?service=${encodeURIComponent(service)}` : "";
+    return req<{ data: LivePriceCountry[]; markup: number; providerName: string; generatedAt: string }>("GET", `/admin/live-prices${q}`);
+  },
+  getLivePriceServices: () => req<{ services: LivePriceService[]; markup: number; total: number; country: string }>("GET", "/admin/live-prices/services"),
+
+  /* ── Site Content ── */
+  getSiteContent: () => req<Record<string, string>>("GET", "/admin/site-content"),
+  updateSiteContent: (data: Record<string, string>) => req("PUT", "/admin/site-content", data),
 };
 
 export interface AdminStats {
@@ -448,6 +476,68 @@ export interface RealtimeActiveNumber {
   countryFlag: string | null;
   userPhone: string | null;
   userFullName: string | null;
+}
+
+export interface BlacklistEntry {
+  id: string;
+  type: string;
+  value: string;
+  reason: string;
+  bannedBy?: string | null;
+  permanent: boolean;
+  expiresAt?: string | null;
+  createdAt: string;
+}
+
+export interface LoginHistoryEntry {
+  id: string;
+  userId?: string | null;
+  ip?: string | null;
+  country?: string | null;
+  city?: string | null;
+  region?: string | null;
+  isp?: string | null;
+  userAgent?: string | null;
+  deviceType?: string | null;
+  success: string;
+  failReason?: string | null;
+  createdAt: string;
+  userFullName?: string | null;
+  userPhone?: string | null;
+  userEmail?: string | null;
+}
+
+export interface LoginHistoryStats {
+  total: number;
+  today: number;
+  failedThisWeek: number;
+  topIps: { ip: string | null; c: number }[];
+  topCountries: { country: string | null; c: number }[];
+}
+
+export interface LivePriceService {
+  slug: string;
+  name: string;
+  qty: number;
+  priceUsd: number;
+  priceFcfa: number;
+  priceWithMarkup: number;
+  margin: number;
+}
+
+export interface LivePriceCountry {
+  code: string;
+  label: string;
+  flag: string;
+  service?: string;
+  available?: boolean;
+  qty?: number;
+  priceUsd?: number;
+  priceFcfa?: number;
+  priceWithMarkup?: number;
+  markup?: number;
+  products?: { name: string; qty: number; priceUsd: number; priceFcfa: number; priceWithMarkup: number }[];
+  error?: string;
 }
 
 export interface RealtimeData {

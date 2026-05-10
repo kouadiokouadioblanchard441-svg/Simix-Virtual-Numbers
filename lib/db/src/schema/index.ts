@@ -19,3 +19,5 @@ export * from "./notifications";
 export * from "./email_campaigns";
 export * from "./banners";
 export * from "./email_otp";
+export * from "./login_history";
+export * from "./ip_blacklist";

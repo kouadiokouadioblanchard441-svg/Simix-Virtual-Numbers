@@ -942,6 +942,51 @@ function Security() {
           ))}
         </div>
       </div>
+
+      {/* Trust badges row */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true }}
+        transition={{ delay: 0.2 }}
+        className="mt-10 pt-8 border-t border-zinc-800/60"
+      >
+        <p className="text-center text-xs text-zinc-600 uppercase tracking-widest font-semibold mb-6">Certifié & approuvé par</p>
+        <div className="flex flex-wrap items-center justify-center gap-6 sm:gap-10">
+          {[
+            { label: "SSL 256-bit", icon: "🔒", desc: "Chiffrement bancaire" },
+            { label: "RGPD", icon: "🇪🇺", desc: "Conformité européenne" },
+            { label: "Orange Money", icon: "🟠", desc: "Partenaire officiel" },
+            { label: "MTN MoMo", icon: "🟡", desc: "Réseau certifié" },
+            { label: "Wave", icon: "🌊", desc: "Intégration directe" },
+            { label: "2FA", icon: "🛡️", desc: "Double authentification" },
+          ].map(({ label, icon, desc }) => (
+            <div key={label} className="flex flex-col items-center gap-1.5 group">
+              <div className="w-12 h-12 rounded-2xl bg-zinc-900 border border-zinc-800 group-hover:border-zinc-600 transition-colors flex items-center justify-center text-2xl shadow-lg">
+                {icon}
+              </div>
+              <div className="text-center">
+                <div className="text-xs font-bold text-white">{label}</div>
+                <div className="text-[10px] text-zinc-600">{desc}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Security indicators bar */}
+        <div className="mt-8 grid grid-cols-3 gap-4 max-w-2xl mx-auto">
+          {[
+            { val: "256-bit", label: "Chiffrement AES", color: "sky" },
+            { val: "99.9%", label: "Disponibilité garantie", color: "emerald" },
+            { val: "0€", label: "Frais cachés", color: "violet" },
+          ].map(({ val, label, color }) => (
+            <div key={label} className={`text-center p-3 rounded-xl bg-${color}-900/10 border border-${color}-800/20`}>
+              <div className={`text-xl font-extrabold text-${color}-400`}>{val}</div>
+              <div className="text-xs text-zinc-500 mt-0.5">{label}</div>
+            </div>
+          ))}
+        </div>
+      </motion.div>
     </Section>
   );
 }

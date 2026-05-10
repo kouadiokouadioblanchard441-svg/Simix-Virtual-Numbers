@@ -23,6 +23,8 @@ import {
   Mail,
   Image,
   Radio,
+  Ban,
+  TrendingUp,
 } from "lucide-react";
 import { SimixLogo } from "@/components/simix-logo";
 import { cn } from "@/lib/utils";
@@ -35,6 +37,7 @@ const NAV_ITEMS = [
   { href: "/admin/orders", label: "Commandes", icon: ShoppingBag },
   { href: "/admin/transactions", label: "Transactions", icon: CreditCard },
   { href: "/admin/services", label: "Services & Prix", icon: Globe },
+  { href: "/admin/live-prices", label: "Prix live 5sim", icon: TrendingUp },
   { href: "/admin/payment-config", label: "Paiements / Pays", icon: MapPin },
   { href: "/admin/providers", label: "Fournisseurs API", icon: Zap },
   { href: "/admin/support", label: "Support IA", icon: MessageSquare },
@@ -42,6 +45,8 @@ const NAV_ITEMS = [
   { href: "/admin/emails", label: "Campagnes Email", icon: Mail },
   { href: "/admin/banners", label: "Bannières", icon: Image },
   { href: "/admin/footer", label: "Footer & Vitrine", icon: Globe },
+  { href: "/admin/ip-tracker", label: "IP Tracker", icon: MapPin },
+  { href: "/admin/blacklist", label: "Liste Noire", icon: Ban },
   { href: "/admin/security", label: "Sécurité", icon: Shield },
   { href: "/admin/logs", label: "Journaux", icon: FileText },
   { href: "/admin/settings", label: "Paramètres", icon: Settings },

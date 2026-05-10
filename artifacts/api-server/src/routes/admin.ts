@@ -20,7 +20,10 @@ import {
   sessionsTable,
   countryPaymentConfigsTable,
   smsMessagesTable,
+  loginHistoryTable,
+  ipBlacklistTable,
 } from "@workspace/db";
+import { FiveSimClient } from "../lib/fivesim";
 
 import { blockUser, logSecurityEvent } from "../lib/fraud-detection";
 import { logger } from "../lib/logger";
@@ -1220,6 +1223,264 @@ router.get("/admin/realtime", requireAdmin, async (req, res): Promise<void> => {
     hourlySms,
     generatedAt: new Date().toISOString(),
   });
+});
+
+/* ─────────────────── IP / PHONE BLACKLIST ─────────────────── */
+
+router.get("/admin/blacklist", requireAdmin, async (req, res): Promise<void> => {
+  const entries = await db
+    .select()
+    .from(ipBlacklistTable)
+    .orderBy(desc(ipBlacklistTable.createdAt))
+    .limit(500);
+  res.json(entries);
+});
+
+router.post("/admin/blacklist", requireAdmin, async (req, res): Promise<void> => {
+  const { type, value, reason, permanent, expiresAt } = req.body as {
+    type: string; value: string; reason?: string; permanent?: boolean; expiresAt?: string;
+  };
+  if (!type || !value) { res.status(400).json({ error: "type et value sont requis" }); return; }
+  const allowed = ["ip", "phone", "userId", "email"];
+  if (!allowed.includes(type)) { res.status(400).json({ error: "type invalide" }); return; }
+
+  const [entry] = await db.insert(ipBlacklistTable).values({
+    type,
+    value: value.trim(),
+    reason: reason ?? "Banni manuellement par l'administrateur",
+    bannedBy: adminId(req),
+    permanent: permanent !== false,
+    expiresAt: expiresAt ? new Date(expiresAt) : null,
+  }).returning();
+
+  await logAdminAction(adminId(req), "blacklist_add", req.ip, "blacklist", entry!.id, { type, value, reason });
+
+  /* If banning a userId, also update user status */
+  if (type === "userId") {
+    await db.update(usersTable)
+      .set({ status: "Bloqué", blockedReason: reason ?? "Banni par l'administrateur" })
+      .where(eq(usersTable.id, value));
+  }
+
+  res.json(entry);
+});
+
+router.delete("/admin/blacklist/:id", requireAdmin, async (req, res): Promise<void> => {
+  await db.delete(ipBlacklistTable).where(eq(ipBlacklistTable.id, req.params.id));
+  await logAdminAction(adminId(req), "blacklist_remove", req.ip, "blacklist", req.params.id);
+  res.json({ success: true });
+});
+
+router.get("/admin/blacklist/check", requireAdmin, async (req, res): Promise<void> => {
+  const { value } = req.query;
+  if (!value || typeof value !== "string") { res.status(400).json({ error: "value required" }); return; }
+  const entries = await db.select().from(ipBlacklistTable).where(eq(ipBlacklistTable.value, value));
+  res.json({ banned: entries.length > 0, entries });
+});
+
+/* ─────────────────── LOGIN HISTORY / IP TRACKER ─────────────────── */
+
+router.get("/admin/login-history", requireAdmin, async (req, res): Promise<void> => {
+  const userId = typeof req.query.userId === "string" ? req.query.userId : undefined;
+  const { limit = "200", offset = "0" } = req.query;
+
+  const rows = await db
+    .select({
+      id: loginHistoryTable.id,
+      userId: loginHistoryTable.userId,
+      ip: loginHistoryTable.ip,
+      country: loginHistoryTable.country,
+      city: loginHistoryTable.city,
+      region: loginHistoryTable.region,
+      isp: loginHistoryTable.isp,
+      userAgent: loginHistoryTable.userAgent,
+      deviceType: loginHistoryTable.deviceType,
+      success: loginHistoryTable.success,
+      failReason: loginHistoryTable.failReason,
+      createdAt: loginHistoryTable.createdAt,
+      userFullName: usersTable.fullName,
+      userPhone: usersTable.phone,
+      userEmail: usersTable.email,
+    })
+    .from(loginHistoryTable)
+    .leftJoin(usersTable, eq(loginHistoryTable.userId, usersTable.id))
+    .where(userId ? eq(loginHistoryTable.userId, userId as string) : sql`1=1`)
+    .orderBy(desc(loginHistoryTable.createdAt))
+    .limit(Number(limit))
+    .offset(Number(offset));
+
+  const [totalRow] = await db
+    .select({ c: count() })
+    .from(loginHistoryTable)
+    .where(userId ? eq(loginHistoryTable.userId, userId as string) : sql`1=1`);
+
+  res.json({ entries: rows, total: totalRow?.c ?? 0 });
+});
+
+router.get("/admin/login-history/stats", requireAdmin, async (req, res): Promise<void> => {
+  const dayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+  const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+
+  const [totalRow] = await db.select({ c: count() }).from(loginHistoryTable);
+  const [todayRow] = await db.select({ c: count() }).from(loginHistoryTable).where(gte(loginHistoryTable.createdAt, dayAgo));
+  const [failRow] = await db.select({ c: count() }).from(loginHistoryTable).where(
+    and(eq(loginHistoryTable.success, "false"), gte(loginHistoryTable.createdAt, weekAgo))
+  );
+
+  const topIps = await db
+    .select({ ip: loginHistoryTable.ip, c: count() })
+    .from(loginHistoryTable)
+    .where(gte(loginHistoryTable.createdAt, weekAgo))
+    .groupBy(loginHistoryTable.ip)
+    .orderBy(desc(count()))
+    .limit(10);
+
+  const topCountries = await db
+    .select({ country: loginHistoryTable.country, c: count() })
+    .from(loginHistoryTable)
+    .where(gte(loginHistoryTable.createdAt, weekAgo))
+    .groupBy(loginHistoryTable.country)
+    .orderBy(desc(count()))
+    .limit(10);
+
+  res.json({
+    total: totalRow?.c ?? 0,
+    today: todayRow?.c ?? 0,
+    failedThisWeek: failRow?.c ?? 0,
+    topIps,
+    topCountries,
+  });
+});
+
+/* ─────────────────── LIVE 5SIM PRICES ─────────────────── */
+
+const SAMPLE_COUNTRIES_PRICE = [
+  { code: "ivorycoast", label: "Côte d'Ivoire", flag: "🇨🇮" },
+  { code: "senegal",    label: "Sénégal",       flag: "🇸🇳" },
+  { code: "cameroon",   label: "Cameroun",       flag: "🇨🇲" },
+  { code: "nigeria",    label: "Nigeria",         flag: "🇳🇬" },
+  { code: "ghana",      label: "Ghana",            flag: "🇬🇭" },
+  { code: "togo",       label: "Togo",             flag: "🇹🇬" },
+  { code: "france",     label: "France",           flag: "🇫🇷" },
+  { code: "usa",        label: "États-Unis",       flag: "🇺🇸" },
+  { code: "india",      label: "Inde",             flag: "🇮🇳" },
+];
+
+router.get("/admin/live-prices", requireAdmin, async (req, res): Promise<void> => {
+  const { service } = req.query;
+
+  const [provider] = await db
+    .select()
+    .from(apiProvidersTable)
+    .where(and(eq(apiProvidersTable.slug, "5sim"), eq(apiProvidersTable.active, true)))
+    .limit(1);
+
+  if (!provider?.apiKey) {
+    res.status(404).json({ error: "Aucun fournisseur 5sim actif avec clé API" });
+    return;
+  }
+
+  const client = new FiveSimClient(provider.apiKey);
+  const markup = provider.markup;
+
+  const results = await Promise.allSettled(
+    SAMPLE_COUNTRIES_PRICE.map(async (c) => {
+      const products = await client.getProducts(c.code, "any");
+      if (service && typeof service === "string") {
+        const p = products[service];
+        return {
+          ...c,
+          service,
+          available: p ? p.Qty > 0 : false,
+          qty: p?.Qty ?? 0,
+          priceUsd: p?.Price ?? 0,
+          priceFcfa: p ? Math.round(p.Price * 655) : 0,
+          priceWithMarkup: p ? Math.round(p.Price * 655 * (1 + markup / 100)) : 0,
+          markup,
+        };
+      }
+      /* Return top 5 services by qty */
+      const top = Object.entries(products)
+        .filter(([, v]) => v.Qty > 0)
+        .sort(([, a], [, b]) => b.Qty - a.Qty)
+        .slice(0, 10)
+        .map(([name, v]) => ({
+          name,
+          qty: v.Qty,
+          priceUsd: v.Price,
+          priceFcfa: Math.round(v.Price * 655),
+          priceWithMarkup: Math.round(v.Price * 655 * (1 + markup / 100)),
+        }));
+      return { ...c, products: top };
+    })
+  );
+
+  const data = results.map((r, i) => ({
+    ...(r.status === "fulfilled" ? r.value : { ...SAMPLE_COUNTRIES_PRICE[i], error: (r as PromiseRejectedResult).reason?.message }),
+  }));
+
+  res.json({ data, markup, providerName: provider.name, generatedAt: new Date().toISOString() });
+});
+
+router.get("/admin/live-prices/services", requireAdmin, async (req, res): Promise<void> => {
+  const [provider] = await db
+    .select()
+    .from(apiProvidersTable)
+    .where(and(eq(apiProvidersTable.slug, "5sim"), eq(apiProvidersTable.active, true)))
+    .limit(1);
+
+  if (!provider?.apiKey) { res.status(404).json({ error: "Aucun fournisseur 5sim actif" }); return; }
+
+  const client = new FiveSimClient(provider.apiKey);
+  const markup = provider.markup;
+
+  /* Get all services from a reliable country (France as base) */
+  try {
+    const products = await client.getProducts("france", "any");
+    const services = Object.entries(products)
+      .filter(([, v]) => v.Qty > 0)
+      .sort(([, a], [, b]) => b.Qty - a.Qty)
+      .map(([name, v]) => ({
+        slug: name,
+        name: name.charAt(0).toUpperCase() + name.slice(1),
+        qty: v.Qty,
+        priceUsd: v.Price,
+        priceFcfa: Math.round(v.Price * 655),
+        priceWithMarkup: Math.round(v.Price * 655 * (1 + markup / 100)),
+        margin: markup,
+      }));
+    res.json({ services, markup, total: services.length, country: "france" });
+  } catch (e) {
+    res.status(500).json({ error: (e as Error).message });
+  }
+});
+
+/* ─────────────────── SITE CONTENT (icons, images) ─────────────────── */
+
+router.get("/admin/site-content", requireAdmin, async (_req, res): Promise<void> => {
+  const rows = await db
+    .select()
+    .from(systemSettingsTable)
+    .where(like(systemSettingsTable.key, "content_%"));
+
+  const content: Record<string, string> = {};
+  for (const r of rows) content[r.key] = r.value;
+  res.json(content);
+});
+
+router.put("/admin/site-content", requireAdmin, async (req, res): Promise<void> => {
+  const updates = req.body as Record<string, string>;
+  if (!updates || typeof updates !== "object") { res.status(400).json({ error: "Invalid body" }); return; }
+
+  for (const [key, value] of Object.entries(updates)) {
+    if (!key.startsWith("content_")) continue;
+    await db.insert(systemSettingsTable)
+      .values({ key, value })
+      .onConflictDoUpdate({ target: systemSettingsTable.key, set: { value } });
+  }
+
+  await logAdminAction(adminId(req), "site_content_update", req.ip, "site", "content", { keys: Object.keys(updates) });
+  res.json({ success: true });
 });
 
 export default router;

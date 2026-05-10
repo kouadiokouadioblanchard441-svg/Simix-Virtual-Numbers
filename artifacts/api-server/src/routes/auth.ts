@@ -1,7 +1,7 @@
 import { Router, type IRouter } from "express";
 import bcrypt from "bcryptjs";
 import { eq, or } from "drizzle-orm";
-import { db, usersTable } from "@workspace/db";
+import { db, usersTable, loginHistoryTable, ipBlacklistTable } from "@workspace/db";
 import { RegisterBody, LoginBody } from "@workspace/api-zod";
 import {
   createSession,
@@ -220,8 +220,23 @@ router.post("/auth/login", async (req, res): Promise<void> => {
     return;
   }
 
-  /* Normal login — update last login timestamp */
+  /* Normal login — update last login timestamp + log history */
   await db.update(usersTable).set({ lastLoginAt: new Date() }).where(eq(usersTable.id, user.id));
+
+  /* Log login history (fire-and-forget) */
+  void (async () => {
+    try {
+      const ua = req.headers["user-agent"] ?? "";
+      const deviceType = /mobile|android|iphone|ipad/i.test(ua) ? "mobile" : "desktop";
+      await db.insert(loginHistoryTable).values({
+        userId: user.id,
+        ip,
+        userAgent: ua,
+        deviceType,
+        success: "true",
+      });
+    } catch { /* non-fatal */ }
+  })();
 
   res.json({ user: toUser(user), token: session.id });
 });

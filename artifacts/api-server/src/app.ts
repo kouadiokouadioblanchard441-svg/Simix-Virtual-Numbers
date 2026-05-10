@@ -6,7 +6,7 @@ import helmet from "helmet";
 import router from "./routes";
 import { logger } from "./lib/logger";
 import { attachUser } from "./lib/auth";
-import { globalRateLimit, checkUserBlocked, checkMaintenanceMode } from "./middlewares/security";
+import { globalRateLimit, checkUserBlocked, checkMaintenanceMode, checkIpBlacklist } from "./middlewares/security";
 import { startFiveSimPoller } from "./lib/fivesim-poller";
 import { seedProvidersFromEnv } from "./lib/seed-providers";
 import { startFiveSimSyncScheduler } from "./lib/fivesim-sync";
@@ -46,6 +46,9 @@ app.use(globalRateLimit);
 
 /* ── Maintenance mode — returns 503 on all non-admin routes ── */
 app.use(checkMaintenanceMode);
+
+/* ── IP Blacklist — block banned IP addresses ── */
+app.use(checkIpBlacklist);
 
 /* ── Attach user from session cookie ── */
 app.use(attachUser);
