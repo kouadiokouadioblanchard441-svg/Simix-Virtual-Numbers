@@ -325,6 +325,38 @@ router.put("/admin/services/:serviceId", requireAdmin, async (req, res): Promise
   res.json({ success: true });
 });
 
+/* ─────────────────── CREATE SERVICE ─────────────────── */
+router.post("/admin/services", requireAdmin, async (req, res): Promise<void> => {
+  const { name, slug, category, color, price, providerPrice, margin, available, popular, scope, enabled } = req.body;
+  if (!name || !slug) { res.status(400).json({ error: "name et slug sont requis" }); return; }
+  const pp = Number(providerPrice ?? 0);
+  const mg = Number(margin ?? 20);
+  const finalPrice = pp > 0 ? Math.round(pp + pp * (mg / 100)) : Number(price ?? 0);
+  const [row] = await db.insert(servicesTable).values({
+    name: String(name),
+    slug: String(slug),
+    category: String(category ?? "Autres"),
+    color: String(color ?? "#7C3AED"),
+    price: finalPrice,
+    providerPrice: pp,
+    margin: mg,
+    available: Number(available ?? 0),
+    popular: Boolean(popular ?? false),
+    scope: String(scope ?? "global"),
+    enabled: enabled !== undefined ? Boolean(enabled) : true,
+  }).returning();
+  await logAdminAction(adminId(req), "create_service", req.ip, "service", row.id, { name, slug });
+  res.status(201).json(row);
+});
+
+/* ─────────────────── DELETE SERVICE ─────────────────── */
+router.delete("/admin/services/:serviceId", requireAdmin, async (req, res): Promise<void> => {
+  const serviceId = String(req.params.serviceId);
+  await db.delete(servicesTable).where(eq(servicesTable.id, serviceId));
+  await logAdminAction(adminId(req), "delete_service", req.ip, "service", serviceId, {});
+  res.json({ success: true });
+});
+
 /* ─────────────────── COUNTRIES MANAGEMENT ─────────────────── */
 router.get("/admin/countries", requireAdmin, async (_req, res): Promise<void> => {
   const rows = await db.select().from(countriesTable).orderBy(countriesTable.sortOrder, countriesTable.name);

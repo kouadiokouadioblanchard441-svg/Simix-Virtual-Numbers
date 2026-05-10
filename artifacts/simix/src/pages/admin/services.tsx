@@ -4,11 +4,145 @@ import { adminApi, type AdminService, type AdminCountry } from "@/lib/admin-api"
 import { AdminGuard } from "@/components/admin-guard";
 import { AdminLayout } from "@/components/admin-layout";
 import { formatFCFA } from "@/lib/format";
-import { Loader2, Pencil, Check, X, TrendingUp, ToggleLeft, ToggleRight } from "lucide-react";
+import { ServiceIcon } from "@/components/service-icon";
+import {
+  Loader2, Pencil, Check, X, TrendingUp, ToggleLeft, ToggleRight,
+  Plus, Trash2, Star, Package,
+} from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
+const CATEGORIES = ["Réseaux sociaux", "Messagerie", "Services Google", "Email", "Finance", "Jeux", "Streaming", "Crypto", "Transport", "Autres"];
+
+/* ─── Add Service Form ─── */
+function AddServiceForm({ onDone }: { onDone: () => void }) {
+  const [name, setName] = useState("");
+  const [slug, setSlug] = useState("");
+  const [category, setCategory] = useState("Réseaux sociaux");
+  const [color, setColor] = useState("#7C3AED");
+  const [providerPrice, setProviderPrice] = useState("");
+  const [margin, setMargin] = useState("20");
+  const [price, setPrice] = useState("");
+  const [available, setAvailable] = useState("0");
+  const [popular, setPopular] = useState(false);
+  const { toast } = useToast();
+  const qc = useQueryClient();
+
+  const autoSlug = (v: string) => v.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
+
+  const pp = Number(providerPrice);
+  const mg = Number(margin);
+  const computedPrice = pp > 0 ? Math.round(pp + pp * (mg / 100)) : Number(price);
+
+  const create = useMutation({
+    mutationFn: () => adminApi.createService({
+      name, slug, category, color,
+      price: pp > 0 ? computedPrice : Number(price),
+      providerPrice: pp, margin: mg,
+      available: Number(available), popular,
+    }),
+    onSuccess: () => {
+      toast({ title: "Service créé avec succès" });
+      qc.invalidateQueries({ queryKey: ["admin-services"] });
+      onDone();
+    },
+    onError: (e) => toast({ title: "Erreur", description: (e as Error).message, variant: "destructive" }),
+  });
+
+  return (
+    <div className="border border-violet-700/40 bg-violet-950/20 rounded-2xl p-5 space-y-4">
+      <div className="flex items-center gap-2 text-violet-400 font-semibold text-sm">
+        <Plus className="w-4 h-4" /> Nouveau service
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="text-xs text-zinc-400 mb-1 block">Nom du service *</label>
+          <input value={name} onChange={e => { setName(e.target.value); if (!slug) setSlug(autoSlug(e.target.value)); }}
+            placeholder="WhatsApp, TikTok..." className="w-full px-3 py-2 text-sm bg-zinc-900 border border-zinc-700 rounded-lg text-white placeholder:text-zinc-600 focus:outline-none focus:border-violet-500" />
+        </div>
+        <div>
+          <label className="text-xs text-zinc-400 mb-1 block">Slug unique *</label>
+          <input value={slug} onChange={e => setSlug(autoSlug(e.target.value))}
+            placeholder="whatsapp" className="w-full px-3 py-2 text-sm bg-zinc-900 border border-zinc-700 rounded-lg text-white font-mono placeholder:text-zinc-600 focus:outline-none focus:border-violet-500" />
+        </div>
+        <div>
+          <label className="text-xs text-zinc-400 mb-1 block">Catégorie</label>
+          <select value={category} onChange={e => setCategory(e.target.value)}
+            className="w-full px-3 py-2 text-sm bg-zinc-900 border border-zinc-700 rounded-lg text-white focus:outline-none focus:border-violet-500">
+            {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className="text-xs text-zinc-400 mb-1 block">Couleur de marque</label>
+          <div className="flex gap-2">
+            <input type="color" value={color} onChange={e => setColor(e.target.value)} className="w-10 h-9 rounded cursor-pointer border border-zinc-700" />
+            <input value={color} onChange={e => setColor(e.target.value)} className="flex-1 px-2 py-2 text-sm bg-zinc-900 border border-zinc-700 rounded-lg text-white font-mono focus:outline-none focus:border-violet-500" />
+          </div>
+        </div>
+        <div>
+          <label className="text-xs text-zinc-400 mb-1 block">Prix fournisseur (FCFA)</label>
+          <input type="number" value={providerPrice} onChange={e => setProviderPrice(e.target.value)}
+            placeholder="0" className="w-full px-3 py-2 text-sm bg-zinc-900 border border-zinc-700 rounded-lg text-white focus:outline-none focus:border-blue-500" />
+        </div>
+        <div>
+          <label className="text-xs text-zinc-400 mb-1 block">Marge %</label>
+          <div className="flex gap-1">
+            <input type="number" value={margin} onChange={e => setMargin(e.target.value)} min={0} max={500}
+              className="w-full px-3 py-2 text-sm bg-zinc-900 border border-zinc-700 rounded-lg text-white focus:outline-none focus:border-amber-500" />
+            <span className="flex items-center text-zinc-500 text-sm">%</span>
+          </div>
+        </div>
+        <div>
+          <label className="text-xs text-zinc-400 mb-1 block">Prix final (FCFA)</label>
+          {pp > 0 ? (
+            <div className="px-3 py-2 text-sm bg-zinc-900 border border-zinc-800 rounded-lg text-violet-400 font-bold">
+              {formatFCFA(computedPrice)} <span className="text-zinc-600 text-xs font-normal">auto</span>
+            </div>
+          ) : (
+            <input type="number" value={price} onChange={e => setPrice(e.target.value)}
+              placeholder="500" className="w-full px-3 py-2 text-sm bg-zinc-900 border border-zinc-700 rounded-lg text-white focus:outline-none focus:border-violet-500" />
+          )}
+        </div>
+        <div>
+          <label className="text-xs text-zinc-400 mb-1 block">Stock disponible</label>
+          <input type="number" value={available} onChange={e => setAvailable(e.target.value)}
+            placeholder="0" className="w-full px-3 py-2 text-sm bg-zinc-900 border border-zinc-700 rounded-lg text-white focus:outline-none focus:border-zinc-500" />
+        </div>
+      </div>
+
+      <div className="flex items-center gap-4">
+        <label className="flex items-center gap-2 cursor-pointer">
+          <button type="button" onClick={() => setPopular(p => !p)}
+            className={`relative w-10 h-5 rounded-full transition-colors ${popular ? "bg-violet-600" : "bg-zinc-700"}`}>
+            <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${popular ? "translate-x-5" : "translate-x-0.5"}`} />
+          </button>
+          <span className="text-xs text-zinc-400">Marquer comme populaire</span>
+        </label>
+        {name && (
+          <div className="flex items-center gap-2 ml-auto">
+            <span className="text-xs text-zinc-500">Aperçu :</span>
+            <ServiceIcon name={name} slug={slug} size={32} rounded="xl" />
+          </div>
+        )}
+      </div>
+
+      <div className="flex gap-2 pt-1">
+        <button onClick={() => create.mutate()} disabled={create.isPending || !name || !slug}
+          className="px-4 py-2 text-sm bg-violet-600 hover:bg-violet-700 text-white rounded-lg transition-colors disabled:opacity-50 flex items-center gap-1.5">
+          {create.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}Créer le service
+        </button>
+        <button onClick={onDone} className="px-4 py-2 text-sm bg-zinc-800 hover:bg-zinc-700 text-zinc-400 rounded-lg transition-colors">Annuler</button>
+      </div>
+    </div>
+  );
+}
+
+/* ─── Service Row ─── */
 function ServiceRow({ service }: { service: AdminService }) {
   const [editing, setEditing] = useState(false);
+  const [name, setName] = useState(service.name);
+  const [category, setCategory] = useState(service.category || "Autres");
+  const [color, setColor] = useState(service.color || "#7C3AED");
   const [price, setPrice] = useState(String(service.price));
   const [providerPrice, setProviderPrice] = useState(String(service.providerPrice ?? 0));
   const [margin, setMargin] = useState(String(service.margin ?? 20));
@@ -24,12 +158,12 @@ function ServiceRow({ service }: { service: AdminService }) {
 
   const update = useMutation({
     mutationFn: () => adminApi.updateService(service.id, {
+      name,
+      category,
+      color,
       price: pp > 0 ? computedPrice : Number(price),
-      providerPrice: pp,
-      margin: mg,
-      available: Number(available),
-      popular,
-      enabled,
+      providerPrice: pp, margin: mg,
+      available: Number(available), popular, enabled,
     }),
     onSuccess: () => { toast({ title: "Service mis à jour" }); qc.invalidateQueries({ queryKey: ["admin-services"] }); setEditing(false); },
     onError: (e) => toast({ title: "Erreur", description: (e as Error).message, variant: "destructive" }),
@@ -40,112 +174,149 @@ function ServiceRow({ service }: { service: AdminService }) {
     onSuccess: () => { toast({ title: service.enabled ? "Service désactivé" : "Service activé" }); qc.invalidateQueries({ queryKey: ["admin-services"] }); },
   });
 
+  const deleteSvc = useMutation({
+    mutationFn: () => adminApi.deleteService(service.id),
+    onSuccess: () => { toast({ title: "Service supprimé" }); qc.invalidateQueries({ queryKey: ["admin-services"] }); },
+    onError: (e) => toast({ title: "Erreur", description: (e as Error).message, variant: "destructive" }),
+  });
+
+  const openEdit = () => {
+    setName(service.name); setCategory(service.category || "Autres"); setColor(service.color || "#7C3AED");
+    setPrice(String(service.price)); setProviderPrice(String(service.providerPrice ?? 0));
+    setMargin(String(service.margin ?? 20)); setAvailable(String(service.available));
+    setPopular(service.popular); setEnabled(service.enabled ?? true);
+    setEditing(true);
+  };
+
   return (
-    <tr className="border-b border-zinc-800 hover:bg-zinc-800/20 transition-colors">
-      <td className="py-3 px-4">
-        <div className="flex items-center gap-2">
-          <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: service.color }} />
-          <div>
-            <span className="text-white text-sm font-medium">{service.name}</span>
-            <div className="text-zinc-600 text-xs font-mono">{service.slug}</div>
+    <>
+      <tr className={`border-b border-zinc-800 hover:bg-zinc-800/20 transition-colors ${editing ? "bg-zinc-800/30" : ""}`}>
+        <td className="py-3 px-4">
+          <div className="flex items-center gap-2">
+            <ServiceIcon name={service.name} slug={service.slug} size={32} rounded="lg" />
+            <div>
+              <span className="text-white text-sm font-medium">{service.name}</span>
+              <div className="text-zinc-600 text-xs font-mono">{service.slug}</div>
+            </div>
           </div>
-        </div>
-      </td>
-      <td className="py-3 px-4 text-zinc-400 text-xs">{service.category}</td>
-
-      {/* Provider Price */}
-      <td className="py-3 px-4">
-        {editing ? (
-          <input type="number" value={providerPrice} onChange={e => setProviderPrice(e.target.value)} className="w-24 px-2 py-1 text-sm bg-zinc-800 border border-blue-500/50 rounded text-white focus:outline-none" placeholder="0" />
-        ) : (
-          <span className="text-zinc-400 text-sm">{service.providerPrice > 0 ? formatFCFA(service.providerPrice) : <span className="text-zinc-600 italic text-xs">Non défini</span>}</span>
-        )}
-      </td>
-
-      {/* Margin % */}
-      <td className="py-3 px-4">
-        {editing ? (
-          <div className="flex items-center gap-1">
-            <input type="number" value={margin} onChange={e => setMargin(e.target.value)} className="w-16 px-2 py-1 text-sm bg-zinc-800 border border-amber-500/50 rounded text-white focus:outline-none" min={0} max={500} />
-            <span className="text-zinc-500 text-xs">%</span>
+        </td>
+        <td className="py-3 px-4">
+          <span className="text-zinc-400 text-xs px-2 py-1 bg-zinc-800 rounded-lg">{service.category || "—"}</span>
+        </td>
+        <td className="py-3 px-4">
+          <div className="flex items-center gap-1.5">
+            <div className="w-3 h-3 rounded-full flex-shrink-0 border border-zinc-600" style={{ backgroundColor: service.color || "#7C3AED" }} />
+            <span className="text-zinc-500 text-xs font-mono">{service.color || "—"}</span>
           </div>
-        ) : (
+        </td>
+        <td className="py-3 px-4">
+          <span className="text-zinc-400 text-sm">{service.providerPrice > 0 ? formatFCFA(service.providerPrice) : <span className="text-zinc-600 italic text-xs">—</span>}</span>
+        </td>
+        <td className="py-3 px-4">
           <span className="text-amber-400 text-sm font-medium">+{service.margin ?? 20}%</span>
-        )}
-      </td>
-
-      {/* Final Price */}
-      <td className="py-3 px-4">
-        {editing ? (
-          <div className="text-violet-400 text-sm font-bold">
-            {pp > 0 ? formatFCFA(computedPrice) : (
-              <input type="number" value={price} onChange={e => setPrice(e.target.value)} className="w-24 px-2 py-1 text-sm bg-zinc-800 border border-violet-500 rounded text-white focus:outline-none" />
-            )}
-            {pp > 0 && <div className="text-zinc-600 text-[10px]">auto-calculé</div>}
-          </div>
-        ) : (
+        </td>
+        <td className="py-3 px-4">
           <span className="text-white text-sm font-bold">{formatFCFA(service.price)}</span>
-        )}
-      </td>
-
-      {/* Stock */}
-      <td className="py-3 px-4">
-        {editing ? (
-          <input type="number" value={available} onChange={e => setAvailable(e.target.value)} className="w-20 px-2 py-1 text-sm bg-zinc-800 border border-zinc-600 rounded text-white focus:outline-none" />
-        ) : (
+        </td>
+        <td className="py-3 px-4">
           <span className="text-zinc-300 text-sm">{service.available.toLocaleString("fr-FR")}</span>
-        )}
-      </td>
-
-      {/* Popular */}
-      <td className="py-3 px-4">
-        {editing ? (
-          <button onClick={() => setPopular(p => !p)} className={`px-2 py-1 text-xs rounded ${popular ? "bg-violet-600 text-white" : "bg-zinc-700 text-zinc-400"}`}>
-            {popular ? "Populaire" : "Normal"}
-          </button>
-        ) : (
+        </td>
+        <td className="py-3 px-4">
           <span className={`text-xs px-2 py-1 rounded-full ${service.popular ? "bg-violet-500/20 text-violet-400" : "bg-zinc-800 text-zinc-500"}`}>
-            {service.popular ? "Populaire" : "Normal"}
+            {service.popular ? "⭐ Populaire" : "Normal"}
           </span>
-        )}
-      </td>
+        </td>
+        <td className="py-3 px-4">
+          <button onClick={() => toggleEnabled.mutate()} disabled={toggleEnabled.isPending} className="flex items-center gap-1 transition-colors">
+            {service.enabled
+              ? <ToggleRight className="w-6 h-6 text-emerald-500" />
+              : <ToggleLeft className="w-6 h-6 text-zinc-600" />}
+            <span className={`text-xs ${service.enabled ? "text-emerald-500" : "text-zinc-600"}`}>{service.enabled ? "Actif" : "Inactif"}</span>
+          </button>
+        </td>
+        <td className="py-3 px-4">
+          <div className="flex gap-1.5">
+            <button onClick={openEdit} className="p-1.5 rounded hover:bg-zinc-700 text-zinc-500 hover:text-white transition-colors"><Pencil className="w-3.5 h-3.5" /></button>
+            <button onClick={() => { if (confirm(`Supprimer "${service.name}" ?`)) deleteSvc.mutate(); }}
+              disabled={deleteSvc.isPending} className="p-1.5 rounded hover:bg-red-500/10 text-zinc-600 hover:text-red-400 transition-colors">
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </td>
+      </tr>
 
-      {/* Enabled */}
-      <td className="py-3 px-4">
-        <button
-          onClick={() => toggleEnabled.mutate()}
-          disabled={toggleEnabled.isPending}
-          className="flex items-center gap-1 transition-colors"
-          title={service.enabled ? "Désactiver" : "Activer"}
-        >
-          {service.enabled
-            ? <ToggleRight className="w-6 h-6 text-emerald-500" />
-            : <ToggleLeft className="w-6 h-6 text-zinc-600" />
-          }
-          <span className={`text-xs ${service.enabled ? "text-emerald-500" : "text-zinc-600"}`}>
-            {service.enabled ? "Actif" : "Inactif"}
-          </span>
-        </button>
-      </td>
-
-      <td className="py-3 px-4">
-        <div className="flex gap-1.5">
-          {editing ? (
-            <>
-              <button onClick={() => update.mutate()} disabled={update.isPending} className="p-1.5 rounded bg-emerald-600 hover:bg-emerald-700 text-white transition-colors">
-                {update.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+      {/* Edit panel */}
+      {editing && (
+        <tr className="border-b border-violet-700/30 bg-violet-950/10">
+          <td colSpan={10} className="px-4 py-4">
+            <div className="grid grid-cols-4 gap-3 mb-3">
+              <div>
+                <label className="text-xs text-zinc-400 mb-1 block">Nom affiché</label>
+                <input value={name} onChange={e => setName(e.target.value)} className="w-full px-2.5 py-2 text-sm bg-zinc-900 border border-violet-500/50 rounded-lg text-white focus:outline-none" />
+              </div>
+              <div>
+                <label className="text-xs text-zinc-400 mb-1 block">Catégorie</label>
+                <select value={category} onChange={e => setCategory(e.target.value)} className="w-full px-2.5 py-2 text-sm bg-zinc-900 border border-zinc-700 rounded-lg text-white focus:outline-none focus:border-violet-500">
+                  {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="text-xs text-zinc-400 mb-1 block">Couleur</label>
+                <div className="flex gap-1.5">
+                  <input type="color" value={color} onChange={e => setColor(e.target.value)} className="w-9 h-9 rounded border border-zinc-700 cursor-pointer" />
+                  <input value={color} onChange={e => setColor(e.target.value)} className="flex-1 px-2 py-1.5 text-xs bg-zinc-900 border border-zinc-700 rounded-lg text-white font-mono focus:outline-none focus:border-violet-500" />
+                </div>
+              </div>
+              <div className="flex items-end gap-2">
+                <div className="flex-1">
+                  <label className="text-xs text-zinc-400 mb-1 block">Stock</label>
+                  <input type="number" value={available} onChange={e => setAvailable(e.target.value)} className="w-full px-2.5 py-2 text-sm bg-zinc-900 border border-zinc-700 rounded-lg text-white focus:outline-none" />
+                </div>
+              </div>
+              <div>
+                <label className="text-xs text-zinc-400 mb-1 block">Prix fournisseur (FCFA)</label>
+                <input type="number" value={providerPrice} onChange={e => setProviderPrice(e.target.value)} className="w-full px-2.5 py-2 text-sm bg-zinc-900 border border-blue-500/50 rounded-lg text-white focus:outline-none" />
+              </div>
+              <div>
+                <label className="text-xs text-zinc-400 mb-1 block">Marge %</label>
+                <input type="number" value={margin} onChange={e => setMargin(e.target.value)} min={0} max={500} className="w-full px-2.5 py-2 text-sm bg-zinc-900 border border-amber-500/50 rounded-lg text-white focus:outline-none" />
+              </div>
+              <div>
+                <label className="text-xs text-zinc-400 mb-1 block">Prix final (FCFA)</label>
+                {pp > 0 ? (
+                  <div className="px-2.5 py-2 text-sm bg-zinc-900 border border-zinc-800 rounded-lg text-violet-400 font-bold">{formatFCFA(computedPrice)}</div>
+                ) : (
+                  <input type="number" value={price} onChange={e => setPrice(e.target.value)} className="w-full px-2.5 py-2 text-sm bg-zinc-900 border border-violet-500/50 rounded-lg text-white focus:outline-none" />
+                )}
+              </div>
+              <div>
+                <label className="text-xs text-zinc-400 mb-1 block">Options</label>
+                <div className="flex gap-2 flex-wrap pt-1">
+                  <button type="button" onClick={() => setPopular(p => !p)} className={`flex items-center gap-1 px-2 py-1 text-xs rounded-lg border transition-colors ${popular ? "bg-violet-600/20 border-violet-500/40 text-violet-400" : "border-zinc-700 text-zinc-500"}`}>
+                    <Star className="w-3 h-3" /> Populaire
+                  </button>
+                  <button type="button" onClick={() => setEnabled(e => !e)} className={`flex items-center gap-1 px-2 py-1 text-xs rounded-lg border transition-colors ${enabled ? "bg-emerald-600/20 border-emerald-500/40 text-emerald-400" : "border-zinc-700 text-zinc-500"}`}>
+                    {enabled ? "Actif" : "Inactif"}
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <button onClick={() => update.mutate()} disabled={update.isPending} className="px-4 py-2 text-sm bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg flex items-center gap-1.5">
+                {update.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}Enregistrer
               </button>
-              <button onClick={() => setEditing(false)} className="p-1.5 rounded bg-zinc-700 hover:bg-zinc-600 text-zinc-400 transition-colors"><X className="w-3.5 h-3.5" /></button>
-            </>
-          ) : (
-            <button onClick={() => setEditing(true)} className="p-1.5 rounded hover:bg-zinc-700 text-zinc-500 hover:text-white transition-colors"><Pencil className="w-3.5 h-3.5" /></button>
-          )}
-        </div>
-      </td>
-    </tr>
+              <button onClick={() => setEditing(false)} className="px-4 py-2 text-sm bg-zinc-800 hover:bg-zinc-700 text-zinc-400 rounded-lg flex items-center gap-1.5">
+                <X className="w-3.5 h-3.5" />Annuler
+              </button>
+            </div>
+          </td>
+        </tr>
+      )}
+    </>
   );
 }
 
+/* ─── Country Row ─── */
 function CountryRow({ country }: { country: AdminCountry }) {
   const [editing, setEditing] = useState(false);
   const [price, setPrice] = useState(String(country.price));
@@ -171,16 +342,12 @@ function CountryRow({ country }: { country: AdminCountry }) {
       </td>
       <td className="py-3 px-4 text-zinc-400 text-sm">{country.dialCode}</td>
       <td className="py-3 px-4">
-        {editing
-          ? <input type="number" value={price} onChange={e => setPrice(e.target.value)} className="w-24 px-2 py-1 text-sm bg-zinc-800 border border-violet-500 rounded text-white focus:outline-none" />
-          : <span className="text-white text-sm font-semibold">{formatFCFA(country.price)}</span>
-        }
+        {editing ? <input type="number" value={price} onChange={e => setPrice(e.target.value)} className="w-24 px-2 py-1 text-sm bg-zinc-800 border border-violet-500 rounded text-white focus:outline-none" />
+          : <span className="text-white text-sm font-semibold">{formatFCFA(country.price)}</span>}
       </td>
       <td className="py-3 px-4">
-        {editing
-          ? <input type="number" value={available} onChange={e => setAvailable(e.target.value)} className="w-20 px-2 py-1 text-sm bg-zinc-800 border border-zinc-600 rounded text-white focus:outline-none" />
-          : <span className="text-zinc-300 text-sm">{country.available.toLocaleString("fr-FR")}</span>
-        }
+        {editing ? <input type="number" value={available} onChange={e => setAvailable(e.target.value)} className="w-20 px-2 py-1 text-sm bg-zinc-800 border border-zinc-600 rounded text-white focus:outline-none" />
+          : <span className="text-zinc-300 text-sm">{country.available.toLocaleString("fr-FR")}</span>}
       </td>
       <td className="py-3 px-4">
         {editing ? (
@@ -196,8 +363,10 @@ function CountryRow({ country }: { country: AdminCountry }) {
   );
 }
 
+/* ─── Main ─── */
 function ServicesContent() {
   const [tab, setTab] = useState<"services" | "countries">("services");
+  const [showAddForm, setShowAddForm] = useState(false);
   const { data: services, isLoading: loadingS } = useQuery({ queryKey: ["admin-services"], queryFn: adminApi.getServices });
   const { data: countries, isLoading: loadingC } = useQuery({ queryKey: ["admin-countries"], queryFn: adminApi.getCountries });
 
@@ -213,12 +382,26 @@ function ServicesContent() {
             {activeServices} actifs · {inactiveServices} inactifs · Prix = prix fournisseur × (1 + marge%)
           </p>
         </div>
-        <div className="flex items-center gap-2 text-xs text-zinc-500 bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2">
-          <TrendingUp className="w-3.5 h-3.5 text-violet-400" />
-          <span>Prix final = Prix fournisseur + Marge %</span>
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 text-xs text-zinc-500 bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2">
+            <TrendingUp className="w-3.5 h-3.5 text-violet-400" />
+            <span>Prix final = Prix fournisseur + Marge %</span>
+          </div>
+          {tab === "services" && (
+            <button onClick={() => setShowAddForm(v => !v)}
+              className="flex items-center gap-2 px-3 py-2 text-sm bg-violet-600 hover:bg-violet-700 text-white rounded-lg transition-colors">
+              <Plus className="w-4 h-4" />Ajouter
+            </button>
+          )}
         </div>
       </div>
 
+      {/* Add form */}
+      {showAddForm && tab === "services" && (
+        <AddServiceForm onDone={() => setShowAddForm(false)} />
+      )}
+
+      {/* Tabs */}
       <div className="flex gap-1 bg-zinc-900 border border-zinc-800 rounded-xl p-1 w-fit">
         {(["services", "countries"] as const).map(t => (
           <button key={t} onClick={() => setTab(t)} className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${tab === t ? "bg-violet-600 text-white" : "text-zinc-400 hover:text-white"}`}>
@@ -227,29 +410,44 @@ function ServicesContent() {
         ))}
       </div>
 
+      {/* Table */}
       <div className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden">
         <div className="overflow-x-auto">
           {tab === "services" ? (
-            <table className="w-full">
-              <thead><tr className="border-b border-zinc-800 bg-zinc-900/80">
-                {["Service", "Catégorie", "Prix fournisseur", "Marge", "Prix final", "Stock", "Badge", "Activé", ""].map(h => (
-                  <th key={h} className="text-left py-3 px-4 text-xs font-semibold text-zinc-500 uppercase tracking-wide">{h}</th>
-                ))}
-              </tr></thead>
-              <tbody>
-                {loadingS ? <tr><td colSpan={9} className="py-12 text-center"><Loader2 className="w-6 h-6 text-violet-500 animate-spin mx-auto" /></td></tr>
-                  : services?.map(s => <ServiceRow key={s.id} service={s} />)}
-              </tbody>
-            </table>
+            services?.length === 0 && !loadingS ? (
+              <div className="text-center py-16">
+                <Package className="w-10 h-10 text-zinc-700 mx-auto mb-3" />
+                <p className="text-zinc-500 text-sm">Aucun service créé</p>
+                <p className="text-zinc-600 text-xs mt-1">Cliquez sur "Ajouter" pour créer votre premier service</p>
+              </div>
+            ) : (
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-zinc-800 bg-zinc-900/80">
+                    {["Service", "Catégorie", "Couleur", "Prix fourn.", "Marge", "Prix final", "Stock", "Badge", "Activé", ""].map(h => (
+                      <th key={h} className="text-left py-3 px-4 text-xs font-semibold text-zinc-500 uppercase tracking-wide whitespace-nowrap">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {loadingS
+                    ? <tr><td colSpan={10} className="py-12 text-center"><Loader2 className="w-6 h-6 text-violet-500 animate-spin mx-auto" /></td></tr>
+                    : services?.map(s => <ServiceRow key={s.id} service={s} />)}
+                </tbody>
+              </table>
+            )
           ) : (
             <table className="w-full">
-              <thead><tr className="border-b border-zinc-800 bg-zinc-900/80">
-                {["Pays", "Indicatif", "Prix", "Stock", ""].map(h => (
-                  <th key={h} className="text-left py-3 px-4 text-xs font-semibold text-zinc-500 uppercase tracking-wide">{h}</th>
-                ))}
-              </tr></thead>
+              <thead>
+                <tr className="border-b border-zinc-800 bg-zinc-900/80">
+                  {["Pays", "Indicatif", "Prix", "Stock", ""].map(h => (
+                    <th key={h} className="text-left py-3 px-4 text-xs font-semibold text-zinc-500 uppercase tracking-wide">{h}</th>
+                  ))}
+                </tr>
+              </thead>
               <tbody>
-                {loadingC ? <tr><td colSpan={5} className="py-12 text-center"><Loader2 className="w-6 h-6 text-violet-500 animate-spin mx-auto" /></td></tr>
+                {loadingC
+                  ? <tr><td colSpan={5} className="py-12 text-center"><Loader2 className="w-6 h-6 text-violet-500 animate-spin mx-auto" /></td></tr>
                   : countries?.map(c => <CountryRow key={c.id} country={c} />)}
               </tbody>
             </table>

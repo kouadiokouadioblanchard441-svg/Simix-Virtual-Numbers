@@ -59,7 +59,9 @@ export const adminApi = {
   },
 
   getServices: () => req<AdminService[]>("GET", "/admin/services"),
+  createService: (data: Partial<AdminService> & { name: string; slug: string }) => req<AdminService>("POST", "/admin/services", data),
   updateService: (id: string, data: Partial<AdminService>) => req("PUT", `/admin/services/${id}`, data),
+  deleteService: (id: string) => req("DELETE", `/admin/services/${id}`),
 
   getCountries: () => req<AdminCountry[]>("GET", "/admin/countries"),
   updateCountry: (id: string, data: Partial<AdminCountry>) => req("PUT", `/admin/countries/${id}`, data),

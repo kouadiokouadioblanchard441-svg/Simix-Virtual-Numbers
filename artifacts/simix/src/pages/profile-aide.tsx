@@ -3,7 +3,7 @@ import { AppLayout } from "@/components/layout/app-layout";
 import { AuthGuard } from "@/components/auth-guard";
 import { useLocation } from "wouter";
 import { motion } from "framer-motion";
-import { ArrowLeft, ChevronRight, HelpCircle, ExternalLink, Star, FileText, Phone } from "lucide-react";
+import { ArrowLeft, ChevronRight, HelpCircle, BookOpen, Star, FileText, Phone, Send, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useContactSettings } from "@/hooks/use-contact-settings";
 
@@ -91,9 +91,23 @@ function AideContent() {
     window.open(`mailto:${supportEmail}?subject=Demande%20d%27assistance%20Simix`, "_blank");
   };
 
-  const handleRating = (r: number) => {
-    setRating(r);
-    toast({ title: "Merci pour votre avis !", description: `Vous avez noté l'app ${r}/5 étoiles.` });
+  const [submittingRating, setSubmittingRating] = useState(false);
+  const [ratingSubmitted, setRatingSubmitted] = useState(false);
+
+  const handleSubmitRating = async () => {
+    if (!rating) return;
+    setSubmittingRating(true);
+    try {
+      await fetch("/api/ratings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ score: rating }),
+      });
+    } catch { /* ignore */ }
+    setSubmittingRating(false);
+    setRatingSubmitted(true);
+    toast({ title: "Merci pour votre avis !", description: `Vous avez noté l'app ${rating}/5 étoiles.` });
   };
 
   return (
@@ -168,24 +182,44 @@ function AideContent() {
         <div className="bg-card border border-card-border rounded-3xl p-5">
           <h3 className="text-sm font-bold text-foreground mb-3">Ressources</h3>
           <div className="space-y-1">
-            {[
-              { label: "Centre d'aide en ligne", sub: "Guides et tutoriels détaillés", icon: ExternalLink, onClick: () => {} },
-              { label: "Signaler un bug", sub: "Aidez-nous à améliorer l'application", icon: FileText, onClick: () => window.open(`mailto:${supportEmail}?subject=Bug%20Simix`, "_blank") },
-              { label: "Nous appeler", sub: supportPhone || "Service client téléphonique", icon: Phone, onClick: () => supportPhone && window.open(`tel:${supportPhone}`, "_blank") },
-            ].map(({ label, sub, icon: Icon, onClick }) => (
-              <button key={label} onClick={onClick} className="w-full flex items-center justify-between py-3 px-2 rounded-xl hover:bg-secondary/50 transition-colors text-left">
+            <button onClick={() => setLocation("/profile/aide/centre")} className="w-full flex items-center justify-between py-3 px-2 rounded-xl hover:bg-secondary/50 transition-colors text-left">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center">
+                  <BookOpen className="w-4 h-4 text-violet-400" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-foreground">Centre d'aide en ligne</p>
+                  <p className="text-xs text-muted-foreground">Guides et tutoriels détaillés</p>
+                </div>
+              </div>
+              <ChevronRight className="w-4 h-4 text-muted-foreground" />
+            </button>
+            <button onClick={() => window.open(`mailto:${supportEmail}?subject=Bug%20Simix`, "_blank")} className="w-full flex items-center justify-between py-3 px-2 rounded-xl hover:bg-secondary/50 transition-colors text-left">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-secondary flex items-center justify-center">
+                  <FileText className="w-4 h-4 text-foreground" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-foreground">Signaler un bug</p>
+                  <p className="text-xs text-muted-foreground">Aidez-nous à améliorer l'application</p>
+                </div>
+              </div>
+              <ChevronRight className="w-4 h-4 text-muted-foreground" />
+            </button>
+            {supportPhone && (
+              <button onClick={() => window.open(`tel:${supportPhone}`, "_blank")} className="w-full flex items-center justify-between py-3 px-2 rounded-xl hover:bg-secondary/50 transition-colors text-left">
                 <div className="flex items-center gap-3">
                   <div className="w-9 h-9 rounded-xl bg-secondary flex items-center justify-center">
-                    <Icon className="w-4 h-4 text-foreground" />
+                    <Phone className="w-4 h-4 text-foreground" />
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-foreground">{label}</p>
-                    <p className="text-xs text-muted-foreground">{sub}</p>
+                    <p className="text-sm font-medium text-foreground">Nous appeler</p>
+                    <p className="text-xs text-muted-foreground">{supportPhone}</p>
                   </div>
                 </div>
                 <ChevronRight className="w-4 h-4 text-muted-foreground" />
               </button>
-            ))}
+            )}
           </div>
         </div>
 
@@ -194,20 +228,39 @@ function AideContent() {
           <Star className="w-8 h-8 text-amber-400 mx-auto mb-3" />
           <h3 className="text-sm font-bold text-foreground mb-1">Vous aimez Simix ?</h3>
           <p className="text-xs text-muted-foreground mb-4">Votre avis nous aide à nous améliorer</p>
-          <div className="flex justify-center gap-2">
-            {[1, 2, 3, 4, 5].map((star) => (
-              <button
-                key={star}
-                onClick={() => handleRating(star)}
-                onMouseEnter={() => setHoverRating(star)}
-                onMouseLeave={() => setHoverRating(0)}
-                className="text-3xl transition-transform hover:scale-110"
-              >
-                <span className={(hoverRating || rating) >= star ? "text-amber-400" : "text-muted-foreground/30"}>★</span>
-              </button>
-            ))}
-          </div>
-          {rating > 0 && <p className="text-xs text-amber-400 mt-3 font-medium">Merci pour votre note de {rating}/5 !</p>}
+          {ratingSubmitted ? (
+            <div className="py-2">
+              <p className="text-sm font-bold text-amber-400">{"★".repeat(rating)}{"☆".repeat(5 - rating)}</p>
+              <p className="text-xs text-emerald-400 mt-2 font-medium">✓ Merci pour votre note de {rating}/5 !</p>
+            </div>
+          ) : (
+            <>
+              <div className="flex justify-center gap-2 mb-4">
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <button
+                    key={star}
+                    onClick={() => setRating(star)}
+                    onMouseEnter={() => setHoverRating(star)}
+                    onMouseLeave={() => setHoverRating(0)}
+                    className="text-3xl transition-transform hover:scale-110"
+                  >
+                    <span className={(hoverRating || rating) >= star ? "text-amber-400" : "text-muted-foreground/30"}>★</span>
+                  </button>
+                ))}
+              </div>
+              {rating > 0 && (
+                <button
+                  onClick={handleSubmitRating}
+                  disabled={submittingRating}
+                  className="flex items-center justify-center gap-2 mx-auto px-6 py-2.5 bg-amber-500 hover:bg-amber-400 disabled:opacity-60 text-white text-sm font-bold rounded-xl transition-colors"
+                >
+                  {submittingRating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                  {submittingRating ? "Envoi…" : "Envoyer mon avis"}
+                </button>
+              )}
+              {!rating && <p className="text-xs text-muted-foreground/60">Cliquez sur une étoile pour noter</p>}
+            </>
+          )}
         </div>
 
         {/* App info */}

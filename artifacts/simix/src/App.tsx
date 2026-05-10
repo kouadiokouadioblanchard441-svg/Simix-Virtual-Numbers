@@ -28,6 +28,7 @@ import ProfileNotifications from "@/pages/profile-notifications";
 import ProfilePaiement from "@/pages/profile-paiement";
 import ProfileConfidentialite from "@/pages/profile-confidentialite";
 import ProfileAide from "@/pages/profile-aide";
+import ProfileAideCentre from "@/pages/profile-aide-centre";
 import ProfilePolitiqueConfidentialite from "@/pages/profile-politique-confidentialite";
 import ProfileCGU from "@/pages/profile-cgu";
 import ProfileCookies from "@/pages/profile-cookies";
@@ -126,6 +127,7 @@ function InnerRouter() {
           <Route path="/profile/paiement" component={ProfilePaiement} />
           <Route path="/profile/confidentialite" component={ProfileConfidentialite} />
           <Route path="/profile/aide" component={ProfileAide} />
+          <Route path="/profile/aide/centre" component={ProfileAideCentre} />
           <Route path="/profile/politique-confidentialite" component={ProfilePolitiqueConfidentialite} />
           <Route path="/profile/cgu" component={ProfileCGU} />
           <Route path="/profile/cookies" component={ProfileCookies} />
