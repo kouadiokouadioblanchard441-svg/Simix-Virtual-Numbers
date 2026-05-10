@@ -107,7 +107,7 @@ function ConfidentialiteContent() {
             {[
               { label: "Politique de confidentialité", date: "Mise à jour jan. 2026", href: "/profile/politique-confidentialite", icon: Shield, color: "text-primary bg-primary/10" },
               { label: "Conditions générales d'utilisation", date: "Mise à jour jan. 2026", href: "/profile/cgu", icon: FileText, color: "text-blue-400 bg-blue-500/10" },
-              { label: "Politique des cookies", date: "Mise à jour jan. 2026", href: "/profile/cookies", icon: Cookie, color: "text-amber-400 bg-amber-500/10" },
+              { label: "Politique des cookies", date: "Mise à jour jan. 2026", href: "/profile/cookies", icon: Cookie, color: "text-emerald-400 bg-emerald-500/10" },
               { label: "Mentions légales", date: "Mise à jour jan. 2026", href: "/profile/mentions-legales", icon: Building2, color: "text-violet-400 bg-violet-500/10" },
             ].map(({ label, date, href, icon: Icon, color }) => (
               <button key={label} onClick={() => setLocation(href)} className="w-full flex items-center gap-3 py-3 text-left hover:bg-secondary/50 transition-colors rounded-xl px-2">

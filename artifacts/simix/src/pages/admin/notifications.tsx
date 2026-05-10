@@ -16,7 +16,7 @@ const NOTIF_TYPES = [
   { value: "info", label: "Information", icon: Info, color: "text-violet-400", bg: "bg-violet-500/10" },
   { value: "security", label: "Sécurité", icon: Shield, color: "text-red-400", bg: "bg-red-500/10" },
   { value: "bonus", label: "Bonus", icon: Gift, color: "text-green-400", bg: "bg-green-500/10" },
-  { value: "promotion", label: "Promotion", icon: Star, color: "text-amber-400", bg: "bg-amber-500/10" },
+  { value: "promotion", label: "Promotion", icon: Star, color: "text-emerald-400", bg: "bg-emerald-500/10" },
   { value: "system", label: "Système", icon: Zap, color: "text-blue-400", bg: "bg-blue-500/10" },
   { value: "announcement", label: "Annonce", icon: Megaphone, color: "text-purple-400", bg: "bg-purple-500/10" },
 ];

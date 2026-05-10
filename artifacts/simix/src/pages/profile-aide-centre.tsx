@@ -101,8 +101,8 @@ const CATEGORIES = [
   {
     id: "paiements",
     icon: CreditCard,
-    color: "text-amber-400",
-    bg: "bg-amber-500/10 border-amber-500/20",
+    color: "text-emerald-400",
+    bg: "bg-emerald-500/10 border-emerald-500/20",
     title: "Paiements & Remboursements",
     articles: [
       {

@@ -53,7 +53,7 @@ function UserRow({ user, onAction }: { user: AdminUser; onAction: () => void }) 
   const promote = useMutation({ mutationFn: () => adminApi.promoteUser(user.id), onSuccess: () => { toast({ title: "Rôle admin accordé" }); invalidate(); } });
   const demote = useMutation({ mutationFn: () => adminApi.demoteUser(user.id), onSuccess: () => { toast({ title: "Rôle admin retiré" }); invalidate(); } });
 
-  const riskColor = user.riskScore > 60 ? "text-red-400" : user.riskScore > 30 ? "text-yellow-400" : "text-emerald-400";
+  const riskColor = user.riskScore > 60 ? "text-red-400" : user.riskScore > 30 ? "text-emerald-400" : "text-emerald-400";
   const isExpanded = panel !== null || newPwd !== null;
 
   return (
@@ -81,7 +81,7 @@ function UserRow({ user, onAction }: { user: AdminUser; onAction: () => void }) 
               : <button onClick={() => togglePanel("block")} className="p-1.5 rounded hover:bg-red-500/20 text-zinc-400 hover:text-red-400 transition-colors" title="Bloquer"><UserX className="w-3.5 h-3.5" /></button>
             }
             <button onClick={() => togglePanel("balance")} className="p-1.5 rounded hover:bg-violet-500/20 text-zinc-400 hover:text-violet-400 transition-colors" title="Ajuster solde"><Coins className="w-3.5 h-3.5" /></button>
-            <button onClick={() => togglePanel("limits")} className={`p-1.5 rounded hover:bg-amber-500/20 transition-colors ${panel === "limits" ? "text-amber-400 bg-amber-500/10" : "text-zinc-400 hover:text-amber-400"}`} title="Limites"><Gauge className="w-3.5 h-3.5" /></button>
+            <button onClick={() => togglePanel("limits")} className={`p-1.5 rounded hover:bg-emerald-500/20 transition-colors ${panel === "limits" ? "text-emerald-400 bg-emerald-500/10" : "text-zinc-400 hover:text-emerald-400"}`} title="Limites"><Gauge className="w-3.5 h-3.5" /></button>
             <button onClick={() => togglePanel("reset")} className={`p-1.5 rounded hover:bg-blue-500/20 transition-colors ${panel === "reset" ? "text-blue-400 bg-blue-500/10" : "text-zinc-400 hover:text-blue-400"}`} title="Réinitialiser mot de passe"><KeyRound className="w-3.5 h-3.5" /></button>
             <button onClick={() => { if (confirm(`Déconnecter ${user.fullName} ?`)) forceLogout.mutate(); }} disabled={forceLogout.isPending} className="p-1.5 rounded hover:bg-orange-500/20 text-zinc-400 hover:text-orange-400 transition-colors" title="Force logout"><LogOut className="w-3.5 h-3.5" /></button>
             {user.isAdmin
@@ -131,16 +131,16 @@ function UserRow({ user, onAction }: { user: AdminUser; onAction: () => void }) 
 
               {/* Limits Panel */}
               {panel === "limits" && (
-                <div className="bg-amber-950/20 border border-amber-900/30 rounded-xl p-4 space-y-3">
-                  <div className="flex items-center gap-2 text-amber-400 font-semibold text-sm"><Gauge className="w-4 h-4" />Limites du compte</div>
+                <div className="bg-emerald-950/20 border border-emerald-900/30 rounded-xl p-4 space-y-3">
+                  <div className="flex items-center gap-2 text-emerald-400 font-semibold text-sm"><Gauge className="w-4 h-4" />Limites du compte</div>
                   <div className="grid grid-cols-3 gap-3">
                     <div>
                       <label className="text-xs text-zinc-500 font-medium block mb-1">Achats max / min</label>
-                      <input type="number" value={maxPurchases} onChange={e => setMaxPurchases(e.target.value)} min={1} className="w-full px-3 py-2 text-sm bg-zinc-900 border border-zinc-700 rounded-lg text-white focus:outline-none focus:border-amber-500" />
+                      <input type="number" value={maxPurchases} onChange={e => setMaxPurchases(e.target.value)} min={1} className="w-full px-3 py-2 text-sm bg-zinc-900 border border-zinc-700 rounded-lg text-white focus:outline-none focus:border-emerald-500" />
                     </div>
                     <div>
                       <label className="text-xs text-zinc-500 font-medium block mb-1">Solde max (FCFA)</label>
-                      <input type="number" value={maxBal} onChange={e => setMaxBal(e.target.value)} min={0} className="w-full px-3 py-2 text-sm bg-zinc-900 border border-zinc-700 rounded-lg text-white focus:outline-none focus:border-amber-500" />
+                      <input type="number" value={maxBal} onChange={e => setMaxBal(e.target.value)} min={0} className="w-full px-3 py-2 text-sm bg-zinc-900 border border-zinc-700 rounded-lg text-white focus:outline-none focus:border-emerald-500" />
                     </div>
                     <div>
                       <label className="text-xs text-zinc-500 font-medium block mb-1">Compte restreint</label>
@@ -150,7 +150,7 @@ function UserRow({ user, onAction }: { user: AdminUser; onAction: () => void }) 
                     </div>
                   </div>
                   <div className="flex gap-2">
-                    <button onClick={() => setLimits.mutate()} disabled={setLimits.isPending} className="px-4 py-2 text-sm bg-amber-600 hover:bg-amber-700 text-white rounded-lg transition-colors disabled:opacity-50 flex items-center gap-1.5">
+                    <button onClick={() => setLimits.mutate()} disabled={setLimits.isPending} className="px-4 py-2 text-sm bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors disabled:opacity-50 flex items-center gap-1.5">
                       {setLimits.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}Enregistrer les limites
                     </button>
                     <button onClick={() => togglePanel(null)} className="px-4 py-2 text-sm bg-zinc-800 hover:bg-zinc-700 text-zinc-400 rounded-lg transition-colors">Annuler</button>

@@ -157,7 +157,7 @@ function PawaPayTestButton({ token, env }: { token: string; env: string }) {
                     </span>
                   )}
                   {result.env && (
-                    <span className={`text-xs px-2 py-1 rounded-md font-medium ${result.env === "production" ? "bg-emerald-900/50 text-emerald-400" : "bg-yellow-900/50 text-yellow-400"}`}>
+                    <span className={`text-xs px-2 py-1 rounded-md font-medium ${result.env === "production" ? "bg-emerald-900/50 text-emerald-400" : "bg-emerald-900/50 text-emerald-400"}`}>
                       {result.env === "production" ? "🟢 Production" : "🟡 Sandbox"}
                     </span>
                   )}
@@ -261,7 +261,7 @@ function PawaPaySimulator() {
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="text-sm text-white font-medium">{dep.userFullName || "—"}</span>
                   <span className="text-xs text-zinc-500">{dep.userPhone || ""}</span>
-                  <span className="text-xs font-mono text-amber-400 bg-amber-900/30 px-1.5 py-0.5 rounded">
+                  <span className="text-xs font-mono text-emerald-400 bg-emerald-900/30 px-1.5 py-0.5 rounded">
                     {dep.amount.toLocaleString()} FCFA
                   </span>
                   <span className="text-xs text-zinc-600">{dep.method}</span>

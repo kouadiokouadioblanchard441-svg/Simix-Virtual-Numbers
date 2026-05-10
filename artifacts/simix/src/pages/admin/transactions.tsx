@@ -34,7 +34,7 @@ function TxRow({ tx }: { tx: AdminTransaction }) {
         {tx.type === "purchase" ? "-" : "+"}{formatFCFA(tx.amount)}
       </td>
       <td className="py-3 px-4">
-        <span className={`text-xs px-2 py-1 rounded-full ${tx.status === "completed" ? "bg-emerald-500/20 text-emerald-400" : "bg-yellow-500/20 text-yellow-400"}`}>
+        <span className={`text-xs px-2 py-1 rounded-full ${tx.status === "completed" ? "bg-emerald-500/20 text-emerald-400" : "bg-emerald-500/20 text-emerald-400"}`}>
           {tx.status === "completed" ? "Complété" : tx.status}
         </span>
       </td>

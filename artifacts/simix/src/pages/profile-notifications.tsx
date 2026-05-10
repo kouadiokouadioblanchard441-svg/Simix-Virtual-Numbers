@@ -133,8 +133,8 @@ function NotificationsContent() {
         {/* Promotions */}
         <div className="bg-card border border-card-border rounded-3xl p-5">
           <div className="flex items-center gap-2 mb-1">
-            <div className="w-8 h-8 rounded-xl bg-amber-500/10 flex items-center justify-center">
-              <Tag className="w-4 h-4 text-amber-400" />
+            <div className="w-8 h-8 rounded-xl bg-emerald-500/10 flex items-center justify-center">
+              <Tag className="w-4 h-4 text-emerald-400" />
             </div>
             <div>
               <h3 className="text-sm font-bold text-foreground">Promotions & offres</h3>
@@ -142,8 +142,8 @@ function NotificationsContent() {
             </div>
           </div>
           <div className="mt-2">
-            <NotifRow icon={Smartphone} label="Notifications push" sub="Offres et promotions en temps réel" value={prefs.push_promotions} onChange={(v) => update("push_promotions", v)} color="text-amber-400" />
-            <NotifRow icon={MessageSquare} label="SMS rappels" sub="Rappels d'offres expirantes" value={prefs.sms_reminders} onChange={(v) => update("sms_reminders", v)} color="text-amber-400" />
+            <NotifRow icon={Smartphone} label="Notifications push" sub="Offres et promotions en temps réel" value={prefs.push_promotions} onChange={(v) => update("push_promotions", v)} color="text-emerald-400" />
+            <NotifRow icon={MessageSquare} label="SMS rappels" sub="Rappels d'offres expirantes" value={prefs.sms_reminders} onChange={(v) => update("sms_reminders", v)} color="text-emerald-400" />
           </div>
         </div>
 

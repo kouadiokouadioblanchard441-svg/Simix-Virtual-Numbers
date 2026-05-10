@@ -101,7 +101,7 @@ function ProfileContent() {
   const settingsItems = [
     { icon: UserIcon, label: "Informations personnelles", sub: "Nom, email, téléphone", href: "/profile/informations", color: "text-violet-500", bg: "bg-violet-500/10" },
     { icon: Shield, label: "Sécurité", sub: "Mot de passe & 2FA", href: "/profile/securite", color: "text-blue-500", bg: "bg-blue-500/10" },
-    { icon: Bell, label: "Notifications", sub: "Préférences d'alertes", href: "/profile/notifications", color: "text-amber-500", bg: "bg-amber-500/10" },
+    { icon: Bell, label: "Notifications", sub: "Préférences d'alertes", href: "/profile/notifications", color: "text-emerald-500", bg: "bg-emerald-500/10" },
     { icon: CreditCard, label: "Méthodes de paiement", sub: "Orange Money, Wave, MTN…", href: "/profile/paiement", color: "text-emerald-500", bg: "bg-emerald-500/10" },
     { icon: Lock, label: "Confidentialité", sub: "Données & politique", href: "/profile/confidentialite", color: "text-rose-500", bg: "bg-rose-500/10" },
     { icon: HelpCircle, label: "Aide et support", sub: "FAQ & assistance", href: "/profile/aide", color: "text-sky-500", bg: "bg-sky-500/10" },
@@ -181,9 +181,9 @@ function ProfileContent() {
             {/* Status badge */}
             <div className="mt-4 pt-4 border-t border-card-border/50 flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Crown className="w-4 h-4 text-amber-400" />
+                <Crown className="w-4 h-4 text-emerald-400" />
                 <span className="text-sm font-bold text-foreground">Statut : </span>
-                <span className="bg-amber-500/15 text-amber-400 text-xs font-bold px-2 py-0.5 rounded-full">{user?.status ?? "Standard"}</span>
+                <span className="bg-emerald-500/15 text-emerald-400 text-xs font-bold px-2 py-0.5 rounded-full">{user?.status ?? "Standard"}</span>
               </div>
               <button onClick={() => setLocation("/profile/informations")} className="text-xs text-violet-400 font-semibold hover:underline flex items-center gap-0.5">
                 Modifier <ChevronRight className="w-3.5 h-3.5" />

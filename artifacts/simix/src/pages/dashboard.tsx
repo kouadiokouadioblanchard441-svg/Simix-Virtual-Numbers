@@ -391,7 +391,7 @@ function DashboardContent() {
       >
         {[
           { icon: "/3d/icon-shield.png", value: "98%", label: "Réussite SMS", bg: "from-emerald-500/15 to-emerald-900/5" },
-          { icon: "/3d/icon-lightning.png", value: "< 30s", label: "Délai moyen", bg: "from-amber-500/15 to-amber-900/5" },
+          { icon: "/3d/icon-lightning.png", value: "< 30s", label: "Délai moyen", bg: "from-emerald-500/15 to-emerald-900/5" },
           { icon: "/3d/step-globe.png", value: "20+", label: "Pays", bg: "from-violet-500/15 to-violet-900/5" },
         ].map(({ icon, value, label, bg }) => (
           <div key={label} className={`bg-gradient-to-br ${bg} border border-card-border rounded-2xl p-3 flex flex-col items-center text-center gap-1.5`}>

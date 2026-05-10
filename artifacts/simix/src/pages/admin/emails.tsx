@@ -16,7 +16,7 @@ const TEMPLATE_TYPES = [
   { value: "info", label: "Information", icon: Info, color: "text-violet-400", accent: "#7c3aed" },
   { value: "security", label: "Sécurité", icon: Shield, color: "text-red-400", accent: "#ef4444" },
   { value: "bonus", label: "Bonus", icon: Gift, color: "text-green-400", accent: "#22c55e" },
-  { value: "promotion", label: "Promotion", icon: Star, color: "text-amber-400", accent: "#f59e0b" },
+  { value: "promotion", label: "Promotion", icon: Star, color: "text-emerald-400", accent: "#f59e0b" },
   { value: "system", label: "Système", icon: Zap, color: "text-blue-400", accent: "#3b82f6" },
   { value: "announcement", label: "Annonce", icon: Megaphone, color: "text-purple-400", accent: "#a855f7" },
 ];
@@ -55,7 +55,7 @@ function timeAgo(d: string) {
 function statusBadge(status: string) {
   switch (status) {
     case "sent": return <span className="flex items-center gap-1 text-green-400 text-[10px] font-semibold"><CheckCircle2 className="w-3 h-3" />Envoyé</span>;
-    case "sending": return <span className="flex items-center gap-1 text-amber-400 text-[10px] font-semibold"><Loader2 className="w-3 h-3 animate-spin" />En cours</span>;
+    case "sending": return <span className="flex items-center gap-1 text-emerald-400 text-[10px] font-semibold"><Loader2 className="w-3 h-3 animate-spin" />En cours</span>;
     case "failed": return <span className="flex items-center gap-1 text-red-400 text-[10px] font-semibold"><XCircle className="w-3 h-3" />Échec</span>;
     default: return <span className="flex items-center gap-1 text-zinc-400 text-[10px] font-semibold"><Clock className="w-3 h-3" />En attente</span>;
   }
@@ -75,7 +75,7 @@ function StatsSection() {
         { label: "Campagnes", value: data?.totalCampaigns ?? 0, icon: Mail, color: "text-violet-400", bg: "bg-violet-500/10 border-violet-500/20" },
         { label: "Emails envoyés", value: data?.totalSent ?? 0, icon: CheckCircle2, color: "text-green-400", bg: "bg-green-500/10 border-green-500/20" },
         { label: "Échecs", value: data?.totalFailed ?? 0, icon: XCircle, color: "text-red-400", bg: "bg-red-500/10 border-red-500/20" },
-        { label: "Resend", value: data?.resendConfigured ? "✓ Actif" : "⚠ Absent", icon: Settings, color: data?.resendConfigured ? "text-green-400" : "text-amber-400", bg: data?.resendConfigured ? "bg-green-500/10 border-green-500/20" : "bg-amber-500/10 border-amber-500/20" },
+        { label: "Resend", value: data?.resendConfigured ? "✓ Actif" : "⚠ Absent", icon: Settings, color: data?.resendConfigured ? "text-green-400" : "text-emerald-400", bg: data?.resendConfigured ? "bg-green-500/10 border-green-500/20" : "bg-emerald-500/10 border-emerald-500/20" },
       ].map(c => (
         <div key={c.label} className={cn("rounded-2xl border p-4 flex flex-col gap-1.5", c.bg)}>
           <c.icon className={cn("w-4 h-4", c.color)} />
@@ -267,7 +267,7 @@ function ComposeForm() {
         </div>
         {recipientsType === "all" && (
           <p className="text-[11px] text-zinc-500 mt-1.5 flex items-center gap-1">
-            <AlertCircle className="w-3 h-3 text-amber-400" />
+            <AlertCircle className="w-3 h-3 text-emerald-400" />
             Enverra à tous les utilisateurs au statut "Actif" dans Supabase
           </p>
         )}
@@ -343,7 +343,7 @@ function CampaignsList() {
                   className="flex items-start gap-3 p-4 hover:bg-white/2 transition-colors cursor-pointer"
                   onClick={() => setExpandedId(isExpanded ? null : c.id)}
                 >
-                  <div className={cn("w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5", ti.color === "text-violet-400" ? "bg-violet-500/15" : ti.color === "text-red-400" ? "bg-red-500/15" : ti.color === "text-green-400" ? "bg-green-500/15" : ti.color === "text-amber-400" ? "bg-amber-500/15" : "bg-blue-500/15")}>
+                  <div className={cn("w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5", ti.color === "text-violet-400" ? "bg-violet-500/15" : ti.color === "text-red-400" ? "bg-red-500/15" : ti.color === "text-green-400" ? "bg-green-500/15" : ti.color === "text-emerald-400" ? "bg-emerald-500/15" : "bg-blue-500/15")}>
                     <ti.icon className={cn("w-4 h-4", ti.color)} />
                   </div>
                   <div className="flex-1 min-w-0">
@@ -419,13 +419,13 @@ function ResendWarning() {
   if (data?.resendConfigured) return null;
 
   return (
-    <div className="flex items-start gap-3 p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20">
-      <AlertCircle className="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" />
+    <div className="flex items-start gap-3 p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20">
+      <AlertCircle className="w-5 h-5 text-emerald-400 flex-shrink-0 mt-0.5" />
       <div>
-        <p className="text-amber-300 text-sm font-semibold">Resend API non configuré</p>
-        <p className="text-amber-400/70 text-xs mt-0.5 leading-relaxed">
+        <p className="text-emerald-300 text-sm font-semibold">Resend API non configuré</p>
+        <p className="text-emerald-400/70 text-xs mt-0.5 leading-relaxed">
           La clé API Resend n'est pas configurée. Les emails seront simulés (loggés mais non envoyés).
-          Ajoutez la variable <code className="bg-amber-500/20 px-1 rounded text-amber-300">RESEND_API_KEY</code> dans les paramètres de l'environnement pour activer l'envoi réel.
+          Ajoutez la variable <code className="bg-emerald-500/20 px-1 rounded text-emerald-300">RESEND_API_KEY</code> dans les paramètres de l'environnement pour activer l'envoi réel.
         </p>
       </div>
     </div>

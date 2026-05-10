@@ -225,12 +225,12 @@ function AideContent() {
 
         {/* Rate the app */}
         <div className="bg-card border border-card-border rounded-3xl p-5 text-center">
-          <Star className="w-8 h-8 text-amber-400 mx-auto mb-3" />
+          <Star className="w-8 h-8 text-emerald-400 mx-auto mb-3" />
           <h3 className="text-sm font-bold text-foreground mb-1">Vous aimez Simix ?</h3>
           <p className="text-xs text-muted-foreground mb-4">Votre avis nous aide à nous améliorer</p>
           {ratingSubmitted ? (
             <div className="py-2">
-              <p className="text-sm font-bold text-amber-400">{"★".repeat(rating)}{"☆".repeat(5 - rating)}</p>
+              <p className="text-sm font-bold text-emerald-400">{"★".repeat(rating)}{"☆".repeat(5 - rating)}</p>
               <p className="text-xs text-emerald-400 mt-2 font-medium">✓ Merci pour votre note de {rating}/5 !</p>
             </div>
           ) : (
@@ -244,7 +244,7 @@ function AideContent() {
                     onMouseLeave={() => setHoverRating(0)}
                     className="text-3xl transition-transform hover:scale-110"
                   >
-                    <span className={(hoverRating || rating) >= star ? "text-amber-400" : "text-muted-foreground/30"}>★</span>
+                    <span className={(hoverRating || rating) >= star ? "text-emerald-400" : "text-muted-foreground/30"}>★</span>
                   </button>
                 ))}
               </div>
@@ -252,7 +252,7 @@ function AideContent() {
                 <button
                   onClick={handleSubmitRating}
                   disabled={submittingRating}
-                  className="flex items-center justify-center gap-2 mx-auto px-6 py-2.5 bg-amber-500 hover:bg-amber-400 disabled:opacity-60 text-white text-sm font-bold rounded-xl transition-colors"
+                  className="flex items-center justify-center gap-2 mx-auto px-6 py-2.5 bg-emerald-500 hover:bg-emerald-400 disabled:opacity-60 text-white text-sm font-bold rounded-xl transition-colors"
                 >
                   {submittingRating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                   {submittingRating ? "Envoi…" : "Envoyer mon avis"}

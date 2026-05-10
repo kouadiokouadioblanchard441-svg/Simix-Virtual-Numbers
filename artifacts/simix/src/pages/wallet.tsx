@@ -414,7 +414,7 @@ function OperatorList({
               <div className="flex items-center gap-2 flex-wrap">
                 <span className={cn("text-sm font-bold", isSelected ? "text-foreground" : "text-foreground")}>{m.name}</span>
                 {m.recommended && (
-                  <span className="inline-flex items-center gap-0.5 text-[10px] bg-amber-500/15 text-amber-400 px-1.5 py-0.5 rounded-full font-semibold border border-amber-500/15 flex-shrink-0">
+                  <span className="inline-flex items-center gap-0.5 text-[10px] bg-emerald-500/15 text-emerald-400 px-1.5 py-0.5 rounded-full font-semibold border border-emerald-500/15 flex-shrink-0">
                     <Star className="w-2.5 h-2.5" /> Top
                   </span>
                 )}
@@ -429,7 +429,7 @@ function OperatorList({
                   </span>
                 )}
                 {m.feePercent > 0 && (
-                  <span className="text-[11px] text-amber-400/80 flex-shrink-0">+{m.feePercent}% frais</span>
+                  <span className="text-[11px] text-emerald-400/80 flex-shrink-0">+{m.feePercent}% frais</span>
                 )}
                 {m.feePercent === 0 && (
                   <span className="text-[11px] text-emerald-400/80 flex-shrink-0">Sans frais</span>
@@ -798,7 +798,7 @@ function DepositContent() {
           {loadingCountries ? (
             <div className="h-12 bg-card border border-card-border rounded-2xl animate-pulse" />
           ) : countries.length === 0 ? (
-            <div className="flex items-center gap-2 p-3.5 bg-amber-500/10 border border-amber-500/20 rounded-2xl text-sm text-amber-400">
+            <div className="flex items-center gap-2 p-3.5 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl text-sm text-emerald-400">
               <AlertCircle className="w-4 h-4 flex-shrink-0" />
               <span className="text-xs">Aucun pays configuré. Contactez l'administrateur.</span>
             </div>

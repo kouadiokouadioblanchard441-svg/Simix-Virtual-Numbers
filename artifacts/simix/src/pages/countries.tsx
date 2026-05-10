@@ -62,7 +62,7 @@ type RegionTab = "Populaires" | "Europe" | "Amériques" | "Asie-Pacifique" | "Mo
 const TABS: RegionTab[] = ["Populaires", "Europe", "Amériques", "Asie-Pacifique", "Moyen-Orient", "Afrique", "Tous"];
 
 const TAB_META: Record<RegionTab, { label: string; color: string }> = {
-  "Populaires":     { label: "★", color: "#F59E0B" },
+  "Populaires":     { label: "★", color: "#10B981" },
   "Europe":         { label: "EU", color: "#3B82F6" },
   "Amériques":      { label: "AM", color: "#10B981" },
   "Asie-Pacifique": { label: "AS", color: "#8B5CF6" },
@@ -207,7 +207,7 @@ function CountriesContent() {
         {!search && activeTab === "Populaires" && (
           <div className="mb-6">
             <div className="flex items-center gap-1.5 mb-3">
-              <Zap className="w-4 h-4 text-amber-500 fill-amber-500" />
+              <Zap className="w-4 h-4 text-emerald-500 fill-emerald-500" />
               <h2 className="text-sm font-bold text-foreground">Les plus demandés</h2>
             </div>
             <div className="flex gap-3 overflow-x-auto pb-3 snap-x hide-scrollbar -mx-5 px-5">
@@ -222,8 +222,8 @@ function CountriesContent() {
                       className={`min-w-[130px] max-w-[140px] bg-card border snap-start rounded-2xl p-4 flex flex-col items-center gap-1.5 hover:bg-secondary/50 transition-colors relative flex-shrink-0 ${idx === 0 ? "border-primary/50 shadow-sm shadow-primary/10" : "border-card-border"}`}
                     >
                       {idx === 0 && (
-                        <div className="absolute top-2 right-2 w-5 h-5 rounded-full bg-amber-500/20 flex items-center justify-center">
-                          <Zap className="w-3 h-3 text-amber-500 fill-amber-500" />
+                        <div className="absolute top-2 right-2 w-5 h-5 rounded-full bg-emerald-500/20 flex items-center justify-center">
+                          <Zap className="w-3 h-3 text-emerald-500 fill-emerald-500" />
                         </div>
                       )}
                       <div className="w-11 h-11 bg-secondary rounded-full flex items-center justify-center text-2xl">
@@ -289,7 +289,7 @@ function CountriesContent() {
                           <div className="flex items-center gap-2">
                             <p className="text-sm font-bold text-foreground">{country.name}</p>
                             {country.popular && (
-                              <span className="text-[9px] font-black text-amber-500 bg-amber-500/10 px-1.5 py-0.5 rounded-full uppercase tracking-wide">Populaire</span>
+                              <span className="text-[9px] font-black text-emerald-500 bg-emerald-500/10 px-1.5 py-0.5 rounded-full uppercase tracking-wide">Populaire</span>
                             )}
                           </div>
                           <p className="text-xs text-muted-foreground font-mono">

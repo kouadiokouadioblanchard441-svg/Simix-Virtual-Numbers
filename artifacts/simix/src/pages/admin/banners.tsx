@@ -54,7 +54,7 @@ const PRESET_GRADIENTS = [
   { label: "Vert", from: "#059669", to: "#064E3B" },
   { label: "Rose", from: "#DB2777", to: "#831843" },
   { label: "Indigo", from: "#4F46E5", to: "#312E81" },
-  { label: "Amber", from: "#D97706", to: "#78350F" },
+  { label: "Amber", from: "#059669", to: "#064E3B" },
   { label: "Teal", from: "#0D9488", to: "#134E4A" },
 ];
 

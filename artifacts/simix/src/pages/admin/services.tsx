@@ -88,7 +88,7 @@ function AddServiceForm({ onDone }: { onDone: () => void }) {
           <label className="text-xs text-zinc-400 mb-1 block">Marge %</label>
           <div className="flex gap-1">
             <input type="number" value={margin} onChange={e => setMargin(e.target.value)} min={0} max={500}
-              className="w-full px-3 py-2 text-sm bg-zinc-900 border border-zinc-700 rounded-lg text-white focus:outline-none focus:border-amber-500" />
+              className="w-full px-3 py-2 text-sm bg-zinc-900 border border-zinc-700 rounded-lg text-white focus:outline-none focus:border-emerald-500" />
             <span className="flex items-center text-zinc-500 text-sm">%</span>
           </div>
         </div>
@@ -213,7 +213,7 @@ function ServiceRow({ service }: { service: AdminService }) {
           <span className="text-zinc-400 text-sm">{service.providerPrice > 0 ? formatFCFA(service.providerPrice) : <span className="text-zinc-600 italic text-xs">—</span>}</span>
         </td>
         <td className="py-3 px-4">
-          <span className="text-amber-400 text-sm font-medium">+{service.margin ?? 20}%</span>
+          <span className="text-emerald-400 text-sm font-medium">+{service.margin ?? 20}%</span>
         </td>
         <td className="py-3 px-4">
           <span className="text-white text-sm font-bold">{formatFCFA(service.price)}</span>
@@ -279,7 +279,7 @@ function ServiceRow({ service }: { service: AdminService }) {
               </div>
               <div>
                 <label className="text-xs text-zinc-400 mb-1 block">Marge %</label>
-                <input type="number" value={margin} onChange={e => setMargin(e.target.value)} min={0} max={500} className="w-full px-2.5 py-2 text-sm bg-zinc-900 border border-amber-500/50 rounded-lg text-white focus:outline-none" />
+                <input type="number" value={margin} onChange={e => setMargin(e.target.value)} min={0} max={500} className="w-full px-2.5 py-2 text-sm bg-zinc-900 border border-emerald-500/50 rounded-lg text-white focus:outline-none" />
               </div>
               <div>
                 <label className="text-xs text-zinc-400 mb-1 block">Prix final (FCFA)</label>

@@ -8,7 +8,7 @@ function typeIcon(type: string) {
   switch (type) {
     case "security": return <Shield className="w-3.5 h-3.5 text-red-400" />;
     case "bonus": return <Gift className="w-3.5 h-3.5 text-green-400" />;
-    case "promotion": return <Star className="w-3.5 h-3.5 text-amber-400" />;
+    case "promotion": return <Star className="w-3.5 h-3.5 text-emerald-400" />;
     case "system": return <Zap className="w-3.5 h-3.5 text-blue-400" />;
     case "announcement": return <Megaphone className="w-3.5 h-3.5 text-purple-400" />;
     default: return <Info className="w-3.5 h-3.5 text-violet-400" />;
@@ -19,7 +19,7 @@ function typeColor(type: string) {
   switch (type) {
     case "security": return "bg-red-500/15 border-red-500/20";
     case "bonus": return "bg-green-500/15 border-green-500/20";
-    case "promotion": return "bg-amber-500/15 border-amber-500/20";
+    case "promotion": return "bg-emerald-500/15 border-emerald-500/20";
     case "system": return "bg-blue-500/15 border-blue-500/20";
     case "announcement": return "bg-purple-500/15 border-purple-500/20";
     default: return "bg-violet-500/15 border-violet-500/20";

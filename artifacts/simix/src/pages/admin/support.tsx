@@ -81,7 +81,7 @@ function StatsTab() {
     { label: "Cette semaine", value: stats.weeklyConversations, icon: TrendingUp, color: "text-violet-400", bg: "bg-violet-500/10 border-violet-500/20" },
     { label: "Aujourd'hui", value: stats.dailyConversations, icon: Activity, color: "text-cyan-400", bg: "bg-cyan-500/10 border-cyan-500/20" },
     { label: "Messages totaux", value: stats.totalMessages, icon: MessageSquare, color: "text-zinc-400", bg: "bg-zinc-500/10 border-zinc-500/20" },
-    { label: "Réponses admin", value: stats.adminMessages, icon: UserCheck, color: "text-amber-400", bg: "bg-amber-500/10 border-amber-500/20" },
+    { label: "Réponses admin", value: stats.adminMessages, icon: UserCheck, color: "text-emerald-400", bg: "bg-emerald-500/10 border-emerald-500/20" },
     { label: "Entrées base de connaissance", value: stats.knowledgeEntries, icon: BookOpen, color: "text-violet-400", bg: "bg-violet-500/10 border-violet-500/20" },
     { label: "Connaissances actives", value: stats.activeKnowledgeEntries, icon: Zap, color: "text-green-400", bg: "bg-green-500/10 border-green-500/20" },
   ] : [];

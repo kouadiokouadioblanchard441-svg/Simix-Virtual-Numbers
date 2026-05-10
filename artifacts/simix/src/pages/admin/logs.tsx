@@ -12,7 +12,7 @@ const ACTION_COLORS: Record<string, string> = {
   update_service: "bg-violet-500/20 text-violet-400",
   update_country: "bg-cyan-500/20 text-cyan-400",
   create_provider: "bg-emerald-500/20 text-emerald-400",
-  update_provider: "bg-yellow-500/20 text-yellow-400",
+  update_provider: "bg-emerald-500/20 text-emerald-400",
   delete_provider: "bg-red-500/20 text-red-400",
   update_settings: "bg-orange-500/20 text-orange-400",
   cancel_order: "bg-orange-500/20 text-orange-400",

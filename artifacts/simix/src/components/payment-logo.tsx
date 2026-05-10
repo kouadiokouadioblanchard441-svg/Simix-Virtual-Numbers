@@ -3,7 +3,7 @@ import { useState } from "react";
 /* ─── Official operator color constants ─── */
 export const OPERATOR_COLORS: Record<string, { bg: string; text: string; gradient: string }> = {
   orange_money: { bg: "#FF6600", text: "#fff", gradient: "linear-gradient(135deg,#FF8C00,#FF4500)" },
-  mtn_money:    { bg: "#FFCB00", text: "#1a1a1a", gradient: "linear-gradient(135deg,#FFE033,#FFA500)" },
+  mtn_money:    { bg: "#10B981", text: "#1a1a1a", gradient: "linear-gradient(135deg,#6EE7B7,#FFA500)" },
   wave:         { bg: "#1ABCFE", text: "#fff", gradient: "linear-gradient(135deg,#40D0FF,#007BCC)" },
   moov_money:   { bg: "#003087", text: "#fff", gradient: "linear-gradient(135deg,#004FCC,#001A66)" },
   free_money:   { bg: "#E2001A", text: "#fff", gradient: "linear-gradient(135deg,#FF1A1A,#B30000)" },
@@ -33,7 +33,7 @@ function MTNLogo({ size }: { size: number }) {
   return (
     <div
       className="flex items-center justify-center flex-shrink-0 shadow-lg"
-      style={{ width: size, height: size, borderRadius: r, background: "linear-gradient(135deg,#FFE033,#FFA500)" }}
+      style={{ width: size, height: size, borderRadius: r, background: "linear-gradient(135deg,#6EE7B7,#FFA500)" }}
     >
       <svg viewBox="0 0 100 100" width={size * 0.7} height={size * 0.7}>
         <text x="50" y="48" textAnchor="middle" fontFamily="Arial Black, sans-serif" fontWeight="900" fontSize="30" fill="#1a1a1a">MTN</text>

@@ -51,7 +51,7 @@ function DashboardContent() {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard label="Utilisateurs bloqués" value={stats?.blockedUsers ?? 0} icon={UserCheck} color="bg-red-600" />
-        <StatCard label="Alertes critiques" value={stats?.criticalEventsThisWeek ?? 0} sub="7 derniers jours" icon={AlertTriangle} color="bg-yellow-600" />
+        <StatCard label="Alertes critiques" value={stats?.criticalEventsThisWeek ?? 0} sub="7 derniers jours" icon={AlertTriangle} color="bg-emerald-600" />
         <StatCard label="Fournisseurs actifs" value={`${stats?.activeProviders ?? 0}/${stats?.totalProviders ?? 0}`} icon={Zap} color="bg-cyan-600" />
         <StatCard label="Score sécurité" value="A+" sub="Système opérationnel" icon={Shield} color="bg-violet-700" />
       </div>
@@ -64,7 +64,7 @@ function DashboardContent() {
               { href: "/admin/users", label: "Gérer les utilisateurs", icon: Users, color: "text-violet-400" },
               { href: "/admin/orders", label: "Voir les commandes", icon: ShoppingBag, color: "text-blue-400" },
               { href: "/admin/providers", label: "Fournisseurs API", icon: Zap, color: "text-cyan-400" },
-              { href: "/admin/security", label: "Sécurité & alertes", icon: Shield, color: "text-yellow-400" },
+              { href: "/admin/security", label: "Sécurité & alertes", icon: Shield, color: "text-emerald-400" },
             ].map(({ href, label, icon: Icon, color }) => (
               <a key={href} href={href} className="flex items-center gap-3 p-3 rounded-lg bg-zinc-800 hover:bg-zinc-700 transition-colors cursor-pointer">
                 <Icon className={`w-4 h-4 ${color}`} />
@@ -85,7 +85,7 @@ function DashboardContent() {
             ].map(({ label, status, ok }) => (
               <div key={label} className="flex items-center justify-between py-2 border-b border-zinc-800 last:border-0">
                 <span className="text-sm text-zinc-300">{label}</span>
-                <span className={`text-xs font-medium px-2 py-1 rounded-full ${ok ? "bg-emerald-500/20 text-emerald-400" : "bg-yellow-500/20 text-yellow-400"}`}>
+                <span className={`text-xs font-medium px-2 py-1 rounded-full ${ok ? "bg-emerald-500/20 text-emerald-400" : "bg-emerald-500/20 text-emerald-400"}`}>
                   {status}
                 </span>
               </div>

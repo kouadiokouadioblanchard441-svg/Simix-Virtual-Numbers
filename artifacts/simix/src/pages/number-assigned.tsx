@@ -266,11 +266,11 @@ function NumberAssignedContent({ id }: { id: string }) {
         </div>
 
         {number.status === 'waiting' && (
-          <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-4 flex items-start gap-3 mb-8">
-            <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
+          <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-2xl p-4 flex items-start gap-3 mb-8">
+            <AlertTriangle className="w-5 h-5 text-emerald-500 shrink-0 mt-0.5" />
             <div>
-              <h4 className="text-sm font-bold text-amber-500 mb-0.5">Important</h4>
-              <p className="text-xs text-amber-500/80 font-medium">Ne quittez pas cette page pendant l'attente du SMS.</p>
+              <h4 className="text-sm font-bold text-emerald-500 mb-0.5">Important</h4>
+              <p className="text-xs text-emerald-500/80 font-medium">Ne quittez pas cette page pendant l'attente du SMS.</p>
             </div>
           </div>
         )}

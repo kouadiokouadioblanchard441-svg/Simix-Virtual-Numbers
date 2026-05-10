@@ -7,7 +7,7 @@ import { Loader2, AlertTriangle, ShieldAlert, Info, Shield } from "lucide-react"
 
 const SEVERITY_CONFIG: Record<string, { color: string; icon: React.ElementType; label: string }> = {
   low: { color: "bg-blue-500/20 text-blue-400 border-blue-500/20", icon: Info, label: "Faible" },
-  medium: { color: "bg-yellow-500/20 text-yellow-400 border-yellow-500/20", icon: AlertTriangle, label: "Moyen" },
+  medium: { color: "bg-emerald-500/20 text-emerald-400 border-emerald-500/20", icon: AlertTriangle, label: "Moyen" },
   high: { color: "bg-orange-500/20 text-orange-400 border-orange-500/20", icon: ShieldAlert, label: "Élevé" },
   critical: { color: "bg-red-500/20 text-red-400 border-red-500/20", icon: AlertTriangle, label: "Critique" },
 };
@@ -27,7 +27,7 @@ function EventRow({ event }: { event: SecurityEvent }) {
       <td className="py-3 px-4 text-zinc-400 text-xs font-mono">{event.ip ?? "—"}</td>
       <td className="py-3 px-4">
         {event.riskScore !== undefined && (
-          <span className={`text-sm font-bold ${event.riskScore > 60 ? "text-red-400" : event.riskScore > 30 ? "text-yellow-400" : "text-emerald-400"}`}>
+          <span className={`text-sm font-bold ${event.riskScore > 60 ? "text-red-400" : event.riskScore > 30 ? "text-emerald-400" : "text-emerald-400"}`}>
             {event.riskScore}
           </span>
         )}

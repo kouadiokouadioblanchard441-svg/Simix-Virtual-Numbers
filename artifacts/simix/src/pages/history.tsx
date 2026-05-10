@@ -51,7 +51,7 @@ type UnifiedItem =
 function methodColor(name?: string): string {
   const n = (name ?? "").toLowerCase();
   if (n.includes("orange")) return "#FF6600";
-  if (n.includes("mtn") || n.includes("momo")) return "#FFCB00";
+  if (n.includes("mtn") || n.includes("momo")) return "#10B981";
   if (n.includes("wave")) return "#1ABCFE";
   if (n.includes("moov")) return "#003087";
   if (n.includes("free")) return "#E2001A";
@@ -77,7 +77,7 @@ function statusConfig(status: string) {
     case "completed": case "received":
       return { color: "#10B981", bg: "bg-emerald-500/10", text: "text-emerald-400", label: "Complété", icon: CheckCircle2 };
     case "pending":
-      return { color: "#F59E0B", bg: "bg-amber-500/10", text: "text-amber-400", label: "En attente", icon: Clock };
+      return { color: "#10B981", bg: "bg-emerald-500/10", text: "text-emerald-400", label: "En attente", icon: Clock };
     case "failed": case "cancelled":
       return { color: "#EF4444", bg: "bg-rose-500/10", text: "text-rose-400", label: status === "cancelled" ? "Annulé" : "Échoué", icon: XCircle };
     case "expired":
@@ -119,7 +119,7 @@ function FlagImg({ code, size = 18 }: { code: string; size?: number }) {
 function OperatorLogo({ name, size = 40 }: { name?: string; size?: number }) {
   const color = methodColor(name);
   const initials = methodInitials(name);
-  const isLight = ["#FFCB00"].includes(color);
+  const isLight = ["#10B981"].includes(color);
   return (
     <div
       className="flex items-center justify-center flex-shrink-0 shadow-sm font-black"
@@ -641,7 +641,7 @@ function HistoryContent() {
   const STATUS_FILTERS = [
     { id: "all" as const, label: "Tous" },
     { id: "completed" as const, label: "Complétés", color: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20" },
-    { id: "pending" as const, label: "En attente", color: "text-amber-400 bg-amber-500/10 border-amber-500/20" },
+    { id: "pending" as const, label: "En attente", color: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20" },
     { id: "failed" as const, label: "Échoués", color: "text-rose-400 bg-rose-500/10 border-rose-500/20" },
   ];
 

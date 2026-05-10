@@ -193,7 +193,7 @@ const STEPS = [
     imgSrc: I.stepPayment,
     title: "Payez via Mobile Money en FCFA",
     desc: "Rechargez votre solde avec Orange Money, MTN, Wave ou tout autre opérateur local. Aucune carte bancaire requise.",
-    color: "#F59E0B",
+    color: "#10B981",
   },
 ];
 
@@ -239,7 +239,7 @@ const TESTIMONIALS = [
     city: "Lagos, Nigeria",
     flag: "ng",
     initials: "CO",
-    color: "#F59E0B",
+    color: "#10B981",
     avatar: "/man-1.jpg",
     text: "Pour vérifier Binance et Coinbase, Simix est tout simplement parfait. Numéro livré en temps record, SMS reçu aussitôt. Prix très raisonnable en FCFA. Je l'utilise chaque semaine depuis 4 mois, jamais eu le moindre problème.",
     stars: 5,
@@ -373,7 +373,7 @@ function Section({ children, className = "", id }: { children: React.ReactNode; 
 function SectionPill({ label, color = "violet" }: { label: string; color?: "violet" | "amber" | "pink" | "emerald" | "sky" }) {
   const cls: Record<string, string> = {
     violet: "bg-violet-600/10 border-violet-600/25 text-violet-400",
-    amber:  "bg-amber-500/10  border-amber-500/25  text-amber-400",
+    amber:  "bg-emerald-500/10  border-emerald-500/25  text-emerald-400",
     pink:   "bg-pink-600/10   border-pink-600/25   text-pink-400",
     emerald:"bg-emerald-600/10 border-emerald-600/25 text-emerald-400",
     sky:    "bg-sky-600/10    border-sky-600/25    text-sky-400",
@@ -532,7 +532,7 @@ function Hero() {
               </div>
               <div className="text-xs text-zinc-400 leading-tight">
                 <span className="text-white font-semibold">5 000+</span> utilisateurs actifs en Afrique<br />
-                <span className="text-amber-400">★★★★★</span>{" "}
+                <span className="text-emerald-400">★★★★★</span>{" "}
                 <span className="text-zinc-500">Note 4.8/5</span>
               </div>
             </div>
@@ -584,7 +584,7 @@ function Hero() {
                 </div>
               </div>
               <div className="absolute left-4 top-20 z-30">
-                <div className="glass px-3 py-2 rounded-xl shadow-lg border border-amber-500/20 flex items-center gap-1.5">
+                <div className="glass px-3 py-2 rounded-xl shadow-lg border border-emerald-500/20 flex items-center gap-1.5">
                   <img src="/3d/icon-lightning.png" alt="" className="w-4 h-4 object-contain" />
                   <div>
                     <div className="text-xs text-zinc-400">Solde</div>
@@ -660,7 +660,7 @@ function HowItWorks() {
       </div>
 
       <div className="grid md:grid-cols-3 gap-6 relative">
-        <div className="hidden md:block absolute top-16 left-[22%] right-[22%] h-px bg-gradient-to-r from-violet-600/40 via-pink-600/40 to-amber-500/40" />
+        <div className="hidden md:block absolute top-16 left-[22%] right-[22%] h-px bg-gradient-to-r from-violet-600/40 via-pink-600/40 to-emerald-500/40" />
         {STEPS.map((step, i) => (
           <motion.div
             key={i}
@@ -700,7 +700,7 @@ function PaymentOperators() {
     <div id="operateurs" className="py-14 bg-gradient-to-b from-transparent via-zinc-950/50 to-transparent">
       <Section>
         <div className="text-center mb-10">
-          <SectionPill label="Mobile Money" color="amber" />
+          <SectionPill label="Mobile Money" color="emerald" />
           <h2 className="text-3xl sm:text-4xl font-extrabold text-white mb-3">Payez avec votre opérateur local</h2>
           <p className="text-zinc-400 text-base max-w-2xl mx-auto">
             Tous les grands opérateurs Mobile Money d'Afrique acceptés. Aucune carte bancaire, aucune devise étrangère requise.
@@ -804,10 +804,10 @@ function AfricaVision() {
         <div className="absolute inset-0 bg-gradient-to-r from-black/95 via-black/85 to-black/60" />
         <div className="relative z-10 p-7 sm:p-10 lg:p-14 grid lg:grid-cols-2 gap-8 items-center">
           <div>
-            <SectionPill label="Notre vision pour l'Afrique" color="amber" />
+            <SectionPill label="Notre vision pour l'Afrique" color="emerald" />
             <h2 className="text-3xl sm:text-4xl font-extrabold text-white mb-4 leading-tight">
               L'inclusion numérique,{" "}
-              <span className="bg-gradient-to-r from-amber-400 to-orange-400 bg-clip-text text-transparent">
+              <span className="bg-gradient-to-r from-emerald-400 to-orange-400 bg-clip-text text-transparent">
                 accessible à tous les Africains
               </span>
             </h2>
@@ -821,7 +821,7 @@ function AfricaVision() {
             </p>
             <div className="grid grid-cols-2 gap-3">
               <AfricaStat target={54} suffix="" label="Nations africaines couvertes" color="text-violet-400" />
-              <AfricaStat target={11} suffix="+" label="Opérateurs Mobile Money" color="text-amber-400" />
+              <AfricaStat target={11} suffix="+" label="Opérateurs Mobile Money" color="text-emerald-400" />
               <div className="glass p-4 rounded-xl">
                 <div className="text-2xl font-extrabold mb-1 text-emerald-400">Gratuit</div>
                 <div className="text-xs text-zinc-400 leading-tight">Création de compte sans frais</div>
@@ -998,7 +998,7 @@ function Testimonials() {
         </p>
         {/* Overall rating bar */}
         <div className="inline-flex items-center gap-3 mt-5 px-5 py-2.5 rounded-full bg-zinc-900/80 border border-zinc-800/60">
-          <div className="flex text-amber-400 text-sm gap-0.5">{"★".repeat(5)}</div>
+          <div className="flex text-emerald-400 text-sm gap-0.5">{"★".repeat(5)}</div>
           <span className="text-white font-bold text-sm">4.9/5</span>
           <span className="text-zinc-500 text-xs">sur 1 247 avis</span>
         </div>
@@ -1021,7 +1021,7 @@ function Testimonials() {
             <div className="flex flex-col gap-4 p-6 flex-1">
               {/* Header: stars + service badge + date */}
               <div className="flex items-start justify-between gap-2">
-                <div className="flex text-amber-400 text-base gap-0.5 leading-none">
+                <div className="flex text-emerald-400 text-base gap-0.5 leading-none">
                   {"★".repeat(t.stars)}
                 </div>
                 <span
@@ -1152,7 +1152,7 @@ function FinalCTA() {
           </div>
           <h2 className="text-3xl sm:text-5xl font-extrabold text-white mb-4 leading-tight">
             Votre numéro virtuel,<br />
-            <span className="bg-gradient-to-r from-violet-400 via-pink-400 to-amber-400 bg-clip-text text-transparent">
+            <span className="bg-gradient-to-r from-violet-400 via-pink-400 to-emerald-400 bg-clip-text text-transparent">
               prêt en quelques secondes
             </span>
           </h2>

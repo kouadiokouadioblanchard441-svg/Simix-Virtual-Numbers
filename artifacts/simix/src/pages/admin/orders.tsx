@@ -8,7 +8,7 @@ import { Loader2, XCircle, ChevronLeft, ChevronRight } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 const STATUS_COLORS: Record<string, string> = {
-  waiting: "bg-yellow-500/20 text-yellow-400",
+  waiting: "bg-emerald-500/20 text-emerald-400",
   received: "bg-emerald-500/20 text-emerald-400",
   expired: "bg-zinc-700 text-zinc-400",
   cancelled: "bg-red-500/20 text-red-400",

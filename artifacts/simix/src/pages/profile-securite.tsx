@@ -74,11 +74,11 @@ function SecuriteContent() {
             </div>
             <div>
               <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Score de sécurité</p>
-              <p className="text-lg font-black text-foreground">Bon <span className="text-amber-400">72/100</span></p>
+              <p className="text-lg font-black text-foreground">Bon <span className="text-emerald-400">72/100</span></p>
             </div>
           </div>
           <div className="w-full bg-secondary rounded-full h-2">
-            <div className="h-2 rounded-full bg-gradient-to-r from-amber-500 to-amber-400 transition-all" style={{ width: "72%" }} />
+            <div className="h-2 rounded-full bg-gradient-to-r from-emerald-500 to-emerald-400 transition-all" style={{ width: "72%" }} />
           </div>
           <p className="text-xs text-muted-foreground mt-2">Activez la 2FA pour atteindre 100/100.</p>
         </div>
@@ -209,9 +209,9 @@ function SecuriteContent() {
         </div>
 
         {/* Warning */}
-        <div className="flex items-start gap-3 p-4 bg-amber-500/10 border border-amber-500/20 rounded-2xl">
-          <AlertTriangle className="w-4 h-4 text-amber-400 mt-0.5 flex-shrink-0" />
-          <p className="text-xs text-amber-400/90 leading-relaxed">
+        <div className="flex items-start gap-3 p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl">
+          <AlertTriangle className="w-4 h-4 text-emerald-400 mt-0.5 flex-shrink-0" />
+          <p className="text-xs text-emerald-400/90 leading-relaxed">
             Si vous pensez que votre compte a été compromis, changez immédiatement votre mot de passe et déconnectez toutes les autres sessions.
           </p>
         </div>

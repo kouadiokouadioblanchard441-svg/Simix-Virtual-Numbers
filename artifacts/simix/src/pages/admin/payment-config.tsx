@@ -146,7 +146,7 @@ function MethodRow({ method, onSaved, onDeleted }: { method: AdminPaymentMethod;
           <div className="text-zinc-500 text-xs font-mono">{method.slug}</div>
         </div>
         {method.recommended && !editing && (
-          <span className="text-xs bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded-full flex items-center gap-1 font-medium">
+          <span className="text-xs bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-full flex items-center gap-1 font-medium">
             <Star className="w-2.5 h-2.5" />Recommandé
           </span>
         )}
@@ -215,7 +215,7 @@ function MethodRow({ method, onSaved, onDeleted }: { method: AdminPaymentMethod;
           <div className="flex items-center gap-3">
             <button
               onClick={() => setRecommended(r => !r)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg border transition-colors ${recommended ? "bg-amber-500/20 border-amber-500/40 text-amber-400" : "bg-zinc-900 border-zinc-700 text-zinc-500"}`}
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg border transition-colors ${recommended ? "bg-emerald-500/20 border-emerald-500/40 text-emerald-400" : "bg-zinc-900 border-zinc-700 text-zinc-500"}`}
             >
               <Star className="w-3.5 h-3.5" />{recommended ? "Recommandé" : "Marquer recommandé"}
             </button>
