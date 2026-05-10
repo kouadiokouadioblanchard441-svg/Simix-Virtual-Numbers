@@ -17,3 +17,4 @@ export * from "./admin_security";
 export * from "./footer";
 export * from "./notifications";
 export * from "./email_campaigns";
+export * from "./banners";

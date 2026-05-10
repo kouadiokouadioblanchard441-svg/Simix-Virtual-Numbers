@@ -50,6 +50,7 @@ import AdminSupport from "@/pages/admin/support";
 import AdminNotifications from "@/pages/admin/notifications";
 import AdminEmails from "@/pages/admin/emails";
 import AdminFooter from "@/pages/admin/footer";
+import AdminBanners from "@/pages/admin/banners";
 
 // Admin secure access pages (no guard — self-contained auth)
 import Console from "@/pages/admin/console";
@@ -81,6 +82,7 @@ function AdminRoutes() {
         <Route path="/admin/support" component={AdminSupport} />
         <Route path="/admin/notifications" component={AdminNotifications} />
         <Route path="/admin/emails" component={AdminEmails} />
+        <Route path="/admin/banners" component={AdminBanners} />
         <Route path="/admin/footer" component={AdminFooter} />
         <Route path="/admin/settings" component={AdminSettings} />
       </Switch>

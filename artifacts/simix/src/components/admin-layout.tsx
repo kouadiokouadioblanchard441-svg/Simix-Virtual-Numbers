@@ -21,6 +21,7 @@ import {
   MessageSquare,
   Bell,
   Mail,
+  Image,
 } from "lucide-react";
 import { SimixLogo } from "@/components/simix-logo";
 import { cn } from "@/lib/utils";
@@ -37,6 +38,7 @@ const NAV_ITEMS = [
   { href: "/admin/support", label: "Support IA", icon: MessageSquare },
   { href: "/admin/notifications", label: "Notifications", icon: Bell },
   { href: "/admin/emails", label: "Campagnes Email", icon: Mail },
+  { href: "/admin/banners", label: "Bannières", icon: Image },
   { href: "/admin/footer", label: "Footer & Vitrine", icon: Globe },
   { href: "/admin/security", label: "Sécurité", icon: Shield },
   { href: "/admin/logs", label: "Journaux", icon: FileText },

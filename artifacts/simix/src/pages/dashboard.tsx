@@ -10,7 +10,7 @@ import {
   useGetMe,
 } from "@workspace/api-client-react";
 import { formatFCFA } from "@/lib/format";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   Plus,
   ChevronRight,
@@ -24,10 +24,248 @@ import {
   Zap,
 } from "lucide-react";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { SimixLogo } from "@/components/simix-logo";
 import phoneChat3d from "@/assets/simix_phone_chat_3d.png";
 import { ServiceIcon } from "@/components/service-icon";
+import { useQuery } from "@tanstack/react-query";
+import { useState, useEffect, useRef, useCallback } from "react";
+
+const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
+
+/* ─── Banner type ─── */
+interface Banner {
+  id: string;
+  title: string;
+  subtitle: string | null;
+  imageData: string | null;
+  imageUrl: string | null;
+  linkUrl: string | null;
+  linkLabel: string | null;
+  bgFrom: string;
+  bgTo: string;
+  textColor: string;
+  isActive: boolean;
+  sortOrder: number;
+}
+
+/* ─── Fetch banners (public — no auth needed) ─── */
+async function fetchBanners(): Promise<Banner[]> {
+  const res = await fetch(`${BASE}/api/banners`, { credentials: "include" });
+  if (!res.ok) return [];
+  return res.json();
+}
+
+/* ─── Default Hero Card — shown when no banners are configured ─── */
+function DefaultHeroCard() {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.05 }}
+      className="relative mx-5 bg-gradient-to-br from-violet-600 via-violet-700 to-violet-900 rounded-3xl p-5 mb-5 overflow-hidden shadow-xl shadow-violet-900/30"
+    >
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_rgba(255,255,255,0.18),_transparent_60%)]" />
+      <div className="absolute -top-10 -right-10 w-40 h-40 rounded-full bg-violet-400/20 blur-3xl" />
+
+      <div className="relative z-10 flex items-stretch">
+        <div className="flex-1 pr-2">
+          <div className="inline-flex items-center gap-1.5 bg-white/15 backdrop-blur px-2.5 py-1 rounded-full text-[10px] font-semibold text-white mb-3 border border-white/20">
+            <Zap className="w-3 h-3" /> Livraison instantanée
+          </div>
+          <h2 className="text-[22px] font-extrabold text-white leading-[1.15] mb-2 tracking-tight">
+            Votre numéro virtuel<br />en quelques secondes
+          </h2>
+          <p className="text-[12px] text-violet-100/80 mb-4 leading-relaxed max-w-[200px]">
+            Recevez vos SMS de vérification en toute sécurité.
+          </p>
+          <Link
+            href="/services"
+            className="inline-flex h-9 items-center justify-center bg-white text-violet-900 px-4 rounded-full text-[13px] font-bold shadow-lg hover:bg-violet-50 transition-colors"
+          >
+            Acheter un numéro <ArrowRight className="w-4 h-4 ml-1.5" />
+          </Link>
+        </div>
+        <div className="absolute -right-4 -bottom-2 w-36 h-36">
+          <img src={phoneChat3d} alt="Phone 3D" className="w-full h-full object-contain drop-shadow-2xl" />
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
+/* ─── Banner Slide ─── */
+function BannerSlide({ banner }: { banner: Banner }) {
+  const img = banner.imageData || banner.imageUrl;
+  const [, navigate] = useLocation();
+
+  const content = (
+    <div
+      className="relative w-full rounded-3xl overflow-hidden shadow-xl"
+      style={{ background: `linear-gradient(135deg, ${banner.bgFrom}, ${banner.bgTo})` }}
+    >
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_rgba(255,255,255,0.18),_transparent_60%)]" />
+      <div className="absolute -top-10 -right-10 w-40 h-40 rounded-full opacity-20 blur-3xl"
+        style={{ background: banner.bgFrom }} />
+
+      <div className="relative z-10 flex items-stretch p-5 min-h-[160px]">
+        <div className="flex-1 pr-2 flex flex-col justify-center">
+          <h2
+            className="text-[22px] font-extrabold leading-[1.15] mb-2 tracking-tight"
+            style={{ color: banner.textColor }}
+          >
+            {banner.title}
+          </h2>
+          {banner.subtitle && (
+            <p
+              className="text-[12px] mb-3 leading-relaxed max-w-[200px] opacity-85"
+              style={{ color: banner.textColor }}
+            >
+              {banner.subtitle}
+            </p>
+          )}
+          {banner.linkLabel && (
+            <div
+              className="inline-flex h-9 items-center justify-center bg-white/20 backdrop-blur-sm border border-white/30 px-4 rounded-full text-[13px] font-bold w-fit"
+              style={{ color: banner.textColor }}
+            >
+              {banner.linkLabel} <ArrowRight className="w-4 h-4 ml-1.5" />
+            </div>
+          )}
+        </div>
+        {img && (
+          <div className="absolute -right-4 -bottom-0 w-36 h-36 flex-shrink-0">
+            <img src={img} alt={banner.title} className="w-full h-full object-contain drop-shadow-2xl" />
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
+  if (banner.linkUrl) {
+    const isExternal = banner.linkUrl.startsWith("http");
+    if (isExternal) {
+      return (
+        <a href={banner.linkUrl} target="_blank" rel="noopener noreferrer" className="block">
+          {content}
+        </a>
+      );
+    }
+    return (
+      <button className="block w-full text-left" onClick={() => navigate(banner.linkUrl!)}>
+        {content}
+      </button>
+    );
+  }
+
+  return content;
+}
+
+/* ─── Banner Carousel ─── */
+function BannerCarousel({ banners }: { banners: Banner[] }) {
+  const [current, setCurrent] = useState(0);
+  const [paused, setPaused] = useState(false);
+  const touchStartX = useRef<number | null>(null);
+  const touchStartY = useRef<number | null>(null);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const total = banners.length;
+
+  const goNext = useCallback(() => {
+    setCurrent(c => (c + 1) % total);
+  }, [total]);
+
+  const goPrev = useCallback(() => {
+    setCurrent(c => (c - 1 + total) % total);
+  }, [total]);
+
+  /* Auto-advance every 4.5 seconds */
+  useEffect(() => {
+    if (paused || total <= 1) return;
+    intervalRef.current = setInterval(goNext, 4500);
+    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
+  }, [goNext, paused, total]);
+
+  /* Touch swipe support */
+  function onTouchStart(e: React.TouchEvent) {
+    touchStartX.current = e.touches[0]!.clientX;
+    touchStartY.current = e.touches[0]!.clientY;
+    setPaused(true);
+  }
+
+  function onTouchEnd(e: React.TouchEvent) {
+    if (touchStartX.current === null || touchStartY.current === null) return;
+    const dx = e.changedTouches[0]!.clientX - touchStartX.current;
+    const dy = Math.abs(e.changedTouches[0]!.clientY - touchStartY.current);
+    if (Math.abs(dx) > 40 && dy < 60) {
+      dx < 0 ? goNext() : goPrev();
+    }
+    touchStartX.current = null;
+    touchStartY.current = null;
+    setTimeout(() => setPaused(false), 3000);
+  }
+
+  if (total === 1) {
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.05 }}
+        className="mx-5 mb-5"
+      >
+        <BannerSlide banner={banners[0]!} />
+      </motion.div>
+    );
+  }
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.05 }}
+      className="mx-5 mb-5"
+    >
+      <div
+        className="relative overflow-hidden"
+        onTouchStart={onTouchStart}
+        onTouchEnd={onTouchEnd}
+        onMouseEnter={() => setPaused(true)}
+        onMouseLeave={() => setPaused(false)}
+      >
+        <AnimatePresence mode="wait" initial={false}>
+          <motion.div
+            key={current}
+            initial={{ opacity: 0, x: 40 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -40 }}
+            transition={{ type: "spring", damping: 30, stiffness: 300 }}
+          >
+            <BannerSlide banner={banners[current]!} />
+          </motion.div>
+        </AnimatePresence>
+      </div>
+
+      {/* Dots indicator */}
+      <div className="flex items-center justify-center gap-1.5 mt-3">
+        {banners.map((_, i) => (
+          <button
+            key={i}
+            onClick={() => { setCurrent(i); setPaused(true); setTimeout(() => setPaused(false), 4000); }}
+            className="transition-all"
+            style={{
+              width: i === current ? 20 : 6,
+              height: 6,
+              borderRadius: 999,
+              background: i === current
+                ? banners[current]!.bgFrom
+                : "rgba(255,255,255,0.2)",
+            }}
+          />
+        ))}
+      </div>
+    </motion.div>
+  );
+}
 
 export default function Dashboard() {
   return (
@@ -49,6 +287,11 @@ function DashboardContent() {
   });
   const { data: popularCountries, isLoading: loadingCountries } = useListPopularCountries({
     query: { queryKey: getListPopularCountriesQueryKey() },
+  });
+  const { data: banners = [] } = useQuery({
+    queryKey: ["banners"],
+    queryFn: fetchBanners,
+    staleTime: 60_000,
   });
 
   const firstName = (me?.fullName || me?.username || me?.phone || "").split(" ")[0] || "Bienvenue";
@@ -87,39 +330,14 @@ function DashboardContent() {
         </div>
       </div>
 
-      {/* Hero Card */}
-      <motion.div
-        initial={{ opacity: 0, y: 16 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.05 }}
-        className="relative z-10 mx-5 bg-gradient-to-br from-violet-600 via-violet-700 to-violet-900 rounded-3xl p-5 mb-5 overflow-hidden shadow-xl shadow-violet-900/30"
-      >
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_rgba(255,255,255,0.18),_transparent_60%)]" />
-        <div className="absolute -top-10 -right-10 w-40 h-40 rounded-full bg-violet-400/20 blur-3xl" />
-
-        <div className="relative z-10 flex items-stretch">
-          <div className="flex-1 pr-2">
-            <div className="inline-flex items-center gap-1.5 bg-white/15 backdrop-blur px-2.5 py-1 rounded-full text-[10px] font-semibold text-white mb-3 border border-white/20">
-              <Zap className="w-3 h-3" /> Livraison instantanée
-            </div>
-            <h2 className="text-[22px] font-extrabold text-white leading-[1.15] mb-2 tracking-tight">
-              Votre numéro virtuel<br />en quelques secondes
-            </h2>
-            <p className="text-[12px] text-violet-100/80 mb-4 leading-relaxed max-w-[200px]">
-              Recevez vos SMS de vérification en toute sécurité.
-            </p>
-            <Link
-              href="/services"
-              className="inline-flex h-9 items-center justify-center bg-white text-violet-900 px-4 rounded-full text-[13px] font-bold shadow-lg hover:bg-violet-50 transition-colors"
-            >
-              Acheter un numéro <ArrowRight className="w-4 h-4 ml-1.5" />
-            </Link>
-          </div>
-          <div className="absolute -right-4 -bottom-2 w-36 h-36">
-            <img src={phoneChat3d} alt="Phone 3D" className="w-full h-full object-contain drop-shadow-2xl" />
-          </div>
-        </div>
-      </motion.div>
+      {/* ── Hero Banner (carousel or default) ── */}
+      <div className="relative z-10">
+        {banners.length > 0 ? (
+          <BannerCarousel banners={banners} />
+        ) : (
+          <DefaultHeroCard />
+        )}
+      </div>
 
       {/* Balance + Quick Actions */}
       <motion.div
@@ -164,7 +382,7 @@ function DashboardContent() {
         </div>
       </motion.div>
 
-      {/* Trust Stats — using 3D PNG icons */}
+      {/* Trust Stats */}
       <motion.div
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
