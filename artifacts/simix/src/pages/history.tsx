@@ -14,8 +14,8 @@ import { useState, useMemo, useRef } from "react";
 import { cn } from "@/lib/utils";
 import {
   ArrowUpCircle, ShoppingBag, Search, X, CheckCircle2, XCircle, Clock,
-  Copy, ChevronRight, Download, ArrowLeft, Filter, TrendingDown,
-  Smartphone, Globe, Hash, Calendar, CreditCard, Shield, Zap,
+  Copy, ChevronRight, Shield,
+  Globe,
 } from "lucide-react";
 
 /* ─── Types ─── */
@@ -240,24 +240,56 @@ function PurchaseCard({ num, onClick }: { num: NumberItem; onClick: () => void }
   );
 }
 
-/* ─── Row for detail sheet ─── */
-function DetailRow({ icon: Icon, label, value, mono, subtle }: {
-  icon: React.ElementType;
+/* ─── Receipt row ─── */
+function ReceiptRow({ label, value, valueClass, copyValue, onCopy, copied }: {
   label: string;
-  value: string;
-  mono?: boolean;
-  subtle?: boolean;
+  value: React.ReactNode;
+  valueClass?: string;
+  copyValue?: string;
+  onCopy?: () => void;
+  copied?: boolean;
 }) {
   return (
-    <div className="flex items-start gap-3 py-2.5">
-      <div className="w-7 h-7 rounded-lg bg-secondary/60 flex items-center justify-center flex-shrink-0 mt-0.5">
-        <Icon className="w-3.5 h-3.5 text-muted-foreground" />
-      </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">{label}</p>
-        <p className={cn("text-sm font-semibold text-foreground mt-0.5 break-all", mono && "font-mono", subtle && "text-muted-foreground")}>{value}</p>
+    <div className="flex items-center justify-between py-3 border-b border-white/5 last:border-0">
+      <span className="text-sm text-zinc-400">{label}</span>
+      <div className="flex items-center gap-1.5 max-w-[60%]">
+        <span className={cn("text-sm font-bold text-right", valueClass ?? "text-white")}>{value}</span>
+        {copyValue && onCopy && (
+          <button
+            onClick={onCopy}
+            className="text-zinc-400 hover:text-white transition-colors flex-shrink-0"
+          >
+            {copied ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+          </button>
+        )}
       </div>
     </div>
+  );
+}
+
+/* ─── Shared Receipt Modal wrapper ─── */
+function ReceiptModal({ onClose, children }: { onClose: () => void; children: React.ReactNode }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 flex items-center justify-center px-4"
+      style={{ background: "rgba(0,0,0,0.80)" }}
+      onClick={onClose}
+    >
+      <motion.div
+        initial={{ scale: 0.93, opacity: 0, y: 20 }}
+        animate={{ scale: 1, opacity: 1, y: 0 }}
+        exit={{ scale: 0.93, opacity: 0, y: 20 }}
+        transition={{ type: "spring", damping: 26, stiffness: 300 }}
+        className="w-full max-w-sm rounded-3xl overflow-hidden flex flex-col"
+        style={{ maxHeight: "88vh", background: "#1a1a2e" }}
+        onClick={e => e.stopPropagation()}
+      >
+        {children}
+      </motion.div>
+    </motion.div>
   );
 }
 
@@ -265,122 +297,82 @@ function DetailRow({ icon: Icon, label, value, mono, subtle }: {
 function DepositDetailSheet({ tx, onClose }: { tx: TxItem; onClose: () => void }) {
   const [copied, setCopied] = useState("");
   const st = statusConfig(tx.status);
-  const Icon = st.icon;
   const phone = tx.phoneNumber ?? tx.description?.match(/—\s*(\+[\d\s]+)$/)?.[1]?.trim();
   const dateObj = new Date(tx.createdAt);
-  const color = methodColor(tx.method);
-  const isLight = ["#FFCB00"].includes(color);
+  const refId = (tx.externalDepositId ?? tx.id).slice(-8).toUpperCase();
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center px-0 sm:px-4"
-      style={{ background: "rgba(0,0,0,0.85)" }}
-      onClick={onClose}
-    >
-      <motion.div
-        initial={{ y: "100%", opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        exit={{ y: "100%", opacity: 0 }}
-        transition={{ type: "spring", damping: 28, stiffness: 280 }}
-        className="w-full max-w-md bg-background rounded-t-3xl sm:rounded-3xl overflow-hidden flex flex-col"
-        style={{ maxHeight: "92vh" }}
-        onClick={e => e.stopPropagation()}
+    <ReceiptModal onClose={onClose}>
+      {/* Gradient header */}
+      <div
+        className="flex items-center justify-between px-5 py-4 flex-shrink-0"
+        style={{ background: "linear-gradient(135deg, #e53e3e 0%, #dd6b20 100%)" }}
       >
-        {/* Drag handle */}
-        <div className="flex justify-center pt-3 pb-1 flex-shrink-0">
-          <div className="w-10 h-1 bg-muted-foreground/20 rounded-full" />
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-xl bg-white/20 flex items-center justify-center">
+            <ArrowUpCircle className="w-4 h-4 text-white" />
+          </div>
+          <span className="text-white font-bold text-base">Reçu de transaction</span>
+        </div>
+        <button onClick={onClose} className="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center">
+          <X className="w-3.5 h-3.5 text-white" />
+        </button>
+      </div>
+
+      {/* Scrollable body */}
+      <div className="flex-1 overflow-y-auto">
+        {/* Amount */}
+        <div className="text-center py-5 px-6">
+          <p className="text-3xl font-black text-emerald-400">+{formatFCFA(tx.amount)}</p>
+          <p className="text-sm text-zinc-400 mt-1">{tx.description ?? `Recharge via ${tx.method ?? "Mobile Money"}`}</p>
         </div>
 
-        {/* Scrollable content */}
-        <div className="flex-1 overflow-y-auto">
-          {/* Amount header */}
-          <div className="px-6 pt-4 pb-5 text-center">
-            <div
-              className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg"
-              style={{ background: `linear-gradient(135deg, ${color}, ${color}bb)` }}
-            >
-              <ArrowUpCircle className="w-8 h-8" style={{ color: isLight ? "#111" : "#fff" }} />
-            </div>
-            <p className="text-3xl font-black text-emerald-400">+{formatFCFA(tx.amount)}</p>
-            <p className="text-sm text-muted-foreground mt-1">Recharge Mobile Money</p>
-            <div className={cn("inline-flex items-center gap-1.5 mt-3 px-3 py-1.5 rounded-full text-sm font-semibold", st.bg, st.text)}>
-              <Icon className="w-4 h-4" />
-              {st.label}
-            </div>
-          </div>
-
-          {/* Perforated divider */}
-          <div className="px-6 mb-1">
-            <div className="flex items-center gap-1">
-              {Array.from({ length: 32 }).map((_, i) => (
-                <div key={i} className="flex-1 h-[2px] rounded-full bg-card-border/40" />
-              ))}
-            </div>
-          </div>
-          <div className="flex justify-between px-4 -mt-3">
-            <div className="w-6 h-6 rounded-full bg-background border-2 border-card-border/30 -ml-4" />
-            <div className="w-6 h-6 rounded-full bg-background border-2 border-card-border/30 -mr-4" />
-          </div>
-
-          {/* Details */}
-          <div className="px-6 pt-2 pb-4 divide-y divide-card-border/30">
-            <DetailRow icon={CreditCard} label="Opérateur" value={tx.method ?? "Mobile Money"} />
-            <DetailRow icon={Calendar} label="Date" value={format(dateObj, "EEEE d MMMM yyyy", { locale: fr })} />
-            <DetailRow icon={Clock} label="Heure" value={format(dateObj, "HH:mm:ss")} />
-            {phone && <DetailRow icon={Smartphone} label="Numéro de téléphone" value={phone} mono />}
-            {tx.externalDepositId && (
-              <DetailRow icon={Hash} label="ID de dépôt" value={tx.externalDepositId} mono />
-            )}
-            <DetailRow icon={Hash} label="Référence interne" value={tx.id.slice(0, 16).toUpperCase()} mono />
-            <DetailRow icon={Shield} label="Sécurité" value="Transaction chiffrée SSL 256-bit" subtle />
-            <DetailRow icon={Zap} label="Traitement" value="Instantané · Simix Payments" subtle />
-          </div>
-
-          {/* Actions */}
-          <div className="px-6 pb-4 space-y-2">
-            <div className="grid grid-cols-2 gap-2">
-              {tx.externalDepositId && (
-                <button
-                  onClick={() => copyToClipboard(tx.externalDepositId!, "id", setCopied)}
-                  className={cn(
-                    "flex items-center justify-center gap-2 h-10 rounded-xl text-sm font-semibold border transition-all",
-                    copied === "id"
-                      ? "bg-emerald-500/15 border-emerald-500/30 text-emerald-400"
-                      : "bg-card border-card-border text-foreground hover:bg-secondary"
-                  )}
-                >
-                  {copied === "id" ? <CheckCircle2 className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                  {copied === "id" ? "Copié !" : "Copier ID"}
-                </button>
-              )}
-              {phone && (
-                <button
-                  onClick={() => copyToClipboard(phone, "phone", setCopied)}
-                  className={cn(
-                    "flex items-center justify-center gap-2 h-10 rounded-xl text-sm font-semibold border transition-all",
-                    copied === "phone"
-                      ? "bg-emerald-500/15 border-emerald-500/30 text-emerald-400"
-                      : "bg-card border-card-border text-foreground hover:bg-secondary"
-                  )}
-                >
-                  {copied === "phone" ? <CheckCircle2 className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                  {copied === "phone" ? "Copié !" : "Copier N°"}
-                </button>
-              )}
-            </div>
-            <button
-              onClick={onClose}
-              className="w-full h-11 rounded-2xl bg-secondary/60 border border-card-border text-foreground font-semibold text-sm hover:bg-secondary transition-colors"
-            >
-              Fermer
-            </button>
-          </div>
+        {/* Detail rows */}
+        <div className="px-5 pb-2">
+          <ReceiptRow
+            label="N° de commande"
+            value={refId}
+            valueClass="font-mono text-white"
+            copyValue={tx.externalDepositId ?? tx.id}
+            onCopy={() => { copyToClipboard(tx.externalDepositId ?? tx.id, "ref", setCopied); }}
+            copied={copied === "ref"}
+          />
+          <ReceiptRow label="Type" value="Recharge" />
+          <ReceiptRow label="Montant" value={formatFCFA(tx.amount)} />
+          <ReceiptRow label="Réseau" value={tx.method ?? "Mobile Money"} />
+          {phone && (
+            <ReceiptRow
+              label="Téléphone"
+              value={phone}
+              valueClass="font-mono text-white"
+              copyValue={phone}
+              onCopy={() => copyToClipboard(phone, "phone", setCopied)}
+              copied={copied === "phone"}
+            />
+          )}
+          <ReceiptRow
+            label="Statut"
+            value={st.label}
+            valueClass={cn("font-bold", st.text)}
+          />
+          <ReceiptRow
+            label="Date"
+            value={format(dateObj, "dd/MM/yyyy 'à' HH:mm:ss")}
+          />
         </div>
-      </motion.div>
-    </motion.div>
+      </div>
+
+      {/* Footer button */}
+      <div className="px-5 py-4 flex-shrink-0">
+        <button
+          onClick={onClose}
+          className="w-full h-12 rounded-2xl text-white font-bold text-base active:opacity-80 transition-opacity"
+          style={{ background: "linear-gradient(135deg, #e53e3e 0%, #dd6b20 100%)" }}
+        >
+          Fermer
+        </button>
+      </div>
+    </ReceiptModal>
   );
 }
 
@@ -388,143 +380,115 @@ function DepositDetailSheet({ tx, onClose }: { tx: TxItem; onClose: () => void }
 function PurchaseDetailSheet({ num, onClose }: { num: NumberItem; onClose: () => void }) {
   const [copied, setCopied] = useState("");
   const st = statusConfig(num.status);
-  const Icon = st.icon;
   const dateObj = new Date(num.createdAt);
-  const color = num.service.color ?? "#7C3AED";
+  const refId = num.id.slice(-8).toUpperCase();
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center px-0 sm:px-4"
-      style={{ background: "rgba(0,0,0,0.85)" }}
-      onClick={onClose}
-    >
-      <motion.div
-        initial={{ y: "100%", opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        exit={{ y: "100%", opacity: 0 }}
-        transition={{ type: "spring", damping: 28, stiffness: 280 }}
-        className="w-full max-w-md bg-background rounded-t-3xl sm:rounded-3xl overflow-hidden flex flex-col"
-        style={{ maxHeight: "92vh" }}
-        onClick={e => e.stopPropagation()}
+    <ReceiptModal onClose={onClose}>
+      {/* Gradient header */}
+      <div
+        className="flex items-center justify-between px-5 py-4 flex-shrink-0"
+        style={{ background: "linear-gradient(135deg, #e53e3e 0%, #dd6b20 100%)" }}
       >
-        <div className="flex justify-center pt-3 pb-1 flex-shrink-0">
-          <div className="w-10 h-1 bg-muted-foreground/20 rounded-full" />
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-xl bg-white/20 flex items-center justify-center">
+            <ShoppingBag className="w-4 h-4 text-white" />
+          </div>
+          <span className="text-white font-bold text-base">Reçu de transaction</span>
+        </div>
+        <button onClick={onClose} className="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center">
+          <X className="w-3.5 h-3.5 text-white" />
+        </button>
+      </div>
+
+      {/* Scrollable body */}
+      <div className="flex-1 overflow-y-auto">
+        {/* Amount */}
+        <div className="text-center py-5 px-6">
+          <p className="text-3xl font-black text-rose-400">-{formatFCFA(num.price)}</p>
+          <p className="text-sm text-zinc-400 mt-1">Achat numéro {num.service.name}</p>
         </div>
 
-        <div className="flex-1 overflow-y-auto">
-          {/* Header */}
-          <div className="px-6 pt-4 pb-5 text-center">
-            <div className="flex justify-center mb-4">
-              <ServiceIcon name={num.service.name} slug={num.service.slug} size={64} rounded="2xl" />
-            </div>
-            <p className="text-3xl font-black text-rose-400">-{formatFCFA(num.price)}</p>
-            <p className="text-base font-bold text-foreground mt-1">{num.service.name}</p>
-            <div className={cn("inline-flex items-center gap-1.5 mt-2 px-3 py-1.5 rounded-full text-sm font-semibold", st.bg, st.text)}>
-              <Icon className="w-4 h-4" />
-              {st.label}
+        {/* Detail rows */}
+        <div className="px-5 pb-2">
+          <ReceiptRow
+            label="N° de commande"
+            value={refId}
+            valueClass="font-mono text-white"
+            copyValue={num.id}
+            onCopy={() => copyToClipboard(num.id, "ref", setCopied)}
+            copied={copied === "ref"}
+          />
+          <ReceiptRow label="Type" value="Achat" />
+          <ReceiptRow label="Montant demandé" value={formatFCFA(num.price)} />
+          <ReceiptRow label="Service" value={num.service.name} />
+          <ReceiptRow
+            label="Numéro virtuel"
+            value={num.phoneNumber}
+            valueClass="font-mono text-white"
+            copyValue={num.phoneNumber}
+            onCopy={() => copyToClipboard(num.phoneNumber, "phone", setCopied)}
+            copied={copied === "phone"}
+          />
+          <div className="flex items-center justify-between py-3 border-b border-white/5">
+            <span className="text-sm text-zinc-400">Pays</span>
+            <div className="flex items-center gap-2">
+              <FlagImg code={num.country.code} size={14} />
+              <span className="text-sm font-bold text-white">{num.country.name}</span>
             </div>
           </div>
+          <ReceiptRow
+            label="Statut"
+            value={st.label}
+            valueClass={cn("font-bold", st.text)}
+          />
+          <ReceiptRow
+            label="Date"
+            value={format(dateObj, "dd/MM/yyyy 'à' HH:mm:ss")}
+          />
+          <ReceiptRow
+            label="Expiration"
+            value={format(new Date(num.expiresAt), "dd/MM/yyyy HH:mm")}
+          />
+        </div>
 
-          {/* Perforated divider */}
-          <div className="px-6 mb-1">
-            <div className="flex items-center gap-1">
-              {Array.from({ length: 32 }).map((_, i) => (
-                <div key={i} className="flex-1 h-[2px] rounded-full bg-card-border/40" />
+        {/* SMS Messages */}
+        {num.messages && num.messages.length > 0 && (
+          <div className="px-5 pb-3">
+            <p className="text-xs font-bold text-zinc-500 uppercase tracking-wider mb-3">
+              SMS reçus ({num.messages.length})
+            </p>
+            <div className="space-y-2">
+              {num.messages.map(msg => (
+                <div key={msg.id} className="bg-white/5 rounded-xl p-3 border border-white/8">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-xs font-bold text-white">{msg.sender}</span>
+                    <span className="text-[10px] text-zinc-400">
+                      {format(new Date(msg.receivedAt), "HH:mm · d MMM", { locale: fr })}
+                    </span>
+                  </div>
+                  {msg.code && (
+                    <div className="text-lg font-black text-emerald-400 tracking-widest mb-1">{msg.code}</div>
+                  )}
+                  <p className="text-xs text-zinc-400 leading-relaxed">{msg.body}</p>
+                </div>
               ))}
             </div>
           </div>
-          <div className="flex justify-between px-4 -mt-3">
-            <div className="w-6 h-6 rounded-full bg-background border-2 border-card-border/30 -ml-4" />
-            <div className="w-6 h-6 rounded-full bg-background border-2 border-card-border/30 -mr-4" />
-          </div>
+        )}
+      </div>
 
-          {/* Details */}
-          <div className="px-6 pt-2 pb-4 divide-y divide-card-border/30">
-            <DetailRow icon={Smartphone} label="Numéro virtuel" value={num.phoneNumber} mono />
-            <div className="flex items-start gap-3 py-2.5">
-              <div className="w-7 h-7 rounded-lg bg-secondary/60 flex items-center justify-center flex-shrink-0">
-                <Globe className="w-3.5 h-3.5 text-muted-foreground" />
-              </div>
-              <div className="flex-1">
-                <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">Pays</p>
-                <div className="flex items-center gap-2 mt-0.5">
-                  <FlagImg code={num.country.code} size={14} />
-                  <p className="text-sm font-semibold text-foreground">{num.country.name}</p>
-                </div>
-              </div>
-            </div>
-            <DetailRow icon={Calendar} label="Date d'achat" value={format(dateObj, "EEEE d MMMM yyyy", { locale: fr })} />
-            <DetailRow icon={Clock} label="Heure" value={format(dateObj, "HH:mm:ss")} />
-            <DetailRow icon={Clock} label="Expiration" value={format(new Date(num.expiresAt), "d MMM yyyy HH:mm", { locale: fr })} />
-            <DetailRow icon={Hash} label="ID de commande" value={num.id.slice(0, 16).toUpperCase()} mono />
-          </div>
-
-          {/* SMS Messages */}
-          {num.messages && num.messages.length > 0 && (
-            <div className="px-6 pb-4">
-              <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3">
-                SMS reçus ({num.messages.length})
-              </p>
-              <div className="space-y-2">
-                {num.messages.map(msg => (
-                  <div key={msg.id} className="bg-card border border-card-border rounded-xl p-3">
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-xs font-bold text-foreground">{msg.sender}</span>
-                      <span className="text-[10px] text-muted-foreground">
-                        {format(new Date(msg.receivedAt), "HH:mm · d MMM", { locale: fr })}
-                      </span>
-                    </div>
-                    {msg.code && (
-                      <div className="text-lg font-black text-primary tracking-widest mb-1">{msg.code}</div>
-                    )}
-                    <p className="text-xs text-muted-foreground leading-relaxed">{msg.body}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Actions */}
-          <div className="px-6 pb-6 space-y-2">
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                onClick={() => copyToClipboard(num.phoneNumber, "phone", setCopied)}
-                className={cn(
-                  "flex items-center justify-center gap-2 h-10 rounded-xl text-sm font-semibold border transition-all",
-                  copied === "phone"
-                    ? "bg-emerald-500/15 border-emerald-500/30 text-emerald-400"
-                    : "bg-card border-card-border text-foreground hover:bg-secondary"
-                )}
-              >
-                {copied === "phone" ? <CheckCircle2 className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                {copied === "phone" ? "Copié !" : "Copier N°"}
-              </button>
-              <button
-                onClick={() => copyToClipboard(num.id, "id", setCopied)}
-                className={cn(
-                  "flex items-center justify-center gap-2 h-10 rounded-xl text-sm font-semibold border transition-all",
-                  copied === "id"
-                    ? "bg-emerald-500/15 border-emerald-500/30 text-emerald-400"
-                    : "bg-card border-card-border text-foreground hover:bg-secondary"
-                )}
-              >
-                {copied === "id" ? <CheckCircle2 className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                {copied === "id" ? "Copié !" : "Copier ID"}
-              </button>
-            </div>
-            <button
-              onClick={onClose}
-              className="w-full h-11 rounded-2xl bg-secondary/60 border border-card-border text-foreground font-semibold text-sm hover:bg-secondary transition-colors"
-            >
-              Fermer
-            </button>
-          </div>
-        </div>
-      </motion.div>
-    </motion.div>
+      {/* Footer button */}
+      <div className="px-5 py-4 flex-shrink-0">
+        <button
+          onClick={onClose}
+          className="w-full h-12 rounded-2xl text-white font-bold text-base active:opacity-80 transition-opacity"
+          style={{ background: "linear-gradient(135deg, #e53e3e 0%, #dd6b20 100%)" }}
+        >
+          Fermer
+        </button>
+      </div>
+    </ReceiptModal>
   );
 }
 
