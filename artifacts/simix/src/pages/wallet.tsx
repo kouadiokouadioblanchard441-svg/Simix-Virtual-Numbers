@@ -1019,7 +1019,7 @@ function DepositContent() {
           className="w-full h-13 rounded-2xl text-white font-bold text-sm flex items-center justify-center gap-2 transition-all relative overflow-hidden"
           style={{
             background: canConfirm
-              ? `linear-gradient(135deg, ${selectedMethod?.color ?? "#7C3AED"}, ${selectedMethod?.color ?? "#7C3AED"}bb)`
+              ? "linear-gradient(135deg, #10B981, #059669)"
               : undefined,
             backgroundColor: canConfirm ? undefined : "rgb(63,63,70)",
             opacity: canConfirm ? 1 : 0.45,
