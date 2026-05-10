@@ -1,0 +1,129 @@
+{
+  "colorScheme": "light",
+  "fonts": [
+    {
+      "family": "Inter",
+      "role": "body"
+    }
+  ],
+  "colors": {
+    "primary": "#111827",
+    "secondary": "#FDE3E3",
+    "accent": "#DEF6E7",
+    "background": "#FFFFFF",
+    "textPrimary": "#3E3E3E",
+    "link": "#DEF6E7"
+  },
+  "typography": {
+    "fontFamilies": {
+      "primary": "Inter",
+      "heading": "Inter"
+    },
+    "fontStacks": {
+      "heading": [
+        "Inter",
+        "-apple-system",
+        "BlinkMacSystemFont",
+        "Segoe UI",
+        "system-ui",
+        "sans-serif"
+      ],
+      "body": [
+        "Inter",
+        "-apple-system",
+        "BlinkMacSystemFont",
+        "Segoe UI",
+        "system-ui",
+        "sans-serif"
+      ],
+      "paragraph": [
+        "Inter",
+        "-apple-system",
+        "BlinkMacSystemFont",
+        "Segoe UI",
+        "system-ui",
+        "sans-serif"
+      ]
+    },
+    "fontSizes": {
+      "h1": "30px",
+      "h2": "24px",
+      "body": "18px"
+    }
+  },
+  "spacing": {
+    "baseUnit": 4,
+    "borderRadius": "6px"
+  },
+  "components": {
+    "input": {
+      "background": "transparent",
+      "textColor": "#161616",
+      "borderColor": null,
+      "borderRadius": "0px",
+      "borderRadiusCorners": {
+        "topLeft": "0px",
+        "topRight": "0px",
+        "bottomRight": "0px",
+        "bottomLeft": "0px"
+      },
+      "shadow": "none"
+    }
+  },
+  "images": {
+    "logo": "File saved at: attached_assets/logo.svg",
+    "favicon": "File saved at: attached_assets/favicon.png",
+    "ogImage": "https://resend.mintlify.app/_next/image?url=%2F_mintlify%2Fapi%2Fog%3Fdivision%3DSending%26title%3DManaging%2BEmails%26description%3DLearn%2Bhow%2Bto%2Bview%2Band%2Bmanage%2Ball%2Bsent%2Bemails%2Bon%2Bthe%2BResend%2BDashboard.%26logoLight%3Dhttps%253A%252F%252Fmintcdn.com%252Fresend%252Fw4S5Jr48MiquhhSH%252Flogo-black.svg%253Ffit%253Dmax%2526auto%253Dformat%2526n%253Dw4S5Jr48MiquhhSH%2526q%253D85%2526s%253D630be7deea6ea94cc7fc4560ea60a5ac%26logoDark%3Dhttps%253A%252F%252Fmintcdn.com%252Fresend%252Fw4S5Jr48MiquhhSH%252Flogo-white.svg%253Ffit%253Dmax%2526auto%253Dformat%2526n%253Dw4S5Jr48MiquhhSH%2526q%253D85%2526s%253D3843916235739ffb9cb1d24683221341%26primaryColor%3D%2523000000%26lightColor%3D%2523EBECED%26darkColor%3D%25230A0C10%26backgroundLight%3D%2523ffffff%26backgroundDark%3D%2523000000&w=1200&q=100",
+    "logoHref": "https://resend.com",
+    "logoAlt": "light logo"
+  },
+  "__llm_logo_reasoning": {
+    "selectedIndex": 2,
+    "reasoning": "Selected #2 because it is visible, located in the header, has a medium size, and links to the homepage, which strongly indicates it is the main brand logo.",
+    "confidence": 0.9,
+    "source": "llm"
+  },
+  "__llm_button_reasoning": {
+    "primary": {
+      "index": -1,
+      "text": "N/A",
+      "reasoning": "None of the buttons have a vibrant or distinct color that stands out as a primary CTA. All buttons share the same background color, making it difficult to distinguish a primary action."
+    },
+    "secondary": {
+      "index": -1,
+      "text": "N/A",
+      "reasoning": "Since no primary button was identified, a secondary button cannot be selected."
+    },
+    "confidence": 0.3
+  },
+  "personality": {
+    "tone": "professional",
+    "energy": "medium",
+    "targetAudience": "developers and tech professionals"
+  },
+  "designSystem": {
+    "framework": "tailwind",
+    "componentLibrary": "unknown"
+  },
+  "confidence": {
+    "buttons": 0.3,
+    "colors": 0.9,
+    "overall": 0.6
+  },
+  "__llm_metadata": {
+    "logoSelection": {
+      "llmCalled": true,
+      "llmSucceeded": true,
+      "finalSource": "llm",
+      "rawLogoSelection": {
+        "selectedLogoIndex": 2,
+        "selectedLogoReasoning": "Selected #2 because it is visible, located in the header, has a medium size, and links to the homepage, which strongly indicates it is the main brand logo.",
+        "confidence": 0.9
+      }
+    },
+    "buttonClassification": {
+      "llmCalled": true,
+      "llmSucceeded": true
+    }
+  }
+}
