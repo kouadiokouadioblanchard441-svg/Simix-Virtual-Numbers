@@ -6,11 +6,180 @@ import { AdminLayout } from "@/components/admin-layout";
 import {
   Loader2, Plus, Pencil, Trash2, X, Eye, EyeOff, Zap,
   CheckCircle2, XCircle, RefreshCw, DollarSign, WifiIcon,
+  Activity, User, Star, Clock, AlertTriangle, Gauge,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 const PRIORITY_LABELS: Record<number, string> = { 1: "Principal", 2: "Secondaire", 3: "Backup" };
 
+/* ─── 5sim auto-status panel ─── */
+function FiveSimStatusPanel({ provider }: { provider: ApiProvider }) {
+  const { toast } = useToast();
+
+  const { data: balance, isLoading: loadingBalance, refetch: refetchBalance } = useQuery({
+    queryKey: ["provider-balance", provider.id],
+    queryFn: () => adminApi.getProviderBalance(provider.id),
+    staleTime: 60_000,
+    retry: 1,
+  });
+
+  const testConn = useMutation({
+    mutationFn: () => adminApi.testProvider(provider.id),
+    onError: (e) => toast({ title: "Erreur de test", description: (e as Error).message, variant: "destructive" }),
+  });
+
+  const syncProducts = useMutation({
+    mutationFn: () => adminApi.syncProviderProducts(provider.id),
+    onSuccess: (res) => toast({ title: "Sync terminée", description: res.message }),
+    onError: (e) => toast({ title: "Erreur de sync", description: (e as Error).message, variant: "destructive" }),
+  });
+
+  const result = testConn.data;
+  const bal = (balance as { balance: number; currency: string } | null)?.balance;
+
+  return (
+    <div className="bg-gradient-to-br from-violet-950/40 to-zinc-900 border border-violet-800/30 rounded-2xl p-5 space-y-4">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-violet-600 flex items-center justify-center shadow-lg shadow-violet-900/40">
+            <Zap className="w-5 h-5 text-white" />
+          </div>
+          <div>
+            <div className="text-white font-bold text-lg">5sim</div>
+            <div className="text-violet-400 text-xs font-mono">5sim.net · API v1</div>
+          </div>
+        </div>
+        <span className={`text-xs px-3 py-1 rounded-full font-semibold ${provider.active ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/20" : "bg-zinc-700 text-zinc-500"}`}>
+          {provider.active ? "● Actif" : "○ Inactif"}
+        </span>
+      </div>
+
+      {/* Stats grid */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {/* Balance */}
+        <div className="bg-zinc-900/80 border border-zinc-800 rounded-xl p-3 space-y-1">
+          <div className="flex items-center gap-1.5 text-zinc-500 text-xs">
+            <DollarSign className="w-3.5 h-3.5" /> Solde
+          </div>
+          {loadingBalance ? (
+            <Loader2 className="w-4 h-4 text-violet-400 animate-spin" />
+          ) : bal !== undefined && bal !== null ? (
+            <div className="text-emerald-400 font-bold text-lg">${bal.toFixed(2)}</div>
+          ) : (
+            <div className="text-zinc-600 text-sm">—</div>
+          )}
+          <div className="text-zinc-600 text-[10px]">USD</div>
+        </div>
+
+        {/* Latency */}
+        <div className="bg-zinc-900/80 border border-zinc-800 rounded-xl p-3 space-y-1">
+          <div className="flex items-center gap-1.5 text-zinc-500 text-xs">
+            <Clock className="w-3.5 h-3.5" /> Latence
+          </div>
+          {testConn.isPending ? (
+            <Loader2 className="w-4 h-4 text-violet-400 animate-spin" />
+          ) : result?.latencyMs !== undefined ? (
+            <div className={`font-bold text-lg ${result.latencyMs < 500 ? "text-emerald-400" : result.latencyMs < 1500 ? "text-yellow-400" : "text-red-400"}`}>
+              {result.latencyMs}ms
+            </div>
+          ) : (
+            <div className="text-zinc-600 text-sm">—</div>
+          )}
+          <div className="text-zinc-600 text-[10px]">API ping</div>
+        </div>
+
+        {/* Email */}
+        <div className="bg-zinc-900/80 border border-zinc-800 rounded-xl p-3 space-y-1">
+          <div className="flex items-center gap-1.5 text-zinc-500 text-xs">
+            <User className="w-3.5 h-3.5" /> Compte
+          </div>
+          {result?.details ? (
+            <div className="text-white text-xs font-medium truncate">{String((result.details as Record<string, unknown>).email ?? "—")}</div>
+          ) : (
+            <div className="text-zinc-600 text-xs">Non testé</div>
+          )}
+          <div className="text-zinc-600 text-[10px]">email 5sim</div>
+        </div>
+
+        {/* Rating */}
+        <div className="bg-zinc-900/80 border border-zinc-800 rounded-xl p-3 space-y-1">
+          <div className="flex items-center gap-1.5 text-zinc-500 text-xs">
+            <Star className="w-3.5 h-3.5" /> Note
+          </div>
+          {result?.details ? (
+            <div className="text-yellow-400 font-bold text-lg">{String((result.details as Record<string, unknown>).rating ?? "—")}</div>
+          ) : (
+            <div className="text-zinc-600 text-sm">—</div>
+          )}
+          <div className="text-zinc-600 text-[10px]">rating</div>
+        </div>
+      </div>
+
+      {/* Connection result banner */}
+      {result && (
+        <div className={`flex items-start gap-2 p-3 rounded-xl text-sm ${result.success ? "bg-emerald-500/10 border border-emerald-500/20 text-emerald-400" : "bg-red-500/10 border border-red-500/20 text-red-400"}`}>
+          {result.success
+            ? <CheckCircle2 className="w-4 h-4 flex-shrink-0 mt-0.5" />
+            : <XCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />}
+          <span>{result.message}</span>
+        </div>
+      )}
+
+      {/* Low balance warning */}
+      {bal !== undefined && bal !== null && bal < 1 && (
+        <div className="flex items-center gap-2 p-3 rounded-xl bg-yellow-500/10 border border-yellow-500/20 text-yellow-400 text-sm">
+          <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+          <span>Solde bas ({`$${bal.toFixed(2)}`}) — rechargez votre compte 5sim pour continuer à vendre des numéros.</span>
+        </div>
+      )}
+
+      {/* Actions */}
+      <div className="flex flex-wrap gap-2 pt-1">
+        <button
+          onClick={() => testConn.mutate()}
+          disabled={testConn.isPending}
+          className="flex items-center gap-2 px-4 py-2 bg-violet-600 hover:bg-violet-700 disabled:opacity-50 text-white text-sm font-medium rounded-xl transition-colors"
+        >
+          {testConn.isPending
+            ? <Loader2 className="w-4 h-4 animate-spin" />
+            : <WifiIcon className="w-4 h-4" />}
+          Tester la connexion
+        </button>
+
+        <button
+          onClick={() => void refetchBalance()}
+          disabled={loadingBalance}
+          className="flex items-center gap-2 px-4 py-2 bg-zinc-800 hover:bg-zinc-700 disabled:opacity-50 text-zinc-300 text-sm font-medium rounded-xl transition-colors"
+        >
+          {loadingBalance
+            ? <Loader2 className="w-4 h-4 animate-spin" />
+            : <DollarSign className="w-4 h-4" />}
+          Actualiser le solde
+        </button>
+
+        <button
+          onClick={() => { if (confirm("Synchroniser les produits 5sim dans la base de données ?")) syncProducts.mutate(); }}
+          disabled={syncProducts.isPending}
+          className="flex items-center gap-2 px-4 py-2 bg-zinc-800 hover:bg-zinc-700 disabled:opacity-50 text-zinc-300 text-sm font-medium rounded-xl transition-colors"
+        >
+          {syncProducts.isPending
+            ? <Loader2 className="w-4 h-4 animate-spin" />
+            : <RefreshCw className="w-4 h-4" />}
+          Sync produits
+        </button>
+      </div>
+
+      {/* Markup info */}
+      <div className="flex items-center justify-between text-xs text-zinc-600 pt-1 border-t border-zinc-800/60">
+        <div className="flex items-center gap-1"><Gauge className="w-3 h-3" /> Marge appliquée : <span className="text-violet-400 font-semibold">+{provider.markup}%</span></div>
+        <div className="flex items-center gap-1"><Activity className="w-3 h-3" /> Poller SMS actif toutes les <span className="text-violet-400 font-semibold">15s</span></div>
+      </div>
+    </div>
+  );
+}
+
+/* ─── Test result badge (used in ProviderCard for non-5sim) ─── */
 function TestResultBadge({ result }: { result: ProviderTestResult | null }) {
   if (!result) return null;
   return (
@@ -19,7 +188,7 @@ function TestResultBadge({ result }: { result: ProviderTestResult | null }) {
       <div className="min-w-0">
         <div className="font-medium">{result.message}</div>
         {result.balance !== undefined && (
-          <div className="text-xs mt-0.5 opacity-75">Solde 5sim : ${result.balance.toFixed(2)} USD</div>
+          <div className="text-xs mt-0.5 opacity-75">Solde : ${result.balance.toFixed(2)} USD</div>
         )}
         {result.details && (
           <div className="text-xs mt-0.5 opacity-75">
@@ -34,6 +203,7 @@ function TestResultBadge({ result }: { result: ProviderTestResult | null }) {
   );
 }
 
+/* ─── Generic provider card (non-5sim providers) ─── */
 function ProviderCard({ provider, onEdit }: { provider: ApiProvider; onEdit: (p: ApiProvider) => void }) {
   const { toast } = useToast();
   const qc = useQueryClient();
@@ -62,23 +232,9 @@ function ProviderCard({ provider, onEdit }: { provider: ApiProvider; onEdit: (p:
     onError: (e) => toast({ title: "Erreur de test", description: (e as Error).message, variant: "destructive" }),
   });
 
-  const syncProducts = useMutation({
-    mutationFn: () => adminApi.syncProviderProducts(provider.id),
-    onSuccess: (res) => toast({ title: "Synchronisation terminée", description: res.message }),
-    onError: (e) => toast({ title: "Erreur de sync", description: (e as Error).message, variant: "destructive" }),
-  });
-
-  const { data: balance, refetch: fetchBalance, isLoading: loadingBalance } = useQuery({
-    queryKey: ["provider-balance", provider.id],
-    queryFn: () => adminApi.getProviderBalance(provider.id),
-    enabled: false,
-  });
-
   const maskedKey = provider.apiKey
     ? `${provider.apiKey.slice(0, 8)}${"•".repeat(Math.max(0, provider.apiKey.length - 12))}${provider.apiKey.slice(-4)}`
     : "Non configuré";
-
-  const is5sim = provider.slug === "5sim";
 
   return (
     <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5 space-y-4">
@@ -118,12 +274,6 @@ function ProviderCard({ provider, onEdit }: { provider: ApiProvider; onEdit: (p:
           <span className="text-zinc-500">Marge</span>
           <span className="text-white font-semibold">+{provider.markup}%</span>
         </div>
-        {balance !== undefined && balance !== null && (
-          <div className="flex items-center justify-between">
-            <span className="text-zinc-500">Solde fournisseur</span>
-            <span className="text-emerald-400 font-semibold">${(balance as { balance: number }).balance.toFixed(2)} USD</span>
-          </div>
-        )}
       </div>
 
       {testResult && <TestResultBadge result={testResult} />}
@@ -147,26 +297,6 @@ function ProviderCard({ provider, onEdit }: { provider: ApiProvider; onEdit: (p:
         </button>
 
         <button
-          onClick={() => fetchBalance()}
-          disabled={loadingBalance}
-          title="Voir le solde"
-          className="p-1.5 rounded-lg hover:bg-blue-500/20 text-zinc-500 hover:text-blue-400 transition-colors"
-        >
-          {loadingBalance ? <Loader2 className="w-4 h-4 animate-spin" /> : <DollarSign className="w-4 h-4" />}
-        </button>
-
-        {is5sim && (
-          <button
-            onClick={() => { if (confirm("Synchroniser les produits 5sim dans la base de données ?")) syncProducts.mutate(); }}
-            disabled={syncProducts.isPending}
-            title="Synchroniser les produits"
-            className="p-1.5 rounded-lg hover:bg-orange-500/20 text-zinc-500 hover:text-orange-400 transition-colors"
-          >
-            {syncProducts.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
-          </button>
-        )}
-
-        <button
           onClick={() => onEdit(provider)}
           className="p-1.5 rounded-lg hover:bg-zinc-700 text-zinc-500 hover:text-white transition-colors"
         >
@@ -181,16 +311,11 @@ function ProviderCard({ provider, onEdit }: { provider: ApiProvider; onEdit: (p:
           {del.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
         </button>
       </div>
-
-      {is5sim && (
-        <div className="text-[11px] text-zinc-600 pt-1 border-t border-zinc-800/60">
-          <span className="text-violet-400">5sim :</span> Cliquez sur <span className="text-emerald-400">Wifi</span> pour tester, <span className="text-blue-400">$</span> pour le solde, <span className="text-orange-400">↻</span> pour synchroniser les produits.
-        </div>
-      )}
     </div>
   );
 }
 
+/* ─── Add / Edit modal ─── */
 function ProviderModal({ provider, onClose }: { provider: Partial<ApiProvider> | null; onClose: () => void }) {
   const [form, setForm] = useState({
     name: provider?.name ?? "",
@@ -217,8 +342,8 @@ function ProviderModal({ provider, onClose }: { provider: Partial<ApiProvider> |
   const set = (k: string, v: unknown) => setForm(f => ({ ...f, [k]: v }));
 
   const presets = [
-    { name: "5SIM", slug: "5sim", baseUrl: "https://5sim.net/v1", placeholder: "Bearer token 5sim" },
-    { name: "SMSPool", slug: "smspool", baseUrl: "https://www.smspool.net/api", placeholder: "API Key SMSPool" },
+    { name: "5SIM", slug: "5sim", baseUrl: "https://5sim.net/v1" },
+    { name: "SMSPool", slug: "smspool", baseUrl: "https://www.smspool.net/api" },
   ];
 
   return (
@@ -302,12 +427,17 @@ function ProviderModal({ provider, onClose }: { provider: Partial<ApiProvider> |
   );
 }
 
+/* ─── Main content ─── */
 function ProvidersContent() {
   const [editing, setEditing] = useState<Partial<ApiProvider> | null | false>(false);
   const { data: providers, isLoading } = useQuery({ queryKey: ["admin-providers"], queryFn: adminApi.getProviders });
 
+  const fivesimProvider = providers?.find(p => p.slug === "5sim");
+  const otherProviders = providers?.filter(p => p.slug !== "5sim") ?? [];
+
   return (
     <div className="space-y-6">
+      {/* Page header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-white">Fournisseurs API</h1>
@@ -318,27 +448,36 @@ function ProvidersContent() {
         </button>
       </div>
 
-      <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 text-sm text-zinc-400 space-y-1">
-        <p className="font-medium text-zinc-300">Comment ça marche ?</p>
-        <p>Ajoutez un fournisseur avec slug <code className="text-violet-400">5sim</code> et renseignez votre clé API 5sim.net. Une fois activé, les achats de numéros utiliseront automatiquement de vrais numéros 5sim. Sinon, la simulation reste active.</p>
-        <p className="text-xs mt-1">Pour PawaPay (paiements Mobile Money) : configurez le token dans <span className="text-violet-400">Paramètres</span>.</p>
-      </div>
-
       {isLoading ? (
         <div className="flex items-center justify-center h-40"><Loader2 className="w-6 h-6 text-violet-500 animate-spin" /></div>
-      ) : providers?.length === 0 ? (
-        <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-12 text-center">
-          <Zap className="w-10 h-10 text-zinc-700 mx-auto mb-3" />
-          <div className="text-zinc-400 font-medium">Aucun fournisseur configuré</div>
-          <div className="text-zinc-600 text-sm mt-1 mb-4">Ajoutez 5SIM ou un autre fournisseur pour obtenir de vrais numéros.</div>
-          <button onClick={() => setEditing({})} className="px-4 py-2 bg-violet-600 hover:bg-violet-700 text-white text-sm rounded-lg transition-colors">
-            <Plus className="w-4 h-4 inline mr-1" /> Ajouter un fournisseur
-          </button>
-        </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {providers?.map(p => <ProviderCard key={p.id} provider={p} onEdit={setEditing} />)}
-        </div>
+        <>
+          {/* 5sim dedicated panel */}
+          {fivesimProvider ? (
+            <FiveSimStatusPanel provider={fivesimProvider} />
+          ) : (
+            <div className="bg-zinc-900 border border-dashed border-zinc-700 rounded-2xl p-8 text-center space-y-3">
+              <Zap className="w-10 h-10 text-zinc-700 mx-auto" />
+              <div>
+                <div className="text-zinc-400 font-medium">Aucun fournisseur 5sim configuré</div>
+                <div className="text-zinc-600 text-sm mt-1">La clé API FIVESIM_API_KEY n'a pas été trouvée ou le fournisseur n'existe pas encore.</div>
+              </div>
+              <button onClick={() => setEditing({})} className="mx-auto flex items-center gap-2 px-4 py-2 bg-violet-600 hover:bg-violet-700 text-white text-sm rounded-lg transition-colors">
+                <Plus className="w-4 h-4" /> Ajouter manuellement
+              </button>
+            </div>
+          )}
+
+          {/* Other providers */}
+          {otherProviders.length > 0 && (
+            <div>
+              <p className="text-xs font-bold text-zinc-600 uppercase tracking-widest mb-3">Autres fournisseurs</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {otherProviders.map(p => <ProviderCard key={p.id} provider={p} onEdit={setEditing} />)}
+              </div>
+            </div>
+          )}
+        </>
       )}
 
       {editing !== false && <ProviderModal provider={editing} onClose={() => setEditing(false)} />}
