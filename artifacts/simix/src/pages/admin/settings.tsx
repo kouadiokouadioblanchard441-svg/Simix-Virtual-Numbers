@@ -24,6 +24,27 @@ const SETTINGS_SCHEMA = [
     ],
   },
   {
+    group: "Mentions légales — Éditeur (Section 1)",
+    fields: [
+      { key: "legal_company_name", label: "Dénomination sociale", placeholder: "Simix Technologies", type: "text", hint: "Nom légal complet de la société — affiché dans les mentions légales" },
+      { key: "legal_company_form", label: "Forme juridique", placeholder: "Société à Responsabilité Limitée (SARL)", type: "text" },
+      { key: "legal_company_capital", label: "Capital social", placeholder: "5 000 000 FCFA", type: "text" },
+      { key: "legal_company_address", label: "Siège social", placeholder: "Abidjan, Plateau, Côte d'Ivoire", type: "text" },
+      { key: "legal_company_rccm", label: "RCCM", placeholder: "CI-ABJ-2024-B-XXXXX", type: "text", hint: "Numéro d'immatriculation au Registre du Commerce" },
+      { key: "legal_company_tax", label: "N° Fiscal", placeholder: "XXXXX-XXXX-X", type: "text", hint: "Numéro d'identification fiscale" },
+      { key: "legal_company_director", label: "Directeur de publication", placeholder: "Prénom NOM", type: "text", hint: "Nom complet du directeur de publication" },
+    ],
+  },
+  {
+    group: "Mentions légales — Hébergement (Section 3)",
+    fields: [
+      { key: "legal_hosting_provider", label: "Hébergeur principal", placeholder: "Supabase Inc.", type: "text" },
+      { key: "legal_hosting_address", label: "Adresse de l'hébergeur", placeholder: "970 Toa Payoh North, Singapour", type: "text" },
+      { key: "legal_hosting_region", label: "Région des données", placeholder: "Europe de l'Ouest (AWS eu-west-1)", type: "text" },
+      { key: "legal_hosting_infra", label: "Infrastructure", placeholder: "Amazon Web Services (AWS)", type: "text" },
+    ],
+  },
+  {
     group: "Limites & Contrôles",
     fields: [
       { key: "max_orders_per_minute", label: "Commandes max/minute par user", placeholder: "10", type: "number" },
