@@ -17,8 +17,10 @@ import {
   FaTwitter, FaInstagram, FaYoutube, FaTiktok, FaLinkedin, FaDiscord,
 } from "react-icons/fa";
 
-/* ─── Icon 3D paths (public folder) ─── */
-const I = {
+const BASE_URL = import.meta.env.BASE_URL.replace(/\/$/, "");
+
+/* ─── Icon 3D default paths (public folder) ─── */
+const DEFAULT_ICONS = {
   stepGlobe:    "/3d/step-globe.png",
   stepPhone:    "/3d/step-phone.png",
   stepPayment:  "/3d/step-payment.png",
@@ -29,7 +31,27 @@ const I = {
   iconClock:    "/3d/icon-clock.png",
   iconCheck:    "/3d/icon-check.png",
   iconLightning:"/3d/icon-lightning.png",
+  rocket:       "/3d/rocket.png",
+  sms:          "/3d/sms.png",
+  secure:       "/3d/secure.png",
+  mobileMoney:  "/3d/mobile-money.png",
+  africa:       "/3d/africa.png",
 };
+
+/* ─── Hook: load custom icon overrides from admin ─── */
+function useSiteMedia() {
+  const [media, setMedia] = useState<Record<string, string>>({});
+  useEffect(() => {
+    fetch(`${BASE_URL}/api/site-content`).then(r => r.ok ? r.json() : {}).then(d => setMedia(d || {})).catch(() => {});
+  }, []);
+  function icon(key: keyof typeof DEFAULT_ICONS, contentKey: string): string {
+    return media[contentKey] || (BASE_URL + DEFAULT_ICONS[key]);
+  }
+  return { icon, media };
+}
+
+/* ─── Re-export as I for backwards-compatibility ─── */
+const I = DEFAULT_ICONS;
 
 /* ─── Animated counter hook ─── */
 function useCountUp(target: number, duration = 2000) {
@@ -176,21 +198,24 @@ const SERVICES = [
 const STEPS = [
   {
     number: "01",
-    imgSrc: I.stepGlobe,
+    imgKey: "stepGlobe" as const,
+    contentKey: "content_img_step_globe",
     title: "Choisissez un pays et un service",
     desc: "Sélectionnez le pays du numéro désiré parmi 54 nations africaines et au-delà, puis choisissez le service à vérifier.",
     color: "#7C3AED",
   },
   {
     number: "02",
-    imgSrc: I.stepPhone,
+    imgKey: "stepPhone" as const,
+    contentKey: "content_img_step_phone",
     title: "Obtenez votre numéro virtuel",
     desc: "Un numéro temporaire vous est attribué instantanément. Utilisez-le pour recevoir votre code de vérification SMS.",
     color: "#EC4899",
   },
   {
     number: "03",
-    imgSrc: I.stepPayment,
+    imgKey: "stepPayment" as const,
+    contentKey: "content_img_step_payment",
     title: "Payez via Mobile Money en FCFA",
     desc: "Rechargez votre solde avec Orange Money, MTN, Wave ou tout autre opérateur local. Aucune carte bancaire requise.",
     color: "#10B981",
@@ -198,12 +223,12 @@ const STEPS = [
 ];
 
 const SECURITY_FEATURES = [
-  { imgSrc: I.iconLock,    title: "Chiffrement bout en bout", desc: "Vos données et transactions sont chiffrées avec les standards les plus élevés." },
-  { imgSrc: I.iconEye,     title: "Numéros éphémères", desc: "Chaque numéro est temporaire et détruit après usage. Aucun historique conservé." },
-  { imgSrc: I.iconShield,  title: "Aucune carte bancaire", desc: "Uniquement du Mobile Money local. Vos coordonnées bancaires ne sont jamais sollicitées." },
-  { imgSrc: I.iconRefresh, title: "Remboursement garanti", desc: "Si aucun SMS n'est reçu dans les délais, votre solde est remboursé automatiquement." },
-  { imgSrc: I.iconClock,   title: "Disponible 24h/24", desc: "Plateforme opérationnelle à toute heure, tous les jours de l'année, sans interruption." },
-  { imgSrc: I.iconCheck,   title: "Numéros vérifiés actifs", desc: "Chaque numéro est testé et vérifié avant d'être proposé à la vente." },
+  { imgKey: "iconLock" as const,    contentKey: "content_icon_lock",    title: "Chiffrement bout en bout", desc: "Vos données et transactions sont chiffrées avec les standards les plus élevés." },
+  { imgKey: "iconEye" as const,     contentKey: "content_icon_eye",     title: "Numéros éphémères", desc: "Chaque numéro est temporaire et détruit après usage. Aucun historique conservé." },
+  { imgKey: "iconShield" as const,  contentKey: "content_icon_shield",  title: "Aucune carte bancaire", desc: "Uniquement du Mobile Money local. Vos coordonnées bancaires ne sont jamais sollicitées." },
+  { imgKey: "iconRefresh" as const, contentKey: "content_icon_refresh", title: "Remboursement garanti", desc: "Si aucun SMS n'est reçu dans les délais, votre solde est remboursé automatiquement." },
+  { imgKey: "iconClock" as const,   contentKey: "content_icon_clock",   title: "Disponible 24h/24", desc: "Plateforme opérationnelle à toute heure, tous les jours de l'année, sans interruption." },
+  { imgKey: "iconCheck" as const,   contentKey: "content_icon_check",   title: "Numéros vérifiés actifs", desc: "Chaque numéro est testé et vérifié avant d'être proposé à la vente." },
 ];
 
 const TESTIMONIALS = [
@@ -649,6 +674,7 @@ function StatsBar() {
 
 /* ─── How it works ─── */
 function HowItWorks() {
+  const { icon } = useSiteMedia();
   return (
     <Section className="py-14" id="comment">
       <div className="text-center mb-10">
@@ -678,7 +704,7 @@ function HowItWorks() {
             {/* 3D icon */}
             <div className="w-16 h-16 mb-4 mt-2 flex items-center justify-center">
               <img
-                src={step.imgSrc}
+                src={icon(step.imgKey, step.contentKey)}
                 alt={step.title}
                 className="w-full h-full object-contain drop-shadow-lg group-hover:scale-110 transition-transform duration-300"
               />
@@ -893,6 +919,7 @@ function ServicesGrid() {
 
 /* ─── Security ─── */
 function Security() {
+  const { icon } = useSiteMedia();
   return (
     <Section className="py-14" id="securite">
       <div className="grid lg:grid-cols-2 gap-12 items-center">
@@ -914,7 +941,7 @@ function Security() {
           {/* 3D shield illustration */}
           <div className="flex justify-center lg:justify-start">
             <div className="relative float-slow">
-              <img src={I.iconShield} alt="Sécurité" className="w-36 h-36 object-contain drop-shadow-2xl" />
+              <img src={icon("iconShield", "content_icon_shield")} alt="Sécurité" className="w-36 h-36 object-contain drop-shadow-2xl" />
               <div className="absolute inset-0 rounded-full bg-sky-500/10 blur-2xl -z-10" />
             </div>
           </div>
@@ -932,7 +959,7 @@ function Security() {
               className="flex gap-3 p-4 rounded-xl bg-zinc-900/60 border border-zinc-800/60 hover:border-zinc-700 hover:bg-zinc-900/80 transition-all group"
             >
               <div className="w-10 h-10 flex-shrink-0 group-hover:scale-110 transition-transform">
-                <img src={f.imgSrc} alt={f.title} className="w-full h-full object-contain drop-shadow-md" />
+                <img src={icon(f.imgKey, f.contentKey)} alt={f.title} className="w-full h-full object-contain drop-shadow-md" />
               </div>
               <div>
                 <div className="text-sm font-semibold text-white mb-0.5">{f.title}</div>

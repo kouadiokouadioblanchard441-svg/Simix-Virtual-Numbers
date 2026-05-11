@@ -59,6 +59,7 @@ import AdminRealtime from "@/pages/admin/realtime";
 import AdminBlacklist from "@/pages/admin/blacklist";
 import AdminIpTracker from "@/pages/admin/ip-tracker";
 import AdminLivePrices from "@/pages/admin/live-prices";
+import AdminMedia from "@/pages/admin/media";
 
 // Public legal pages (no auth required)
 import LegalCGU from "@/pages/legal/cgu";
@@ -103,6 +104,7 @@ function AdminRoutes() {
         <Route path="/admin/blacklist" component={AdminBlacklist} />
         <Route path="/admin/ip-tracker" component={AdminIpTracker} />
         <Route path="/admin/live-prices" component={AdminLivePrices} />
+        <Route path="/admin/media" component={AdminMedia} />
       </Switch>
     </AdminSecureGuard>
   );

@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
-import { asc, eq } from "drizzle-orm";
-import { db, bannersTable } from "@workspace/db";
+import { asc, eq, like } from "drizzle-orm";
+import { db, bannersTable, systemSettingsTable } from "@workspace/db";
 import { requireAdminJwt } from "../lib/admin-jwt-middleware";
 import { logger } from "../lib/logger";
 
@@ -17,6 +17,17 @@ router.get("/banners", async (_req, res): Promise<void> => {
     .where(eq(bannersTable.isActive, true))
     .orderBy(asc(bannersTable.sortOrder));
   res.json(rows);
+});
+
+/* ── PUBLIC — GET /site-content ─────────────────────────── */
+router.get("/site-content", async (_req, res): Promise<void> => {
+  const rows = await db
+    .select()
+    .from(systemSettingsTable)
+    .where(like(systemSettingsTable.key, "content_%"));
+  const content: Record<string, string> = {};
+  for (const r of rows) content[r.key] = r.value;
+  res.json(content);
 });
 
 /* ────────────────────────────────────────────────────────────

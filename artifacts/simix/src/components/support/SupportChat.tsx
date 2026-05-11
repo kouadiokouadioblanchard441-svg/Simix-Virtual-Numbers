@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence, useDragControls, useMotionValue } from "framer-motion";
-import { X, Send, ImagePlus, Trash2, Minimize2, Maximize2, Bot, Loader2, ChevronDown, GripVertical } from "lucide-react";
+import { X, Send, ImagePlus, Minimize2, Maximize2, Bot, Loader2, ChevronDown, GripVertical } from "lucide-react";
 
 /* ── Types ───────────────────────────────────────────────── */
 interface Message {
@@ -412,17 +412,6 @@ export default function SupportChat() {
     }
   };
 
-  const clearHistory = async () => {
-    await fetch(`${getApiBase()}/support/history/${sessionId.current}`, { method: "DELETE" });
-    sessionId.current = crypto.randomUUID();
-    localStorage.setItem("simix_support_session", sessionId.current);
-    setMessages([{
-      id: crypto.randomUUID(),
-      role: "assistant",
-      content: "Conversation effacée. Comment puis-je vous aider ?",
-      createdAt: new Date(),
-    }]);
-  };
 
   const lang = typeof navigator !== "undefined" && navigator.language.startsWith("en") ? "en" : "fr";
   const quickReplies = lang === "en" ? config.quickRepliesEn : config.quickRepliesFr;
@@ -531,13 +520,6 @@ export default function SupportChat() {
                   <div className="w-4 h-4 text-white/20 mr-1 flex-shrink-0">
                     <GripVertical size={14} />
                   </div>
-                  <button
-                    onClick={clearHistory}
-                    className="p-1.5 text-white/40 hover:text-red-400 rounded-lg hover:bg-white/5 transition-colors"
-                    title="Effacer la conversation"
-                  >
-                    <Trash2 size={15} />
-                  </button>
                   <button
                     onClick={() => setIsMinimized(v => !v)}
                     className="p-1.5 text-white/40 hover:text-white rounded-lg hover:bg-white/5 transition-colors"

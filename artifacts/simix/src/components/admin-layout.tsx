@@ -25,6 +25,7 @@ import {
   Radio,
   Ban,
   TrendingUp,
+  Layers,
 } from "lucide-react";
 import { SimixLogo } from "@/components/simix-logo";
 import { cn } from "@/lib/utils";
@@ -44,6 +45,7 @@ const NAV_ITEMS = [
   { href: "/admin/notifications", label: "Notifications", icon: Bell },
   { href: "/admin/emails", label: "Campagnes Email", icon: Mail },
   { href: "/admin/banners", label: "Bannières", icon: Image },
+  { href: "/admin/media", label: "Médias & Icônes", icon: Layers },
   { href: "/admin/footer", label: "Footer & Vitrine", icon: Globe },
   { href: "/admin/ip-tracker", label: "IP Tracker", icon: MapPin },
   { href: "/admin/blacklist", label: "Liste Noire", icon: Ban },
