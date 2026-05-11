@@ -96,6 +96,12 @@ const SETTINGS_SCHEMA = [
     ],
   },
   {
+    group: "Resend — Emails",
+    fields: [
+      { key: "resend_api_key", label: "Clé API Resend", placeholder: "re_...", type: "password", hint: "Obtenez votre clé sur resend.com — utilisée pour les emails OTP, réinitialisation et confirmations de dépôt" },
+    ],
+  },
+  {
     group: "PawaPay — Mobile Money",
     fields: [
       { key: "pawapay_api_token", label: "Token API PawaPay", placeholder: "eyJ...", type: "password", hint: "Obtenez votre token sur le portail PawaPay" },
@@ -303,10 +309,13 @@ function PawaPaySimulator() {
 function EmailOtpSection({
   otpEnabled,
   onToggle,
+  resendApiKey,
 }: {
   otpEnabled: boolean;
   onToggle: (val: boolean) => void;
+  resendApiKey?: string;
 }) {
+  const resendConfigured = !!(resendApiKey && resendApiKey.trim().length > 5);
   const { toast } = useToast();
   const [testEmail, setTestEmail] = useState("");
   const [testResult, setTestResult] = useState<{ success: boolean; message: string; latencyMs?: number } | null>(null);
@@ -439,8 +448,14 @@ function EmailOtpSection({
               <span className="text-xs text-zinc-400">From : <code className="text-violet-400">noreply@simix.app</code></span>
             </div>
             <div className="flex items-center gap-2">
-              <div className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-              <span className="text-xs text-zinc-400">RESEND_API_KEY : <code className="text-emerald-400">configuré ✓</code></span>
+              <div className={`w-1.5 h-1.5 rounded-full ${resendConfigured ? "bg-emerald-400" : "bg-red-400"}`} />
+              <span className="text-xs text-zinc-400">
+                Clé API Resend :{" "}
+                {resendConfigured
+                  ? <code className="text-emerald-400">configurée ✓</code>
+                  : <code className="text-red-400">non configurée — ajoutez-la dans la section Resend ci-dessous</code>
+                }
+              </span>
             </div>
             <div className="flex items-center gap-2">
               <div className="w-1.5 h-1.5 rounded-full bg-blue-400" />
@@ -508,20 +523,29 @@ function SettingsContent() {
         <EmailOtpSection
           otpEnabled={values["email_otp_enabled"] !== "false"}
           onToggle={(val) => set("email_otp_enabled", val ? "true" : "false")}
+          resendApiKey={values["resend_api_key"]}
         />
 
         {SETTINGS_SCHEMA.map(({ group, fields }) => (
           <div
             key={group}
-            className={`bg-zinc-900 border rounded-xl p-5 space-y-4 ${group === "PawaPay — Mobile Money" ? "border-orange-500/30 lg:col-span-2" : "border-zinc-800"}`}
+            className={`bg-zinc-900 border rounded-xl p-5 space-y-4 ${group === "PawaPay — Mobile Money" ? "border-orange-500/30 lg:col-span-2" : group === "Resend — Emails" ? "border-violet-500/30" : "border-zinc-800"}`}
           >
             <div className="flex items-center gap-2 border-b border-zinc-800 pb-3">
               {group === "PawaPay — Mobile Money" && (
                 <div className="w-5 h-5 rounded-full bg-orange-500/20 border border-orange-500/40 flex items-center justify-center text-orange-400 text-[10px] font-bold">P</div>
               )}
+              {group === "Resend — Emails" && (
+                <div className="w-5 h-5 rounded-full bg-violet-500/20 border border-violet-500/40 flex items-center justify-center">
+                  <Mail className="w-3 h-3 text-violet-400" />
+                </div>
+              )}
               <h2 className="text-sm font-semibold text-white">{group}</h2>
               {group === "PawaPay — Mobile Money" && (
                 <span className="ml-2 text-[10px] px-2 py-0.5 rounded-full bg-orange-500/15 text-orange-400 border border-orange-500/20 font-medium">Paiements Mobile Money</span>
+              )}
+              {group === "Resend — Emails" && (
+                <span className="ml-2 text-[10px] px-2 py-0.5 rounded-full bg-violet-500/15 text-violet-400 border border-violet-500/20 font-medium">Emails transactionnels</span>
               )}
             </div>
 

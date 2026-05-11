@@ -1,7 +1,18 @@
 import { Resend } from "resend";
+import { db, systemSettingsTable } from "@workspace/db";
+import { eq } from "drizzle-orm";
 
-function getResend(): Resend | null {
-  const key = process.env.RESEND_API_KEY;
+async function getResend(): Promise<Resend | null> {
+  let key = process.env.RESEND_API_KEY ?? null;
+  if (!key) {
+    try {
+      const rows = await db.select().from(systemSettingsTable)
+        .where(eq(systemSettingsTable.key, "resend_api_key")).limit(1);
+      key = rows[0]?.value?.trim() || null;
+    } catch {
+      /* DB not available — skip */
+    }
+  }
   if (!key) return null;
   return new Resend(key);
 }
@@ -503,7 +514,7 @@ function getDepositConfirmationHtml(data: DepositEmailData): string {
 }
 
 export async function sendDepositConfirmationEmail(data: DepositEmailData): Promise<void> {
-  const resend = getResend();
+  const resend = await getResend();
   if (!resend) {
     console.warn("[email] RESEND_API_KEY not set — skipping deposit confirmation email");
     return;
@@ -526,7 +537,7 @@ export async function sendPasswordResetEmail(
   code: string,
   fullName: string,
 ): Promise<void> {
-  const resend = getResend();
+  const resend = await getResend();
   if (!resend) {
     console.warn("[email] RESEND_API_KEY not set — skipping password reset email");
     return;
@@ -548,7 +559,7 @@ export async function sendOtpEmail(
   code: string,
   purpose: "register" | "inactivity",
 ): Promise<void> {
-  const resend = getResend();
+  const resend = await getResend();
   if (!resend) {
     console.warn("[email] RESEND_API_KEY not set — skipping OTP email");
     return;

@@ -7,7 +7,7 @@
  */
 import { Router, type IRouter, type Request, type Response } from "express";
 import { eq, desc, count } from "drizzle-orm";
-import { db, emailCampaignsTable, emailLogsTable, usersTable } from "@workspace/db";
+import { db, emailCampaignsTable, emailLogsTable, usersTable, systemSettingsTable } from "@workspace/db";
 import { requireAuth } from "../lib/auth";
 import { requireAdminJwt } from "../lib/admin-jwt-middleware";
 import { logger } from "../lib/logger";
@@ -22,8 +22,17 @@ function requireAdmin(req: Request, res: Response, next: () => void): void {
   next();
 }
 
-function getResend(): Resend | null {
-  const key = process.env["RESEND_API_KEY"];
+async function getResend(): Promise<Resend | null> {
+  let key = process.env["RESEND_API_KEY"] ?? null;
+  if (!key) {
+    try {
+      const rows = await db.select().from(systemSettingsTable)
+        .where(eq(systemSettingsTable.key, "resend_api_key")).limit(1);
+      key = rows[0]?.value?.trim() || null;
+    } catch {
+      /* DB not available — skip */
+    }
+  }
   if (!key) return null;
   return new Resend(key);
 }
@@ -143,7 +152,7 @@ router.post("/admin/emails/send", requireAuth, requireAdmin, async (req: Request
 
   res.status(202).json({ campaignId: campaign.id, totalRecipients: recipients.length, message: "Envoi en cours..." });
 
-  const resend = getResend();
+  const resend = await getResend();
   let sentCount = 0;
   let failedCount = 0;
 
@@ -247,9 +256,9 @@ router.post("/admin/emails/test", requireAuth, requireAdmin, async (req: Request
     return;
   }
 
-  const resendClient = getResend();
+  const resendClient = await getResend();
   if (!resendClient) {
-    res.status(503).json({ error: "RESEND_API_KEY non configuré" });
+    res.status(503).json({ error: "Clé API Resend non configurée — ajoutez-la dans Paramètres > Resend" });
     return;
   }
 
@@ -333,11 +342,12 @@ router.get("/admin/emails/stats", requireAuth, requireAdmin, async (_req: Reques
   const [sent] = await db.select({ count: count() }).from(emailLogsTable).where(eq(emailLogsTable.status, "sent"));
   const [failed] = await db.select({ count: count() }).from(emailLogsTable).where(eq(emailLogsTable.status, "failed"));
 
+  const resend = await getResend();
   res.json({
     totalCampaigns: Number(total.count),
     totalSent: Number(sent.count),
     totalFailed: Number(failed.count),
-    resendConfigured: !!process.env["RESEND_API_KEY"],
+    resendConfigured: !!resend,
   });
 });
 
