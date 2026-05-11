@@ -1,16 +1,16 @@
 # See https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files for more about ignoring files.
 
-# compiled output — lib/scripts only (artifact dist folders are committed)
+# compiled output
+# Root dist/ is committed for Plesk (dist/index.cjs + dist/public/)
+# lib, scripts, and per-artifact dist/ folders are not committed
 lib/*/dist
 lib/integrations/*/dist
 scripts/dist
+artifacts/api-server/dist
+artifacts/simix/dist
 tmp
 out-tsc
 *.tsbuildinfo
-
-# sourcemaps (large, not needed in production)
-artifacts/*/dist/**/*.map
-artifacts/*/dist/public/assets/*.map
 .expo
 .expo-shared
 

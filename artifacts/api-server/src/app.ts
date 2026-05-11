@@ -3,6 +3,8 @@ import cors from "cors";
 import cookieParser from "cookie-parser";
 import pinoHttp from "pino-http";
 import helmet from "helmet";
+import path from "path";
+import { existsSync } from "fs";
 import router from "./routes";
 import { logger } from "./lib/logger";
 import { attachUser } from "./lib/auth";
@@ -57,6 +59,23 @@ app.use(attachUser);
 app.use(checkUserBlocked);
 
 app.use("/api", router);
+
+/* ── Production: serve compiled React frontend + SPA fallback ── */
+if (process.env.NODE_ENV === "production") {
+  // Banner in build.mjs sets globalThis.__dirname = __dirname (= dist/ folder in CJS bundle)
+  const currentDir = (globalThis as { __dirname?: string }).__dirname;
+  if (currentDir) {
+    const publicDir = path.join(currentDir, "public");
+    if (existsSync(publicDir)) {
+      app.use(express.static(publicDir));
+      app.use((_req, res) => {
+        res.sendFile(path.join(publicDir, "index.html"));
+      });
+    } else {
+      logger.warn({ publicDir }, "Frontend public dir not found — static serving disabled");
+    }
+  }
+}
 
 /* ── Seed providers from env vars, then start poller + sync scheduler ── */
 void seedProvidersFromEnv().then(() => {
