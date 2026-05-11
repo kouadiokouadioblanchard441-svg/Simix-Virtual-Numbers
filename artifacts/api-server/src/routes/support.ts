@@ -13,6 +13,7 @@ import {
   countriesTable,
 } from "@workspace/db";
 import { openai } from "@workspace/integrations-openai-ai-server";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 import { logger } from "../lib/logger";
 
 const router: IRouter = Router();
@@ -424,25 +425,88 @@ router.post("/support/chat", async (req, res): Promise<void> => {
   let fullResponse = "";
 
   try {
-    const [maxTokensCfg] = await db
+    /* ── Load AI provider config ── */
+    const cfgRows = await db
       .select()
-      .from(aiSupportConfigTable)
-      .where(eq(aiSupportConfigTable.key, "ai_max_tokens"))
-      .limit(1);
-    const maxTokens = parseInt(maxTokensCfg?.value ?? "1200", 10);
+      .from(aiSupportConfigTable);
+    const cfgMap: Record<string, string> = {};
+    for (const r of cfgRows) cfgMap[r.key] = r.value;
 
-    const stream = await openai.chat.completions.create({
-      model: "gpt-4.1",
-      max_completion_tokens: isNaN(maxTokens) ? 1200 : maxTokens,
-      messages: chatMessages as Parameters<typeof openai.chat.completions.create>[0]["messages"],
-      stream: true,
-    });
+    const aiProvider = cfgMap["ai_provider"] ?? "openai";
+    const maxTokens = parseInt(cfgMap["ai_max_tokens"] ?? "1200", 10);
 
-    for await (const chunk of stream) {
-      const content = chunk.choices[0]?.delta?.content;
-      if (content) {
-        fullResponse += content;
-        res.write(`data: ${JSON.stringify({ content })}\n\n`);
+    if (aiProvider === "gemini") {
+      /* ── Gemini streaming ── */
+      const geminiApiKey = cfgMap["gemini_api_key"] ?? "";
+      const geminiModel = cfgMap["gemini_model"] ?? "gemini-2.0-flash";
+
+      if (!geminiApiKey) {
+        res.write(`data: ${JSON.stringify({ error: "Clé API Gemini non configurée. Veuillez la configurer dans le panel administrateur." })}\n\n`);
+        res.end();
+        return;
+      }
+
+      const genAI = new GoogleGenerativeAI(geminiApiKey);
+      const model = genAI.getGenerativeModel({
+        model: geminiModel,
+        systemInstruction: systemPrompt,
+      });
+
+      /* Convert history to Gemini format (role: "user" | "model") */
+      const geminiHistory = history.slice(0, -1).map(m => ({
+        role: m.role === "assistant" ? "model" : "user",
+        parts: [{ text: m.content }],
+      }));
+
+      /* Build user parts (with optional image) */
+      type GeminiPart = { text: string } | { inlineData: { mimeType: string; data: string } };
+      const userParts: GeminiPart[] = [];
+      userParts.push({ text: message || "Analyse cette image et aide-moi." });
+
+      if (imageData) {
+        // imageData is a data URL: "data:image/jpeg;base64,..."
+        const match = imageData.match(/^data:([^;]+);base64,(.+)$/);
+        if (match) {
+          userParts.push({
+            inlineData: {
+              mimeType: match[1],
+              data: match[2],
+            },
+          });
+        }
+      }
+
+      const chat = model.startChat({
+        history: geminiHistory,
+        generationConfig: {
+          maxOutputTokens: isNaN(maxTokens) ? 1200 : maxTokens,
+        },
+      });
+
+      const result = await chat.sendMessageStream(userParts);
+
+      for await (const chunk of result.stream) {
+        const text = chunk.text();
+        if (text) {
+          fullResponse += text;
+          res.write(`data: ${JSON.stringify({ content: text })}\n\n`);
+        }
+      }
+    } else {
+      /* ── OpenAI streaming (default) ── */
+      const stream = await openai.chat.completions.create({
+        model: "gpt-4.1",
+        max_completion_tokens: isNaN(maxTokens) ? 1200 : maxTokens,
+        messages: chatMessages as Parameters<typeof openai.chat.completions.create>[0]["messages"],
+        stream: true,
+      });
+
+      for await (const chunk of stream) {
+        const content = chunk.choices[0]?.delta?.content;
+        if (content) {
+          fullResponse += content;
+          res.write(`data: ${JSON.stringify({ content })}\n\n`);
+        }
       }
     }
 
@@ -454,9 +518,18 @@ router.post("/support/chat", async (req, res): Promise<void> => {
 
     res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
     res.end();
-  } catch (err) {
-    logger.error({ err }, "[support] OpenAI error");
-    res.write(`data: ${JSON.stringify({ error: "Désolé, une erreur s'est produite. Veuillez réessayer." })}\n\n`);
+  } catch (err: unknown) {
+    logger.error({ err }, "[support] AI provider error");
+    let userMsg = "Désolé, une erreur s'est produite. Veuillez réessayer.";
+    if (err && typeof err === "object") {
+      const e = err as Record<string, unknown>;
+      if (e["status"] === 429 || (typeof e["message"] === "string" && e["message"].includes("429"))) {
+        userMsg = "Le service est temporairement surchargé. Veuillez réessayer dans quelques secondes.";
+      } else if (e["status"] === 400 || (typeof e["message"] === "string" && e["message"].includes("API key"))) {
+        userMsg = "Configuration IA invalide. Veuillez vérifier la clé API dans le panneau administrateur.";
+      }
+    }
+    res.write(`data: ${JSON.stringify({ error: userMsg })}\n\n`);
     res.end();
   }
 });

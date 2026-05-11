@@ -9,7 +9,7 @@ import {
   Send, User, RefreshCw, Trash2, Edit3, Plus, Check, X,
   UserCheck, UserX, AlertCircle, Clock, Globe, Search,
   ChevronRight, Save, Eye, EyeOff, Loader2, Shield,
-  PhoneCall, Mail, Activity, TrendingUp, Zap,
+  PhoneCall, Mail, Activity, TrendingUp, Zap, Key, Cpu, ChevronDown,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
@@ -715,17 +715,26 @@ function ConfigTab() {
     setIsDirty(true);
   };
 
+  const [showApiKey, setShowApiKey] = useState(false);
+
   const groups = configEntries.reduce<Record<string, AiConfigEntry[]>>((acc, e) => {
     (acc[e.group] = acc[e.group] ?? []).push(e);
     return acc;
   }, {});
 
   const GROUP_LABELS: Record<string, string> = {
-    identite: "🤖 Identité de l'IA", comportement: "🎭 Comportement", messages: "💬 Messages configurables",
+    api: "🔑 Fournisseur IA & API", identite: "🤖 Identité de l'IA", comportement: "🎭 Comportement", messages: "💬 Messages configurables",
     horaires: "🕐 Horaires", entreprise: "🏢 Informations entreprise", technique: "⚙️ Technique",
   };
 
+  const currentProvider = localConfig["ai_provider"] ?? "gemini";
+  const geminiApiKey = localConfig["gemini_api_key"] ?? "";
+  const geminiModel = localConfig["gemini_model"] ?? "gemini-2.0-flash";
+
   if (isLoading) return <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin text-violet-400" /></div>;
+
+  /* groups minus "api" — we render api group manually */
+  const otherGroups = Object.entries(groups).filter(([g]) => g !== "api");
 
   return (
     <div className="space-y-6">
@@ -749,7 +758,131 @@ function ConfigTab() {
         </button>
       </div>
 
-      {Object.entries(groups).map(([group, entries]) => (
+      {/* ── Gemini / API Provider Section ── */}
+      <div className="bg-gradient-to-br from-blue-950/60 to-indigo-950/40 border border-blue-500/20 rounded-2xl p-5 space-y-5">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-500/25">
+            <Cpu className="w-4 h-4 text-white" />
+          </div>
+          <div>
+            <h4 className="text-white font-semibold text-sm">Fournisseur IA & Clé API</h4>
+            <p className="text-xs text-zinc-400">Choisissez le moteur IA utilisé par le service client</p>
+          </div>
+        </div>
+
+        {/* Provider selector */}
+        <div>
+          <label className="text-xs text-zinc-400 mb-2 block font-medium">Fournisseur IA actif</label>
+          <div className="flex gap-3">
+            {[
+              { value: "gemini", label: "Google Gemini", badge: "Recommandé", icon: "🌟" },
+              { value: "openai", label: "OpenAI GPT", badge: "", icon: "🤖" },
+            ].map(p => (
+              <button
+                key={p.value}
+                onClick={() => updateLocal("ai_provider", p.value)}
+                className={cn(
+                  "flex-1 flex items-center gap-3 px-4 py-3 rounded-xl border text-sm font-medium transition-all",
+                  currentProvider === p.value
+                    ? p.value === "gemini"
+                      ? "bg-blue-600/20 border-blue-500/50 text-blue-300 shadow-lg shadow-blue-500/10"
+                      : "bg-violet-600/20 border-violet-500/50 text-violet-300"
+                    : "border-zinc-700/50 text-zinc-500 hover:text-zinc-300 hover:border-zinc-600"
+                )}
+              >
+                <span className="text-base">{p.icon}</span>
+                <span>{p.label}</span>
+                {p.badge && currentProvider === p.value && (
+                  <span className="ml-auto text-[10px] bg-blue-500/20 text-blue-300 border border-blue-500/30 px-2 py-0.5 rounded-full">{p.badge}</span>
+                )}
+                {currentProvider === p.value && <Check className="w-3.5 h-3.5 ml-auto text-current" />}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Gemini config — shown when Gemini selected */}
+        <AnimatePresence>
+          {currentProvider === "gemini" && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              className="space-y-4 overflow-hidden"
+            >
+              {/* API Key */}
+              <div>
+                <label className="text-xs text-zinc-400 mb-1.5 flex items-center gap-1.5 font-medium">
+                  <Key className="w-3 h-3" />
+                  Clé API Google Gemini
+                </label>
+                <div className="relative flex items-center">
+                  <input
+                    type={showApiKey ? "text" : "password"}
+                    value={geminiApiKey}
+                    onChange={e => updateLocal("gemini_api_key", e.target.value)}
+                    placeholder="AIzaSy..."
+                    className="w-full bg-zinc-900/60 text-white text-sm rounded-xl px-3 py-2.5 pr-10 outline-none border border-blue-500/30 focus:border-blue-500/60 font-mono"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowApiKey(v => !v)}
+                    className="absolute right-3 text-zinc-500 hover:text-zinc-300 transition-colors"
+                  >
+                    {showApiKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+                <div className="mt-1.5 flex items-center gap-1.5">
+                  {geminiApiKey.startsWith("AIzaSy") ? (
+                    <span className="flex items-center gap-1 text-[11px] text-green-400"><Check className="w-3 h-3" /> Clé configurée</span>
+                  ) : geminiApiKey.length > 0 ? (
+                    <span className="flex items-center gap-1 text-[11px] text-orange-400"><AlertCircle className="w-3 h-3" /> Format inhabituel</span>
+                  ) : (
+                    <span className="flex items-center gap-1 text-[11px] text-red-400"><AlertCircle className="w-3 h-3" /> Clé requise pour activer Gemini</span>
+                  )}
+                </div>
+              </div>
+
+              {/* Model selector */}
+              <div>
+                <label className="text-xs text-zinc-400 mb-1.5 block font-medium">Modèle Gemini</label>
+                <div className="flex gap-2 flex-wrap">
+                  {[
+                    { value: "gemini-2.0-flash", label: "Gemini 2.0 Flash", desc: "Rapide & économique" },
+                    { value: "gemini-1.5-pro", label: "Gemini 1.5 Pro", desc: "Plus puissant" },
+                    { value: "gemini-1.5-flash", label: "Gemini 1.5 Flash", desc: "Équilibré" },
+                  ].map(m => (
+                    <button
+                      key={m.value}
+                      onClick={() => updateLocal("gemini_model", m.value)}
+                      className={cn(
+                        "flex flex-col items-start px-4 py-2.5 rounded-xl border text-left transition-all",
+                        geminiModel === m.value
+                          ? "bg-blue-600/20 border-blue-500/50 text-blue-300"
+                          : "border-zinc-700/50 text-zinc-500 hover:text-zinc-300 hover:border-zinc-600"
+                      )}
+                    >
+                      <span className="text-xs font-medium">{m.label}</span>
+                      <span className="text-[10px] opacity-70">{m.desc}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Info banner */}
+              <div className="flex items-start gap-2.5 bg-blue-500/8 border border-blue-500/15 rounded-xl p-3">
+                <Shield className="w-4 h-4 text-blue-400 mt-0.5 flex-shrink-0" />
+                <p className="text-[11px] text-zinc-400 leading-relaxed">
+                  La clé API est stockée de façon sécurisée en base de données et n'est jamais exposée côté client. Elle est utilisée uniquement par le serveur pour les requêtes au service client IA.
+                </p>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
+      {/* Other config groups */}
+      {otherGroups.map(([group, entries]) => (
         <div key={group} className="bg-zinc-800/40 border border-zinc-700/40 rounded-2xl p-5 space-y-4">
           <h4 className="text-white font-semibold text-sm">{GROUP_LABELS[group] ?? group}</h4>
           {entries.map(entry => (

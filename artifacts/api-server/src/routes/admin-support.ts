@@ -29,6 +29,9 @@ function requireAdmin(req: Request, res: Response, next: NextFunction): void {
 
 /* ─── DEFAULT AI CONFIG SEED ─────────────────────────────── */
 const DEFAULT_AI_CONFIG: Array<{ key: string; value: string; label: string; group: string }> = [
+  { key: "ai_provider", value: "gemini", label: "Fournisseur IA (openai / gemini)", group: "api" },
+  { key: "gemini_api_key", value: "AIzaSyAs5r-WZ-lRaJi-B3qOEYfxEjfoZexqzOI", label: "Clé API Gemini", group: "api" },
+  { key: "gemini_model", value: "gemini-2.0-flash", label: "Modèle Gemini (gemini-2.0-flash / gemini-1.5-pro / gemini-1.5-flash)", group: "api" },
   { key: "ai_name", value: "Simia", label: "Nom de l'assistante IA", group: "identite" },
   { key: "ai_display_title", value: "Support Simix", label: "Titre affiché dans le chat (ex: Support Simix)", group: "identite" },
   { key: "ai_avatar_url", value: "/support-avatar.png", label: "URL de l'avatar (image de profil du service client)", group: "identite" },

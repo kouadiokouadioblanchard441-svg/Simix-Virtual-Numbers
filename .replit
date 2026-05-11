@@ -28,13 +28,13 @@ args = "Start application"
 name = "API Server"
 author = "agent"
 
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "cd artifacts/api-server && PORT=3000 pnpm run dev"
-waitForPort = 3000
-
 [workflows.workflow.metadata]
 outputType = "console"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd artifacts/api-server && PORT=3000 NODE_ENV=development pnpm run build && node --enable-source-maps ../../dist/index.cjs"
+waitForPort = 3000
 
 [[workflows.workflow]]
 name = "Start application"
