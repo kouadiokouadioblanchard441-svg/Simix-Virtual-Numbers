@@ -3,7 +3,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { build as esbuild } from "esbuild";
 import esbuildPluginPino from "esbuild-plugin-pino";
-import { rm } from "node:fs/promises";
+import { rm, cp } from "node:fs/promises";
 
 // Plugins (e.g. 'esbuild-plugin-pino') may use `require` to resolve dependencies
 globalThis.require = createRequire(import.meta.url);
@@ -110,6 +110,15 @@ async function buildAll() {
       js: "globalThis.__dirname = __dirname;",
     },
   });
+
+  /* ── Copy DB migration SQL files → dist/migrations/ ──────────────
+   * These are read at runtime by drizzle-orm/migrator to apply schema
+   * changes automatically on each server startup (idempotent).
+   * ───────────────────────────────────────────────────────────────── */
+  const migrationsSource = path.resolve(rootDir, "lib/db/drizzle");
+  const migrationsDest   = path.resolve(distDir, "migrations");
+  await cp(migrationsSource, migrationsDest, { recursive: true });
+  console.log("✔ Migration files copied → dist/migrations/");
 }
 
 buildAll().catch((err) => {
