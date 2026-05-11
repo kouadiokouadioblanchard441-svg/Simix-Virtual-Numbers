@@ -777,18 +777,38 @@ router.post("/admin/api-providers", requireAdmin, async (req, res): Promise<void
   const { name, slug, apiKey, baseUrl, active, priority, markup } = req.body;
   if (!name || !slug) { res.status(400).json({ error: "Nom et slug requis" }); return; }
 
-  const [provider] = await db.insert(apiProvidersTable).values({
-    name: String(name),
-    slug: String(slug),
-    apiKey: String(apiKey || ""),
-    baseUrl: String(baseUrl || ""),
-    active: Boolean(active),
-    priority: Number(priority || 1),
-    markup: Number(markup || 20),
-  }).returning();
+  try {
+    /* Upsert: if slug already exists (e.g. seeded from env var), update it instead of failing */
+    const [provider] = await db
+      .insert(apiProvidersTable)
+      .values({
+        name: String(name),
+        slug: String(slug),
+        apiKey: String(apiKey || ""),
+        baseUrl: String(baseUrl || ""),
+        active: Boolean(active),
+        priority: Number(priority || 1),
+        markup: Number(markup || 20),
+      })
+      .onConflictDoUpdate({
+        target: apiProvidersTable.slug,
+        set: {
+          name: String(name),
+          apiKey: String(apiKey || ""),
+          baseUrl: String(baseUrl || ""),
+          active: Boolean(active),
+          priority: Number(priority || 1),
+          markup: Number(markup || 20),
+        },
+      })
+      .returning();
 
-  await logAdminAction(adminId(req), "create_provider", req.ip, "provider", provider.id, { name, slug });
-  res.status(201).json(provider);
+    await logAdminAction(adminId(req), "create_provider", req.ip, "provider", provider.id, { name, slug });
+    res.status(201).json(provider);
+  } catch (e) {
+    logger.error({ err: e }, "Failed to create/upsert provider");
+    res.status(500).json({ error: "Erreur lors de la création du fournisseur : " + (e as Error).message });
+  }
 });
 
 router.put("/admin/api-providers/:providerId", requireAdmin, async (req, res): Promise<void> => {
@@ -804,16 +824,28 @@ router.put("/admin/api-providers/:providerId", requireAdmin, async (req, res): P
   if (markup !== undefined) updates.markup = Number(markup);
 
   if (Object.keys(updates).length === 0) { res.status(400).json({ error: "Aucun champ à mettre à jour" }); return; }
-  await db.update(apiProvidersTable).set(updates).where(eq(apiProvidersTable.id, providerId));
-  await logAdminAction(adminId(req), "update_provider", req.ip, "provider", providerId, updates);
-  res.json({ success: true });
+
+  try {
+    const result = await db.update(apiProvidersTable).set(updates).where(eq(apiProvidersTable.id, providerId)).returning();
+    if (result.length === 0) { res.status(404).json({ error: "Fournisseur introuvable" }); return; }
+    await logAdminAction(adminId(req), "update_provider", req.ip, "provider", providerId, updates);
+    res.json({ success: true });
+  } catch (e) {
+    logger.error({ err: e }, "Failed to update provider");
+    res.status(500).json({ error: "Erreur lors de la mise à jour : " + (e as Error).message });
+  }
 });
 
 router.delete("/admin/api-providers/:providerId", requireAdmin, async (req, res): Promise<void> => {
   const providerId = String(req.params.providerId);
-  await db.delete(apiProvidersTable).where(eq(apiProvidersTable.id, providerId));
-  await logAdminAction(adminId(req), "delete_provider", req.ip, "provider", providerId);
-  res.json({ success: true });
+  try {
+    await db.delete(apiProvidersTable).where(eq(apiProvidersTable.id, providerId));
+    await logAdminAction(adminId(req), "delete_provider", req.ip, "provider", providerId);
+    res.json({ success: true });
+  } catch (e) {
+    logger.error({ err: e }, "Failed to delete provider");
+    res.status(500).json({ error: "Erreur lors de la suppression : " + (e as Error).message });
+  }
 });
 
 /* ─── Test provider connection ─── */
@@ -927,18 +959,23 @@ router.put("/admin/settings", requireAdmin, async (req, res): Promise<void> => {
   const updates = req.body as Record<string, string>;
   if (!updates || typeof updates !== "object") { res.status(400).json({ error: "Données invalides" }); return; }
 
-  for (const [key, value] of Object.entries(updates)) {
-    await db
-      .insert(systemSettingsTable)
-      .values({ key, value: String(value) })
-      .onConflictDoUpdate({ target: systemSettingsTable.key, set: { value: String(value) } });
+  try {
+    for (const [key, value] of Object.entries(updates)) {
+      await db
+        .insert(systemSettingsTable)
+        .values({ key, value: String(value) })
+        .onConflictDoUpdate({ target: systemSettingsTable.key, set: { value: String(value) } });
+    }
+
+    /* Invalidate settings cache so changes apply within 30s */
+    clearSettingsCache();
+
+    await logAdminAction(adminId(req), "update_settings", req.ip, "settings", undefined, updates);
+    res.json({ success: true });
+  } catch (e) {
+    logger.error({ err: e }, "Failed to update settings");
+    res.status(500).json({ error: "Erreur lors de la sauvegarde : " + (e as Error).message });
   }
-
-  /* Invalidate settings cache so changes apply within 30s */
-  clearSettingsCache();
-
-  await logAdminAction(adminId(req), "update_settings", req.ip, "settings", undefined, updates);
-  res.json({ success: true });
 });
 
 /* ─────────────────── PAWAPAY CONNECTION TEST ─────────────────── */
