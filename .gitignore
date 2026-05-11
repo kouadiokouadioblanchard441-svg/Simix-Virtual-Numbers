@@ -1,10 +1,16 @@
 # See https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files for more about ignoring files.
 
-# compiled output
-dist
+# compiled output — lib/scripts only (artifact dist folders are committed)
+lib/*/dist
+lib/integrations/*/dist
+scripts/dist
 tmp
 out-tsc
 *.tsbuildinfo
+
+# sourcemaps (large, not needed in production)
+artifacts/*/dist/**/*.map
+artifacts/*/dist/public/assets/*.map
 .expo
 .expo-shared
 
