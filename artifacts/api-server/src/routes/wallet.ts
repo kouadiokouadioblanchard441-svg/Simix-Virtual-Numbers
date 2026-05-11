@@ -515,29 +515,35 @@ router.get("/wallet/deposit/:depositId/status", requireAuth, async (req, res): P
           const depositStatus = result.data.status;
 
           if (depositStatus === "COMPLETED") {
-            /* Safety net: credit if webhook was missed */
+            /* Safety net: credit if webhook was missed.
+             * Use .returning() to detect if this update actually transitioned
+             * the row from pending → completed. If it returns nothing, another
+             * process (the webhook) already handled it — skip balance credit. */
             const creditAmount = result.data.amount ? Math.round(Number(result.data.amount)) : tx.amount;
 
-            await db.update(transactionsTable)
+            const [justCompleted] = await db.update(transactionsTable)
               .set({ status: "completed" })
               .where(and(
                 eq(transactionsTable.id, tx.id),
-                eq(transactionsTable.status, "pending"), // guard against race condition
-              ));
+                eq(transactionsTable.status, "pending"),
+              ))
+              .returning();
 
-            await db.update(usersTable)
-              .set({ balance: sql`${usersTable.balance} + ${creditAmount}` })
-              .where(and(
-                eq(usersTable.id, user.id),
-                // Only credit if transaction was still pending (avoid double-credit)
-                sql`EXISTS (SELECT 1 FROM transactions WHERE id = ${tx.id} AND status = 'completed' AND created_at = updated_at)`,
-              ));
+            if (justCompleted) {
+              /* We did the transition — credit the balance */
+              await db.update(usersTable)
+                .set({ balance: sql`${usersTable.balance} + ${creditAmount}` })
+                .where(eq(usersTable.id, user.id));
+              logger.info({ depositId, userId: user.id, creditAmount }, "[PawaPay Poll] Deposit COMPLETED via polling — balance credited ✓");
+            } else {
+              /* Webhook already processed it — nothing to do */
+              logger.info({ depositId }, "[PawaPay Poll] Already processed by webhook — skipping double-credit");
+            }
 
             /* Re-fetch updated transaction */
             const [updated] = await db.select().from(transactionsTable)
               .where(eq(transactionsTable.id, tx.id)).limit(1);
 
-            logger.info({ depositId, userId: user.id, creditAmount }, "[PawaPay Poll] Deposit COMPLETED via polling — balance credited");
             res.json(toTransaction(updated ?? tx));
             return;
 
