@@ -81862,6 +81862,15 @@ var Resend = class {
 // src/lib/email.ts
 init_src();
 init_drizzle_orm();
+
+// src/lib/app-url.ts
+function getAppUrl() {
+  const url = process.env["APP_URL"];
+  if (url) return url.replace(/\/$/, "");
+  return "https://simix.site";
+}
+
+// src/lib/email.ts
 async function getResend() {
   let key = process.env.RESEND_API_KEY ?? null;
   if (!key) {
@@ -82287,7 +82296,7 @@ function getDepositConfirmationHtml(data) {
                     <table cellpadding="0" cellspacing="0">
                       <tr>
                         <td style="background:linear-gradient(135deg,#7c3aed,#6366f1);border-radius:12px;padding:0;">
-                          <a href="https://simix.app" style="display:block;padding:14px 32px;color:#ffffff;font-size:14px;font-weight:700;text-decoration:none;letter-spacing:0.2px;">
+                          <a href="${getAppUrl()}" style="display:block;padding:14px 32px;color:#ffffff;font-size:14px;font-weight:700;text-decoration:none;letter-spacing:0.2px;">
                             \u{1F680} Acc\xE9der \xE0 mon compte
                           </a>
                         </td>
@@ -82318,11 +82327,11 @@ function getDepositConfirmationHtml(data) {
               <table cellpadding="0" cellspacing="0" style="margin:16px auto 0;">
                 <tr>
                   <td style="padding:0 8px;">
-                    <a href="https://simix.app/legal/cgu" style="color:#3a3a5a;font-size:10px;text-decoration:none;">CGU</a>
+                    <a href="${getAppUrl()}/legal/cgu" style="color:#3a3a5a;font-size:10px;text-decoration:none;">CGU</a>
                   </td>
                   <td style="color:#2a2a42;font-size:10px;">\xB7</td>
                   <td style="padding:0 8px;">
-                    <a href="https://simix.app/legal/politique-confidentialite" style="color:#3a3a5a;font-size:10px;text-decoration:none;">Confidentialit\xE9</a>
+                    <a href="${getAppUrl()}/legal/politique-confidentialite" style="color:#3a3a5a;font-size:10px;text-decoration:none;">Confidentialit\xE9</a>
                   </td>
                   <td style="color:#2a2a42;font-size:10px;">\xB7</td>
                   <td style="padding:0 8px;">
@@ -85659,10 +85668,10 @@ function buildEmailHtml(subject, body, templateType) {
     <div class="body">
       <div class="content">${body}</div>
       <hr class="divider">
-      <a href="https://simix.app" class="cta">Acc\xE9der \xE0 Simix \u2192</a>
+      <a href="${getAppUrl()}" class="cta">Acc\xE9der \xE0 Simix \u2192</a>
     </div>
     <div class="footer">
-      <p>Vous recevez cet email car vous \xEAtes inscrit sur <a href="https://simix.app">Simix</a>.<br>
+      <p>Vous recevez cet email car vous \xEAtes inscrit sur <a href="${getAppUrl()}">Simix</a>.<br>
       Plateforme fintech africaine \xB7 Paiements Mobile Money \xB7 <a href="mailto:support@simix.app">support@simix.app</a></p>
     </div>
   </div>

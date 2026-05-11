@@ -1,6 +1,7 @@
 import { Resend } from "resend";
 import { db, systemSettingsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
+import { getAppUrl } from "./app-url";
 
 async function getResend(): Promise<Resend | null> {
   let key = process.env.RESEND_API_KEY ?? null;
@@ -459,7 +460,7 @@ function getDepositConfirmationHtml(data: DepositEmailData): string {
                     <table cellpadding="0" cellspacing="0">
                       <tr>
                         <td style="background:linear-gradient(135deg,#7c3aed,#6366f1);border-radius:12px;padding:0;">
-                          <a href="https://simix.app" style="display:block;padding:14px 32px;color:#ffffff;font-size:14px;font-weight:700;text-decoration:none;letter-spacing:0.2px;">
+                          <a href="${getAppUrl()}" style="display:block;padding:14px 32px;color:#ffffff;font-size:14px;font-weight:700;text-decoration:none;letter-spacing:0.2px;">
                             🚀 Accéder à mon compte
                           </a>
                         </td>
@@ -490,11 +491,11 @@ function getDepositConfirmationHtml(data: DepositEmailData): string {
               <table cellpadding="0" cellspacing="0" style="margin:16px auto 0;">
                 <tr>
                   <td style="padding:0 8px;">
-                    <a href="https://simix.app/legal/cgu" style="color:#3a3a5a;font-size:10px;text-decoration:none;">CGU</a>
+                    <a href="${getAppUrl()}/legal/cgu" style="color:#3a3a5a;font-size:10px;text-decoration:none;">CGU</a>
                   </td>
                   <td style="color:#2a2a42;font-size:10px;">·</td>
                   <td style="padding:0 8px;">
-                    <a href="https://simix.app/legal/politique-confidentialite" style="color:#3a3a5a;font-size:10px;text-decoration:none;">Confidentialité</a>
+                    <a href="${getAppUrl()}/legal/politique-confidentialite" style="color:#3a3a5a;font-size:10px;text-decoration:none;">Confidentialité</a>
                   </td>
                   <td style="color:#2a2a42;font-size:10px;">·</td>
                   <td style="padding:0 8px;">

@@ -12,6 +12,7 @@ import { requireAuth } from "../lib/auth";
 import { requireAdminJwt } from "../lib/admin-jwt-middleware";
 import { logger } from "../lib/logger";
 import { Resend } from "resend";
+import { getAppUrl } from "../lib/app-url";
 
 const router: IRouter = Router();
 router.use(requireAdminJwt);
@@ -88,10 +89,10 @@ function buildEmailHtml(subject: string, body: string, templateType: string): st
     <div class="body">
       <div class="content">${body}</div>
       <hr class="divider">
-      <a href="https://simix.app" class="cta">Accéder à Simix →</a>
+      <a href="${getAppUrl()}" class="cta">Accéder à Simix →</a>
     </div>
     <div class="footer">
-      <p>Vous recevez cet email car vous êtes inscrit sur <a href="https://simix.app">Simix</a>.<br>
+      <p>Vous recevez cet email car vous êtes inscrit sur <a href="${getAppUrl()}">Simix</a>.<br>
       Plateforme fintech africaine · Paiements Mobile Money · <a href="mailto:support@simix.app">support@simix.app</a></p>
     </div>
   </div>
