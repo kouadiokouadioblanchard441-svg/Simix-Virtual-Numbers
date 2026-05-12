@@ -492,6 +492,134 @@ router.post("/support/chat", async (req, res): Promise<void> => {
           res.write(`data: ${JSON.stringify({ content: text })}\n\n`);
         }
       }
+    } else if (aiProvider === "groq") {
+      /* ── Groq streaming (OpenAI-compatible, free tier) ── */
+      const groqApiKey = cfgMap["groq_api_key"] ?? "";
+      const groqModel = cfgMap["groq_model"] ?? "llama-3.3-70b-versatile";
+
+      if (!groqApiKey) {
+        res.write(`data: ${JSON.stringify({ error: "Clé API Groq non configurée. Veuillez la configurer dans le panneau administrateur." })}\n\n`);
+        res.end();
+        return;
+      }
+
+      const flatMessages = chatMessages.map(m => ({
+        role: m.role,
+        content: typeof m.content === "string"
+          ? m.content
+          : (m.content as Array<{ type: string; text?: string }>).find(p => p.type === "text")?.text ?? "",
+      }));
+
+      const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${groqApiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: groqModel,
+          messages: flatMessages,
+          max_tokens: isNaN(maxTokens) ? 1200 : maxTokens,
+          stream: true,
+        }),
+      });
+
+      if (!groqRes.ok) {
+        const errText = await groqRes.text();
+        throw new Error(`Groq API error ${groqRes.status}: ${errText}`);
+      }
+
+      const groqReader = groqRes.body!.getReader();
+      const groqDecoder = new TextDecoder();
+      let groqBuffer = "";
+
+      while (true) {
+        const { done, value } = await groqReader.read();
+        if (done) break;
+        groqBuffer += groqDecoder.decode(value, { stream: true });
+        const lines = groqBuffer.split("\n");
+        groqBuffer = lines.pop() ?? "";
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed.startsWith("data: ")) continue;
+          const data = trimmed.slice(6);
+          if (data === "[DONE]") continue;
+          try {
+            const parsed = JSON.parse(data);
+            const content = parsed.choices?.[0]?.delta?.content;
+            if (content) {
+              fullResponse += content;
+              res.write(`data: ${JSON.stringify({ content })}\n\n`);
+            }
+          } catch { /* ignore malformed SSE chunks */ }
+        }
+      }
+
+    } else if (aiProvider === "openrouter") {
+      /* ── OpenRouter streaming (free models available) ── */
+      const openrouterApiKey = cfgMap["openrouter_api_key"] ?? "";
+      const openrouterModel = cfgMap["openrouter_model"] ?? "meta-llama/llama-3.1-8b-instruct:free";
+
+      if (!openrouterApiKey) {
+        res.write(`data: ${JSON.stringify({ error: "Clé API OpenRouter non configurée. Veuillez la configurer dans le panneau administrateur." })}\n\n`);
+        res.end();
+        return;
+      }
+
+      const flatMessages = chatMessages.map(m => ({
+        role: m.role,
+        content: typeof m.content === "string"
+          ? m.content
+          : (m.content as Array<{ type: string; text?: string }>).find(p => p.type === "text")?.text ?? "",
+      }));
+
+      const orRes = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${openrouterApiKey}`,
+          "Content-Type": "application/json",
+          "HTTP-Referer": "https://simix.app",
+          "X-Title": "Simix Support",
+        },
+        body: JSON.stringify({
+          model: openrouterModel,
+          messages: flatMessages,
+          max_tokens: isNaN(maxTokens) ? 1200 : maxTokens,
+          stream: true,
+        }),
+      });
+
+      if (!orRes.ok) {
+        const errText = await orRes.text();
+        throw new Error(`OpenRouter API error ${orRes.status}: ${errText}`);
+      }
+
+      const orReader = orRes.body!.getReader();
+      const orDecoder = new TextDecoder();
+      let orBuffer = "";
+
+      while (true) {
+        const { done, value } = await orReader.read();
+        if (done) break;
+        orBuffer += orDecoder.decode(value, { stream: true });
+        const lines = orBuffer.split("\n");
+        orBuffer = lines.pop() ?? "";
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed.startsWith("data: ")) continue;
+          const data = trimmed.slice(6);
+          if (data === "[DONE]") continue;
+          try {
+            const parsed = JSON.parse(data);
+            const content = parsed.choices?.[0]?.delta?.content;
+            if (content) {
+              fullResponse += content;
+              res.write(`data: ${JSON.stringify({ content })}\n\n`);
+            }
+          } catch { /* ignore malformed SSE chunks */ }
+        }
+      }
+
     } else {
       /* ── OpenAI streaming (default) ── */
       const stream = await openai.chat.completions.create({

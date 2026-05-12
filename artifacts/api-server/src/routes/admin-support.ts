@@ -32,9 +32,13 @@ function requireAdmin(req: Request, res: Response, next: NextFunction): void {
 
 /* ─── DEFAULT AI CONFIG SEED ─────────────────────────────── */
 const DEFAULT_AI_CONFIG: Array<{ key: string; value: string; label: string; group: string }> = [
-  { key: "ai_provider", value: "gemini", label: "Fournisseur IA (openai / gemini)", group: "api" },
+  { key: "ai_provider", value: "gemini", label: "Fournisseur IA (gemini / groq / openrouter / openai)", group: "api" },
   { key: "gemini_api_key", value: "AIzaSyAs5r-WZ-lRaJi-B3qOEYfxEjfoZexqzOI", label: "Clé API Gemini", group: "api" },
   { key: "gemini_model", value: "gemini-2.0-flash", label: "Modèle Gemini (gemini-2.0-flash / gemini-1.5-pro / gemini-1.5-flash)", group: "api" },
+  { key: "groq_api_key", value: "", label: "Clé API Groq (gratuit — console.groq.com)", group: "api" },
+  { key: "groq_model", value: "llama-3.3-70b-versatile", label: "Modèle Groq (llama-3.3-70b-versatile / llama-3.1-8b-instant / mixtral-8x7b-32768)", group: "api" },
+  { key: "openrouter_api_key", value: "", label: "Clé API OpenRouter (modèles gratuits — openrouter.ai)", group: "api" },
+  { key: "openrouter_model", value: "meta-llama/llama-3.1-8b-instruct:free", label: "Modèle OpenRouter (meta-llama/llama-3.1-8b-instruct:free / google/gemma-3-12b-it:free / mistralai/mistral-7b-instruct:free)", group: "api" },
   { key: "ai_name", value: "Simia", label: "Nom de l'assistante IA", group: "identite" },
   { key: "ai_display_title", value: "Support Simix", label: "Titre affiché dans le chat (ex: Support Simix)", group: "identite" },
   { key: "ai_avatar_url", value: "/support-avatar.png", label: "URL de l'avatar (image de profil du service client)", group: "identite" },

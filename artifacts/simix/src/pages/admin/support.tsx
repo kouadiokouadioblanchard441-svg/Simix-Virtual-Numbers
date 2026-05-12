@@ -730,6 +730,10 @@ function ConfigTab() {
   const currentProvider = localConfig["ai_provider"] ?? "gemini";
   const geminiApiKey = localConfig["gemini_api_key"] ?? "";
   const geminiModel = localConfig["gemini_model"] ?? "gemini-2.0-flash";
+  const groqApiKey = localConfig["groq_api_key"] ?? "";
+  const groqModel = localConfig["groq_model"] ?? "llama-3.3-70b-versatile";
+  const openrouterApiKey = localConfig["openrouter_api_key"] ?? "";
+  const openrouterModel = localConfig["openrouter_model"] ?? "meta-llama/llama-3.1-8b-instruct:free";
 
   if (isLoading) return <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin text-violet-400" /></div>;
 
@@ -773,35 +777,35 @@ function ConfigTab() {
         {/* Provider selector */}
         <div>
           <label className="text-xs text-zinc-400 mb-2 block font-medium">Fournisseur IA actif</label>
-          <div className="flex gap-3">
+          <div className="grid grid-cols-2 gap-2.5">
             {[
-              { value: "gemini", label: "Google Gemini", badge: "Recommandé", icon: "🌟" },
-              { value: "openai", label: "OpenAI GPT", badge: "", icon: "🤖" },
+              { value: "gemini", label: "Google Gemini", badge: "Gratuit", icon: "🌟", activeClass: "bg-blue-600/20 border-blue-500/50 text-blue-300 shadow-blue-500/10" },
+              { value: "groq", label: "Groq", badge: "Gratuit + Rapide", icon: "⚡", activeClass: "bg-orange-600/20 border-orange-500/50 text-orange-300 shadow-orange-500/10" },
+              { value: "openrouter", label: "OpenRouter", badge: "Gratuit", icon: "🔀", activeClass: "bg-emerald-600/20 border-emerald-500/50 text-emerald-300 shadow-emerald-500/10" },
+              { value: "openai", label: "OpenAI GPT", badge: "Payant", icon: "🤖", activeClass: "bg-violet-600/20 border-violet-500/50 text-violet-300 shadow-violet-500/10" },
             ].map(p => (
               <button
                 key={p.value}
                 onClick={() => updateLocal("ai_provider", p.value)}
                 className={cn(
-                  "flex-1 flex items-center gap-3 px-4 py-3 rounded-xl border text-sm font-medium transition-all",
+                  "flex items-center gap-2.5 px-3 py-2.5 rounded-xl border text-sm font-medium transition-all",
                   currentProvider === p.value
-                    ? p.value === "gemini"
-                      ? "bg-blue-600/20 border-blue-500/50 text-blue-300 shadow-lg shadow-blue-500/10"
-                      : "bg-violet-600/20 border-violet-500/50 text-violet-300"
+                    ? `${p.activeClass} shadow-lg`
                     : "border-zinc-700/50 text-zinc-500 hover:text-zinc-300 hover:border-zinc-600"
                 )}
               >
-                <span className="text-base">{p.icon}</span>
-                <span>{p.label}</span>
-                {p.badge && currentProvider === p.value && (
-                  <span className="ml-auto text-[10px] bg-blue-500/20 text-blue-300 border border-blue-500/30 px-2 py-0.5 rounded-full">{p.badge}</span>
-                )}
-                {currentProvider === p.value && <Check className="w-3.5 h-3.5 ml-auto text-current" />}
+                <span className="text-base flex-shrink-0">{p.icon}</span>
+                <div className="flex flex-col items-start min-w-0">
+                  <span className="text-xs font-semibold truncate">{p.label}</span>
+                  <span className="text-[10px] opacity-60 truncate">{p.badge}</span>
+                </div>
+                {currentProvider === p.value && <Check className="w-3.5 h-3.5 ml-auto flex-shrink-0" />}
               </button>
             ))}
           </div>
         </div>
 
-        {/* Gemini config — shown when Gemini selected */}
+        {/* ── Gemini config ── */}
         <AnimatePresence>
           {currentProvider === "gemini" && (
             <motion.div
@@ -810,7 +814,6 @@ function ConfigTab() {
               exit={{ opacity: 0, height: 0 }}
               className="space-y-4 overflow-hidden"
             >
-              {/* API Key */}
               <div>
                 <label className="text-xs text-zinc-400 mb-1.5 flex items-center gap-1.5 font-medium">
                   <Key className="w-3 h-3" />
@@ -824,26 +827,20 @@ function ConfigTab() {
                     placeholder="AIzaSy..."
                     className="w-full bg-zinc-900/60 text-white text-sm rounded-xl px-3 py-2.5 pr-10 outline-none border border-blue-500/30 focus:border-blue-500/60 font-mono"
                   />
-                  <button
-                    type="button"
-                    onClick={() => setShowApiKey(v => !v)}
-                    className="absolute right-3 text-zinc-500 hover:text-zinc-300 transition-colors"
-                  >
+                  <button type="button" onClick={() => setShowApiKey(v => !v)} className="absolute right-3 text-zinc-500 hover:text-zinc-300 transition-colors">
                     {showApiKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
-                <div className="mt-1.5 flex items-center gap-1.5">
+                <div className="mt-1.5">
                   {geminiApiKey.startsWith("AIzaSy") ? (
                     <span className="flex items-center gap-1 text-[11px] text-green-400"><Check className="w-3 h-3" /> Clé configurée</span>
                   ) : geminiApiKey.length > 0 ? (
                     <span className="flex items-center gap-1 text-[11px] text-orange-400"><AlertCircle className="w-3 h-3" /> Format inhabituel</span>
                   ) : (
-                    <span className="flex items-center gap-1 text-[11px] text-red-400"><AlertCircle className="w-3 h-3" /> Clé requise pour activer Gemini</span>
+                    <span className="flex items-center gap-1 text-[11px] text-red-400"><AlertCircle className="w-3 h-3" /> Clé requise — <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer" className="underline">Obtenir gratuitement</a></span>
                   )}
                 </div>
               </div>
-
-              {/* Model selector */}
               <div>
                 <label className="text-xs text-zinc-400 mb-1.5 block font-medium">Modèle Gemini</label>
                 <div className="flex gap-2 flex-wrap">
@@ -852,29 +849,156 @@ function ConfigTab() {
                     { value: "gemini-1.5-pro", label: "Gemini 1.5 Pro", desc: "Plus puissant" },
                     { value: "gemini-1.5-flash", label: "Gemini 1.5 Flash", desc: "Équilibré" },
                   ].map(m => (
-                    <button
-                      key={m.value}
-                      onClick={() => updateLocal("gemini_model", m.value)}
-                      className={cn(
-                        "flex flex-col items-start px-4 py-2.5 rounded-xl border text-left transition-all",
-                        geminiModel === m.value
-                          ? "bg-blue-600/20 border-blue-500/50 text-blue-300"
-                          : "border-zinc-700/50 text-zinc-500 hover:text-zinc-300 hover:border-zinc-600"
-                      )}
-                    >
+                    <button key={m.value} onClick={() => updateLocal("gemini_model", m.value)}
+                      className={cn("flex flex-col items-start px-4 py-2.5 rounded-xl border text-left transition-all",
+                        geminiModel === m.value ? "bg-blue-600/20 border-blue-500/50 text-blue-300" : "border-zinc-700/50 text-zinc-500 hover:text-zinc-300 hover:border-zinc-600"
+                      )}>
                       <span className="text-xs font-medium">{m.label}</span>
                       <span className="text-[10px] opacity-70">{m.desc}</span>
                     </button>
                   ))}
                 </div>
               </div>
-
-              {/* Info banner */}
               <div className="flex items-start gap-2.5 bg-blue-500/8 border border-blue-500/15 rounded-xl p-3">
                 <Shield className="w-4 h-4 text-blue-400 mt-0.5 flex-shrink-0" />
                 <p className="text-[11px] text-zinc-400 leading-relaxed">
-                  La clé API est stockée de façon sécurisée en base de données et n'est jamais exposée côté client. Elle est utilisée uniquement par le serveur pour les requêtes au service client IA.
+                  La clé API est stockée de façon sécurisée en base de données et n'est jamais exposée côté client.
                 </p>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* ── Groq config ── */}
+        <AnimatePresence>
+          {currentProvider === "groq" && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              className="space-y-4 overflow-hidden"
+            >
+              <div className="flex items-start gap-2.5 bg-orange-500/8 border border-orange-500/20 rounded-xl p-3">
+                <Zap className="w-4 h-4 text-orange-400 mt-0.5 flex-shrink-0" />
+                <div>
+                  <p className="text-[11px] text-orange-300 font-medium mb-0.5">Groq — Ultra-rapide & Gratuit</p>
+                  <p className="text-[11px] text-zinc-400 leading-relaxed">
+                    Groq offre une inférence très rapide avec un accès gratuit. Créez votre clé sur <a href="https://console.groq.com" target="_blank" rel="noopener noreferrer" className="text-orange-400 underline">console.groq.com</a>
+                  </p>
+                </div>
+              </div>
+              <div>
+                <label className="text-xs text-zinc-400 mb-1.5 flex items-center gap-1.5 font-medium">
+                  <Key className="w-3 h-3" />
+                  Clé API Groq
+                </label>
+                <div className="relative flex items-center">
+                  <input
+                    type={showApiKey ? "text" : "password"}
+                    value={groqApiKey}
+                    onChange={e => updateLocal("groq_api_key", e.target.value)}
+                    placeholder="gsk_..."
+                    className="w-full bg-zinc-900/60 text-white text-sm rounded-xl px-3 py-2.5 pr-10 outline-none border border-orange-500/30 focus:border-orange-500/60 font-mono"
+                  />
+                  <button type="button" onClick={() => setShowApiKey(v => !v)} className="absolute right-3 text-zinc-500 hover:text-zinc-300 transition-colors">
+                    {showApiKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+                <div className="mt-1.5">
+                  {groqApiKey.startsWith("gsk_") ? (
+                    <span className="flex items-center gap-1 text-[11px] text-green-400"><Check className="w-3 h-3" /> Clé Groq configurée</span>
+                  ) : groqApiKey.length > 0 ? (
+                    <span className="flex items-center gap-1 text-[11px] text-orange-400"><AlertCircle className="w-3 h-3" /> Format inhabituel (doit commencer par gsk_)</span>
+                  ) : (
+                    <span className="flex items-center gap-1 text-[11px] text-zinc-500"><AlertCircle className="w-3 h-3" /> Clé requise</span>
+                  )}
+                </div>
+              </div>
+              <div>
+                <label className="text-xs text-zinc-400 mb-1.5 block font-medium">Modèle Groq</label>
+                <div className="flex gap-2 flex-wrap">
+                  {[
+                    { value: "llama-3.3-70b-versatile", label: "Llama 3.3 70B", desc: "Puissant & polyvalent" },
+                    { value: "llama-3.1-8b-instant", label: "Llama 3.1 8B", desc: "Très rapide" },
+                    { value: "mixtral-8x7b-32768", label: "Mixtral 8x7B", desc: "Contexte étendu" },
+                  ].map(m => (
+                    <button key={m.value} onClick={() => updateLocal("groq_model", m.value)}
+                      className={cn("flex flex-col items-start px-4 py-2.5 rounded-xl border text-left transition-all",
+                        groqModel === m.value ? "bg-orange-600/20 border-orange-500/50 text-orange-300" : "border-zinc-700/50 text-zinc-500 hover:text-zinc-300 hover:border-zinc-600"
+                      )}>
+                      <span className="text-xs font-medium">{m.label}</span>
+                      <span className="text-[10px] opacity-70">{m.desc}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* ── OpenRouter config ── */}
+        <AnimatePresence>
+          {currentProvider === "openrouter" && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              className="space-y-4 overflow-hidden"
+            >
+              <div className="flex items-start gap-2.5 bg-emerald-500/8 border border-emerald-500/20 rounded-xl p-3">
+                <Activity className="w-4 h-4 text-emerald-400 mt-0.5 flex-shrink-0" />
+                <div>
+                  <p className="text-[11px] text-emerald-300 font-medium mb-0.5">OpenRouter — Accès à des centaines de modèles</p>
+                  <p className="text-[11px] text-zinc-400 leading-relaxed">
+                    Modèles gratuits disponibles. Créez votre clé sur <a href="https://openrouter.ai/keys" target="_blank" rel="noopener noreferrer" className="text-emerald-400 underline">openrouter.ai</a>
+                  </p>
+                </div>
+              </div>
+              <div>
+                <label className="text-xs text-zinc-400 mb-1.5 flex items-center gap-1.5 font-medium">
+                  <Key className="w-3 h-3" />
+                  Clé API OpenRouter
+                </label>
+                <div className="relative flex items-center">
+                  <input
+                    type={showApiKey ? "text" : "password"}
+                    value={openrouterApiKey}
+                    onChange={e => updateLocal("openrouter_api_key", e.target.value)}
+                    placeholder="sk-or-..."
+                    className="w-full bg-zinc-900/60 text-white text-sm rounded-xl px-3 py-2.5 pr-10 outline-none border border-emerald-500/30 focus:border-emerald-500/60 font-mono"
+                  />
+                  <button type="button" onClick={() => setShowApiKey(v => !v)} className="absolute right-3 text-zinc-500 hover:text-zinc-300 transition-colors">
+                    {showApiKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+                <div className="mt-1.5">
+                  {openrouterApiKey.startsWith("sk-or-") ? (
+                    <span className="flex items-center gap-1 text-[11px] text-green-400"><Check className="w-3 h-3" /> Clé OpenRouter configurée</span>
+                  ) : openrouterApiKey.length > 0 ? (
+                    <span className="flex items-center gap-1 text-[11px] text-orange-400"><AlertCircle className="w-3 h-3" /> Format inhabituel (doit commencer par sk-or-)</span>
+                  ) : (
+                    <span className="flex items-center gap-1 text-[11px] text-zinc-500"><AlertCircle className="w-3 h-3" /> Clé requise</span>
+                  )}
+                </div>
+              </div>
+              <div>
+                <label className="text-xs text-zinc-400 mb-1.5 block font-medium">Modèle OpenRouter (modèles gratuits avec :free)</label>
+                <div className="flex gap-2 flex-wrap">
+                  {[
+                    { value: "meta-llama/llama-3.1-8b-instruct:free", label: "Llama 3.1 8B", desc: "Gratuit · Meta" },
+                    { value: "google/gemma-3-12b-it:free", label: "Gemma 3 12B", desc: "Gratuit · Google" },
+                    { value: "mistralai/mistral-7b-instruct:free", label: "Mistral 7B", desc: "Gratuit · Mistral" },
+                    { value: "meta-llama/llama-3.3-70b-instruct:free", label: "Llama 3.3 70B", desc: "Gratuit · Puissant" },
+                  ].map(m => (
+                    <button key={m.value} onClick={() => updateLocal("openrouter_model", m.value)}
+                      className={cn("flex flex-col items-start px-4 py-2.5 rounded-xl border text-left transition-all",
+                        openrouterModel === m.value ? "bg-emerald-600/20 border-emerald-500/50 text-emerald-300" : "border-zinc-700/50 text-zinc-500 hover:text-zinc-300 hover:border-zinc-600"
+                      )}>
+                      <span className="text-xs font-medium">{m.label}</span>
+                      <span className="text-[10px] opacity-70">{m.desc}</span>
+                    </button>
+                  ))}
+                </div>
               </div>
             </motion.div>
           )}
