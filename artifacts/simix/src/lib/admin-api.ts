@@ -218,6 +218,14 @@ export const adminApi = {
   /* ── Site Content ── */
   getSiteContent: () => req<Record<string, string>>("GET", "/admin/site-content"),
   updateSiteContent: (data: Record<string, string>) => req("PUT", "/admin/site-content", data),
+
+  /* ── Service Prices (per country) ── */
+  getServicePrices: () => req<ServicePrice[]>("GET", "/admin/service-prices"),
+  upsertServicePrice: (data: { countryCode: string; serviceSlug: string; price: number; enabled?: boolean }) =>
+    req<ServicePrice>("POST", "/admin/service-prices", data),
+  updateServicePrice: (id: string, data: { price?: number; enabled?: boolean }) =>
+    req<ServicePrice>("PUT", `/admin/service-prices/${id}`, data),
+  deleteServicePrice: (id: string) => req("DELETE", `/admin/service-prices/${id}`),
 };
 
 export interface AdminStats {
@@ -538,6 +546,16 @@ export interface LivePriceCountry {
   markup?: number;
   products?: { name: string; qty: number; priceUsd: number; priceFcfa: number; priceWithMarkup: number }[];
   error?: string;
+}
+
+export interface ServicePrice {
+  id: string;
+  countryCode: string;
+  serviceSlug: string;
+  price: number;
+  enabled: boolean;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface RealtimeData {

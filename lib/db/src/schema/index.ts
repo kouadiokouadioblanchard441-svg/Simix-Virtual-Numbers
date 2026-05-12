@@ -22,3 +22,4 @@ export * from "./email_otp";
 export * from "./login_history";
 export * from "./ip_blacklist";
 export * from "./payment_routing";
+export * from "./service_prices";

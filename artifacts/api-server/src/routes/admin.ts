@@ -22,6 +22,7 @@ import {
   smsMessagesTable,
   loginHistoryTable,
   ipBlacklistTable,
+  servicePricesTable,
 } from "@workspace/db";
 import { FiveSimClient } from "../lib/fivesim";
 
@@ -1570,6 +1571,51 @@ router.put("/admin/site-content", requireAdmin, async (req, res): Promise<void> 
   }
 
   await logAdminAction(adminId(req), "site_content_update", req.ip, "site", "content", { keys: Object.keys(updates) });
+  res.json({ success: true });
+});
+
+/* ─────────────────── SERVICE PRICES (per country) ─────────────────── */
+
+router.get("/admin/service-prices", requireAdmin, async (_req, res): Promise<void> => {
+  const rows = await db.select().from(servicePricesTable).orderBy(servicePricesTable.countryCode, servicePricesTable.serviceSlug);
+  res.json(rows);
+});
+
+router.post("/admin/service-prices", requireAdmin, async (req, res): Promise<void> => {
+  const { countryCode, serviceSlug, price, enabled } = req.body as {
+    countryCode: string; serviceSlug: string; price: number; enabled?: boolean;
+  };
+  if (!countryCode || !serviceSlug || price == null) {
+    res.status(400).json({ error: "countryCode, serviceSlug et price sont requis" }); return;
+  }
+  const [row] = await db
+    .insert(servicePricesTable)
+    .values({ countryCode: countryCode.toLowerCase(), serviceSlug: serviceSlug.toLowerCase(), price: Number(price), enabled: enabled ?? true })
+    .onConflictDoUpdate({
+      target: [servicePricesTable.countryCode, servicePricesTable.serviceSlug],
+      set: { price: Number(price), enabled: enabled ?? true, updatedAt: new Date() },
+    })
+    .returning();
+  await logAdminAction(adminId(req), "service_price_upsert", req.ip, "service_price", row!.id, { countryCode, serviceSlug, price });
+  res.status(201).json(row);
+});
+
+router.put("/admin/service-prices/:id", requireAdmin, async (req, res): Promise<void> => {
+  const { id } = req.params;
+  const { price, enabled } = req.body as { price?: number; enabled?: boolean };
+  const updates: Record<string, unknown> = { updatedAt: new Date() };
+  if (price != null) updates.price = Number(price);
+  if (enabled != null) updates.enabled = enabled;
+  const [row] = await db.update(servicePricesTable).set(updates).where(eq(servicePricesTable.id, id!)).returning();
+  if (!row) { res.status(404).json({ error: "Prix introuvable" }); return; }
+  await logAdminAction(adminId(req), "service_price_update", req.ip, "service_price", id, updates);
+  res.json(row);
+});
+
+router.delete("/admin/service-prices/:id", requireAdmin, async (req, res): Promise<void> => {
+  const { id } = req.params;
+  await db.delete(servicePricesTable).where(eq(servicePricesTable.id, id!));
+  await logAdminAction(adminId(req), "service_price_delete", req.ip, "service_price", id);
   res.json({ success: true });
 });
 

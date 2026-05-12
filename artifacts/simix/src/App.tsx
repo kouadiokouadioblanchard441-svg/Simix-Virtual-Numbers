@@ -61,6 +61,7 @@ import AdminIpTracker from "@/pages/admin/ip-tracker";
 import AdminLivePrices from "@/pages/admin/live-prices";
 import AdminMedia from "@/pages/admin/media";
 import AdminRouting from "@/pages/admin/routing";
+import AdminServicePrices from "@/pages/admin/service-prices";
 
 // Public legal pages (no auth required)
 import LegalCGU from "@/pages/legal/cgu";
@@ -107,6 +108,7 @@ function AdminRoutes() {
         <Route path="/admin/live-prices" component={AdminLivePrices} />
         <Route path="/admin/media" component={AdminMedia} />
         <Route path="/admin/routing" component={AdminRouting} />
+        <Route path="/admin/service-prices" component={AdminServicePrices} />
       </Switch>
     </AdminSecureGuard>
   );
