@@ -22,6 +22,9 @@ const router: IRouter = Router();
 router.use(requireAdminJwt);
 
 function requireAdmin(req: Request, res: Response, next: NextFunction): void {
+  /* requireAdminJwt already verified the JWT — if adminPayload is set, access is granted */
+  if (req.adminPayload) { next(); return; }
+  /* Fallback: legacy session-based check */
   if (!req.user) { res.status(401).json({ error: "Authentication required" }); return; }
   if (!req.user.isAdmin) { res.status(403).json({ error: "Accès réservé aux administrateurs" }); return; }
   next();

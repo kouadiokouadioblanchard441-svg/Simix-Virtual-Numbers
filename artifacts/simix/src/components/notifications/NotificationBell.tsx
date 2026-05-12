@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Bell, X, CheckCheck, Info, Shield, Gift, Megaphone, Zap, Star, Loader2, MessageSquare, Wallet, Phone, Clock, RefreshCw } from "lucide-react";
 import { useNotifications, type AppNotification } from "@/hooks/use-notifications";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 
 function typeIcon(type: string) {
   switch (type) {
@@ -44,15 +44,25 @@ function timeAgo(dateStr: string) {
   return `${Math.floor(diff / 86400000)}j`;
 }
 
-function NotifItem({ notif, onRead }: { notif: AppNotification; onRead: (id: string) => void }) {
+function NotifItem({ notif, onRead, onClose }: { notif: AppNotification; onRead: (id: string) => void; onClose: () => void }) {
+  const [, setLocation] = useLocation();
+
+  const handleClick = () => {
+    if (!notif.isRead) onRead(notif.id);
+    if (notif.link) {
+      onClose();
+      setLocation(notif.link);
+    }
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, x: -10 }}
       animate={{ opacity: 1, x: 0 }}
       className={`flex gap-3 p-3 rounded-xl border cursor-pointer transition-all hover:brightness-110 ${
         notif.isRead ? "bg-white/3 border-white/5" : `${typeColor(notif.type)}`
-      }`}
-      onClick={() => { if (!notif.isRead) onRead(notif.id); }}
+      } ${notif.link ? "hover:ring-1 hover:ring-violet-500/30" : ""}`}
+      onClick={handleClick}
     >
       <div className={`w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5 ${
         notif.isRead ? "bg-white/5" : typeColor(notif.type)
@@ -176,7 +186,7 @@ export function NotificationBell({ isAuthenticated = false }: { isAuthenticated?
                 </div>
               ) : (
                 notifications.map(n => (
-                  <NotifItem key={n.id} notif={n} onRead={markRead} />
+                  <NotifItem key={n.id} notif={n} onRead={markRead} onClose={() => setIsOpen(false)} />
                 ))
               )}
             </div>

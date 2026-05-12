@@ -16,7 +16,6 @@ import {
 } from "@workspace/api-zod";
 import { requireAuth } from "../lib/auth";
 import { toNumber, toMessage } from "../lib/serializers";
-import { scheduleSimulatedSms } from "../lib/sms-simulator";
 import { isRateLimited } from "../lib/rate-limiter";
 import {
   assessPurchaseRisk,
@@ -32,19 +31,11 @@ import {
   getExtendMinutes,
   getExtendFee,
   getMaxOrdersPerMinute,
-  isSmsSimulationEnabled,
 } from "../lib/settings";
 
 const router: IRouter = Router();
 
 /* ─── Helpers ─────────────────────────────────────────────────────── */
-
-function generatePhoneNumber(dialCode: string): string {
-  const digits = "0123456789";
-  let suffix = "";
-  for (let i = 0; i < 8; i++) suffix += digits[Math.floor(Math.random() * digits.length)];
-  return `${dialCode}${suffix}`;
-}
 
 function extractCode(text: string): string | null {
   const match = text.match(/\b(\d{4,8})\b/);
@@ -222,57 +213,63 @@ router.post("/numbers", requireAuth, async (req, res): Promise<void> => {
     return;
   }
 
-  let phoneNumber: string;
-  let externalOrderId: string | null = null;
+  const externalOrderId: string | null = null;
   const validityMin = await getNumberValidityMinutes();
   const expiresAt = new Date(Date.now() + validityMin * 60 * 1000);
-  let usedReal5sim = false;
-  let providerError: string | null = null;
 
-  /* ── Try 5sim first ── */
+  /* ── Appel réel à 5sim (aucun fallback vers numéros fictifs) ── */
   const fiveSimClient = await getActive5SimClient();
-  if (fiveSimClient) {
-    const countrySlug = ISO_TO_5SIM[country.code.toUpperCase()];
-    const productSlug = SERVICE_TO_5SIM[service.slug.toLowerCase()] ?? service.slug.toLowerCase();
 
-    if (countrySlug && productSlug) {
-      try {
-        const order = await fiveSimClient.buyNumber(countrySlug, "any", productSlug);
-        phoneNumber = order.phone; /* already normalised with + prefix by FiveSimClient */
-        externalOrderId = String(order.id);
-        usedReal5sim = true;
-        logger.info(
-          { orderId: order.id, phone: phoneNumber, userId: user.id, countrySlug, productSlug },
-          "[5sim] Real number acquired",
-        );
-      } catch (e) {
-        const errMsg = (e as Error).message;
-        const is5SimErr = e instanceof FiveSimError;
+  if (!fiveSimClient) {
+    /* 5sim non configuré — rembourser et refuser */
+    await db.update(usersTable)
+      .set({ balance: sql`${usersTable.balance} + ${price}` })
+      .where(eq(usersTable.id, user.id));
+    res.status(503).json({ error: "Service momentanément indisponible. Veuillez contacter le support." });
+    return;
+  }
 
-        if (is5SimErr && (e as FiveSimError).isPaymentRequired) {
-          /* 5sim balance exhausted — refund user, return error */
-          await db.update(usersTable)
-            .set({ balance: sql`${usersTable.balance} + ${price}` })
-            .where(eq(usersTable.id, user.id));
-          res.status(503).json({ error: "Fournisseur temporairement indisponible. Votre solde n'a pas été débité." });
-          return;
-        }
+  const countrySlug = ISO_TO_5SIM[country.code.toUpperCase()];
+  const productSlug = SERVICE_TO_5SIM[service.slug.toLowerCase()] ?? service.slug.toLowerCase();
 
-        if (is5SimErr && (e as FiveSimError).isNoNumbers) {
-          providerError = `Aucun numéro disponible pour ${country.name} / ${service.name} chez 5sim`;
-        } else {
-          providerError = errMsg;
-        }
+  if (!countrySlug || !productSlug) {
+    /* Pas de correspondance 5sim pour ce pays/service — rembourser */
+    await db.update(usersTable)
+      .set({ balance: sql`${usersTable.balance} + ${price}` })
+      .where(eq(usersTable.id, user.id));
+    logger.warn({ countryCode: country.code, serviceSlug: service.slug }, "[5sim] No mapping found");
+    res.status(503).json({ error: "Service momentanément indisponible. Veuillez contacter le support." });
+    return;
+  }
 
-        logger.warn({ error: errMsg, countrySlug, productSlug }, "[5sim] Failed, falling back to simulation");
-        phoneNumber = generatePhoneNumber(country.dialCode);
-      }
+  let phoneNumber: string;
+  try {
+    const order = await fiveSimClient.buyNumber(countrySlug, "any", productSlug);
+    phoneNumber = order.phone;
+    logger.info(
+      { orderId: order.id, phone: phoneNumber, userId: user.id, countrySlug, productSlug },
+      "[5sim] Real number acquired",
+    );
+  } catch (e) {
+    const errMsg = (e as Error).message;
+    const is5SimErr = e instanceof FiveSimError;
+
+    /* Toujours rembourser l'utilisateur en cas d'échec */
+    await db.update(usersTable)
+      .set({ balance: sql`${usersTable.balance} + ${price}` })
+      .where(eq(usersTable.id, user.id));
+
+    if (is5SimErr && (e as FiveSimError).isPaymentRequired) {
+      logger.warn({ countrySlug, productSlug }, "[5sim] Account balance exhausted");
+      res.status(503).json({ error: "Service momentanément indisponible. Veuillez contacter le support." });
+    } else if (is5SimErr && (e as FiveSimError).isNoNumbers) {
+      logger.warn({ countrySlug, productSlug }, "[5sim] No numbers available");
+      res.status(503).json({ error: "Aucun numéro disponible pour ce pays/service actuellement. Veuillez réessayer ou contacter le support." });
     } else {
-      logger.warn({ countryCode: country.code, serviceSlug: service.slug }, "[5sim] No mapping found");
-      phoneNumber = generatePhoneNumber(country.dialCode);
+      logger.error({ error: errMsg, countrySlug, productSlug }, "[5sim] API error");
+      res.status(503).json({ error: "Service momentanément indisponible. Veuillez contacter le support." });
     }
-  } else {
-    phoneNumber = generatePhoneNumber(country.dialCode);
+    return;
   }
 
   /* ── Persist virtual number ── */
@@ -303,7 +300,7 @@ router.post("/numbers", requireAuth, async (req, res): Promise<void> => {
     amount: price,
     status: "completed",
     method: "wallet",
-    description: `${service.name} – ${country.name}${usedReal5sim ? " (5sim)" : " (sim)"}`,
+    description: `${service.name} – ${country.name} (5sim)`,
   });
 
   /* ── Push real-time purchase notification ── */
@@ -320,15 +317,7 @@ router.post("/numbers", requireAuth, async (req, res): Promise<void> => {
     if (notif) broadcastNotification(notif);
   } catch { /* non-critical */ }
 
-  /* ── Schedule simulated SMS if not using real 5sim AND simulation is enabled ── */
-  if (!usedReal5sim && await isSmsSimulationEnabled()) {
-    scheduleSimulatedSms(vn.id, service.name);
-  }
-
-  const response: Record<string, unknown> = toNumber(vn, service, country, []) as Record<string, unknown>;
-  if (providerError) response._providerWarning = providerError;
-
-  res.json(response);
+  res.json(toNumber(vn, service, country, []));
 });
 
 /* ─── Active numbers ──────────────────────────────────────────────── */
