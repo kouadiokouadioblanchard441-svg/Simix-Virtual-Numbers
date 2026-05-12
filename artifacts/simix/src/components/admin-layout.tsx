@@ -26,6 +26,7 @@ import {
   Ban,
   TrendingUp,
   Layers,
+  GitMerge,
 } from "lucide-react";
 import { SimixLogo } from "@/components/simix-logo";
 import { cn } from "@/lib/utils";
@@ -40,6 +41,7 @@ const NAV_ITEMS = [
   { href: "/admin/services", label: "Services & Prix", icon: Globe },
   { href: "/admin/live-prices", label: "Prix live 5sim", icon: TrendingUp },
   { href: "/admin/payment-config", label: "Paiements / Pays", icon: MapPin },
+  { href: "/admin/routing", label: "Routage API", icon: GitMerge },
   { href: "/admin/providers", label: "Fournisseurs API", icon: Zap },
   { href: "/admin/support", label: "Support IA", icon: MessageSquare },
   { href: "/admin/notifications", label: "Notifications", icon: Bell },

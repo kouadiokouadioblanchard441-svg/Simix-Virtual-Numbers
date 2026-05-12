@@ -13,6 +13,7 @@ import adminSupportRouter from "./admin-support";
 import adminAuthRouter from "./admin-auth";
 import adminNotificationsRouter from "./admin-notifications";
 import adminEmailsRouter from "./admin-emails";
+import adminPaymentRoutingRouter from "./admin-payment-routing";
 import configRouter from "./config";
 import footerRouter from "./footer";
 import supportRouter from "./support";
@@ -44,5 +45,6 @@ router.use(adminRouter);
 router.use(adminSupportRouter);
 router.use(adminNotificationsRouter);
 router.use(adminEmailsRouter);
+router.use(adminPaymentRoutingRouter);
 
 export default router;
