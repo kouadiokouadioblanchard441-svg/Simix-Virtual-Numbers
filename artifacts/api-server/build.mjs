@@ -14,7 +14,19 @@ const rootDir = path.resolve(artifactDir, "..", "..");
 const distDir = path.resolve(rootDir, "dist");
 
 async function buildAll() {
-  await rm(distDir, { recursive: true, force: true });
+  // Only clean API-generated files — preserve dist/public/ (Vite frontend build)
+  // so that the dev workflow doesn't wipe out the committed frontend assets.
+  const apiFiles = [
+    "index.cjs",
+    "pino-file.cjs",
+    "pino-pretty.cjs",
+    "pino-worker.cjs",
+    "thread-stream-worker.cjs",
+    "migrations",
+  ];
+  await Promise.all(
+    apiFiles.map((f) => rm(path.join(distDir, f), { recursive: true, force: true }))
+  );
 
   await esbuild({
     entryPoints: [path.resolve(artifactDir, "src/index.ts")],

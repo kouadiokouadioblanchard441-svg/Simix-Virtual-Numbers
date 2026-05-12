@@ -8,6 +8,7 @@ lib/integrations/*/dist
 scripts/dist
 artifacts/api-server/dist
 artifacts/simix/dist
+# !! DO NOT add /dist or dist/ here — root dist/ must be committed for Plesk !!
 tmp
 out-tsc
 *.tsbuildinfo

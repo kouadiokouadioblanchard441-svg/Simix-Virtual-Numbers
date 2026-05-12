@@ -1,15 +1,17 @@
 {
-  "name": "workspace",
-  "version": "0.0.0",
+  "name": "simix",
+  "version": "1.0.0",
   "license": "MIT",
-  "packageManager": "pnpm@10.26.1",
-  "scripts": {
-    "preinstall": "sh -c 'rm -f package-lock.json yarn.lock; case \"$npm_config_user_agent\" in pnpm/*) ;; *) echo \"Use pnpm instead\" >&2; exit 1 ;; esac'",
-    "start": "NODE_ENV=production node --enable-source-maps dist/index.cjs",
-    "build": "NODE_ENV=production pnpm --filter @workspace/api-server run build && NODE_ENV=production pnpm --filter @workspace/simix run build",
-    "typecheck:libs": "tsc --build",
-    "typecheck": "pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck"
+  "engines": {
+    "node": ">=20.0.0"
   },
+  "scripts": {
+    "start": "node --enable-source-maps dist/index.cjs",
+    "build": "pnpm --filter @workspace/api-server run build && NODE_ENV=production pnpm --filter @workspace/simix run build",
+    "dev:api": "cd artifacts/api-server && PORT=3000 NODE_ENV=development pnpm run build && node --enable-source-maps ../../dist/index.cjs",
+    "dev:front": "cd artifacts/simix && pnpm run dev"
+  },
+  "packageManager": "pnpm@10.26.1",
   "private": true,
   "devDependencies": {
     "typescript": "~5.9.2",
