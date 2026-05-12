@@ -41,6 +41,21 @@ export default defineConfig({
   build: {
     outDir: path.resolve(import.meta.dirname, "..", "..", "dist", "public"),
     emptyOutDir: true,
+    rollupOptions: {
+      output: {
+        /* Stable filenames so git tracking doesn't change on every build */
+        entryFileNames: "assets/index.js",
+        chunkFileNames: "assets/[name].js",
+        assetFileNames: (info) => {
+          /* Keep content hash only for images/fonts — CSS and JS are stable */
+          const ext = info.name?.split(".").pop() ?? "";
+          if (["png", "jpg", "jpeg", "gif", "svg", "webp", "woff", "woff2", "ttf"].includes(ext)) {
+            return "assets/[name]-[hash][extname]";
+          }
+          return "assets/[name][extname]";
+        },
+      },
+    },
   },
   server: {
     port: resolvedPort,

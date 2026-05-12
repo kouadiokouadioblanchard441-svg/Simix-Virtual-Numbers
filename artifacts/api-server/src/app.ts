@@ -11,6 +11,7 @@ import { attachUser } from "./lib/auth";
 import { globalRateLimit, checkUserBlocked, checkMaintenanceMode, checkIpBlacklist } from "./middlewares/security";
 import { startFiveSimPoller } from "./lib/fivesim-poller";
 import { seedProvidersFromEnv } from "./lib/seed-providers";
+import { seedPaymentMethods } from "./lib/seed-payment-methods";
 import { startFiveSimSyncScheduler, syncFiveSimCountries, syncFiveSimProducts } from "./lib/fivesim-sync";
 
 const app: Express = express();
@@ -77,7 +78,9 @@ if (process.env.NODE_ENV === "production") {
   }
 }
 
-/* ── Seed providers, then start real-time sync + poller ── */
+/* ── Seed reference data + providers, then start real-time sync + poller ── */
+void seedPaymentMethods();
+
 void seedProvidersFromEnv().then(async () => {
   startFiveSimPoller();
   startFiveSimSyncScheduler();
