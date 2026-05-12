@@ -1,6 +1,6 @@
 import { AppLayout } from "@/components/layout/app-layout";
 import { AuthGuard } from "@/components/auth-guard";
-import { useGetNumberQuote, getGetNumberQuoteQueryKey, useRequestNumber, getListActiveNumbersQueryKey, getGetDashboardSummaryQueryKey } from "@workspace/api-client-react";
+import { useGetNumberQuote, getGetNumberQuoteQueryKey, useRequestNumber, getListActiveNumbersQueryKey, getGetDashboardSummaryQueryKey, getGetWalletQueryKey, getListTransactionsQueryKey } from "@workspace/api-client-react";
 import { useLocation } from "wouter";
 import { ChevronLeft, Info, CheckCircle2, Shield, Edit2, Phone, Clock, Lock } from "lucide-react";
 import { Link } from "wouter";
@@ -42,6 +42,8 @@ function NumberDetailsContent() {
       });
       queryClient.invalidateQueries({ queryKey: getListActiveNumbersQueryKey() });
       queryClient.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() });
+      queryClient.invalidateQueries({ queryKey: getGetWalletQueryKey() });
+      queryClient.invalidateQueries({ queryKey: getListTransactionsQueryKey() });
       setLocation(`/numbers/${number.id}`);
     } catch (error: any) {
       toast({

@@ -97,7 +97,7 @@ function CountriesContent() {
     { query: { queryKey: getListCountriesQueryKey({ search, serviceId }) } }
   );
   const { data: services } = useListServices(undefined, { query: { queryKey: getListServicesQueryKey() } });
-  const selectedService = services?.find(s => s.id === serviceId);
+  const selectedService = services?.find((s: any) => s.id === serviceId);
 
   /* ── Guard: service must be selected first ── */
   if (!serviceId) {
@@ -141,23 +141,25 @@ function CountriesContent() {
   }
 
   /* Filter by region tab */
+  type CountryItem = typeof allCountries extends (infer T)[] | undefined ? T : never;
+
   const filteredCountries = useMemo(() => {
     if (!allCountries) return [];
     if (search) return allCountries;
     if (activeTab === "Tous") return allCountries;
-    if (activeTab === "Populaires") return allCountries.filter(c => c.popular);
-    return allCountries.filter(c => REGION[c.code] === activeTab);
+    if (activeTab === "Populaires") return allCountries.filter((c: CountryItem) => (c as any).popular);
+    return allCountries.filter((c: CountryItem) => REGION[(c as any).code] === activeTab);
   }, [allCountries, activeTab, search]);
 
   const regionCounts = useMemo(() => {
     if (!allCountries) return {} as Record<RegionTab, number>;
     return {
-      "Populaires": allCountries.filter(c => c.popular).length,
-      "Europe": allCountries.filter(c => REGION[c.code] === "Europe").length,
-      "Amériques": allCountries.filter(c => REGION[c.code] === "Amériques").length,
-      "Asie-Pacifique": allCountries.filter(c => REGION[c.code] === "Asie-Pacifique").length,
-      "Moyen-Orient": allCountries.filter(c => REGION[c.code] === "Moyen-Orient").length,
-      "Afrique": allCountries.filter(c => REGION[c.code] === "Afrique").length,
+      "Populaires": allCountries.filter((c: CountryItem) => (c as any).popular).length,
+      "Europe": allCountries.filter((c: CountryItem) => REGION[(c as any).code] === "Europe").length,
+      "Amériques": allCountries.filter((c: CountryItem) => REGION[(c as any).code] === "Amériques").length,
+      "Asie-Pacifique": allCountries.filter((c: CountryItem) => REGION[(c as any).code] === "Asie-Pacifique").length,
+      "Moyen-Orient": allCountries.filter((c: CountryItem) => REGION[(c as any).code] === "Moyen-Orient").length,
+      "Afrique": allCountries.filter((c: CountryItem) => REGION[(c as any).code] === "Afrique").length,
       "Tous": allCountries.length,
     } as Record<RegionTab, number>;
   }, [allCountries]);
@@ -257,7 +259,7 @@ function CountriesContent() {
                 ? Array.from({ length: 5 }).map((_, i) => (
                     <div key={i} className="min-w-[130px] h-28 bg-card border border-card-border rounded-2xl animate-pulse snap-start flex-shrink-0" />
                   ))
-                : popularCountries?.map((c, idx) => (
+                : popularCountries?.map((c: any, idx: number) => (
                     <Link
                       key={c.id}
                       href={`/numbers/new?serviceId=${serviceId}&countryId=${c.id}`}
@@ -312,7 +314,7 @@ function CountriesContent() {
                   <p className="text-xs text-muted-foreground mt-1">Essayez un autre terme ou région</p>
                 </div>
               )
-              : filteredCountries.map((country, i) => (
+              : filteredCountries.map((country: any, i: number) => (
                   <motion.div
                     key={country.id}
                     initial={{ opacity: 0, y: 8 }}

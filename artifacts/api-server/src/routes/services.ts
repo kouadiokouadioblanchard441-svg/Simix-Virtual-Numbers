@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { and, asc, eq, ilike } from "drizzle-orm";
+import { and, asc, desc, eq, ilike } from "drizzle-orm";
 import { db, servicesTable } from "@workspace/db";
 import { ListServicesQueryParams } from "@workspace/api-zod";
 import { toService } from "../lib/serializers";
@@ -31,11 +31,24 @@ router.get("/services", async (req, res): Promise<void> => {
 });
 
 router.get("/services/popular", async (_req, res): Promise<void> => {
-  const rows = await db
+  /* Return services marked popular; if none exist, fall back to the top 12
+     by available number count (so the dashboard always has content). */
+  let rows = await db
     .select()
     .from(servicesTable)
     .where(eq(servicesTable.popular, true))
-    .orderBy(asc(servicesTable.sortOrder));
+    .orderBy(asc(servicesTable.sortOrder))
+    .limit(12);
+
+  if (rows.length === 0) {
+    rows = await db
+      .select()
+      .from(servicesTable)
+      .where(eq(servicesTable.enabled, true))
+      .orderBy(desc(servicesTable.available), asc(servicesTable.name))
+      .limit(12);
+  }
+
   res.json(rows.map(toService));
 });
 

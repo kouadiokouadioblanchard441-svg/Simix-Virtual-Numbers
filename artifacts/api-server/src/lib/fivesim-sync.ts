@@ -42,10 +42,10 @@ const SAMPLE_COUNTRIES = [
   "chile", "peru", "venezuela",
   /* Asia-Pacific */
   "india", "indonesia", "philippines", "vietnam", "thailand",
-  "pakistan", "bangladesh", "malaysia", "myanmar", "cambodia",
+  "pakistan", "bangladesh", "malaysia", "cambodia", "laos",
   /* Middle-East & North Africa */
   "egypt", "morocco", "algeria", "tunisia",
-  "saudiarabia", "uae", "israel",
+  "saudiarabia", "israel", "jordan",
 ];
 
 /* Category labels for known 5sim product names */

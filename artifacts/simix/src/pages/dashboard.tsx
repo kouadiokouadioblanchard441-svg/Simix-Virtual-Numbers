@@ -351,7 +351,7 @@ function DashboardContent() {
             <p className="text-[11px] text-muted-foreground font-medium mb-0.5">Solde Simix</p>
             <div className="flex items-center gap-2">
               <h3 className="text-2xl font-extrabold text-foreground tracking-tight">
-                {loadingSummary ? "···" : formatFCFA(summary?.balance || 0)}
+                {loadingSummary ? "···" : formatFCFA(summary?.balance ?? 0)}
               </h3>
               <Eye className="w-4 h-4 text-muted-foreground" />
             </div>

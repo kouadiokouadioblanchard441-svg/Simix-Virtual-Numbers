@@ -75,7 +75,15 @@ import LegalCookies from "@/pages/legal/cookies";
 import Console from "@/pages/admin/console";
 import SecureLogin from "@/pages/admin/secure-login";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      refetchOnWindowFocus: true,
+      retry: 1,
+      staleTime: 0,
+    },
+  },
+});
 
 function ThemeProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {

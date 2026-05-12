@@ -4,6 +4,7 @@ import {
   useGetWallet, getGetWalletQueryKey,
   useRechargeWallet, getGetMeQueryKey,
   getListTransactionsQueryKey,
+  getGetDashboardSummaryQueryKey,
 } from "@workspace/api-client-react";
 import { formatFCFA } from "@/lib/format";
 import { motion, AnimatePresence } from "framer-motion";
@@ -699,6 +700,7 @@ function DepositContent() {
     queryClient.invalidateQueries({ queryKey: getGetWalletQueryKey() });
     queryClient.invalidateQueries({ queryKey: getGetMeQueryKey() });
     queryClient.invalidateQueries({ queryKey: getListTransactionsQueryKey() });
+    queryClient.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() });
     setTimeout(() => setLocation("/dashboard"), 2500);
   }, [queryClient, setLocation]);
 
@@ -730,6 +732,7 @@ function DepositContent() {
       queryClient.invalidateQueries({ queryKey: getGetWalletQueryKey() });
       queryClient.invalidateQueries({ queryKey: getGetMeQueryKey() });
       queryClient.invalidateQueries({ queryKey: getListTransactionsQueryKey() });
+      queryClient.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() });
       setTimeout(() => setLocation("/dashboard"), 2500);
     } catch (e: unknown) {
       toast({ variant: "destructive", title: "Erreur", description: (e as Error).message || "Erreur de paiement" });

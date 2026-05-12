@@ -1,6 +1,6 @@
 import { AppLayout } from "@/components/layout/app-layout";
 import { AuthGuard } from "@/components/auth-guard";
-import { useGetNumber, getGetNumberQueryKey, useListNumberMessages, getListNumberMessagesQueryKey, useExtendNumber } from "@workspace/api-client-react";
+import { useGetNumber, getGetNumberQueryKey, useListNumberMessages, getListNumberMessagesQueryKey, useExtendNumber, getGetDashboardSummaryQueryKey, getGetWalletQueryKey, getListTransactionsQueryKey } from "@workspace/api-client-react";
 import { useLocation, Link } from "wouter";
 import { Copy, Clock, X, MessageSquare, Shield, CheckCircle2, Download, MoreVertical, RefreshCw, AlertTriangle, Lightbulb } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -66,6 +66,9 @@ function NumberAssignedContent({ id }: { id: string }) {
     try {
       await extendMutation.mutateAsync({ numberId: id });
       queryClient.invalidateQueries({ queryKey: getGetNumberQueryKey(id) });
+      queryClient.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() });
+      queryClient.invalidateQueries({ queryKey: getGetWalletQueryKey() });
+      queryClient.invalidateQueries({ queryKey: getListTransactionsQueryKey() });
       toast({ title: "Prolongé", description: "Le temps a été prolongé de 5 min." });
     } catch (e) {
       toast({ variant: "destructive", title: "Erreur", description: "Impossible de prolonger" });
@@ -213,7 +216,7 @@ function NumberAssignedContent({ id }: { id: string }) {
               </motion.div>
             ) : (
               <div className="space-y-3">
-                {messages.map((msg) => (
+                {messages.map((msg: any) => (
                   <motion.div 
                     key={msg.id}
                     initial={{ opacity: 0, y: 10, scale: 0.95 }}
