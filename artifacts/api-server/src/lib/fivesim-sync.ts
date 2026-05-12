@@ -27,10 +27,20 @@ const SYNC_STATUS_KEY  = "fivesim_sync_status";
 
 /* Top countries to sample — widest catalogue coverage without hammering the API */
 const SAMPLE_COUNTRIES = [
+  /* Africa */
   "ivorycoast", "senegal", "cameroon", "nigeria", "ghana",
-  "togo", "benin", "guinea", "kenya",
-  "tanzania", "southafrica", "france", "usa", "india",
-  "brazil", "indonesia",
+  "togo", "benin", "guinea", "kenya", "tanzania", "southafrica",
+  "mali", "burkina", "niger", "madagascar", "ethiopia",
+  /* Europe (Western) */
+  "france", "england", "germany", "spain", "italy",
+  "netherlands", "belgium", "sweden", "portugal", "switzerland",
+  /* Americas */
+  "usa", "canada", "brazil", "mexico", "colombia", "argentina",
+  /* Asia-Pacific */
+  "india", "indonesia", "philippines", "vietnam", "thailand",
+  "pakistan", "bangladesh", "malaysia",
+  /* Others */
+  "ukraine", "russia", "turkey", "egypt", "morocco",
 ];
 
 /* Category labels for known 5sim product names */
@@ -146,7 +156,7 @@ export async function syncFiveSimProducts(): Promise<{ added: number; updated: n
         available:     info.qty,
         category:      CATEGORY_MAP[slug.toLowerCase()] ?? "Autre",
         color:         COLOR_MAP[slug.toLowerCase()] ?? "#7C3AED",
-        enabled:       false as boolean,
+        enabled:       true as boolean,
         sortOrder:     200,
       };
     });
@@ -161,6 +171,8 @@ export async function syncFiveSimProducts(): Promise<{ added: number; updated: n
           providerPrice: sql`excluded.provider_price`,
           available:     sql`excluded.available`,
           margin:        sql`excluded.margin`,
+          /* Auto-enable any service 5sim confirms is available */
+          enabled:       sql`CASE WHEN excluded.available > 0 THEN true ELSE services.enabled END`,
         },
       });
   }
@@ -224,10 +236,16 @@ const FR_NAMES: Record<string, string> = {
   SC: "Seychelles", ST: "São Tomé-et-Príncipe", KM2: "Comores", LS2: "Lesotho",
 };
 
-const POPULAR_ISO = new Set([
-  "CI", "SN", "CM", "NG", "GH", "KE", "ZA", "MA", "TN", "EG",
-  "FR", "US", "GB", "DE", "IN", "BR", "ID", "ML", "BF", "GN", "TG", "BJ",
+/* Western/European countries appear first (sortOrder 1-20), then African (21-50) */
+const POPULAR_ISO_WESTERN = new Set([
+  "FR", "US", "GB", "DE", "CA", "AU", "NL", "BE", "CH", "ES",
+  "IT", "SE", "NO", "DK", "PT", "AT", "IE", "FI", "PL", "RU",
 ]);
+const POPULAR_ISO_AFRICAN = new Set([
+  "CI", "SN", "CM", "NG", "GH", "KE", "ZA", "MA", "TN", "EG",
+  "ML", "BF", "GN", "TG", "BJ", "CD", "CG",
+]);
+const POPULAR_ISO = new Set([...POPULAR_ISO_WESTERN, ...POPULAR_ISO_AFRICAN]);
 
 function flagEmoji(code: string): string {
   return [...code.toUpperCase()].map(c => String.fromCodePoint(0x1F1E6 - 65 + c.charCodeAt(0))).join("");
@@ -268,7 +286,8 @@ export async function syncFiveSimCountries(): Promise<{ added: number; updated: 
     const nameEn = info.text_en ?? iso;
     const nameFr = FR_NAMES[iso] ?? nameEn;
     const popular = POPULAR_ISO.has(iso);
-    const sortOrder = popular ? 10 : 100;
+    /* Western countries appear first (1-20), African popular next (21-50), rest 100 */
+    const sortOrder = POPULAR_ISO_WESTERN.has(iso) ? 5 : POPULAR_ISO_AFRICAN.has(iso) ? 25 : 100;
 
     await db.insert(countriesTable)
       .values({
@@ -287,8 +306,8 @@ export async function syncFiveSimCountries(): Promise<{ added: number; updated: 
           name:     sql`CASE WHEN excluded.name != countries.name AND countries.name = countries.code THEN excluded.name ELSE countries.name END`,
           dialCode: sql`excluded.dial_code`,
           flag:     sql`excluded.flag`,
-          popular:  sql`excluded.popular`,
-          sortOrder: sql`LEAST(countries.sort_order, excluded.sort_order)`,
+          popular:   sql`excluded.popular`,
+          sortOrder: sql`excluded.sort_order`,
         },
       });
   }

@@ -11,7 +11,7 @@ import { attachUser } from "./lib/auth";
 import { globalRateLimit, checkUserBlocked, checkMaintenanceMode, checkIpBlacklist } from "./middlewares/security";
 import { startFiveSimPoller } from "./lib/fivesim-poller";
 import { seedProvidersFromEnv } from "./lib/seed-providers";
-import { startFiveSimSyncScheduler } from "./lib/fivesim-sync";
+import { startFiveSimSyncScheduler, syncFiveSimCountries, syncFiveSimProducts } from "./lib/fivesim-sync";
 
 const app: Express = express();
 
@@ -77,10 +77,26 @@ if (process.env.NODE_ENV === "production") {
   }
 }
 
-/* ── Seed providers from env vars, then start poller + sync scheduler ── */
-void seedProvidersFromEnv().then(() => {
+/* ── Seed providers, then start real-time sync + poller ── */
+void seedProvidersFromEnv().then(async () => {
   startFiveSimPoller();
   startFiveSimSyncScheduler();
+
+  /* Sync countries from 5sim immediately at startup (non-blocking) */
+  try {
+    const result = await syncFiveSimCountries();
+    logger.info({ added: result.added, updated: result.updated, total: result.total }, "[startup] 5sim countries synced");
+  } catch (e) {
+    logger.warn({ err: (e as Error).message }, "[startup] 5sim countries sync skipped");
+  }
+
+  /* Sync products/services from 5sim immediately at startup (non-blocking) */
+  try {
+    const result = await syncFiveSimProducts();
+    logger.info({ added: result.added, updated: result.updated, total: result.total }, "[startup] 5sim products synced");
+  } catch (e) {
+    logger.warn({ err: (e as Error).message }, "[startup] 5sim products sync skipped");
+  }
 });
 
 export default app;

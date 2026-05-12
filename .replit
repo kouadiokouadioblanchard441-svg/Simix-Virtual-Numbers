@@ -1,4 +1,4 @@
-modules = ["nodejs-20", "web", "bash", "postgresql-16", "python-3.11"]
+modules = ["nodejs-20", "web", "bash", "python-3.11", "postgresql-16"]
 
 [deployment]
 router = "application"
@@ -61,6 +61,10 @@ localPort = 3000
 externalPort = 3000
 
 [[ports]]
+localPort = 5000
+externalPort = 80
+
+[[ports]]
 localPort = 8081
 externalPort = 8081
 
@@ -71,10 +75,6 @@ externalPort = 3002
 [[ports]]
 localPort = 23017
 externalPort = 3000
-
-[[ports]]
-localPort = 5000
-externalPort = 80
 
 [nix]
 channel = "stable-25_05"

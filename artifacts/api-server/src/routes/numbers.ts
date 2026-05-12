@@ -61,18 +61,35 @@ router.get("/numbers/quote", async (req, res): Promise<void> => {
   }
 
   const { serviceId, countryId } = parsed.data;
-  const [service] = await db.select().from(servicesTable).where(eq(servicesTable.id, serviceId)).limit(1);
-  const [country] = await db.select().from(countriesTable).where(eq(countriesTable.id, countryId)).limit(1);
+
+  /* Guard: validate UUID format before querying to avoid DB crashes */
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (!UUID_RE.test(serviceId) || !UUID_RE.test(countryId)) {
+    res.status(404).json({ error: "Service ou pays introuvable" });
+    return;
+  }
+
+  let service: typeof servicesTable.$inferSelect | undefined;
+  let country: typeof countriesTable.$inferSelect | undefined;
+  try {
+    [service] = await db.select().from(servicesTable).where(eq(servicesTable.id, serviceId)).limit(1);
+    [country] = await db.select().from(countriesTable).where(eq(countriesTable.id, countryId)).limit(1);
+  } catch (e) {
+    logger.warn({ err: (e as Error).message }, "[quote] DB lookup failed");
+    res.status(500).json({ error: "Erreur serveur, veuillez réessayer" });
+    return;
+  }
 
   if (!service || !country) {
     res.status(404).json({ error: "Service ou pays introuvable" });
     return;
   }
 
-  let available = country.available;
-  let providerQty: number | null = null;
+  /* Use DB availability as default — 5sim check is best-effort with short timeout */
+  let available = country.available > 0;
+  let providerQty: number | null = country.available > 0 ? country.available : null;
 
-  /* Try to get real availability from 5sim (non-blocking — fallback to DB value) */
+  /* Try to get real-time availability from 5sim (non-blocking, 3s max) */
   try {
     const fiveSimClient = await getActive5SimClient();
     if (fiveSimClient) {
@@ -81,11 +98,16 @@ router.get("/numbers/quote", async (req, res): Promise<void> => {
       if (countrySlug && productSlug) {
         const info = await Promise.race([
           fiveSimClient.checkAvailability(countrySlug, productSlug),
-          new Promise<null>(resolve => setTimeout(() => resolve(null), 4_000)),
+          new Promise<null>(resolve => setTimeout(() => resolve(null), 3_000)),
         ]);
         if (info !== null) {
           available = info.available;
           providerQty = info.qty;
+          /* Update DB cache for next time */
+          void db.update(countriesTable)
+            .set({ available: info.qty })
+            .where(eq(countriesTable.id, countryId))
+            .catch(() => {});
         }
       }
     }
