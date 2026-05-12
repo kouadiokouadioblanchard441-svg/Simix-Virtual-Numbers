@@ -1,8 +1,8 @@
 import { AppLayout } from "@/components/layout/app-layout";
 import { AuthGuard } from "@/components/auth-guard";
-import { useGetNumber, getGetNumberQueryKey, useListNumberMessages, getListNumberMessagesQueryKey, useCancelNumber, useExtendNumber } from "@workspace/api-client-react";
+import { useGetNumber, getGetNumberQueryKey, useListNumberMessages, getListNumberMessagesQueryKey, useExtendNumber } from "@workspace/api-client-react";
 import { useLocation, Link } from "wouter";
-import { ChevronLeft, Copy, Clock, X, MessageSquare, Plus, Shield, CheckCircle2, Download, MoreVertical, RefreshCw, AlertTriangle, Lightbulb } from "lucide-react";
+import { Copy, Clock, X, MessageSquare, Shield, CheckCircle2, Download, MoreVertical, RefreshCw, AlertTriangle, Lightbulb } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
@@ -39,7 +39,6 @@ function NumberAssignedContent({ id }: { id: string }) {
     } 
   });
 
-  const cancelMutation = useCancelNumber();
   const extendMutation = useExtendNumber();
 
   const [timeLeft, setTimeLeft] = useState(0);
@@ -60,17 +59,6 @@ function NumberAssignedContent({ id }: { id: string }) {
     if (number?.phoneNumber) {
       await navigator.clipboard.writeText(number.phoneNumber);
       toast({ title: "Copié!", description: "Numéro copié dans le presse-papiers" });
-    }
-  }
-
-  async function onCancel() {
-    try {
-      await cancelMutation.mutateAsync({ numberId: id });
-      queryClient.invalidateQueries({ queryKey: getGetNumberQueryKey(id) });
-      toast({ title: "Annulé", description: "Le numéro a été annulé et remboursé." });
-      setLocation('/history');
-    } catch (e) {
-      toast({ variant: "destructive", title: "Erreur", description: "Impossible d'annuler" });
     }
   }
 
@@ -278,11 +266,8 @@ function NumberAssignedContent({ id }: { id: string }) {
       </div>
 
       {number.status === 'waiting' && (
-        <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md p-5 bg-background/90 backdrop-blur-xl border-t border-card-border z-30 pb-safe flex gap-3">
-          <Button onClick={onCancel} disabled={cancelMutation.isPending} variant="outline" className="h-14 flex-1 border-destructive text-destructive hover:bg-destructive/10 hover:text-destructive gap-2 rounded-xl text-sm font-bold bg-transparent">
-            ← Annuler le numéro
-          </Button>
-          <Button onClick={onExtend} disabled={extendMutation.isPending} className="h-14 flex-1 bg-gradient-to-r from-violet-600 to-indigo-600 hover:opacity-90 text-white rounded-xl shadow-lg shadow-primary/25 flex flex-col items-center justify-center pt-1 leading-none">
+        <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md p-5 bg-background/90 backdrop-blur-xl border-t border-card-border z-30 pb-safe">
+          <Button onClick={onExtend} disabled={extendMutation.isPending} className="h-14 w-full bg-gradient-to-r from-violet-600 to-indigo-600 hover:opacity-90 text-white rounded-xl shadow-lg shadow-primary/25 flex flex-col items-center justify-center pt-1 leading-none">
             <span className="block text-sm font-bold mb-0.5 flex items-center gap-1"><Clock className="w-4 h-4"/> Prolonger le temps +5 min</span>
             <span className="block text-[10px] font-normal text-white/80">30 FCFA</span>
           </Button>

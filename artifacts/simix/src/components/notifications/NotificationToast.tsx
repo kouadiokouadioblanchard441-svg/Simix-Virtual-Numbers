@@ -67,7 +67,8 @@ function ToastItem({
 
   const handleClick = () => {
     onDismiss(toast.id);
-    if (toast.link) setLocation(toast.link);
+    const dest = toast.link || "/history";
+    setLocation(dest);
   };
 
   return (
