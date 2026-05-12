@@ -21,24 +21,26 @@ import { eq, sql } from "drizzle-orm";
 
 const { Pool } = pg;
 
-if (!process.env.SUPABASE_DATABASE_URL) {
-  throw new Error("SUPABASE_DATABASE_URL must be set.");
+const dbUrl = process.env.DATABASE_URL ?? process.env.SUPABASE_DATABASE_URL;
+if (!dbUrl) {
+  throw new Error("DATABASE_URL must be set.");
 }
 
 function parseUrl(raw: string): pg.PoolConfig {
   const p = new URL(raw);
+  const isSupabase = p.hostname.includes("supabase");
   return {
     host: p.hostname,
-    port: Number(p.port) || 6543,
+    port: Number(p.port) || 5432,
     database: p.pathname.replace(/^\//, ""),
     user: decodeURIComponent(p.username),
     password: decodeURIComponent(p.password),
-    ssl: { rejectUnauthorized: false },
+    ssl: isSupabase ? { rejectUnauthorized: false } : false,
   };
 }
 
 const pool = new Pool({
-  ...parseUrl(process.env.SUPABASE_DATABASE_URL),
+  ...parseUrl(dbUrl),
   max: 3,
   connectionTimeoutMillis: 15000,
 });
@@ -335,7 +337,7 @@ async function ensureDemoUser() {
 }
 
 async function main() {
-  console.log("🚀 Seeding Supabase database...\n");
+  console.log("🚀 Seeding database...\n");
 
   const client = await pool.connect();
   await client.query("SELECT 1");
