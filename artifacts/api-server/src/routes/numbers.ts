@@ -85,9 +85,8 @@ router.get("/numbers/quote", async (req, res): Promise<void> => {
     return;
   }
 
-  /* Use DB availability as default — 5sim check is best-effort with short timeout */
-  let available = country.available > 0;
-  let providerQty: number | null = country.available > 0 ? country.available : null;
+  /* availableQty = number of available numbers (from DB as default) */
+  let availableQty: number = country.available;
 
   /* Try to get real-time availability from 5sim (non-blocking, 3s max) */
   try {
@@ -101,8 +100,7 @@ router.get("/numbers/quote", async (req, res): Promise<void> => {
           new Promise<null>(resolve => setTimeout(() => resolve(null), 3_000)),
         ]);
         if (info !== null) {
-          available = info.available;
-          providerQty = info.qty;
+          availableQty = info.qty;
           /* Update DB cache for next time */
           void db.update(countriesTable)
             .set({ available: info.qty })
@@ -135,12 +133,12 @@ router.get("/numbers/quote", async (req, res): Promise<void> => {
       code: country.code,
       dialCode: country.dialCode,
       flag: country.flag,
-      available,
+      available: availableQty > 0,
       price: country.price,
       popular: country.popular,
     },
-    available,
-    providerQty,
+    available: availableQty,
+    providerQty: availableQty,
     waitTime: "10 - 60 sec",
     price,
     fees: 0,
