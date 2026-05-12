@@ -1575,6 +1575,105 @@ router.put("/admin/site-content", requireAdmin, async (req, res): Promise<void> 
   res.json({ success: true });
 });
 
+/* ─────────────────── 5SIM SYNC DASHBOARD ROUTES ─────────────────── */
+
+router.get("/admin/sync/status", requireAdmin, async (_req, res): Promise<void> => {
+  const { isSyncInProgress, getSyncLogs } = await import("../lib/fivesim-sync");
+
+  const settingKeys = [
+    "fivesim_last_sync",
+    "fivesim_sync_status",
+    "fivesim_countries_last_sync",
+    "fivesim_countries_sync_status",
+  ];
+  const rows = await db.select().from(systemSettingsTable)
+    .where(sql`${systemSettingsTable.key} = ANY(${settingKeys})`);
+  const settings: Record<string, string> = {};
+  for (const r of rows) settings[r.key] = r.value;
+
+  const [servicesCountRow] = await db.select({ c: count() }).from(servicesTable);
+  const [countriesCountRow] = await db.select({ c: count() }).from(countriesTable);
+  const [priceProtectedRow] = await db
+    .select({ c: sql<number>`count(*)::int` })
+    .from(servicesTable)
+    .where(sql`provider_price IS NOT NULL AND ABS(price::numeric - ROUND(provider_price::numeric * (1.0 + margin::numeric / 100.0))) > 10`);
+  const [enabledRow] = await db.select({ c: count() }).from(servicesTable).where(eq(servicesTable.enabled, true));
+  const [customPricesRow] = await db.select({ c: count() }).from(servicePricesTable);
+
+  const logs = await getSyncLogs();
+
+  res.json({
+    inProgress:         isSyncInProgress(),
+    lastServicesSync:   settings["fivesim_last_sync"] ?? null,
+    lastServiceStatus:  settings["fivesim_sync_status"] ?? null,
+    lastCountriesSync:  settings["fivesim_countries_last_sync"] ?? null,
+    lastCountryStatus:  settings["fivesim_countries_sync_status"] ?? null,
+    stats: {
+      totalServices:     Number(servicesCountRow?.c ?? 0),
+      enabledServices:   Number(enabledRow?.c ?? 0),
+      totalCountries:    Number(countriesCountRow?.c ?? 0),
+      priceProtected:    Number(priceProtectedRow?.c ?? 0),
+      customPriceRules:  Number(customPricesRow?.c ?? 0),
+    },
+    logs,
+    generatedAt: new Date().toISOString(),
+  });
+});
+
+router.post("/admin/sync/services", requireAdmin, async (req, res): Promise<void> => {
+  try {
+    const { syncFiveSimProducts } = await import("../lib/fivesim-sync");
+    const result = await syncFiveSimProducts("admin");
+    await logAdminAction(adminId(req), "sync_services", req.ip, "sync", undefined, result as unknown as Record<string, unknown>);
+    res.json({
+      success: true,
+      message: `${result.added} ajoutés · ${result.updated} mis à jour · ${result.priceProtected} prix protégés`,
+      ...result,
+    });
+  } catch (e) {
+    logger.error({ err: e }, "[sync] Manual services sync failed");
+    res.status(503).json({ success: false, error: (e as Error).message });
+  }
+});
+
+router.post("/admin/sync/countries", requireAdmin, async (req, res): Promise<void> => {
+  try {
+    const { syncFiveSimCountries } = await import("../lib/fivesim-sync");
+    const result = await syncFiveSimCountries("admin");
+    await logAdminAction(adminId(req), "sync_countries", req.ip, "sync", undefined, result as unknown as Record<string, unknown>);
+    res.json({
+      success: true,
+      message: `${result.added} ajoutés · ${result.updated} mis à jour · ${result.total} total`,
+      ...result,
+    });
+  } catch (e) {
+    logger.error({ err: e }, "[sync] Manual countries sync failed");
+    res.status(503).json({ success: false, error: (e as Error).message });
+  }
+});
+
+router.post("/admin/sync/full", requireAdmin, async (req, res): Promise<void> => {
+  try {
+    const { syncFiveSimFull } = await import("../lib/fivesim-sync");
+    const result = await syncFiveSimFull("admin");
+    await logAdminAction(adminId(req), "sync_full", req.ip, "sync", undefined, result as unknown as Record<string, unknown>);
+    res.json({
+      success: true,
+      message: `Sync complet — ${result.services.added} services ajoutés · ${result.countries.added} pays ajoutés`,
+      ...result,
+    });
+  } catch (e) {
+    logger.error({ err: e }, "[sync] Manual full sync failed");
+    res.status(503).json({ success: false, error: (e as Error).message });
+  }
+});
+
+router.get("/admin/sync/logs", requireAdmin, async (_req, res): Promise<void> => {
+  const { getSyncLogs } = await import("../lib/fivesim-sync");
+  const logs = await getSyncLogs();
+  res.json(logs);
+});
+
 /* ─────────────────── SERVICE PRICES (per country) ─────────────────── */
 
 router.get("/admin/service-prices", requireAdmin, async (_req, res): Promise<void> => {

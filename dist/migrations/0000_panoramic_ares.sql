@@ -1,4 +1,4 @@
-CREATE TABLE "users" (
+CREATE TABLE IF NOT EXISTS "users" (
         "id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
         "full_name" text NOT NULL,
         "username" text,
@@ -26,7 +26,7 @@ CREATE TABLE "users" (
         CONSTRAINT "users_google_id_unique" UNIQUE("google_id")
 );
 --> statement-breakpoint
-CREATE TABLE "services" (
+CREATE TABLE IF NOT EXISTS "services" (
         "id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
         "name" text NOT NULL,
         "slug" text NOT NULL,
@@ -43,7 +43,7 @@ CREATE TABLE "services" (
         CONSTRAINT "services_slug_unique" UNIQUE("slug")
 );
 --> statement-breakpoint
-CREATE TABLE "countries" (
+CREATE TABLE IF NOT EXISTS "countries" (
         "id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
         "name" text NOT NULL,
         "code" text NOT NULL,
@@ -56,7 +56,7 @@ CREATE TABLE "countries" (
         CONSTRAINT "countries_code_unique" UNIQUE("code")
 );
 --> statement-breakpoint
-CREATE TABLE "payment_methods" (
+CREATE TABLE IF NOT EXISTS "payment_methods" (
         "id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
         "name" text NOT NULL,
         "slug" text NOT NULL,
@@ -68,7 +68,7 @@ CREATE TABLE "payment_methods" (
         CONSTRAINT "payment_methods_slug_unique" UNIQUE("slug")
 );
 --> statement-breakpoint
-CREATE TABLE "virtual_numbers" (
+CREATE TABLE IF NOT EXISTS "virtual_numbers" (
         "id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
         "user_id" uuid NOT NULL,
         "service_id" uuid NOT NULL,
@@ -83,7 +83,7 @@ CREATE TABLE "virtual_numbers" (
         "updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "sms_messages" (
+CREATE TABLE IF NOT EXISTS "sms_messages" (
         "id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
         "number_id" uuid NOT NULL,
         "sender" text NOT NULL,
@@ -92,13 +92,13 @@ CREATE TABLE "sms_messages" (
         "received_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "conversations" (
+CREATE TABLE IF NOT EXISTS "conversations" (
         "id" serial PRIMARY KEY NOT NULL,
         "title" text NOT NULL,
         "created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "messages" (
+CREATE TABLE IF NOT EXISTS "messages" (
         "id" serial PRIMARY KEY NOT NULL,
         "conversation_id" integer NOT NULL,
         "role" text NOT NULL,
@@ -106,7 +106,7 @@ CREATE TABLE "messages" (
         "created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "transactions" (
+CREATE TABLE IF NOT EXISTS "transactions" (
         "id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
         "user_id" uuid NOT NULL,
         "type" text NOT NULL,
@@ -118,14 +118,14 @@ CREATE TABLE "transactions" (
         "created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "sessions" (
+CREATE TABLE IF NOT EXISTS "sessions" (
         "id" text PRIMARY KEY NOT NULL,
         "user_id" uuid NOT NULL,
         "expires_at" timestamp with time zone NOT NULL,
         "created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "security_events" (
+CREATE TABLE IF NOT EXISTS "security_events" (
         "id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
         "user_id" uuid,
         "event_type" text NOT NULL,
@@ -137,7 +137,7 @@ CREATE TABLE "security_events" (
         "created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "api_providers" (
+CREATE TABLE IF NOT EXISTS "api_providers" (
         "id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
         "name" text NOT NULL,
         "slug" text NOT NULL,
@@ -151,14 +151,14 @@ CREATE TABLE "api_providers" (
         CONSTRAINT "api_providers_slug_unique" UNIQUE("slug")
 );
 --> statement-breakpoint
-CREATE TABLE "system_settings" (
+CREATE TABLE IF NOT EXISTS "system_settings" (
         "key" text PRIMARY KEY NOT NULL,
         "value" text NOT NULL,
         "description" text,
         "updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "admin_logs" (
+CREATE TABLE IF NOT EXISTS "admin_logs" (
         "id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
         "admin_id" uuid,
         "action" text NOT NULL,
@@ -169,7 +169,7 @@ CREATE TABLE "admin_logs" (
         "created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "country_payment_configs" (
+CREATE TABLE IF NOT EXISTS "country_payment_configs" (
         "id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
         "country_code" text NOT NULL,
         "method_slug" text NOT NULL,

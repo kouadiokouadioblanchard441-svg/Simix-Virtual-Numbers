@@ -226,6 +226,13 @@ export const adminApi = {
   updateServicePrice: (id: string, data: { price?: number; enabled?: boolean }) =>
     req<ServicePrice>("PUT", `/admin/service-prices/${id}`, data),
   deleteServicePrice: (id: string) => req("DELETE", `/admin/service-prices/${id}`),
+
+  /* ── 5sim Sync Dashboard ── */
+  getSyncDashboard: () => req<SyncStatus>("GET", "/admin/sync/status"),
+  syncServices: () => req<SyncServiceResult>("POST", "/admin/sync/services"),
+  syncCountries: () => req<SyncCountryResult>("POST", "/admin/sync/countries"),
+  syncFull: () => req<SyncFullResult>("POST", "/admin/sync/full"),
+  getSyncLogs: () => req<SyncLogEntry[]>("GET", "/admin/sync/logs"),
 };
 
 export interface AdminStats {
@@ -573,4 +580,75 @@ export interface RealtimeData {
   activeNumbersCount: number;
   hourlySms: { hour: string; count: number }[];
   generatedAt: string;
+}
+
+/* ── 5sim Sync ── */
+export interface SyncLogEntry {
+  id:          string;
+  type:        "full" | "services" | "countries";
+  triggeredBy: "scheduler" | "admin";
+  startedAt:   string;
+  completedAt: string;
+  durationMs:  number;
+  status:      "success" | "partial" | "failed";
+  services?: {
+    added:    number;
+    updated:  number;
+    skipped:  number;
+    total:    number;
+    priceProtected: number;
+    countryErrors:  number;
+  };
+  countries?: {
+    added:   number;
+    updated: number;
+    total:   number;
+  };
+  errors: string[];
+}
+
+export interface SyncStatus {
+  inProgress:        boolean;
+  lastServicesSync:  string | null;
+  lastServiceStatus: string | null;
+  lastCountriesSync: string | null;
+  lastCountryStatus: string | null;
+  stats: {
+    totalServices:    number;
+    enabledServices:  number;
+    totalCountries:   number;
+    priceProtected:   number;
+    customPriceRules: number;
+  };
+  logs: SyncLogEntry[];
+  generatedAt: string;
+}
+
+export interface SyncServiceResult {
+  success:       boolean;
+  message:       string;
+  added:         number;
+  updated:       number;
+  skipped:       number;
+  total:         number;
+  priceProtected: number;
+  countryErrors:  number;
+  error?:         string;
+}
+
+export interface SyncCountryResult {
+  success: boolean;
+  message: string;
+  added:   number;
+  updated: number;
+  total:   number;
+  error?:  string;
+}
+
+export interface SyncFullResult {
+  success:   boolean;
+  message:   string;
+  services:  { added: number; updated: number; skipped: number; total: number; priceProtected: number; countryErrors: number };
+  countries: { added: number; updated: number; total: number };
+  error?:    string;
 }
