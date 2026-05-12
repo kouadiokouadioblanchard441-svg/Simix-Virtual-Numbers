@@ -525,6 +525,18 @@ router.post("/admin/countries/seed-africa", requireAdmin, async (req, res): Prom
   res.json({ success: true, inserted, updated: skipped, total: AFRICAN_COUNTRIES.length });
 });
 
+/* ─── Sync all countries from 5sim ─── */
+router.post("/admin/countries/sync-5sim", requireAdmin, async (req, res): Promise<void> => {
+  try {
+    const { syncFiveSimCountries } = await import("../lib/fivesim-sync");
+    const result = await syncFiveSimCountries();
+    await logAdminAction(adminId(req), "sync_countries_5sim", req.ip, "countries", "bulk", result);
+    res.json({ success: true, added: result.added, updated: result.updated, total: result.total, message: `${result.added} ajoutés · ${result.updated} mis à jour · ${result.total} pays au total` });
+  } catch (e) {
+    res.status(503).json({ error: (e as Error).message });
+  }
+});
+
 /* ─────────────────── PAYMENT METHODS MANAGEMENT ─────────────────── */
 router.get("/admin/payment-methods", requireAdmin, async (_req, res): Promise<void> => {
   const rows = await db.select().from(paymentMethodsTable).orderBy(paymentMethodsTable.sortOrder, paymentMethodsTable.name);

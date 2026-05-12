@@ -30,9 +30,9 @@ function NumberDetailsContent() {
   const { toast } = useToast();
   const requestMutation = useRequestNumber();
 
-  const { data: quote, isLoading } = useGetNumberQuote(
+  const { data: quote, isLoading, isError } = useGetNumberQuote(
     { serviceId, countryId },
-    { query: { enabled: !!(serviceId && countryId), queryKey: getGetNumberQuoteQueryKey({ serviceId, countryId }) } }
+    { query: { enabled: !!(serviceId && countryId && serviceId !== "undefined" && countryId !== "undefined"), queryKey: getGetNumberQuoteQueryKey({ serviceId, countryId }) } }
   );
 
   async function onBuy() {
@@ -52,10 +52,45 @@ function NumberDetailsContent() {
     }
   }
 
-  if (isLoading || !quote) {
+  const missingParams = !serviceId || !countryId || serviceId === "undefined" || countryId === "undefined";
+
+  if (missingParams) {
+    return (
+      <div className="flex-1 w-full bg-background flex flex-col items-center justify-center gap-4 px-6 text-center">
+        <div className="text-4xl">⚠️</div>
+        <h2 className="text-lg font-bold text-foreground">Sélection incomplète</h2>
+        <p className="text-sm text-muted-foreground">Veuillez d'abord choisir un service et un pays.</p>
+        <button onClick={() => setLocation("/services")} className="mt-2 px-6 py-3 bg-primary text-white rounded-2xl text-sm font-bold">
+          Choisir un service
+        </button>
+      </div>
+    );
+  }
+
+  if (isLoading) {
     return (
       <div className="flex-1 w-full bg-background flex flex-col items-center justify-center">
         <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (isError || !quote) {
+    return (
+      <div className="flex-1 w-full bg-background flex flex-col items-center justify-center gap-4 px-6 text-center">
+        <div className="text-4xl">😞</div>
+        <h2 className="text-lg font-bold text-foreground">Indisponible</h2>
+        <p className="text-sm text-muted-foreground">
+          Ce service n'est pas disponible pour ce pays actuellement. Essayez un autre pays ou service.
+        </p>
+        <div className="flex gap-3 mt-2">
+          <button onClick={() => window.history.back()} className="px-5 py-3 border border-card-border text-foreground rounded-2xl text-sm font-bold">
+            ← Retour
+          </button>
+          <button onClick={() => setLocation("/services")} className="px-5 py-3 bg-primary text-white rounded-2xl text-sm font-bold">
+            Changer de service
+          </button>
+        </div>
       </div>
     );
   }

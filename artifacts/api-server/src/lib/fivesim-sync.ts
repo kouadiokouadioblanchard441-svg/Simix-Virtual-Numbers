@@ -15,7 +15,7 @@
  */
 
 import { sql } from "drizzle-orm";
-import { db, apiProvidersTable, servicesTable, systemSettingsTable } from "@workspace/db";
+import { db, apiProvidersTable, servicesTable, systemSettingsTable, countriesTable } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
 import { FiveSimClient, type FiveSimProductsResponse } from "./fivesim";
 import { logger } from "./logger";
@@ -184,6 +184,134 @@ export async function syncFiveSimProducts(): Promise<{ added: number; updated: n
 
   logger.info({ added, updated, total: productList.length }, "[5sim-sync] Sync complete");
   return { added, updated, total: productList.length };
+}
+
+/* ─── French country name mapping (ISO → French name) ─── */
+const FR_NAMES: Record<string, string> = {
+  AF: "Afghanistan", AL: "Albanie", DZ: "Algérie", AO: "Angola", AG: "Antigua-et-Barbuda",
+  AR: "Argentine", AM: "Arménie", AU: "Australie", AT: "Autriche", AZ: "Azerbaïdjan",
+  BH: "Bahreïn", BD: "Bangladesh", BE: "Belgique", BJ: "Bénin", BO: "Bolivie",
+  BA: "Bosnie-Herzégovine", BW: "Botswana", BR: "Brésil", BG: "Bulgarie",
+  BF: "Burkina Faso", BI: "Burundi", KH: "Cambodge", CM: "Cameroun", CA: "Canada",
+  CV: "Cap-Vert", CF: "Centrafrique", TD: "Tchad", CL: "Chili", CO: "Colombie",
+  KM: "Comores", CG: "Congo-Brazzaville", CD: "RD Congo", CR: "Costa Rica",
+  HR: "Croatie", CY: "Chypre", CZ: "République tchèque", DK: "Danemark",
+  DJ: "Djibouti", DO: "République dominicaine", EC: "Équateur", EG: "Égypte",
+  GB: "Royaume-Uni", SV: "Salvador", GQ: "Guinée équatoriale", ER: "Érythrée",
+  ET: "Éthiopie", FI: "Finlande", FR: "France", GA: "Gabon", GM: "Gambie",
+  GE: "Géorgie", DE: "Allemagne", GH: "Ghana", GR: "Grèce", GT: "Guatemala",
+  GN: "Guinée", GW: "Guinée-Bissau", GY: "Guyana", HT: "Haïti", HN: "Honduras",
+  HK: "Hong Kong", HU: "Hongrie", IN: "Inde", ID: "Indonésie", IE: "Irlande",
+  IL: "Israël", IT: "Italie", CI: "Côte d'Ivoire", JM: "Jamaïque", JP: "Japon",
+  JO: "Jordanie", KZ: "Kazakhstan", KE: "Kenya", KW: "Koweït", KG: "Kirghizistan",
+  LA: "Laos", LV: "Lettonie", LS: "Lesotho", LR: "Liberia", LY: "Libye",
+  LT: "Lituanie", LU: "Luxembourg", MG: "Madagascar", MW: "Malawi", MY: "Malaisie",
+  MV: "Maldives", ML: "Mali", MR: "Mauritanie", MU: "Maurice", MX: "Mexique",
+  MD: "Moldavie", MN: "Mongolie", ME: "Monténégro", MA: "Maroc", MZ: "Mozambique",
+  NA: "Namibie", NP: "Népal", NL: "Pays-Bas", NI: "Nicaragua", NE: "Niger",
+  NG: "Nigeria", MK: "Macédoine du Nord", NO: "Norvège", OM: "Oman",
+  PK: "Pakistan", PA: "Panama", PY: "Paraguay", PE: "Pérou", PH: "Philippines",
+  PL: "Pologne", PT: "Portugal", RO: "Roumanie", RW: "Rwanda", SN: "Sénégal",
+  RS: "Serbie", SL: "Sierra Leone", SK: "Slovaquie", SI: "Slovénie",
+  SO: "Somalie", ZA: "Afrique du Sud", ES: "Espagne", LK: "Sri Lanka",
+  SD: "Soudan", SS: "Soudan du Sud", SR: "Suriname", SZ: "Eswatini",
+  SE: "Suède", TW: "Taïwan", TJ: "Tadjikistan", TZ: "Tanzanie", TH: "Thaïlande",
+  TG: "Togo", TN: "Tunisie", TM: "Turkménistan", UG: "Ouganda", UA: "Ukraine",
+  AE: "Émirats arabes unis", US: "États-Unis", UY: "Uruguay", UZ: "Ouzbékistan",
+  VE: "Venezuela", VN: "Viêt Nam", YE: "Yémen", ZM: "Zambie", ZW: "Zimbabwe",
+  KR: "Corée du Sud", KP: "Corée du Nord", MM: "Myanmar", PG: "Papouasie-N.-Guinée",
+  NZ: "Nouvelle-Zélande", FJ: "Fidji", VU: "Vanuatu", SB: "Îles Salomon",
+  SC: "Seychelles", ST: "São Tomé-et-Príncipe", KM2: "Comores", LS2: "Lesotho",
+};
+
+const POPULAR_ISO = new Set([
+  "CI", "SN", "CM", "NG", "GH", "KE", "ZA", "MA", "TN", "EG",
+  "FR", "US", "GB", "DE", "IN", "BR", "ID", "ML", "BF", "GN", "TG", "BJ",
+]);
+
+function flagEmoji(code: string): string {
+  return [...code.toUpperCase()].map(c => String.fromCodePoint(0x1F1E6 - 65 + c.charCodeAt(0))).join("");
+}
+
+/** Sync all countries from 5sim /guest/countries endpoint into the local DB */
+export async function syncFiveSimCountries(): Promise<{ added: number; updated: number; total: number }> {
+  logger.info("[5sim-countries] Starting country sync from 5sim");
+
+  /* Fetch countries from 5sim (no auth needed) */
+  const resp = await fetch("https://5sim.net/v1/guest/countries", {
+    headers: { Accept: "application/json" },
+    signal: AbortSignal.timeout(20_000),
+  });
+  if (!resp.ok) {
+    throw new Error(`5sim /guest/countries returned ${resp.status}`);
+  }
+  const raw = await resp.json() as Record<string, { iso?: Record<string, number>; prefix?: Record<string, number>; text_en?: string }>;
+
+  const entries = Object.entries(raw);
+  logger.info({ count: entries.length }, "[5sim-countries] Countries fetched from 5sim");
+
+  /* Count existing before upsert */
+  const [{ before }] = await db
+    .select({ before: sql<number>`count(*)::int` })
+    .from(countriesTable);
+
+  let skipped = 0;
+
+  for (const [, info] of entries) {
+    const isoRaw = Object.keys(info.iso ?? {})[0];
+    const prefixRaw = Object.keys(info.prefix ?? {})[0];
+    if (!isoRaw || !prefixRaw) { skipped++; continue; }
+
+    const iso = isoRaw.toUpperCase();
+    const dialCode = prefixRaw.startsWith("+") ? prefixRaw : `+${prefixRaw}`;
+    const flag = flagEmoji(iso);
+    const nameEn = info.text_en ?? iso;
+    const nameFr = FR_NAMES[iso] ?? nameEn;
+    const popular = POPULAR_ISO.has(iso);
+    const sortOrder = popular ? 10 : 100;
+
+    await db.insert(countriesTable)
+      .values({
+        name: nameFr,
+        code: iso,
+        dialCode,
+        flag,
+        available: 1,
+        price: 150,
+        popular,
+        sortOrder,
+      })
+      .onConflictDoUpdate({
+        target: countriesTable.code,
+        set: {
+          name:     sql`CASE WHEN excluded.name != countries.name AND countries.name = countries.code THEN excluded.name ELSE countries.name END`,
+          dialCode: sql`excluded.dial_code`,
+          flag:     sql`excluded.flag`,
+          popular:  sql`excluded.popular`,
+          sortOrder: sql`LEAST(countries.sort_order, excluded.sort_order)`,
+        },
+      });
+  }
+
+  /* Count after upsert */
+  const [{ after }] = await db
+    .select({ after: sql<number>`count(*)::int` })
+    .from(countriesTable);
+
+  const added   = Math.max(0, after - before);
+  const updated = entries.length - skipped - added;
+
+  /* Persist sync timestamp */
+  const now = new Date().toISOString();
+  await db.insert(systemSettingsTable)
+    .values({ key: "fivesim_countries_last_sync", value: now })
+    .onConflictDoUpdate({ target: systemSettingsTable.key, set: { value: now } });
+  await db.insert(systemSettingsTable)
+    .values({ key: "fivesim_countries_sync_status", value: `${added} ajoutés · ${updated} mis à jour · ${entries.length - skipped} total` })
+    .onConflictDoUpdate({ target: systemSettingsTable.key, set: { value: sql`excluded.value` } });
+
+  logger.info({ added, updated, skipped, total: entries.length }, "[5sim-countries] Country sync complete");
+  return { added, updated, total: entries.length - skipped };
 }
 
 /* ─── Internal scheduler loop ─── */
