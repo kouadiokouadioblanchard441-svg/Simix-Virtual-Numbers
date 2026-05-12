@@ -1,12 +1,12 @@
 # Déploiement Plesk — Simix
 
-## Workflow simplifié
+## Workflow quotidien (après configuration initiale)
 
 ```
-Replit (développement)  →  git push  →  GitHub  →  Plesk : git pull + Deploy Now
+Replit → ./deploy.sh "message"  →  GitHub  →  Plesk : Deploy Now  →  ✅ Live
 ```
 
-**Aucun build nécessaire dans Plesk.** Le dossier `dist/` est versionné dans git.
+**Aucun build, aucun npm install dans Plesk.** Tout est pré-buildé et commité dans `dist/`.
 
 ---
 
@@ -21,7 +21,9 @@ Replit (développement)  →  git push  →  GitHub  →  Plesk : git pull + Dep
 | **Node.js version** | `20.x` ou supérieur |
 | **Application mode** | `production` |
 
-### 2. Variables d'environnement
+> ⚠️ **Ne pas activer "Run npm install" ou "Build"** dans Plesk — tout est déjà buildé dans `dist/`.
+
+### 2. Variables d'environnement Plesk
 
 Définir dans **Plesk → Node.js → Environment Variables** :
 
@@ -46,40 +48,90 @@ GOOGLE_REDIRECT_URI=https://votre-domaine.com/api/auth/google/callback
 LOG_LEVEL=info
 ```
 
-> Les clés IA (Gemini, OpenAI) se configurent directement depuis le **panel admin → Support IA → Configuration IA**, pas besoin de les mettre ici.
+> Les clés des passerelles de paiement (Fapshi, PayDunya, etc.) se configurent
+> directement depuis le panel admin → **Routage API** → Fournisseurs.
+>
+> Les clés IA (Gemini, OpenAI) se configurent depuis le panel admin → **Support IA → Configuration IA**.
+>
+> Pas besoin de les mettre ici si elles sont déjà dans le panel admin.
 
-### 3. Domaine & Proxy
+### 3. Git déploiement dans Plesk
 
-Configurez un reverse proxy dans Plesk depuis votre domaine vers `localhost:3000`.
+Dans **Plesk → Domaine → Git** :
+1. Coller l'URL du dépôt GitHub
+2. Sélectionner la branche `main`
+3. **Actions de déploiement** — laisser vide (Plesk utilise `npm start` → `node dist/index.cjs`)
+
+### 4. Reverse Proxy
+
+Configurer un proxy dans Plesk depuis votre domaine → `localhost:3000`.
 
 ---
 
-## Workflow de mise à jour (quotidien)
+## Workflow de mise à jour (depuis Replit)
 
-1. Développez sur **Replit**
-2. Depuis Replit, lancez le build complet :
-   ```
-   pnpm run build
-   ```
-3. **Commitez et poussez** vers GitHub (le dossier `dist/` est inclus automatiquement)
-4. Dans **Plesk** : `Git → Pull → Deploy Now`
-5. ✅ Votre site est mis à jour — sans aucun build dans Plesk
+### Option A — Script automatique (recommandé)
+
+```bash
+./deploy.sh "description de vos changements"
+```
+
+Ce script fait en une seule commande :
+1. Build complet (API + frontend) → `dist/`
+2. `git add dist/` + `git add -A`
+3. `git commit`
+4. `git push`
+
+Ensuite dans Plesk : **Git → Deploy Now** → le serveur redémarre automatiquement. ✅
+
+### Option B — Manuel
+
+```bash
+# 1. Build
+pnpm run build
+
+# 2. Commiter le dist/ buildé
+git add dist/
+git add -A
+git commit -m "deploy: mise à jour"
+git push
+```
+
+Puis dans Plesk : **Deploy Now**.
 
 ---
 
-## Structure du dossier `dist/` (versionné dans git)
+## Structure du dossier `dist/` (commité dans git)
 
 ```
 dist/
-├── index.cjs          ← API + serveur Express (bundle complet)
-├── pino-worker.cjs    ← Worker de logs
-├── pino-pretty.cjs    ← Formateur de logs
-├── migrations/        ← Migrations SQL (appliquées au démarrage)
-└── public/            ← Frontend React buildé (servi en production)
+├── index.cjs                 ← Serveur Express + toute l'API (bundle auto-contenu, aucune dépendance)
+├── pino-worker.cjs           ← Worker de logs
+├── pino-pretty.cjs           ← Formateur de logs
+├── pino-file.cjs
+├── thread-stream-worker.cjs
+├── migrations/               ← Migrations SQL (appliquées au démarrage automatiquement)
+│   ├── 0000_panoramic_ares.sql
+│   ├── 0001_payment_routing.sql
+│   └── meta/
+└── public/                   ← Frontend React buildé (servi par Express en production)
     ├── index.html
-    ├── assets/
-    └── 3d/            ← Icônes et images 3D
+    ├── assets/               ← JS, CSS, images compilées
+    ├── 3d/
+    └── logos/
 ```
+
+---
+
+## Ce qui se passe au démarrage du serveur
+
+Au lancement de `node dist/index.cjs`, automatiquement :
+1. Connexion à la base de données via `DATABASE_URL`
+2. Migrations SQL appliquées (nouvelles tables uniquement)
+3. Serveur HTTP lancé sur `PORT`
+4. Frontend React servi depuis `dist/public/`
+
+Aucune étape manuelle.
 
 ---
 
@@ -87,22 +139,23 @@ dist/
 
 | Commande | Usage |
 |---|---|
+| `./deploy.sh "msg"` | Build + commit + push en une commande |
+| `pnpm run build` | Build seul (API + frontend) |
 | `node dist/index.cjs` | Démarrer le serveur (production) |
-| `pnpm run build` | Rebuilder API + frontend (dans Replit) |
-| `pnpm run start` | Équivalent `node dist/index.cjs` |
+| `npm start` | Identique à `node dist/index.cjs` |
 
 ---
 
 ## Dépannage
 
-**Le site affiche une page blanche ?**
-→ Vérifier que `NODE_ENV=production` est bien défini dans Plesk.
+**Page blanche ?**
+→ Vérifier que `NODE_ENV=production` est défini dans Plesk.
 
-**Erreur de connexion à la base de données ?**
-→ Vérifier `DATABASE_URL` dans les variables d'environnement Plesk.
+**Erreur base de données ?**
+→ Vérifier `DATABASE_URL` dans les variables Plesk.
 
 **Port déjà utilisé ?**
-→ Changer `PORT=3001` (et mettre à jour le proxy Plesk).
+→ Changer `PORT=3001` et mettre à jour le reverse proxy Plesk.
 
-**Comment voir les logs ?**
-→ Dans Plesk → Node.js → Logs, ou sur le serveur : `pm2 logs` si PM2 est utilisé.
+**Logs du serveur ?**
+→ Plesk → Node.js → Logs
