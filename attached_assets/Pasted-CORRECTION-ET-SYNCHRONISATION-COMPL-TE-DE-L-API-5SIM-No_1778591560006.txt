@@ -1,0 +1,159 @@
+CORRECTION ET SYNCHRONISATION COMPLÈTE DE L’API 5SIM
+
+Nous allons corriger et améliorer complètement le système de synchronisation avec l’API 5SIM.
+
+Actuellement, la synchronisation ne fonctionne pas correctement.
+
+Les services, les pays, les prix, les stocks et les disponibilités ne sont pas correctement récupérés ou mis à jour.
+
+Je veux une synchronisation professionnelle, stable et en temps réel avec 5SIM.
+
+---
+
+OBJECTIF PRINCIPAL
+
+Tout ce qui vient de l’API 5SIM doit être synchronisé automatiquement et correctement dans le système.
+
+Cela inclut :
+
+- les pays
+- les services
+- les prix
+- les stocks
+- les disponibilités
+- les nouveaux services
+- les services supprimés
+- les changements de statut
+
+Tout doit être mis à jour automatiquement dans la base de données et dans le panneau administrateur.
+
+---
+
+SYNCHRONISATION COMPLÈTE 5SIM
+
+Le système doit :
+
+Synchroniser automatiquement :
+
+- tous les pays disponibles
+- tous les services disponibles
+- tous les prix
+- tous les stocks
+- tous les opérateurs
+- tous les statuts
+
+Détecter automatiquement :
+
+- les nouveaux services
+- les nouveaux pays
+- les services supprimés
+- les changements de prix
+- les changements de stock
+
+---
+
+SYNCHRONISATION EN TEMPS RÉEL
+
+Quand 5SIM :
+
+- ajoute un nouveau service
+- modifie un prix
+- modifie un stock
+- retire un service
+- ajoute un nouveau pays
+
+Le système doit automatiquement mettre à jour les données dans le site sans bug.
+
+---
+
+IMPORTANT : PRIX PERSONNALISÉS ADMIN
+
+Même après synchronisation 5SIM, les prix personnalisés définis dans le panneau admin ne doivent jamais être écrasés.
+
+Exemple :
+
+Prix API 5SIM :
+WhatsApp USA → 0.8$
+
+Prix défini dans mon panneau admin :
+WhatsApp USA → 1200 FCFA
+
+Après synchronisation :
+
+Le système doit conserver mon prix personnalisé admin.
+
+---
+
+GESTION DES PRIX PAR PAYS ET PAR SERVICE
+
+Je dois pouvoir fixer les prix manuellement dans le panneau admin selon :
+
+- le pays
+- le service
+
+Exemple :
+
+USA
+→ WhatsApp → 1200 FCFA
+→ Telegram → 1500 FCFA
+→ Snapchat → 900 FCFA
+
+France
+→ WhatsApp → 1800 FCFA
+
+Le système doit afficher automatiquement le bon prix côté utilisateur.
+
+---
+
+INTERFACE ADMINISTRATEUR
+
+Ajouter une section :
+
+Synchronisation 5SIM
+
+Avec :
+
+- bouton Synchroniser maintenant
+- statut de synchronisation
+- heure de la dernière synchronisation
+- nombre de services synchronisés
+- nombre de pays synchronisés
+- logs détaillés
+- erreurs détectées
+
+---
+
+GESTION DES ERREURS
+
+Ajouter un système de logs complet pour :
+
+- erreurs API
+- timeout
+- services manquants
+- erreurs de connexion
+- doublons
+- erreurs de synchronisation
+
+---
+
+PERFORMANCE
+
+Le système doit être :
+
+- rapide
+- stable
+- optimisé
+- sécurisé
+- scalable
+- capable de gérer des milliers de services
+
+---
+
+IMPORTANT
+
+- Ne pas casser les fonctionnalités existantes
+- Corriger complètement la synchronisation 5SIM
+- Tout doit fonctionner en temps réel
+- Les données doivent être cohérentes
+- Les prix admin personnalisés doivent rester actifs
+- Le système doit être professionnel et fiable

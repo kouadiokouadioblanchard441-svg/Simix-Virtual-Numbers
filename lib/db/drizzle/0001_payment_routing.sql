@@ -1,4 +1,4 @@
-CREATE TABLE "mobile_operators" (
+CREATE TABLE IF NOT EXISTS "mobile_operators" (
         "id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
         "name" text NOT NULL,
         "slug" text NOT NULL,
@@ -12,7 +12,7 @@ CREATE TABLE "mobile_operators" (
         CONSTRAINT "mobile_operators_slug_unique" UNIQUE("slug")
 );
 --> statement-breakpoint
-CREATE TABLE "payment_gateways" (
+CREATE TABLE IF NOT EXISTS "payment_gateways" (
         "id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
         "name" text NOT NULL,
         "slug" text NOT NULL,
@@ -32,7 +32,7 @@ CREATE TABLE "payment_gateways" (
         CONSTRAINT "payment_gateways_slug_unique" UNIQUE("slug")
 );
 --> statement-breakpoint
-CREATE TABLE "payment_routes" (
+CREATE TABLE IF NOT EXISTS "payment_routes" (
         "id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
         "country_code" text NOT NULL,
         "operator_slug" text NOT NULL,
@@ -49,7 +49,7 @@ CREATE TABLE "payment_routes" (
         CONSTRAINT "payment_routes_country_operator_type_unique" UNIQUE("country_code","operator_slug","transaction_type")
 );
 --> statement-breakpoint
-CREATE TABLE "payment_route_logs" (
+CREATE TABLE IF NOT EXISTS "payment_route_logs" (
         "id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
         "route_id" uuid,
         "gateway_id" uuid,
