@@ -2,6 +2,7 @@ import { Switch, Route, Router as WouterRouter, useLocation } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { ConfirmDialogProvider } from "@/components/ui/confirm-dialog";
 import { useEffect } from "react";
 import SupportChat from "@/components/support/SupportChat";
 import { NotificationToast } from "@/components/notifications/NotificationToast";
@@ -198,9 +199,11 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
         <TooltipProvider>
-          <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
-            <AppShell />
-          </WouterRouter>
+          <ConfirmDialogProvider>
+            <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
+              <AppShell />
+            </WouterRouter>
+          </ConfirmDialogProvider>
         </TooltipProvider>
       </ThemeProvider>
     </QueryClientProvider>

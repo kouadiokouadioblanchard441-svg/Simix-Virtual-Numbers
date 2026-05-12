@@ -324,7 +324,7 @@ router.get("/admin/services", requireAdmin, async (_req, res): Promise<void> => 
 
 router.put("/admin/services/:serviceId", requireAdmin, async (req, res): Promise<void> => {
   const serviceId = String(req.params.serviceId);
-  const { name, price, providerPrice, margin, available, color, category, popular, scope, enabled } = req.body;
+  const { name, price, providerPrice, margin, available, color, category, popular, scope, enabled, logoUrl } = req.body;
 
   const updates: Record<string, unknown> = {};
   if (name !== undefined) updates.name = String(name);
@@ -337,6 +337,7 @@ router.put("/admin/services/:serviceId", requireAdmin, async (req, res): Promise
   if (popular !== undefined) updates.popular = Boolean(popular);
   if (scope !== undefined) updates.scope = String(scope);
   if (enabled !== undefined) updates.enabled = Boolean(enabled);
+  if (logoUrl !== undefined) updates.logoUrl = logoUrl ? String(logoUrl) : null;
 
   if (Object.keys(updates).length === 0) { res.status(400).json({ error: "Aucun champ à mettre à jour" }); return; }
 

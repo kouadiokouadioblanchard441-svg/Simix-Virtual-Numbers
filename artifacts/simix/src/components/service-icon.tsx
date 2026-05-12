@@ -140,18 +140,51 @@ function MicrosoftIcon({ size, radius }: { size: number; radius: number }) {
   );
 }
 
+/* ─── Custom logo image (URL-based) ─── */
+function CustomLogoIcon({ logoUrl, name, size, radius }: { logoUrl: string; name: string; size: number; radius: number }) {
+  return (
+    <div
+      className="flex items-center justify-center shrink-0 shadow-sm overflow-hidden bg-zinc-900"
+      style={{ width: size, height: size, borderRadius: radius }}
+    >
+      <img
+        src={logoUrl}
+        alt={name}
+        className="w-full h-full object-contain"
+        onError={(e) => {
+          const el = e.currentTarget as HTMLImageElement;
+          el.style.display = "none";
+          const parent = el.parentElement;
+          if (parent) {
+            parent.style.background = "linear-gradient(135deg,#A855F7,#6366F1)";
+            parent.innerHTML = `<span style="color:white;font-weight:700;font-size:${Math.round(size * 0.42)}px;user-select:none">${name.charAt(0).toUpperCase()}</span>`;
+          }
+        }}
+      />
+    </div>
+  );
+}
+
 export function ServiceIcon({
   name,
   slug,
+  logoUrl,
   size = 48,
   rounded = "xl",
 }: {
   name: string;
   slug?: string;
+  logoUrl?: string | null;
   size?: number;
   rounded?: "lg" | "xl" | "2xl" | "full";
 }): ReactNode {
   const radius = { lg: 12, xl: Math.round(size * 0.26), "2xl": Math.round(size * 0.35), full: 9999 }[rounded];
+
+  /* ── Custom logo from admin takes highest priority ── */
+  if (logoUrl) {
+    return <CustomLogoIcon logoUrl={logoUrl} name={name} size={size} radius={radius} />;
+  }
+
   const k = keyFor(name, slug);
   const entry = k ? brands[k] : undefined;
 

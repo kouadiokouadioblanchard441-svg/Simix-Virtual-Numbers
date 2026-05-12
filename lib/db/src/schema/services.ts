@@ -20,6 +20,7 @@ export const servicesTable = pgTable("services", {
   popular: boolean("popular").notNull().default(false),
   enabled: boolean("enabled").notNull().default(true),
   sortOrder: integer("sort_order").notNull().default(100),
+  logoUrl: text("logo_url"),
 });
 
 export type Service = typeof servicesTable.$inferSelect;

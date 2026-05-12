@@ -328,6 +328,7 @@ export interface AdminService {
   category: string;
   popular: boolean;
   enabled: boolean;
+  logoUrl?: string | null;
 }
 
 export interface AdminCountry {

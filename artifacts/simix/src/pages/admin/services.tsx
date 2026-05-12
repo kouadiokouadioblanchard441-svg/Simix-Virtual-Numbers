@@ -5,6 +5,7 @@ import { AdminGuard } from "@/components/admin-guard";
 import { AdminLayout } from "@/components/admin-layout";
 import { formatFCFA } from "@/lib/format";
 import { ServiceIcon } from "@/components/service-icon";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 import {
   Loader2, Pencil, Check, X, TrendingUp, ToggleLeft, ToggleRight,
   Plus, Trash2, Star, Package, Zap, ChevronDown, ChevronUp,
@@ -289,6 +290,7 @@ function AddServiceForm({ onDone }: { onDone: () => void }) {
 
 /* ─── Service Row ─── */
 function ServiceRow({ service }: { service: AdminService }) {
+  const confirm = useConfirm();
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(service.name);
   const [category, setCategory] = useState(service.category || "Autres");
@@ -299,6 +301,7 @@ function ServiceRow({ service }: { service: AdminService }) {
   const [available, setAvailable] = useState(String(service.available));
   const [popular, setPopular] = useState(service.popular);
   const [enabled, setEnabled] = useState(service.enabled ?? true);
+  const [logoUrl, setLogoUrl] = useState(service.logoUrl ?? "");
   const { toast } = useToast();
   const qc = useQueryClient();
 
@@ -314,6 +317,7 @@ function ServiceRow({ service }: { service: AdminService }) {
       price: pp > 0 ? computedPrice : Number(price),
       providerPrice: pp, margin: mg,
       available: Number(available), popular, enabled,
+      logoUrl: logoUrl.trim() || null,
     }),
     onSuccess: () => { toast({ title: "Service mis à jour" }); qc.invalidateQueries({ queryKey: ["admin-services"] }); setEditing(false); },
     onError: (e) => toast({ title: "Erreur", description: (e as Error).message, variant: "destructive" }),
@@ -335,6 +339,7 @@ function ServiceRow({ service }: { service: AdminService }) {
     setPrice(String(service.price)); setProviderPrice(String(service.providerPrice ?? 0));
     setMargin(String(service.margin ?? 20)); setAvailable(String(service.available));
     setPopular(service.popular); setEnabled(service.enabled ?? true);
+    setLogoUrl(service.logoUrl ?? "");
     setEditing(true);
   };
 
@@ -343,7 +348,7 @@ function ServiceRow({ service }: { service: AdminService }) {
       <tr className={`border-b border-zinc-800 hover:bg-zinc-800/20 transition-colors ${editing ? "bg-zinc-800/30" : ""}`}>
         <td className="py-3 px-4">
           <div className="flex items-center gap-2">
-            <ServiceIcon name={service.name} slug={service.slug} size={32} rounded="lg" />
+            <ServiceIcon name={service.name} slug={service.slug} logoUrl={service.logoUrl} size={32} rounded="lg" />
             <div>
               <span className="text-white text-sm font-medium">{service.name}</span>
               <div className="text-zinc-600 text-xs font-mono">{service.slug}</div>
@@ -387,8 +392,20 @@ function ServiceRow({ service }: { service: AdminService }) {
         <td className="py-3 px-4">
           <div className="flex gap-1.5">
             <button onClick={openEdit} className="p-1.5 rounded hover:bg-zinc-700 text-zinc-500 hover:text-white transition-colors"><Pencil className="w-3.5 h-3.5" /></button>
-            <button onClick={() => { if (confirm(`Supprimer "${service.name}" ?`)) deleteSvc.mutate(); }}
-              disabled={deleteSvc.isPending} className="p-1.5 rounded hover:bg-red-500/10 text-zinc-600 hover:text-red-400 transition-colors">
+            <button
+              onClick={async () => {
+                const ok = await confirm({
+                  title: `Supprimer "${service.name}" ?`,
+                  message: "Cette action est irréversible. Le service et tous ses numéros associés seront supprimés.",
+                  confirmLabel: "Supprimer",
+                  cancelLabel: "Annuler",
+                  variant: "danger",
+                });
+                if (ok) deleteSvc.mutate();
+              }}
+              disabled={deleteSvc.isPending}
+              className="p-1.5 rounded hover:bg-red-500/10 text-zinc-600 hover:text-red-400 transition-colors"
+            >
               <Trash2 className="w-3.5 h-3.5" />
             </button>
           </div>
@@ -451,6 +468,38 @@ function ServiceRow({ service }: { service: AdminService }) {
                 </div>
               </div>
             </div>
+
+            {/* Logo URL row */}
+            <div className="mb-3">
+              <label className="text-xs text-zinc-400 mb-1 block">Logo personnalisé (URL de l'image)</label>
+              <div className="flex gap-2 items-center">
+                <div className="relative flex-1">
+                  <input
+                    value={logoUrl}
+                    onChange={e => setLogoUrl(e.target.value)}
+                    placeholder="https://cdn.example.com/logo.png — laisser vide pour utiliser l'icône automatique"
+                    className="w-full px-2.5 py-2 text-sm bg-zinc-900 border border-zinc-700 rounded-lg text-white placeholder:text-zinc-600 focus:outline-none focus:border-violet-500 pr-10"
+                  />
+                  {logoUrl && (
+                    <button
+                      type="button"
+                      onClick={() => setLogoUrl("")}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-600 hover:text-zinc-400 transition-colors"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+                {/* Logo preview */}
+                <div className="flex-shrink-0">
+                  <ServiceIcon name={name || service.name} slug={service.slug} logoUrl={logoUrl.trim() || null} size={36} rounded="lg" />
+                </div>
+              </div>
+              <p className="text-[10px] text-zinc-600 mt-1">
+                Exemples : <span className="text-violet-400 font-mono">https://simpleicons.org/icons/whatsapp.svg</span> · <span className="text-violet-400 font-mono">https://logo.clearbit.com/whatsapp.com</span>
+              </p>
+            </div>
+
             <div className="flex gap-2">
               <button onClick={() => update.mutate()} disabled={update.isPending} className="px-4 py-2 text-sm bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg flex items-center gap-1.5">
                 {update.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}Enregistrer
