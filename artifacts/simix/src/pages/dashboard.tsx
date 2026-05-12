@@ -455,7 +455,7 @@ function DashboardContent() {
             <h2 className="text-[17px] font-extrabold text-foreground leading-tight">Pays disponibles</h2>
             <p className="text-[11px] text-muted-foreground mt-0.5">Numéros locaux & internationaux</p>
           </div>
-          <Link href="/countries" className="text-[12px] font-semibold text-violet-400 hover:underline flex items-center gap-0.5">
+          <Link href="/services" className="text-[12px] font-semibold text-violet-400 hover:underline flex items-center gap-0.5">
             Voir tout <ChevronRight className="w-3.5 h-3.5" />
           </Link>
         </div>

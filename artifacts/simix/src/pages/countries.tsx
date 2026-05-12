@@ -6,7 +6,7 @@ import {
   useListServices, getListServicesQueryKey,
 } from "@workspace/api-client-react";
 import { useState, useMemo } from "react";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { Search, ChevronLeft, ChevronRight, Edit2, Zap, Globe, ShieldCheck } from "lucide-react";
 import { motion } from "framer-motion";
 import { formatFCFA } from "@/lib/format";
@@ -82,6 +82,7 @@ export default function Countries() {
 }
 
 function CountriesContent() {
+  const [, setLocation] = useLocation();
   const searchParams = new URLSearchParams(window.location.search);
   const serviceId = searchParams.get("serviceId") || undefined;
 
@@ -97,6 +98,47 @@ function CountriesContent() {
   );
   const { data: services } = useListServices(undefined, { query: { queryKey: getListServicesQueryKey() } });
   const selectedService = services?.find(s => s.id === serviceId);
+
+  /* ── Guard: service must be selected first ── */
+  if (!serviceId) {
+    return (
+      <div className="flex-1 w-full bg-background flex flex-col h-full">
+        {/* Header */}
+        <div className="sticky top-0 z-20 bg-background pt-5 pb-3 px-5 border-b border-card-border/40">
+          <div className="flex items-center justify-between mb-4">
+            <button
+              onClick={() => window.history.back()}
+              className="w-9 h-9 rounded-xl bg-card border border-card-border flex items-center justify-center text-foreground hover:bg-secondary transition-colors"
+            >
+              <ChevronLeft className="w-5 h-5" />
+            </button>
+            <div className="text-center">
+              <h1 className="text-base font-bold text-foreground">Choisir un pays</h1>
+            </div>
+            <div className="w-9" />
+          </div>
+        </div>
+        {/* No service selected */}
+        <div className="flex-1 flex flex-col items-center justify-center px-8 text-center gap-5 pb-16">
+          <div className="w-20 h-20 rounded-3xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center">
+            <Globe className="w-10 h-10 text-violet-400" />
+          </div>
+          <div>
+            <h2 className="text-lg font-bold text-foreground mb-2">Choisissez un service d'abord</h2>
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              Pour voir les pays disponibles, vous devez d'abord sélectionner le service pour lequel vous souhaitez recevoir un SMS.
+            </p>
+          </div>
+          <button
+            onClick={() => setLocation("/services")}
+            className="mt-2 w-full max-w-xs h-14 bg-primary text-white rounded-2xl text-base font-bold hover:opacity-90 transition-opacity shadow-lg shadow-primary/25"
+          >
+            Choisir un service →
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   /* Filter by region tab */
   const filteredCountries = useMemo(() => {

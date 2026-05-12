@@ -27,22 +27,25 @@ const LAST_SYNC_KEY     = "fivesim_last_sync";
 const SYNC_STATUS_KEY   = "fivesim_sync_status";
 const MAX_LOG_ENTRIES   = 30;
 
-/* All sample countries — widest coverage without hammering the API */
+/* All sample countries — widest coverage without hammering the API.
+   Only slugs confirmed valid by the 5sim /guest/products API. */
 const SAMPLE_COUNTRIES = [
   /* Africa */
   "ivorycoast", "senegal", "cameroon", "nigeria", "ghana",
   "togo", "benin", "guinea", "kenya", "tanzania", "southafrica",
-  "mali", "burkina", "niger", "madagascar", "ethiopia", "rwanda",
+  "madagascar", "ethiopia", "rwanda", "angola", "mozambique",
   /* Europe */
   "france", "england", "germany", "spain", "italy",
-  "netherlands", "belgium", "sweden", "portugal", "switzerland",
+  "netherlands", "belgium", "portugal", "poland", "romania",
   /* Americas */
   "usa", "canada", "brazil", "mexico", "colombia", "argentina",
+  "chile", "peru", "venezuela",
   /* Asia-Pacific */
   "india", "indonesia", "philippines", "vietnam", "thailand",
-  "pakistan", "bangladesh", "malaysia",
-  /* Others */
-  "ukraine", "russia", "turkey", "egypt", "morocco",
+  "pakistan", "bangladesh", "malaysia", "myanmar", "cambodia",
+  /* Middle-East & North Africa */
+  "egypt", "morocco", "algeria", "tunisia",
+  "saudiarabia", "uae", "israel",
 ];
 
 /* Category labels for known 5sim product names */
