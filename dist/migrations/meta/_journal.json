@@ -15,6 +15,27 @@
       "when": 1778570000000,
       "tag": "0001_payment_routing",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1778610000000,
+      "tag": "0002_services_logo_url",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1778620000000,
+      "tag": "0003_missing_tables",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1778630000000,
+      "tag": "0004_missing_tables_2",
+      "breakpoints": true
     }
   ]
 }

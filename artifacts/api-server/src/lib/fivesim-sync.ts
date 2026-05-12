@@ -74,6 +74,71 @@ const COLOR_MAP: Record<string, string> = {
   signal: "#3A76F0", pinterest: "#E60023", coinbase: "#0052FF",
 };
 
+/* Logo URL map — uses Clearbit CDN (free, no auth) for major brands,
+   falls back to null for unknowns so existing admin-set logos are preserved */
+const LOGO_MAP: Record<string, string> = {
+  whatsapp:  "https://logo.clearbit.com/whatsapp.com",
+  telegram:  "https://logo.clearbit.com/telegram.org",
+  viber:     "https://logo.clearbit.com/viber.com",
+  signal:    "https://logo.clearbit.com/signal.org",
+  line:      "https://logo.clearbit.com/line.me",
+  wechat:    "https://logo.clearbit.com/wechat.com",
+  facebook:  "https://logo.clearbit.com/facebook.com",
+  instagram: "https://logo.clearbit.com/instagram.com",
+  twitter:   "https://logo.clearbit.com/twitter.com",
+  tiktok:    "https://logo.clearbit.com/tiktok.com",
+  snapchat:  "https://logo.clearbit.com/snapchat.com",
+  linkedin:  "https://logo.clearbit.com/linkedin.com",
+  pinterest: "https://logo.clearbit.com/pinterest.com",
+  youtube:   "https://logo.clearbit.com/youtube.com",
+  google:    "https://logo.clearbit.com/google.com",
+  microsoft: "https://logo.clearbit.com/microsoft.com",
+  apple:     "https://logo.clearbit.com/apple.com",
+  yahoo:     "https://logo.clearbit.com/yahoo.com",
+  discord:   "https://logo.clearbit.com/discord.com",
+  amazon:    "https://logo.clearbit.com/amazon.com",
+  ebay:      "https://logo.clearbit.com/ebay.com",
+  shopee:    "https://logo.clearbit.com/shopee.com",
+  lazada:    "https://logo.clearbit.com/lazada.com",
+  paypal:    "https://logo.clearbit.com/paypal.com",
+  binance:   "https://logo.clearbit.com/binance.com",
+  coinbase:  "https://logo.clearbit.com/coinbase.com",
+  kraken:    "https://logo.clearbit.com/kraken.com",
+  uber:      "https://logo.clearbit.com/uber.com",
+  airbnb:    "https://logo.clearbit.com/airbnb.com",
+  netflix:   "https://logo.clearbit.com/netflix.com",
+  steam:     "https://logo.clearbit.com/steampowered.com",
+  twitch:    "https://logo.clearbit.com/twitch.tv",
+  spotify:   "https://logo.clearbit.com/spotify.com",
+  twitter_x: "https://logo.clearbit.com/x.com",
+  x:         "https://logo.clearbit.com/x.com",
+  microsoft_store: "https://logo.clearbit.com/microsoft.com",
+  aliexpress:"https://logo.clearbit.com/aliexpress.com",
+  booking:   "https://logo.clearbit.com/booking.com",
+  imo:       "https://logo.clearbit.com/imo.im",
+  ok:        "https://logo.clearbit.com/ok.ru",
+  vk:        "https://logo.clearbit.com/vk.com",
+  uber_eats: "https://logo.clearbit.com/ubereats.com",
+  doordash:  "https://logo.clearbit.com/doordash.com",
+  lyft:      "https://logo.clearbit.com/lyft.com",
+  grab:      "https://logo.clearbit.com/grab.com",
+  gojek:     "https://logo.clearbit.com/gojek.com",
+  bolt:      "https://logo.clearbit.com/bolt.eu",
+  microsoft365: "https://logo.clearbit.com/microsoft.com",
+  skype:     "https://logo.clearbit.com/skype.com",
+  zoom:      "https://logo.clearbit.com/zoom.us",
+  dropbox:   "https://logo.clearbit.com/dropbox.com",
+  gmail:     "https://logo.clearbit.com/gmail.com",
+  adobe:     "https://logo.clearbit.com/adobe.com",
+  twitter2:  "https://logo.clearbit.com/twitter.com",
+  aol:       "https://logo.clearbit.com/aol.com",
+  eneba:     "https://logo.clearbit.com/eneba.com",
+  jd:        "https://logo.clearbit.com/jd.com",
+  mcdonalds: "https://logo.clearbit.com/mcdonalds.com",
+  sikayetvar: "https://logo.clearbit.com/sikayetvar.com",
+  tinder:    "https://logo.clearbit.com/tinder.com",
+};
+
 /* ─── Sync log entry type ─── */
 export interface SyncLogEntry {
   id:          string;
@@ -242,15 +307,17 @@ export async function syncFiveSimProducts(triggeredBy: "scheduler" | "admin" = "
         const priceInFcfa     = Math.round(info.price * 655);
         const priceWithMarkup = Math.round(priceInFcfa * (1 + markup / 100));
         const prettyName      = slug.charAt(0).toUpperCase() + slug.slice(1).replace(/_/g, " ");
+        const slugLower = slug.toLowerCase();
         return {
           name:          prettyName,
           slug,
           price:         priceWithMarkup,
           providerPrice: priceInFcfa,
           margin:        markup,
-          available:     info.qty,
-          category:      CATEGORY_MAP[slug.toLowerCase()] ?? "Autre",
-          color:         COLOR_MAP[slug.toLowerCase()] ?? "#7C3AED",
+          available:     Math.round(info.qty),
+          category:      CATEGORY_MAP[slugLower] ?? "Autre",
+          color:         COLOR_MAP[slugLower] ?? "#7C3AED",
+          logoUrl:       LOGO_MAP[slugLower] ?? null,
           enabled:       true as boolean,
           sortOrder:     200,
         };
@@ -276,6 +343,9 @@ export async function syncFiveSimProducts(triggeredBy: "scheduler" | "admin" = "
             /* Always update provider data */
             providerPrice: sql`excluded.provider_price`,
             available:     sql`excluded.available`,
+
+            /* Update logo only when sync provides one (don't overwrite admin-set logos with null) */
+            logoUrl: sql`CASE WHEN excluded.logo_url IS NOT NULL THEN excluded.logo_url ELSE services.logo_url END`,
 
             /* Price protection: only update `price` if it matches the auto-calculated value */
             price: sql`
