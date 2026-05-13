@@ -16,6 +16,12 @@ import { startFiveSimSyncScheduler, syncFiveSimCountries, syncFiveSimProducts } 
 
 const app: Express = express();
 
+/* ── Trust reverse proxy (Plesk / nginx / Cloudflare) ──
+ * Allows Express to correctly read X-Forwarded-Proto and X-Forwarded-For
+ * headers set by the upstream proxy, so req.protocol returns "https"
+ * and req.ip returns the real client IP instead of the proxy IP.       */
+app.set("trust proxy", 1);
+
 /* ── HTTP Security Headers ── */
 app.use(
   helmet({
