@@ -13,6 +13,7 @@ import { startFiveSimPoller } from "./lib/fivesim-poller";
 import { seedProvidersFromEnv } from "./lib/seed-providers";
 import { seedPaymentMethods } from "./lib/seed-payment-methods";
 import { startFiveSimSyncScheduler, syncFiveSimCountries, syncFiveSimProducts } from "./lib/fivesim-sync";
+import { startClapayReconciliation } from "./lib/clapay-reconciliation";
 
 const app: Express = express();
 
@@ -46,7 +47,30 @@ app.use(
 );
 
 app.use(cors({ credentials: true, origin: true }));
-app.use(express.json({ limit: "8mb" }));
+
+/* ── Body parsing — capture raw body for webhook signature verification ──
+ * The verify callback runs BEFORE JSON.parse, giving us the original bytes.
+ * This is required for PawaPay Content-Digest verification: re-serializing
+ * req.body with JSON.stringify() will not match the original bytes PawaPay
+ * signed (different whitespace / key order), causing all signed webhooks to
+ * be silently dropped.
+ * Stored on req.rawBody (cast via augmented Request type below).          */
+declare global {
+  namespace Express {
+    interface Request {
+      rawBody?: string;
+    }
+  }
+}
+
+app.use(
+  express.json({
+    limit: "8mb",
+    verify: (req: express.Request, _res, buf) => {
+      (req as express.Request & { rawBody?: string }).rawBody = buf.toString("utf8");
+    },
+  }),
+);
 app.use(express.urlencoded({ extended: true, limit: "8mb" }));
 app.use(cookieParser());
 
@@ -90,6 +114,7 @@ void seedPaymentMethods();
 void seedProvidersFromEnv().then(async () => {
   startFiveSimPoller();
   startFiveSimSyncScheduler();
+  startClapayReconciliation();
 
   /* Sync countries from 5sim immediately at startup (non-blocking) */
   try {

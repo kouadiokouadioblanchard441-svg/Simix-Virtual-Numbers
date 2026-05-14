@@ -124,6 +124,23 @@ export interface ClapayPaymentLimit {
   country: string;
 }
 
+export interface ClapayTransactionStatus {
+  status: string;               // "COMPLETED", "FAILED", "PENDING", "CANCELLED", etc.
+  transaction_id?: string;      // Our UUID we sent
+  signature?: string;           // Clapay's signature for this transaction
+  amount?: number | string;
+  currency?: string;
+  transaction_date?: string;
+  transaction_phone_number?: string;
+  transaction_service_name?: string;
+  additional_infos?: {
+    customer_phone?: string;
+    customer_firstname?: string;
+    customer_lastname?: string;
+    customer_email?: string;
+  };
+}
+
 /* ─────────────────────────────────────────────────────────────────
  * Operator slug → Clapay operator code mapping
  * ─────────────────────────────────────────────────────────────── */
@@ -260,6 +277,37 @@ export class ClapayClient {
       "/nowallet/api/limitation/paiement", "GET", undefined, { country }
     );
     return Array.isArray(result) ? result : [result];
+  }
+
+  /**
+   * Check the status of a specific transaction by its signature.
+   * Signature = the value returned by Clapay in the initiatePayment response.
+   * Used for reconciliation of pending transactions when webhook is missed.
+   */
+  async getTransactionStatus(signature: string): Promise<ClapayTransactionStatus | null> {
+    try {
+      const result = await this.request<ClapayTransactionStatus>(
+        `/nowallet/api/check/transactions/single/signature/${signature}`
+      );
+      return result;
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Check the status of a transaction by our transaction_id (the UUID we sent).
+   * Some Clapay deployments support this endpoint.
+   */
+  async getTransactionByExternalId(transactionId: string): Promise<ClapayTransactionStatus | null> {
+    try {
+      const result = await this.request<ClapayTransactionStatus>(
+        `/nowallet/api/check/transactions/single/transaction_id/${transactionId}`
+      );
+      return result;
+    } catch {
+      return null;
+    }
   }
 }
 

@@ -34,9 +34,27 @@ async function refreshIpBlacklist(): Promise<void> {
   } catch { /* non-fatal */ }
 }
 
+/* Payment gateway webhook paths — must NEVER be blocked by maintenance / rate-limit / IP blacklist.
+ * PawaPay and Clapay call these endpoints from their own servers to confirm payment completion.
+ * Blocking them means payments are validated on the gateway side but never credited to users. */
+const WEBHOOK_PATHS = [
+  "/api/wallet/pawapay/webhook",
+  "/api/wallet/pawapay/refund-webhook",
+  "/api/wallet/clapay/webhook",
+];
+
+function isWebhookPath(path: string): boolean {
+  return WEBHOOK_PATHS.some(p => path === p || path.startsWith(p));
+}
+
 /** Return 503 on all non-admin, non-health routes when maintenance_mode=true */
 export async function checkMaintenanceMode(req: Request, res: Response, next: NextFunction): Promise<void> {
-  if (req.path.startsWith("/api/admin") || req.path === "/api/health" || req.path === "/api/healthz") {
+  if (
+    req.path.startsWith("/api/admin") ||
+    req.path === "/api/health" ||
+    req.path === "/api/healthz" ||
+    isWebhookPath(req.path)
+  ) {
     next();
     return;
   }
@@ -50,9 +68,9 @@ export async function checkMaintenanceMode(req: Request, res: Response, next: Ne
   next();
 }
 
-/** Block requests from IPs in the blacklist (skip admin routes) */
+/** Block requests from IPs in the blacklist (skip admin + webhook routes) */
 export async function checkIpBlacklist(req: Request, res: Response, next: NextFunction): Promise<void> {
-  if (req.path.startsWith("/api/admin") || req.path === "/api/healthz") {
+  if (req.path.startsWith("/api/admin") || req.path === "/api/healthz" || isWebhookPath(req.path)) {
     next();
     return;
   }
@@ -72,8 +90,9 @@ export async function checkIpBlacklist(req: Request, res: Response, next: NextFu
   next();
 }
 
-/** 200 requests per minute per IP — global API guard */
+/** 200 requests per minute per IP — global API guard (skips webhook paths) */
 export function globalRateLimit(req: Request, res: Response, next: NextFunction): void {
+  if (isWebhookPath(req.path)) { next(); return; }
   const ip = req.ip ?? "unknown";
   if (isRateLimited(`global:${ip}`, 200, 60_000)) {
     void logSecurityEvent({

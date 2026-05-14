@@ -25,6 +25,7 @@ import {
   ClapayClient,
   makeClapayDepositId,
   isClapayDeposit,
+  extractClapayTransactionId,
   getOperatorCodeForMethod,
   type ClapayWebhookPayload,
 } from "../lib/clapay";
@@ -447,16 +448,19 @@ router.post("/wallet/pawapay/webhook", async (req: Request, res: Response): Prom
     /* Content-Digest verification (if signed callbacks are enabled in PawaPay dashboard) */
     const contentDigest = req.headers["content-digest"] as string | undefined;
     if (contentDigest) {
-      /* Re-serialize the parsed body to verify digest */
-      const rawBody = JSON.stringify(req.body);
+      /* Use the raw body captured before JSON parsing (see app.ts verify callback).
+       * JSON.stringify(req.body) must NOT be used here — it re-serializes the
+       * parsed object which may differ from PawaPay's original bytes (whitespace,
+       * key ordering) and would always produce a mismatch on signed callbacks. */
+      const rawBody = req.rawBody ?? JSON.stringify(req.body);
       const digestOk = verifyContentDigest(rawBody, contentDigest);
       if (!digestOk) {
-        logger.error({ contentDigest }, "[PawaPay Webhook] Content-Digest MISMATCH — possible tampering, ignoring");
+        logger.error({ contentDigest, hasRawBody: !!req.rawBody }, "[PawaPay Webhook] Content-Digest MISMATCH — possible tampering, ignoring");
         return;
       }
       logger.info("[PawaPay Webhook] Content-Digest verified ✓");
     } else {
-      logger.warn("[PawaPay Webhook] No Content-Digest header — signed callbacks not enabled");
+      logger.info("[PawaPay Webhook] No Content-Digest header — processing without signature verification");
     }
 
     /* PawaPay v2 sends a single object (not an array) */
@@ -733,9 +737,71 @@ router.get("/wallet/deposit/:depositId/status", requireAuth, async (req, res): P
 
   /* Only poll if transaction is still pending */
   if (tx.status === "pending") {
-    /* Clapay deposits: no individual status API — rely purely on webhook.
-     * Return the current DB state; the frontend polls until webhook fires. */
+    /* Clapay deposits: try Clapay API for status (reconciliation safety net).
+     * If the webhook was missed, this poll will detect COMPLETED and credit the user. */
     if (isClapayDeposit(depositId)) {
+      const clapayCtx = await getClapayClient();
+      if (clapayCtx) {
+        try {
+          const transactionId = extractClapayTransactionId(depositId);
+          const statusResult = await clapayCtx.client.getTransactionByExternalId(transactionId);
+
+          if (statusResult) {
+            const clapayStatus = statusResult.status?.toUpperCase();
+
+            if (clapayStatus === "COMPLETED") {
+              const creditAmount = statusResult.amount
+                ? Math.round(Number(statusResult.amount))
+                : tx.amount;
+
+              const [justCompleted] = await db.update(transactionsTable)
+                .set({ status: "completed" })
+                .where(and(
+                  eq(transactionsTable.id, tx.id),
+                  eq(transactionsTable.status, "pending"),
+                ))
+                .returning();
+
+              if (justCompleted) {
+                await db.update(usersTable)
+                  .set({ balance: sql`${usersTable.balance} + ${creditAmount}` })
+                  .where(eq(usersTable.id, user.id));
+                logger.info({ depositId, userId: user.id, creditAmount }, "[Clapay Poll] Deposit COMPLETED via polling — balance credited ✓");
+
+                try {
+                  const [notif] = await db.insert(notificationsTable).values({
+                    userId: user.id,
+                    title: "💰 Solde rechargé",
+                    body: `Votre solde a été crédité de ${creditAmount.toLocaleString("fr-FR")} FCFA avec succès.`,
+                    type: "deposit", icon: "wallet", link: "/wallet",
+                    metadata: { amount: creditAmount, depositId: transactionId, gateway: "clapay", source: "poll" },
+                  }).returning();
+                  if (notif) broadcastNotification(notif);
+                } catch { /* non-critical */ }
+              } else {
+                logger.info({ depositId }, "[Clapay Poll] Already processed by webhook — skipping");
+              }
+
+              const [updated] = await db.select().from(transactionsTable)
+                .where(eq(transactionsTable.id, tx.id)).limit(1);
+              res.json({ ...toTransaction(updated ?? tx), gateway: "clapay" });
+              return;
+
+            } else if (clapayStatus === "FAILED" || clapayStatus === "CANCELLED" || clapayStatus === "REJECTED") {
+              await db.update(transactionsTable)
+                .set({ status: "failed" })
+                .where(eq(transactionsTable.id, tx.id));
+              const [updated] = await db.select().from(transactionsTable)
+                .where(eq(transactionsTable.id, tx.id)).limit(1);
+              res.json({ ...toTransaction(updated ?? { ...tx, status: "failed" }), gateway: "clapay" });
+              return;
+            }
+          }
+        } catch (e) {
+          logger.warn({ error: (e as Error).message }, "[Clapay Poll] Status check failed");
+        }
+      }
+      /* Clapay not configured or status unknown — return current DB state */
       res.json({ ...toTransaction(tx), gateway: "clapay" });
       return;
     }
