@@ -75,6 +75,8 @@ export const adminApi = {
   getPaymentConfigs: () => req<PaymentConfigData>("GET", "/admin/payment-configs"),
   updatePaymentConfig: (data: { countryCode: string; methodSlug: string; enabled: boolean; minDeposit: number; feePercent: number }) =>
     req("PUT", "/admin/payment-configs", data),
+  addDepositCountry: (countryCode: string) =>
+    req<{ success: boolean; country: { code: string; name: string }; inserted: number; total: number }>("POST", "/admin/payment-configs/add-country", { countryCode }),
 
   getProviders: () => req<ApiProvider[]>("GET", "/admin/api-providers"),
   createProvider: (data: Partial<ApiProvider>) => req<ApiProvider>("POST", "/admin/api-providers", data),

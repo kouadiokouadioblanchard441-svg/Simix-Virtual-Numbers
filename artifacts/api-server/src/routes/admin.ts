@@ -632,6 +632,40 @@ router.put("/admin/payment-configs", requireAdmin, async (req, res): Promise<voi
   res.json({ success: true });
 });
 
+/* ─────────────────── ADD COUNTRY TO DEPOSIT MATRIX ─────────────────── */
+router.post("/admin/payment-configs/add-country", requireAdmin, async (req, res): Promise<void> => {
+  const { countryCode } = req.body;
+  if (!countryCode) {
+    res.status(400).json({ error: "countryCode est requis" });
+    return;
+  }
+
+  const country = await db
+    .select({ code: countriesTable.code, name: countriesTable.name })
+    .from(countriesTable)
+    .where(eq(countriesTable.code, String(countryCode)))
+    .limit(1);
+
+  if (country.length === 0) {
+    res.status(404).json({ error: "Pays introuvable dans la base de données" });
+    return;
+  }
+
+  const methods = await db.select().from(paymentMethodsTable).orderBy(paymentMethodsTable.sortOrder);
+
+  let inserted = 0;
+  for (const method of methods) {
+    const result = await db
+      .insert(countryPaymentConfigsTable)
+      .values({ countryCode: String(countryCode), methodSlug: method.slug, enabled: false, minDeposit: 500, feePercent: 0 })
+      .onConflictDoNothing();
+    if ((result.rowCount ?? 0) > 0) inserted++;
+  }
+
+  await logAdminAction(adminId(req), "add_deposit_country", req.ip, "payment_config", String(countryCode), { inserted, total: methods.length });
+  res.json({ success: true, country: country[0], inserted, total: methods.length });
+});
+
 /* ─────────────────── ORDERS MANAGEMENT ─────────────────── */
 router.get("/admin/orders", requireAdmin, async (req, res): Promise<void> => {
   const limit = Math.min(Number(req.query.limit) || 50, 200);

@@ -478,8 +478,166 @@ function MatrixTab() {
   );
 }
 
+/* ─── DEPOSIT COUNTRIES TAB ─── */
+function DepositCountriesTab() {
+  const [search, setSearch] = useState("");
+  const [pickerSearch, setPickerSearch] = useState("");
+  const [showPicker, setShowPicker] = useState(false);
+  const { toast } = useToast();
+  const qc = useQueryClient();
+
+  const { data, isLoading } = useQuery({ queryKey: ["admin-payment-configs"], queryFn: adminApi.getPaymentConfigs });
+  const { data: allCountries, isLoading: loadingAll } = useQuery({ queryKey: ["admin-countries"], queryFn: adminApi.getCountries });
+
+  const activeCountryCodes = new Set(
+    (data?.configs ?? []).filter(c => c.enabled).map(c => c.countryCode)
+  );
+  const inMatrixCodes = new Set((data?.configs ?? []).map(c => c.countryCode));
+
+  const depositCountries = (data?.countries ?? []).filter(c => inMatrixCodes.has(c.code));
+  const filtered = search.trim()
+    ? depositCountries.filter(c => c.name.toLowerCase().includes(search.toLowerCase()) || c.code.toLowerCase().includes(search.toLowerCase()))
+    : depositCountries;
+
+  const notInMatrix = (allCountries ?? []).filter(c => !inMatrixCodes.has(c.code));
+  const filteredPicker = pickerSearch.trim()
+    ? notInMatrix.filter(c => c.name.toLowerCase().includes(pickerSearch.toLowerCase()) || c.code.toLowerCase().includes(pickerSearch.toLowerCase()))
+    : notInMatrix;
+
+  const addCountry = useMutation({
+    mutationFn: (countryCode: string) => adminApi.addDepositCountry(countryCode),
+    onSuccess: (result) => {
+      toast({ title: `✅ ${result.country.name} ajouté`, description: `Pays ajouté à la matrice de dépôt. Activez les opérateurs dans l'onglet "Config par pays".` });
+      qc.invalidateQueries({ queryKey: ["admin-payment-configs"] });
+      qc.invalidateQueries({ queryKey: ["admin-countries"] });
+      setShowPicker(false);
+      setPickerSearch("");
+    },
+    onError: (e) => toast({ title: "Erreur", description: (e as Error).message, variant: "destructive" }),
+  });
+
+  return (
+    <div className="space-y-5">
+      {/* Stats bar */}
+      <div className="grid grid-cols-3 gap-3">
+        <div className="bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-3">
+          <p className="text-xs text-zinc-500 mb-0.5">Pays dans la matrice</p>
+          <p className="text-xl font-bold text-white">{depositCountries.length}</p>
+        </div>
+        <div className="bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-3">
+          <p className="text-xs text-zinc-500 mb-0.5">Pays actifs (dépôt)</p>
+          <p className="text-xl font-bold text-emerald-400">{activeCountryCodes.size}</p>
+        </div>
+        <div className="bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-3">
+          <p className="text-xs text-zinc-500 mb-0.5">Disponibles à ajouter</p>
+          <p className="text-xl font-bold text-violet-400">{notInMatrix.length}</p>
+        </div>
+      </div>
+
+      {/* Actions bar */}
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+        <div className="relative flex-1 max-w-sm">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Filtrer les pays..." className="pl-9 pr-4 py-2 text-sm bg-zinc-900 border border-zinc-700 rounded-lg text-white placeholder:text-zinc-500 focus:outline-none focus:border-violet-500 w-full" />
+        </div>
+        <button
+          onClick={() => setShowPicker(true)}
+          className="flex items-center gap-1.5 px-4 py-2 text-sm bg-violet-600 hover:bg-violet-700 text-white rounded-lg transition-colors font-medium"
+        >
+          <Plus className="w-4 h-4" />Ajouter un pays de dépôt
+        </button>
+      </div>
+
+      {/* Hint */}
+      <p className="text-xs text-zinc-600 flex items-center gap-1.5">
+        <Globe className="w-3.5 h-3.5" />
+        Les pays ci-dessous ont été ajoutés à la matrice. Activez les opérateurs dans l'onglet <span className="text-violet-400 font-medium">Config par pays</span> pour les rendre disponibles au dépôt.
+      </p>
+
+      {/* Country grid */}
+      {isLoading ? (
+        <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 text-violet-500 animate-spin" /></div>
+      ) : filtered.length === 0 ? (
+        <div className="text-center py-12 text-zinc-500">
+          {search ? "Aucun pays trouvé" : "Aucun pays dans la matrice — cliquez sur « Ajouter un pays de dépôt »"}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2">
+          {filtered.map(c => {
+            const isActive = activeCountryCodes.has(c.code);
+            return (
+              <div key={c.code} className={`flex items-center gap-3 px-4 py-3 rounded-xl border transition-colors ${isActive ? "border-emerald-700/40 bg-emerald-900/10" : "border-zinc-800 bg-zinc-900"}`}>
+                <span className="text-xl flex-shrink-0">{c.flag}</span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-white truncate">{c.name}</p>
+                  <p className="text-xs text-zinc-500 font-mono">{c.code}</p>
+                </div>
+                <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full flex-shrink-0 ${isActive ? "bg-emerald-500/20 text-emerald-400" : "bg-zinc-800 text-zinc-500"}`}>
+                  {isActive ? "Actif" : "Inactif"}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Add country picker modal */}
+      {showPicker && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: "rgba(0,0,0,0.75)" }} onClick={() => setShowPicker(false)}>
+          <div className="bg-zinc-950 border border-zinc-800 rounded-2xl w-full max-w-md mx-4 overflow-hidden flex flex-col" style={{ maxHeight: "80vh" }} onClick={e => e.stopPropagation()}>
+            <div className="px-5 py-4 border-b border-zinc-800 flex-shrink-0">
+              <h3 className="text-base font-bold text-white mb-3 flex items-center gap-2"><MapPin className="w-4 h-4 text-violet-400" />Ajouter un pays de dépôt</h3>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+                <input
+                  autoFocus
+                  value={pickerSearch}
+                  onChange={e => setPickerSearch(e.target.value)}
+                  placeholder="Rechercher un pays..."
+                  className="w-full pl-9 pr-4 py-2.5 text-sm bg-zinc-900 border border-zinc-700 rounded-xl text-white placeholder:text-zinc-500 focus:outline-none focus:border-violet-500"
+                />
+              </div>
+              <p className="text-xs text-zinc-600 mt-2">{notInMatrix.length} pays disponibles à ajouter</p>
+            </div>
+            <div className="flex-1 overflow-y-auto py-2">
+              {loadingAll ? (
+                <div className="flex justify-center py-8"><Loader2 className="w-5 h-5 text-violet-500 animate-spin" /></div>
+              ) : filteredPicker.length === 0 ? (
+                <p className="text-center text-zinc-500 text-sm py-8">Aucun pays disponible</p>
+              ) : (
+                filteredPicker.map(c => (
+                  <button
+                    key={c.code}
+                    disabled={addCountry.isPending}
+                    onClick={() => addCountry.mutate(c.code)}
+                    className="w-full flex items-center gap-3 px-5 py-3 hover:bg-zinc-800/60 transition-colors text-left disabled:opacity-50"
+                  >
+                    <span className="text-lg flex-shrink-0">{c.flag}</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-white truncate">{c.name}</p>
+                      <p className="text-xs text-zinc-500 font-mono">{c.dialCode} · {c.code}</p>
+                    </div>
+                    {addCountry.isPending && addCountry.variables === c.code ? (
+                      <Loader2 className="w-4 h-4 text-violet-400 animate-spin flex-shrink-0" />
+                    ) : (
+                      <Plus className="w-4 h-4 text-zinc-600 group-hover:text-violet-400 flex-shrink-0" />
+                    )}
+                  </button>
+                ))
+              )}
+            </div>
+            <div className="px-5 py-3 border-t border-zinc-800 flex-shrink-0">
+              <button onClick={() => setShowPicker(false)} className="w-full py-2 text-sm text-zinc-400 hover:text-white transition-colors">Fermer</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ─── MAIN PAGE ─── */
-type Tab = "operators" | "matrix";
+type Tab = "operators" | "matrix" | "deposit-countries";
 
 function PaymentConfigContent() {
   const [tab, setTab] = useState<Tab>("operators");
@@ -487,6 +645,10 @@ function PaymentConfigContent() {
   const qc = useQueryClient();
   const { data: methods } = useQuery({ queryKey: ["admin-payment-methods"], queryFn: adminApi.getPaymentMethods });
   const { data: configData } = useQuery({ queryKey: ["admin-payment-configs"], queryFn: adminApi.getPaymentConfigs });
+
+  const activeDepositCount = new Set(
+    (configData?.configs ?? []).filter(c => c.enabled).map(c => c.countryCode)
+  ).size;
 
   const seedMutation = useMutation({
     mutationFn: adminApi.seedAfricanCountries,
@@ -500,6 +662,7 @@ function PaymentConfigContent() {
 
   const TABS: { id: Tab; label: string; count?: number }[] = [
     { id: "operators", label: "Opérateurs & Logos", count: methods?.length },
+    { id: "deposit-countries", label: "Pays de dépôt", count: activeDepositCount },
     { id: "matrix", label: "Config par pays", count: configData?.countries.length },
   ];
 
@@ -557,6 +720,7 @@ function PaymentConfigContent() {
 
       {/* Tab content */}
       {tab === "operators" && <OperatorsTab />}
+      {tab === "deposit-countries" && <DepositCountriesTab />}
       {tab === "matrix" && <MatrixTab />}
     </div>
   );
