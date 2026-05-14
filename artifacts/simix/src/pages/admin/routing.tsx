@@ -12,6 +12,17 @@ import {
 const BASE = () => (import.meta.env.BASE_URL ?? "/").replace(/\/$/, "") + "/api";
 const H = () => ({ Authorization: `Bearer ${adminToken.get() ?? ""}`, "Content-Type": "application/json" });
 
+/* Wrapper fetch qui redirige vers /admin/secure-login sur 401 */
+async function apiFetch(url: string, opts?: RequestInit): Promise<Response> {
+  const res = await fetch(url, opts);
+  if (res.status === 401) {
+    adminToken.clear();
+    const base = (import.meta.env.BASE_URL ?? "/").replace(/\/$/, "");
+    window.location.href = `${base}/admin/secure-login`;
+  }
+  return res;
+}
+
 /* ─── Types ────────────────────────────────────────────────── */
 interface Gateway {
   id: string; name: string; slug: string; logoUrl: string | null;
@@ -138,7 +149,7 @@ function GatewaysTab() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const r = await fetch(`${BASE()}/admin/payment-routing/gateways`, { headers: H() });
+      const r = await apiFetch(`${BASE()}/admin/payment-routing/gateways`, { headers: H() });
       const d = await r.json();
       setGateways(d.gateways ?? []);
     } finally { setLoading(false); }
@@ -160,21 +171,21 @@ function GatewaysTab() {
       active: form.active, testMode: form.testMode, notes: form.notes,
     };
     const url = isEdit ? `${BASE()}/admin/payment-routing/gateways/${(modal as Gateway).id}` : `${BASE()}/admin/payment-routing/gateways`;
-    await fetch(url, { method: isEdit ? "PUT" : "POST", headers: H(), body: JSON.stringify(body) });
+    await apiFetch(url, { method: isEdit ? "PUT" : "POST", headers: H(), body: JSON.stringify(body) });
     setModal(null);
     void load();
   };
 
   const del = async (id: string) => {
     if (!confirm("Supprimer ce fournisseur ?")) return;
-    await fetch(`${BASE()}/admin/payment-routing/gateways/${id}`, { method: "DELETE", headers: H() });
+    await apiFetch(`${BASE()}/admin/payment-routing/gateways/${id}`, { method: "DELETE", headers: H() });
     void load();
   };
 
   const testGateway = async (id: string) => {
     setTesting(id);
     try {
-      const r = await fetch(`${BASE()}/admin/payment-routing/gateways/${id}/test`, { method: "POST", headers: H() });
+      const r = await apiFetch(`${BASE()}/admin/payment-routing/gateways/${id}/test`, { method: "POST", headers: H() });
       const d = await r.json();
       setTestResults(p => ({ ...p, [id]: d }));
     } finally { setTesting(null); }
@@ -302,7 +313,7 @@ function OperatorsTab() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const r = await fetch(`${BASE()}/admin/payment-routing/operators`, { headers: H() });
+      const r = await apiFetch(`${BASE()}/admin/payment-routing/operators`, { headers: H() });
       const d = await r.json();
       setOperators(d.operators ?? []);
     } finally { setLoading(false); }
@@ -318,19 +329,19 @@ function OperatorsTab() {
       active: form.active, sortOrder: form.sortOrder,
     };
     const url = isEdit ? `${BASE()}/admin/payment-routing/operators/${(modal as Operator).id}` : `${BASE()}/admin/payment-routing/operators`;
-    await fetch(url, { method: isEdit ? "PUT" : "POST", headers: H(), body: JSON.stringify(body) });
+    await apiFetch(url, { method: isEdit ? "PUT" : "POST", headers: H(), body: JSON.stringify(body) });
     setModal(null);
     void load();
   };
 
   const del = async (id: string) => {
     if (!confirm("Supprimer cet opérateur ?")) return;
-    await fetch(`${BASE()}/admin/payment-routing/operators/${id}`, { method: "DELETE", headers: H() });
+    await apiFetch(`${BASE()}/admin/payment-routing/operators/${id}`, { method: "DELETE", headers: H() });
     void load();
   };
 
   const toggleActive = async (op: Operator) => {
-    await fetch(`${BASE()}/admin/payment-routing/operators/${op.id}`, {
+    await apiFetch(`${BASE()}/admin/payment-routing/operators/${op.id}`, {
       method: "PUT", headers: H(),
       body: JSON.stringify({ active: !op.active }),
     });
@@ -444,7 +455,7 @@ function RoutingTab() {
       if (filterCountry) params.set("country", filterCountry);
       if (filterOp) params.set("operator", filterOp);
       if (filterType) params.set("type", filterType);
-      const r = await fetch(`${BASE()}/admin/payment-routing/routes?${params}`, { headers: H() });
+      const r = await apiFetch(`${BASE()}/admin/payment-routing/routes?${params}`, { headers: H() });
       const d = await r.json();
       setRoutes(d.routes ?? []);
       setGateways(d.gateways ?? []);
@@ -468,19 +479,19 @@ function RoutingTab() {
       notes: form.notes || null,
     };
     const url = isEdit ? `${BASE()}/admin/payment-routing/routes/${(modal as PayRoute).id}` : `${BASE()}/admin/payment-routing/routes`;
-    await fetch(url, { method: isEdit ? "PUT" : "POST", headers: H(), body: JSON.stringify(body) });
+    await apiFetch(url, { method: isEdit ? "PUT" : "POST", headers: H(), body: JSON.stringify(body) });
     setModal(null);
     void load();
   };
 
   const del = async (id: string) => {
     if (!confirm("Supprimer cette route ?")) return;
-    await fetch(`${BASE()}/admin/payment-routing/routes/${id}`, { method: "DELETE", headers: H() });
+    await apiFetch(`${BASE()}/admin/payment-routing/routes/${id}`, { method: "DELETE", headers: H() });
     void load();
   };
 
   const toggleMaintenance = async (route: PayRoute) => {
-    await fetch(`${BASE()}/admin/payment-routing/routes/${route.id}/maintenance`, {
+    await apiFetch(`${BASE()}/admin/payment-routing/routes/${route.id}/maintenance`, {
       method: "POST", headers: H(),
       body: JSON.stringify({ maintenanceMode: !route.maintenanceMode }),
     });
@@ -490,7 +501,7 @@ function RoutingTab() {
   const doSwitch = async (routeId: string, gatewayId: string) => {
     setSwitching(routeId);
     try {
-      await fetch(`${BASE()}/admin/payment-routing/routes/${routeId}/switch`, {
+      await apiFetch(`${BASE()}/admin/payment-routing/routes/${routeId}/switch`, {
         method: "POST", headers: H(),
         body: JSON.stringify({ gatewayId }),
       });
@@ -694,7 +705,7 @@ function LogsTab() {
       const params = new URLSearchParams({ limit: "100" });
       if (filterType) params.set("eventType", filterType);
       if (filterStatus) params.set("status", filterStatus);
-      const r = await fetch(`${BASE()}/admin/payment-routing/logs?${params}`, { headers: H() });
+      const r = await apiFetch(`${BASE()}/admin/payment-routing/logs?${params}`, { headers: H() });
       const d = await r.json();
       setLogs(d.logs ?? []);
       setTotal(d.total ?? 0);

@@ -9,7 +9,7 @@ export function AdminGuard({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!adminToken.isValid()) {
       adminToken.clear();
-      setLocation("/");
+      setLocation("/admin/secure-login");
     }
   }, [setLocation]);
 

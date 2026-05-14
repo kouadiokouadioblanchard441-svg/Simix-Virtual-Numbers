@@ -13,6 +13,17 @@ async function req<T>(method: string, path: string, body?: unknown): Promise<T> 
     headers,
     body: body ? JSON.stringify(body) : undefined,
   });
+
+  /* Session expirée ou token invalide → redirection vers la connexion admin */
+  if (res.status === 401) {
+    adminToken.clear();
+    const currentPath = window.location.pathname;
+    if (!currentPath.includes("/admin/secure-login")) {
+      window.location.href = `${BASE}/admin/secure-login`;
+    }
+    throw new Error("Session expirée. Veuillez vous reconnecter.");
+  }
+
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: res.statusText }));
     throw new Error(err.error || "Erreur serveur");

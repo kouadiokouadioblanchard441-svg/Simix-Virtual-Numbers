@@ -251,12 +251,92 @@ router.post("/admin/payment-routing/gateways/:id/test", requireAdmin, async (req
   const [gw] = await db.select().from(paymentGatewaysTable).where(eq(paymentGatewaysTable.id, id)).limit(1);
   if (!gw) { res.status(404).json({ error: "Passerelle introuvable" }); return; }
 
-  if (!gw.apiUrl) {
-    res.json({ status: "no_url", message: "Aucune URL API configurée" });
+  const slug = gw.slug.toLowerCase();
+  const start = Date.now();
+
+  /* ── PawaPay: use dedicated client test ── */
+  if (slug === "pawapay" || slug.includes("pawapay")) {
+    const token = gw.apiKey ?? process.env.PAWAPAY_API_TOKEN ?? null;
+    if (!token) {
+      res.json({ status: "no_token", message: "Aucun token PawaPay configuré. Ajoutez la clé API dans les paramètres de ce fournisseur." });
+      return;
+    }
+    try {
+      const { PawaPayClient } = await import("../lib/pawapay");
+      const env = (process.env.PAWAPAY_ENV as "sandbox" | "production" | undefined) ?? "sandbox";
+      const client = new PawaPayClient(token, env);
+      const config = await client.getActiveConfiguration();
+      const responseTimeMs = Date.now() - start;
+      const providers = config.countries?.flatMap((c: { providers?: { nameDisplayedToCustomer?: string; provider: string }[]; country: string }) =>
+        (c.providers ?? []).map((p: { nameDisplayedToCustomer?: string; provider: string }) => p.nameDisplayedToCustomer ?? p.provider),
+      ) ?? [];
+
+      await db.insert(paymentRouteLogsTable).values({
+        gatewayId: gw.id, eventType: "test", status: "success",
+        responseTimeMs, adminId: adminId(req),
+        metadata: { env, operatorCount: providers.length },
+      });
+
+      res.json({
+        status: "connected",
+        responseTimeMs,
+        message: `PawaPay connecté (${responseTimeMs}ms) — ${providers.length} opérateur(s) actif(s) — env: ${env}`,
+        details: { env, operatorCount: providers.length, operators: providers.slice(0, 8) },
+      });
+    } catch (err) {
+      const responseTimeMs = Date.now() - start;
+      await db.insert(paymentRouteLogsTable).values({
+        gatewayId: gw.id, eventType: "test", status: "error",
+        responseTimeMs, errorMessage: (err as Error).message, adminId: adminId(req),
+      });
+      res.json({ status: "error", responseTimeMs, message: `Erreur PawaPay: ${(err as Error).message}` });
+    }
     return;
   }
 
-  const start = Date.now();
+  /* ── Clapay: use dedicated client test ── */
+  if (slug === "clapay" || slug.includes("clapay")) {
+    const token = gw.apiKey ?? process.env.CLAPAY_API_TOKEN ?? null;
+    if (!token) {
+      res.json({ status: "no_token", message: "Aucun token Clapay configuré. Ajoutez la clé API dans les paramètres de ce fournisseur." });
+      return;
+    }
+    try {
+      const { ClapayClient } = await import("../lib/clapay");
+      const baseUrl = gw.apiUrl ?? process.env.CLAPAY_BASE_URL ?? undefined;
+      const client = new ClapayClient(token, baseUrl);
+      const countries = await client.getCountries();
+      const responseTimeMs = Date.now() - start;
+
+      await db.insert(paymentRouteLogsTable).values({
+        gatewayId: gw.id, eventType: "test", status: "success",
+        responseTimeMs, adminId: adminId(req),
+        metadata: { countryCount: countries.length },
+      });
+
+      res.json({
+        status: "connected",
+        responseTimeMs,
+        message: `Clapay connecté (${responseTimeMs}ms) — ${countries.length} pays disponible(s)`,
+        details: { countryCount: countries.length, countries: countries.slice(0, 8).map((c: { code: string; name: string }) => `${c.name} (${c.code})`) },
+      });
+    } catch (err) {
+      const responseTimeMs = Date.now() - start;
+      await db.insert(paymentRouteLogsTable).values({
+        gatewayId: gw.id, eventType: "test", status: "error",
+        responseTimeMs, errorMessage: (err as Error).message, adminId: adminId(req),
+      });
+      res.json({ status: "error", responseTimeMs, message: `Erreur Clapay: ${(err as Error).message}` });
+    }
+    return;
+  }
+
+  /* ── Generic gateway: HTTP probe ── */
+  if (!gw.apiUrl) {
+    res.json({ status: "no_url", message: "Aucune URL API configurée pour ce fournisseur." });
+    return;
+  }
+
   try {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 8000);
@@ -272,11 +352,9 @@ router.post("/admin/payment-routing/gateways/:id/test", requireAdmin, async (req
     const responseTimeMs = Date.now() - start;
 
     await db.insert(paymentRouteLogsTable).values({
-      gatewayId: gw.id,
-      eventType: "test",
+      gatewayId: gw.id, eventType: "test",
       status: testRes.ok ? "success" : "error",
-      responseTimeMs,
-      errorMessage: testRes.ok ? null : `HTTP ${testRes.status}`,
+      responseTimeMs, errorMessage: testRes.ok ? null : `HTTP ${testRes.status}`,
       adminId: adminId(req),
     });
 
@@ -289,16 +367,11 @@ router.post("/admin/payment-routing/gateways/:id/test", requireAdmin, async (req
   } catch (err) {
     const responseTimeMs = Date.now() - start;
     const isTimeout = (err as Error).name === "AbortError";
-
     await db.insert(paymentRouteLogsTable).values({
-      gatewayId: gw.id,
-      eventType: "test",
+      gatewayId: gw.id, eventType: "test",
       status: isTimeout ? "timeout" : "error",
-      responseTimeMs,
-      errorMessage: (err as Error).message,
-      adminId: adminId(req),
+      responseTimeMs, errorMessage: (err as Error).message, adminId: adminId(req),
     });
-
     res.json({
       status: isTimeout ? "timeout" : "error",
       responseTimeMs,
