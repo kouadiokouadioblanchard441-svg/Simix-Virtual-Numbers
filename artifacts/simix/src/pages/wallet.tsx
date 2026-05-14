@@ -510,7 +510,12 @@ function StepBar({ step }: { step: 1 | 2 | 3 }) {
 const QUICK_AMOUNTS = [500, 1000, 2000, 5000, 10000, 25000];
 
 /* ─── Success Overlay ─── */
-function SuccessOverlay({ amount }: { amount: number }) {
+function SuccessOverlay({ amountXof, localAmount, currencyCode }: {
+  amountXof: number;
+  localAmount: number;
+  currencyCode: string;
+}) {
+  const isFx = currencyCode !== "XOF" && currencyCode !== "XAF";
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -534,7 +539,12 @@ function SuccessOverlay({ amount }: { amount: number }) {
         </motion.div>
         <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}>
           <p className="text-2xl font-black text-white mb-2">Paiement reçu !</p>
-          <p className="text-emerald-400 font-bold text-xl mb-1">{formatFCFA(amount)}</p>
+          {isFx && (
+            <p className="text-zinc-400 text-sm mb-1">
+              {localAmount.toLocaleString("fr-FR")} {currencyCode} converti en
+            </p>
+          )}
+          <p className="text-emerald-400 font-bold text-xl mb-1">{formatFCFA(amountXof)}</p>
           <p className="text-muted-foreground text-sm">Votre solde a été crédité avec succès</p>
         </motion.div>
       </motion.div>
@@ -544,7 +554,8 @@ function SuccessOverlay({ amount }: { amount: number }) {
 
 /* ─── Pending Overlay ─── */
 function PendingOverlay({
-  amount,
+  localAmount,
+  currencyCode,
   methodName,
   methodColor,
   onCancel,
@@ -552,7 +563,8 @@ function PendingOverlay({
   onFailed,
   depositId,
 }: {
-  amount: number;
+  localAmount: number;
+  currencyCode: string;
   methodName: string;
   methodColor: string;
   onCancel: () => void;
@@ -627,7 +639,13 @@ function PendingOverlay({
 
         <p className="text-xl font-black text-white mb-2">En attente{dots}</p>
         <p className="text-sm text-muted-foreground mb-1">
-          Validez <span className="font-bold text-white">{formatFCFA(amount)}</span> sur votre téléphone
+          Validez{" "}
+          <span className="font-bold text-white">
+            {currencyCode === "XOF" || currencyCode === "XAF"
+              ? formatFCFA(localAmount)
+              : `${localAmount.toLocaleString("fr-FR")} ${currencyCode}`}
+          </span>{" "}
+          sur votre téléphone
         </p>
         <p className="text-sm font-medium mb-1" style={{ color: methodColor }}>{methodName}</p>
         <p className="text-xs text-muted-foreground/50 mt-3">Temps écoulé : {timeStr}</p>
@@ -777,10 +795,17 @@ function DepositContent() {
 
   return (
     <div className="flex-1 w-full bg-background overflow-y-auto overflow-x-hidden relative">
-      {showSuccess && <SuccessOverlay amount={parsedAmount} />}
+      {showSuccess && (
+        <SuccessOverlay
+          amountXof={totalAmount}
+          localAmount={parsedAmount}
+          currencyCode={currencyCode}
+        />
+      )}
       {pendingDepositId && selectedMethod && (
         <PendingOverlay
-          amount={parsedAmount}
+          localAmount={parsedAmount}
+          currencyCode={currencyCode}
           methodName={selectedMethod.name}
           methodColor={selectedMethod.color}
           depositId={pendingDepositId}
