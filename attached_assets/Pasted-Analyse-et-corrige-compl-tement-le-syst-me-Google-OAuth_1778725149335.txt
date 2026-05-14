@@ -1,0 +1,88 @@
+Analyse et corrige complètement le système Google OAuth de mon site.
+
+PROBLÈME ACTUEL :
+- Quand un utilisateur clique sur “Continuer avec Google”, la popup Google fonctionne.
+- L’utilisateur peut sélectionner son compte Google.
+- Mais après sélection :
+  - aucun compte utilisateur n’est créé dans la base de données
+  - aucun utilisateur n’est connecté
+  - aucune session/JWT n’est générée
+  - aucune redirection ne fonctionne correctement
+
+OBJECTIF :
+Je veux un système Google Login professionnel comme les grands sites modernes.
+
+TU DOIS :
+1. Vérifier toute la configuration Google OAuth frontend et backend
+2. Vérifier les routes OAuth
+3. Vérifier les callbacks Google
+4. Vérifier la création automatique des utilisateurs
+5. Vérifier les sessions ou JWT
+6. Vérifier les redirections après connexion
+7. Corriger tous les bugs existants
+8. Ajouter des logs d’erreur détaillés
+9. Empêcher les erreurs silencieuses
+10. Vérifier la compatibilité mobile et desktop
+
+FONCTIONNEMENT ATTENDU :
+- L’utilisateur clique sur “Continuer avec Google”
+- Google ouvre la popup OAuth
+- L’utilisateur choisit son compte
+- Le backend récupère :
+  - nom
+  - email
+  - photo
+  - googleId
+- Si le compte n’existe pas :
+  - créer automatiquement l’utilisateur dans la base de données
+- Si le compte existe :
+  - connecter automatiquement l’utilisateur
+- Générer correctement :
+  - session
+  - cookie auth
+  - ou JWT
+- Connecter immédiatement l’utilisateur
+- Rediriger vers le dashboard
+
+VÉRIFICATIONS IMPORTANTES :
+- Vérifier GOOGLE_CLIENT_ID
+- Vérifier GOOGLE_CLIENT_SECRET
+- Vérifier callback URL :
+  https://simix.site/api/auth/google/callback
+- Vérifier les variables d’environnement
+- Vérifier les middlewares auth
+- Vérifier les erreurs CORS
+- Vérifier les cookies sécurisés HTTPS
+- Vérifier les sessions persistantes
+- Vérifier les requêtes réseau OAuth
+- Vérifier que Passport.js ou le provider OAuth fonctionne correctement
+
+AJOUTER AUSSI :
+- logs console détaillés
+- gestion propre des erreurs OAuth
+- fallback en cas d’échec
+- validation des données utilisateur
+- protection contre les doublons email
+
+JE VEUX :
+- un système complètement fonctionnel
+- sécurisé
+- moderne
+- optimisé
+- stable en production
+
+IMPORTANT :
+Après correction, teste automatiquement :
+- inscription Google
+- connexion Google
+- création utilisateur
+- reconnexion utilisateur
+- redirection dashboard
+- génération session/JWT
+
+Puis affiche clairement :
+- les fichiers modifiés
+- les bugs trouvés
+- les corrections appliquées
+- les tests réalisés
+- le résultat final
