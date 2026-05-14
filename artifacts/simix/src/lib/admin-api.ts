@@ -142,6 +142,21 @@ export const adminApi = {
       "POST", "/admin/clapay/simulate-deposit", { depositId, status, depositedAmount }
     ),
 
+  /* ── Currencies & FX ── */
+  getCurrencies: () => req<AdminCurrency[]>("GET", "/admin/currencies"),
+  createCurrency: (data: { countryCode: string; currencyCode: string; currencyName: string; realRate: number; clientRate: number; active?: boolean }) =>
+    req<AdminCurrency>("POST", "/admin/currencies", data),
+  updateCurrency: (id: number, data: Partial<{ countryCode: string; currencyCode: string; currencyName: string; realRate: number; clientRate: number; active: boolean }>) =>
+    req<AdminCurrency>("PUT", `/admin/currencies/${id}`, data),
+  deleteCurrency: (id: number) => req("DELETE", `/admin/currencies/${id}`),
+  getFxProfits: (params?: { limit?: number; offset?: number }) => {
+    const q = new URLSearchParams();
+    if (params?.limit) q.set("limit", String(params.limit));
+    if (params?.offset) q.set("offset", String(params.offset));
+    return req<{ profits: AdminFxProfit[]; total: number }>("GET", `/admin/fx-profits?${q}`);
+  },
+  getFxSummary: () => req<AdminFxSummary>("GET", "/admin/fx-profits/summary"),
+
   getSecurityEvents: (severity?: string) => {
     const q = severity ? `?severity=${severity}` : "";
     return req<SecurityEvent[]>("GET", `/admin/security-events${q}`);
@@ -675,4 +690,44 @@ export interface SyncFullResult {
   services:  { added: number; updated: number; skipped: number; total: number; priceProtected: number; countryErrors: number };
   countries: { added: number; updated: number; total: number };
   error?:    string;
+}
+
+/* ── Currencies & FX ── */
+export interface AdminCurrency {
+  id:           number;
+  countryCode:  string;
+  currencyCode: string;
+  currencyName: string;
+  realRate:     number;
+  clientRate:   number;
+  active:       boolean;
+  updatedAt:    string;
+}
+
+export interface AdminFxProfit {
+  id:            number;
+  transactionId: string | null;
+  currency:      string;
+  localAmount:   number;
+  realRate:      number;
+  clientRate:    number;
+  amountXof:     number;
+  profitXof:     number;
+  status:        string;
+  createdAt:     string;
+}
+
+export interface AdminFxSummary {
+  global: {
+    totalProfit:      number;
+    totalVolume:      number;
+    transactionCount: number;
+  };
+  byCurrency: {
+    currency:         string;
+    totalProfit:      number;
+    totalVolume:      number;
+    totalLocalVolume: number;
+    transactionCount: number;
+  }[];
 }

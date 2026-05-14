@@ -1,0 +1,608 @@
+PROMPT COMPLET FINAL — SYSTÈME DE DÉPÔT MULTI-DEVISE AFRICAIN PROFESSIONNEL
+
+Je veux que tu développes un système fintech professionnel moderne de dépôt Mobile Money multi-devise africain avec conversion automatique vers XOF.
+
+Le projet doit être :
+
+- moderne
+- ultra professionnel
+- responsive
+- sécurisé
+- scalable
+- propre
+- prêt pour production
+
+Le design doit ressembler à :
+
+- Flutterwave
+- Wave
+- PayDunya
+- CinetPay
+- Binance Pay
+- Wise
+
+━━━━━━━━━━━━━━━━━━━
+
+OBJECTIF PRINCIPAL
+
+━━━━━━━━━━━━━━━━━━━
+
+Le système doit permettre à un utilisateur de :
+
+1. sélectionner son pays
+2. sélectionner son opérateur Mobile Money
+3. entrer un montant dans sa devise locale
+4. voir automatiquement :
+   - sa devise locale
+   - le taux de conversion
+   - le montant qui sera crédité en XOF
+5. effectuer le dépôt
+6. être crédité automatiquement en XOF
+
+IMPORTANT :
+Le système doit utiliser :
+
+XOF comme devise centrale interne.
+
+Tous les wallets utilisateurs doivent être stockés uniquement en XOF.
+
+━━━━━━━━━━━━━━━━━━━
+
+LOGIQUE EXACTE DU SYSTÈME
+
+━━━━━━━━━━━━━━━━━━━
+
+Quand l’utilisateur choisit son pays :
+
+Le système doit automatiquement :
+
+- détecter la devise locale
+- détecter les opérateurs disponibles
+- récupérer le taux de conversion configuré dans PostgreSQL
+- mettre à jour le frontend en temps réel
+
+━━━━━━━━━━━━━━━━━━━
+
+EXEMPLE
+
+━━━━━━━━━━━━━━━━━━━
+
+Pays :
+Kenya
+
+Devise :
+KES
+
+Taux client configuré :
+4.9
+
+Montant utilisateur :
+1000 KES
+
+Calcul automatique :
+1000 × 4.9 = 4900 XOF
+
+Le frontend doit afficher :
+
+━━━━━━━━━━━━━━━━━━━
+
+Vous payez :
+1000 KES
+
+Taux :
+1 KES = 4.9 XOF
+
+Montant crédité :
+4900 XOF
+
+━━━━━━━━━━━━━━━━━━━
+
+Après validation :
+
+- l’utilisateur paie 1000 KES
+- son wallet est crédité de 4900 XOF
+
+━━━━━━━━━━━━━━━━━━━
+
+IMPORTANT
+
+━━━━━━━━━━━━━━━━━━━
+
+Le montant crédité doit toujours être calculé automatiquement selon :
+
+- le pays
+- la devise
+- le taux configuré dans le panel admin
+
+━━━━━━━━━━━━━━━━━━━
+
+AUCUN FRAIS
+
+━━━━━━━━━━━━━━━━━━━
+
+IMPORTANT :
+Le système ne doit appliquer :
+
+- aucun frais dépôt
+- aucun cashout
+- aucun retrait
+
+Le système doit uniquement gérer :
+
+- dépôt
+- conversion devise
+- wallet
+- historique transactions
+
+━━━━━━━━━━━━━━━━━━━
+
+STACK TECHNIQUE
+
+━━━━━━━━━━━━━━━━━━━
+
+BACKEND :
+
+- Node.js
+- Express.js
+
+FRONTEND :
+
+- React.js
+- TailwindCSS
+- Shadcn UI
+
+BASE DE DONNÉES :
+
+- PostgreSQL
+
+PACKAGES :
+
+- axios
+- dotenv
+- cors
+- jsonwebtoken
+- bcryptjs
+- express-validator
+- uuid
+- react-query
+- react-hook-form
+- winston ou pino
+
+━━━━━━━━━━━━━━━━━━━
+
+ARCHITECTURE
+
+━━━━━━━━━━━━━━━━━━━
+
+Créer une architecture professionnelle modulaire.
+
+Structure exacte :
+
+src/
+├── app.js
+├── server.js
+│
+├── config/
+│    ├── db.js
+│    ├── axios.js
+│
+├── routes/
+│    ├── auth.routes.js
+│    ├── payment.routes.js
+│    ├── wallet.routes.js
+│    ├── currency.routes.js
+│    ├── operator.routes.js
+│    ├── admin.routes.js
+│
+├── controllers/
+│    ├── auth.controller.js
+│    ├── payment.controller.js
+│    ├── wallet.controller.js
+│    ├── currency.controller.js
+│    ├── operator.controller.js
+│    ├── admin.controller.js
+│
+├── services/
+│    ├── auth.service.js
+│    ├── payment.service.js
+│    ├── wallet.service.js
+│    ├── fx.service.js
+│    ├── operator.service.js
+│
+├── middlewares/
+│    ├── auth.middleware.js
+│    ├── admin.middleware.js
+│    ├── error.middleware.js
+│
+├── utils/
+│    ├── formatter.js
+│    ├── generator.js
+│
+├── database/
+│    ├── schema.sql
+│    ├── seed.sql
+│
+├── logs/
+
+━━━━━━━━━━━━━━━━━━━
+
+TABLE currencies
+
+━━━━━━━━━━━━━━━━━━━
+
+Créer :
+
+CREATE TABLE currencies (
+
+id SERIAL PRIMARY KEY,
+
+country_code VARCHAR(10),
+
+currency_code VARCHAR(10),
+
+currency_name VARCHAR(50),
+
+real_rate DECIMAL(18,6),
+
+client_rate DECIMAL(18,6),
+
+active BOOLEAN DEFAULT true,
+
+updated_at TIMESTAMP DEFAULT NOW()
+
+);
+
+━━━━━━━━━━━━━━━━━━━
+
+IMPORTANT
+
+━━━━━━━━━━━━━━━━━━━
+
+Le système doit utiliser deux taux :
+
+1. real_rate
+   → utilisé pour les calculs internes
+
+2. client_rate
+   → utilisé pour calculer le montant crédité utilisateur
+
+━━━━━━━━━━━━━━━━━━━
+
+EXEMPLE
+
+━━━━━━━━━━━━━━━━━━━
+
+KES :
+
+- real_rate = 4.2
+- client_rate = 4.9
+
+Si utilisateur dépose :
+1000 KES
+
+Le système doit :
+
+Calcul réel :
+1000 × 4.2 = 4200 XOF
+
+Calcul client :
+1000 × 4.9 = 4900 XOF
+
+Profit FX :
+4900 - 4200 = 700 XOF
+
+━━━━━━━━━━━━━━━━━━━
+
+TABLE fx_profits
+
+━━━━━━━━━━━━━━━━━━━
+
+Créer :
+
+CREATE TABLE fx_profits (
+
+id SERIAL PRIMARY KEY,
+
+transaction_id INTEGER,
+
+currency VARCHAR(10),
+
+real_rate DECIMAL(18,6),
+
+client_rate DECIMAL(18,6),
+
+profit_xof DECIMAL(18,2),
+
+created_at TIMESTAMP DEFAULT NOW()
+
+);
+
+━━━━━━━━━━━━━━━━━━━
+
+TABLE wallets
+
+━━━━━━━━━━━━━━━━━━━
+
+IMPORTANT :
+Tous les wallets doivent stocker uniquement :
+
+balance_xof
+
+NE JAMAIS créer :
+
+- balance_ngn
+- balance_kes
+- balance_xaf
+
+━━━━━━━━━━━━━━━━━━━
+
+TABLE transactions
+
+━━━━━━━━━━━━━━━━━━━
+
+Créer :
+
+CREATE TABLE transactions (
+
+id SERIAL PRIMARY KEY,
+
+user_id INTEGER,
+
+amount_local DECIMAL(18,2),
+
+currency_local VARCHAR(10),
+
+amount_xof DECIMAL(18,2),
+
+operator VARCHAR(50),
+
+country VARCHAR(10),
+
+reference VARCHAR(100),
+
+status VARCHAR(20),
+
+created_at TIMESTAMP DEFAULT NOW()
+
+);
+
+━━━━━━━━━━━━━━━━━━━
+
+AUTHENTIFICATION
+
+━━━━━━━━━━━━━━━━━━━
+
+Créer :
+
+- inscription
+- connexion
+- JWT Authentication
+- rôles admin/user
+- middleware auth
+
+━━━━━━━━━━━━━━━━━━━
+
+API OPERATORS
+
+━━━━━━━━━━━━━━━━━━━
+
+Créer :
+
+GET /api/operators?country=CM
+
+Réponse :
+
+{
+"success": true,
+"data": [
+{
+"name": "MTN MONEY",
+"codeoperator": "MTN",
+"logo": "https://...",
+"active": true
+}
+]
+}
+
+━━━━━━━━━━━━━━━━━━━
+
+API CONVERSION TEMPS RÉEL
+
+━━━━━━━━━━━━━━━━━━━
+
+Créer :
+
+POST /api/payment/preview
+
+Body :
+
+{
+"country": "KE",
+"currency": "KES",
+"amount": 1000
+}
+
+Réponse :
+
+{
+"success": true,
+"data": {
+"amount_local": 1000,
+"currency_local": "KES",
+"client_rate": 4.9,
+"amount_xof": 4900
+}
+}
+
+━━━━━━━━━━━━━━━━━━━
+
+API DEPOT
+
+━━━━━━━━━━━━━━━━━━━
+
+Créer :
+
+POST /api/payment/deposit
+
+Body :
+
+{
+"userId": 1,
+"amount": 1000,
+"currency": "KES",
+"operator": "MPESA",
+"country": "KE"
+}
+
+━━━━━━━━━━━━━━━━━━━
+
+LOGIQUE DEPOT
+
+━━━━━━━━━━━━━━━━━━━
+
+Le backend doit :
+
+1. vérifier les données
+2. récupérer la devise
+3. récupérer les taux en base
+4. calculer amount_xof avec client_rate
+5. calculer profit FX
+6. créditer le wallet XOF
+7. créer transaction
+8. créer profit FX
+9. générer référence unique
+10. enregistrer logs
+11. retourner réponse JSON propre
+
+━━━━━━━━━━━━━━━━━━━
+
+PANEL ADMINISTRATEUR
+
+━━━━━━━━━━━━━━━━━━━
+
+Créer un dashboard admin moderne avec :
+
+- React
+- TailwindCSS
+- Shadcn UI
+- Data tables
+- Graphiques
+- Responsive
+- Dark mode
+
+━━━━━━━━━━━━━━━━━━━
+
+DASHBOARD ADMIN
+
+━━━━━━━━━━━━━━━━━━━
+
+Créer sections :
+
+1. Dashboard global
+2. Gestion devises
+3. Gestion utilisateurs
+4. Gestion wallets
+5. Gestion opérateurs
+6. Historique transactions
+7. Logs système
+8. Profits FX
+9. Paramètres système
+
+━━━━━━━━━━━━━━━━━━━
+
+GESTION DEVISES
+
+━━━━━━━━━━━━━━━━━━━
+
+Depuis le panel admin, je dois pouvoir :
+
+- modifier real_rate
+- modifier client_rate
+- activer devise
+- désactiver devise
+- ajouter devise
+- supprimer devise
+
+SANS modifier le code source.
+
+━━━━━━━━━━━━━━━━━━━
+
+GESTION OPERATEURS
+
+━━━━━━━━━━━━━━━━━━━
+
+Je dois pouvoir :
+
+- activer MTN
+- désactiver Orange
+- modifier logos
+- modifier pays supportés
+- ajouter opérateur
+
+━━━━━━━━━━━━━━━━━━━
+
+FRONTEND DEPOT
+
+━━━━━━━━━━━━━━━━━━━
+
+Créer une interface dépôt professionnelle avec :
+
+- sélection pays
+- sélection opérateur
+- input montant
+- affichage devise locale
+- récapitulatif dynamique
+- montant crédité en XOF
+- taux visible
+- mise à jour automatique temps réel
+- design premium fintech
+
+━━━━━━━━━━━━━━━━━━━
+
+UX IMPORTANTE
+
+━━━━━━━━━━━━━━━━━━━
+
+Quand utilisateur change :
+
+- pays
+- montant
+
+Le récapitulatif doit se recalculer automatiquement sans reload page.
+
+━━━━━━━━━━━━━━━━━━━
+
+SÉCURITÉ
+
+━━━━━━━━━━━━━━━━━━━
+
+Ajouter :
+
+- validation données
+- JWT
+- middleware sécurité
+- logs professionnels
+- anti double transaction
+- références uniques
+- gestion globale erreurs
+- architecture scalable
+
+━━━━━━━━━━━━━━━━━━━
+
+OBJECTIF FINAL
+
+━━━━━━━━━━━━━━━━━━━
+
+Créer une vraie plateforme fintech africaine professionnelle avec :
+
+- dépôt multi-devise
+- conversion dynamique vers XOF
+- wallet XOF
+- profits FX
+- panel administrateur complet
+- contrôle total des taux
+- backend sécurisé
+- frontend moderne
+- architecture type production
+- expérience utilisateur premium
+- projet prêt pour déploiement Replit.

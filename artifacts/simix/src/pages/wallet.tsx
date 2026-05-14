@@ -55,6 +55,21 @@ async function fetchMethodsForCountry(countryCode: string): Promise<DepositMetho
   return res.json();
 }
 
+interface CurrencyInfo {
+  countryCode:  string;
+  currencyCode: string;
+  currencyName: string;
+  clientRate:   number;
+  realRate:     number;
+  isXof:        boolean;
+}
+
+async function fetchCurrencyForCountry(countryCode: string): Promise<CurrencyInfo> {
+  const res = await fetch(`${BASE}/api/currencies/country/${countryCode}`, { credentials: "include" });
+  if (!res.ok) throw new Error("Devise introuvable");
+  return res.json();
+}
+
 /* ─── Operator instructions map ─── */
 const OPERATOR_INSTRUCTIONS: Record<string, (amount: number, phone: string, dialCode: string) => string[]> = {
   orange_money: (a, p, d) => [
@@ -659,6 +674,7 @@ function DepositContent() {
   const [showSuccess, setShowSuccess] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [pendingDepositId, setPendingDepositId] = useState<string | null>(null);
+  const [currencyInfo, setCurrencyInfo] = useState<CurrencyInfo | null>(null);
 
   const { data: wallet, isLoading: loadingWallet } = useGetWallet({ query: { queryKey: getGetWalletQueryKey() } });
 
@@ -677,16 +693,32 @@ function DepositContent() {
   useEffect(() => {
     if (selectedCountry?.code !== prevCountry.current) {
       setSelectedMethod(null);
+      setCurrencyInfo(null);
       prevCountry.current = selectedCountry?.code ?? null;
+      if (selectedCountry?.code) {
+        fetchCurrencyForCountry(selectedCountry.code)
+          .then(setCurrencyInfo)
+          .catch(() => setCurrencyInfo(null));
+      }
     }
   }, [selectedCountry]);
 
   const parsedAmount = parseInt(amount.replace(/\D/g, ""), 10) || 0;
+
+  /* ── FX calculation ── */
+  const isFxCurrency = !!currencyInfo && !currencyInfo.isXof;
+  const clientRate   = currencyInfo?.clientRate ?? 1;
+  const currencyCode = currencyInfo?.currencyCode ?? "XOF";
+  const amountXof    = isFxCurrency ? Math.floor(parsedAmount * clientRate) : parsedAmount;
+  const currencyLabel = currencyCode;
+
   const feePercent = selectedMethod?.feePercent ?? 0;
-  const feeAmount = Math.round(parsedAmount * feePercent / 100);
-  const totalAmount = parsedAmount + feeAmount;
+  const feeAmount  = Math.round(amountXof * feePercent / 100);
+  const totalAmount = amountXof + feeAmount;
   const minDeposit = selectedMethod?.minDeposit ?? 500;
-  const amountValid = parsedAmount >= minDeposit;
+  /* Minimum displayed in local currency */
+  const minLocal   = isFxCurrency ? Math.ceil(minDeposit / clientRate) : minDeposit;
+  const amountValid = amountXof >= minDeposit;
   const canConfirm = !!selectedCountry && !!selectedMethod && phone.length >= 6 && amountValid && !confirming;
 
   const dialCode = selectedCountry?.dialCode ?? "";
@@ -720,6 +752,8 @@ function DepositContent() {
           phoneNumber: phone,
           countryCode: selectedCountry.code,
           dialCode: selectedCountry.dialCode,
+          // @ts-expect-error — extended fields not in generated schema
+          currencyCode: currencyCode !== "XOF" ? currencyCode : undefined,
         },
       }) as { pending?: boolean; depositId?: string; status?: string };
 
@@ -893,7 +927,7 @@ function DepositContent() {
               {/* Amount */}
               <div className="space-y-1.5">
                 <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide px-0.5">
-                  Montant
+                  Montant {isFxCurrency && <span className="text-primary normal-case">· en {currencyInfo?.currencyName}</span>}
                 </label>
                 <div className="flex gap-0 rounded-2xl overflow-hidden border border-card-border bg-card focus-within:border-primary/50 transition-all shadow-sm">
                   <input
@@ -901,29 +935,58 @@ function DepositContent() {
                     inputMode="numeric"
                     value={amount}
                     onChange={e => setAmount(e.target.value.replace(/\D/g, ""))}
-                    placeholder={`${minDeposit.toLocaleString("fr-FR")} minimum`}
+                    placeholder={`${minLocal.toLocaleString("fr-FR")} minimum`}
                     className="flex-1 px-4 py-3 text-sm font-bold text-foreground bg-transparent focus:outline-none placeholder:font-normal placeholder:text-muted-foreground"
                   />
                   <div className="flex items-center px-3.5 bg-secondary/40 border-l border-card-border">
-                    <span className="text-xs font-bold text-muted-foreground">F CFA</span>
+                    <span className="text-xs font-bold text-muted-foreground">{currencyLabel}</span>
                   </div>
                 </div>
 
                 {/* Validation error */}
-                {parsedAmount > 0 && parsedAmount < minDeposit && (
+                {parsedAmount > 0 && !amountValid && (
                   <motion.p
                     initial={{ opacity: 0, y: -4 }}
                     animate={{ opacity: 1, y: 0 }}
                     className="text-xs text-rose-400 flex items-center gap-1 px-1"
                   >
                     <AlertCircle className="w-3 h-3 flex-shrink-0" />
-                    Minimum : {minDeposit.toLocaleString("fr-FR")} FCFA
+                    Minimum : {minLocal.toLocaleString("fr-FR")} {currencyLabel}
+                    {isFxCurrency && <span className="text-zinc-500"> (≈ {minDeposit.toLocaleString("fr-FR")} FCFA)</span>}
                   </motion.p>
                 )}
 
+                {/* FX conversion preview */}
+                <AnimatePresence>
+                  {isFxCurrency && parsedAmount > 0 && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -4 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0 }}
+                      className="rounded-xl bg-violet-500/8 border border-violet-500/20 px-4 py-3 flex items-center justify-between gap-3"
+                    >
+                      <div className="flex items-center gap-2">
+                        <div className="w-5 h-5 rounded-full bg-violet-500/20 flex items-center justify-center flex-shrink-0">
+                          <span className="text-[9px] font-bold text-violet-400">FX</span>
+                        </div>
+                        <div>
+                          <p className="text-xs font-semibold text-foreground">
+                            {parsedAmount.toLocaleString("fr-FR")} {currencyCode}
+                          </p>
+                          <p className="text-[10px] text-muted-foreground">taux : 1 {currencyCode} = {clientRate} FCFA</p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-bold text-violet-400">{amountXof.toLocaleString("fr-FR")} FCFA</p>
+                        <p className="text-[10px] text-muted-foreground">crédité sur votre compte</p>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
                 {/* Quick amount presets */}
                 <div className="flex gap-2 flex-wrap pt-1">
-                  {QUICK_AMOUNTS.filter(a => a >= minDeposit).map(preset => (
+                  {QUICK_AMOUNTS.filter(a => a >= minLocal).map(preset => (
                     <button
                       key={preset}
                       type="button"
@@ -960,9 +1023,15 @@ function DepositContent() {
                     </div>
                     <div className="divide-y divide-card-border/40">
                       {[
-                        { label: "Montant", value: `${parsedAmount.toLocaleString("fr-FR")} FCFA`, highlight: false },
+                        {
+                          label: isFxCurrency ? `Montant (${currencyCode})` : "Montant",
+                          value: isFxCurrency
+                            ? `${parsedAmount.toLocaleString("fr-FR")} ${currencyCode} → ${amountXof.toLocaleString("fr-FR")} FCFA`
+                            : `${parsedAmount.toLocaleString("fr-FR")} FCFA`,
+                          highlight: false,
+                        },
                         { label: `Frais (${feePercent}%)`, value: feeAmount === 0 ? "Gratuit ✓" : `${feeAmount.toLocaleString("fr-FR")} FCFA`, highlight: false, green: feeAmount === 0 },
-                        { label: "Total débité", value: `${totalAmount.toLocaleString("fr-FR")} FCFA`, highlight: true },
+                        { label: "Total crédité", value: `${totalAmount.toLocaleString("fr-FR")} FCFA`, highlight: true },
                       ].map(row => (
                         <div key={row.label} className="flex items-center justify-between px-4 py-2.5 text-sm">
                           <span className="text-muted-foreground">{row.label}</span>
@@ -1035,7 +1104,7 @@ function DepositContent() {
           {confirming ? (
             <><Loader2 className="w-5 h-5 animate-spin" /> Vérification…</>
           ) : (
-            <><CheckCircle2 className="w-5 h-5" /> Confirmer le dépôt {parsedAmount > 0 && amountValid ? `· ${formatFCFA(totalAmount)}` : ""}</>
+            <><CheckCircle2 className="w-5 h-5" /> Confirmer le dépôt {parsedAmount > 0 && amountValid ? `· ${isFxCurrency ? `${parsedAmount.toLocaleString("fr-FR")} ${currencyCode}` : formatFCFA(totalAmount)}` : ""}</>
           )}
         </motion.button>
 

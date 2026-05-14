@@ -29,6 +29,7 @@ import {
   GitMerge,
   Tag,
   RefreshCw,
+  DollarSign,
 } from "lucide-react";
 import { SimixLogo } from "@/components/simix-logo";
 import { cn } from "@/lib/utils";
@@ -57,6 +58,8 @@ const NAV_ITEMS = [
   { href: "/admin/blacklist", label: "Liste Noire", icon: Ban },
   { href: "/admin/security", label: "Sécurité", icon: Shield },
   { href: "/admin/logs", label: "Journaux", icon: FileText },
+  { href: "/admin/currencies", label: "Devises & Taux FX", icon: DollarSign },
+  { href: "/admin/fx-profits", label: "Profits FX", icon: TrendingUp },
   { href: "/admin/settings", label: "Paramètres", icon: Settings },
 ];
 

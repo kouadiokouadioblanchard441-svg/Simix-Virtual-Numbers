@@ -8,6 +8,8 @@ import {
   countryPaymentConfigsTable,
   countriesTable,
   systemSettingsTable,
+  currenciesTable,
+  fxProfitsTable,
 } from "@workspace/db";
 import { RechargeWalletBody } from "@workspace/api-zod";
 import { requireAuth } from "../lib/auth";
@@ -155,15 +157,45 @@ router.post(
     const user = req.user!;
     const { amount, methodSlug, phoneNumber, countryCode, dialCode } = parsed.data;
 
-    /* ── Amount limits ── */
+    /* ── FX conversion (multi-devise) ──
+     * `amount` from the client is in LOCAL currency (e.g. 1000 KES).
+     * `currencyCode` (optional) tells us which currency.
+     * We convert to XOF using clientRate for balance credit
+     * and track realRate profit in fx_profits. */
+    const rawBody = req.body as Record<string, unknown>;
+    const currencyCode: string = typeof rawBody.currencyCode === "string" ? rawBody.currencyCode.toUpperCase() : "XOF";
+    const isXofCurrency = currencyCode === "XOF" || currencyCode === "XAF";
+
+    let amountXof   = amount;          // amount in FCFA credited to user
+    let localAmount = amount;          // amount in local currency sent to gateway
+    let fxMeta: { realRate: number; clientRate: number; profitXof: number } | null = null;
+
+    if (!isXofCurrency) {
+      const [currRow] = await db
+        .select()
+        .from(currenciesTable)
+        .where(eq(currenciesTable.countryCode, countryCode.toUpperCase()))
+        .limit(1);
+
+      if (currRow && currRow.active) {
+        const clientRate = Number(currRow.clientRate);
+        const realRate   = Number(currRow.realRate);
+        localAmount      = amount;
+        amountXof        = Math.floor(amount * clientRate);
+        fxMeta           = { realRate, clientRate, profitXof: Math.floor(amount * (clientRate - realRate)) };
+      }
+    }
+
+    /* ── Amount limits (always checked in XOF) ── */
     const minDeposit = await getMinDepositFcfa();
-    if (amount < minDeposit) {
-      res.status(400).json({ error: `Le montant minimum de recharge est ${minDeposit} FCFA.` });
+    if (amountXof < minDeposit) {
+      const minLocal = isXofCurrency ? minDeposit : Math.ceil(minDeposit / (fxMeta?.clientRate ?? 1));
+      res.status(400).json({ error: `Le montant minimum de recharge est ${minLocal.toLocaleString("fr-FR")} ${currencyCode}.` });
       return;
     }
 
     const maxBalance = await getMaxBalanceFcfa();
-    if (user.balance + amount > maxBalance) {
+    if (user.balance + amountXof > maxBalance) {
       res.status(400).json({ error: `Ce rechargement dépasserait le solde maximum autorisé (${maxBalance} FCFA).` });
       return;
     }
@@ -255,15 +287,29 @@ router.post(
         const depositId = generateDepositId();
 
         const [pendingTx] = await db.insert(transactionsTable).values({
-          userId: user.id, type: "recharge", amount, status: "pending",
+          userId: user.id, type: "recharge", amount: amountXof, status: "pending",
           method: method?.name ?? methodSlug, description, externalDepositId: depositId,
         }).returning();
+
+        /* Record pending FX profit if multi-currency */
+        if (fxMeta && !isXofCurrency) {
+          await db.insert(fxProfitsTable).values({
+            transactionId: pendingTx.id,
+            currency:      currencyCode,
+            localAmount:   String(localAmount),
+            realRate:      String(fxMeta.realRate),
+            clientRate:    String(fxMeta.clientRate),
+            amountXof:     String(amountXof),
+            profitXof:     String(fxMeta.profitXof),
+            status:        "pending",
+          });
+        }
 
         let depositRes;
         try {
           depositRes = await client.initiateDeposit({
             depositId,
-            amount: String(amount),
+            amount: String(localAmount),   /* local currency amount sent to gateway */
             currency,
             payer: { type: "MMO", accountDetails: { phoneNumber: msisdn, provider } },
             customerMessage: "Simix recharge",
@@ -319,9 +365,23 @@ router.post(
 
         /* Create pending transaction BEFORE calling Clapay — idempotency */
         const [pendingTx] = await db.insert(transactionsTable).values({
-          userId: user.id, type: "recharge", amount, status: "pending",
+          userId: user.id, type: "recharge", amount: amountXof, status: "pending",
           method: method?.name ?? methodSlug, description, externalDepositId,
         }).returning();
+
+        /* Record pending FX profit if multi-currency */
+        if (fxMeta && !isXofCurrency) {
+          await db.insert(fxProfitsTable).values({
+            transactionId: pendingTx.id,
+            currency:      currencyCode,
+            localAmount:   String(localAmount),
+            realRate:      String(fxMeta.realRate),
+            clientRate:    String(fxMeta.clientRate),
+            amountXof:     String(amountXof),
+            profitXof:     String(fxMeta.profitXof),
+            status:        "pending",
+          });
+        }
 
         const [callbackUrl, returnUrl] = await Promise.all([getClapayCallbackUrl(), getClapayReturnUrl()]);
 
@@ -335,7 +395,7 @@ router.post(
               customer_lastname: user.fullName?.split(" ").slice(1).join(" ") ?? undefined,
               customer_email: user.email ?? undefined,
             },
-            amount,
+            amount: localAmount,   /* local currency amount sent to Clapay */
             callback_url: callbackUrl,
             return_url: returnUrl,
             country_code: countryCode.toUpperCase(),
@@ -514,6 +574,13 @@ async function processDepositCallback(payload: PawaPayDepositCallback): Promise<
 
     logger.info({ depositId, userId: tx.userId, creditAmount }, "[PawaPay Webhook] Deposit COMPLETED — balance credited ✓");
 
+    /* ── Complete FX profit record if present ── */
+    try {
+      await db.update(fxProfitsTable)
+        .set({ status: "completed" })
+        .where(eq(fxProfitsTable.transactionId, tx.id));
+    } catch { /* non-critical */ }
+
     /* ── Push real-time deposit notification ── */
     try {
       const [notif] = await db.insert(notificationsTable).values({
@@ -655,6 +722,13 @@ router.post("/wallet/clapay/webhook", async (req: Request, res: Response): Promi
         .where(eq(usersTable.id, tx.userId));
 
       logger.info({ transaction_id, userId: tx.userId, creditAmount }, "[Clapay Webhook] Deposit COMPLETED — balance credited ✓");
+
+      /* ── Complete FX profit record if present ── */
+      try {
+        await db.update(fxProfitsTable)
+          .set({ status: "completed" })
+          .where(eq(fxProfitsTable.transactionId, tx.id));
+      } catch { /* non-critical */ }
 
       /* Push real-time notification */
       try {

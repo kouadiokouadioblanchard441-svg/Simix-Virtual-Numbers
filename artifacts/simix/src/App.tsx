@@ -64,6 +64,8 @@ import AdminMedia from "@/pages/admin/media";
 import AdminRouting from "@/pages/admin/routing";
 import AdminServicePrices from "@/pages/admin/service-prices";
 import AdminSync from "@/pages/admin/sync";
+import AdminCurrencies from "@/pages/admin/currencies";
+import AdminFxProfits from "@/pages/admin/fx-profits";
 
 // Public legal pages (no auth required)
 import LegalCGU from "@/pages/legal/cgu";
@@ -120,6 +122,8 @@ function AdminRoutes() {
         <Route path="/admin/routing" component={AdminRouting} />
         <Route path="/admin/service-prices" component={AdminServicePrices} />
         <Route path="/admin/sync" component={AdminSync} />
+        <Route path="/admin/currencies" component={AdminCurrencies} />
+        <Route path="/admin/fx-profits" component={AdminFxProfits} />
       </Switch>
     </AdminSecureGuard>
   );
