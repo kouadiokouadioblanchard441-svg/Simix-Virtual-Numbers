@@ -18,7 +18,19 @@ async function getResend(): Promise<Resend | null> {
   return new Resend(key);
 }
 
-const FROM_EMAIL = "Simix <noreply@simix.app>";
+function getFromEmail(): string {
+  if (process.env.EMAIL_FROM) return process.env.EMAIL_FROM;
+  if (process.env.APP_URL) {
+    try {
+      const domain = new URL(process.env.APP_URL).hostname;
+      return `Simix <noreply@${domain}>`;
+    } catch {
+      /* ignore malformed APP_URL */
+    }
+  }
+  return "Simix <noreply@simix.app>";
+}
+const FROM_EMAIL = getFromEmail();
 
 function getOtpEmailHtml(code: string, purpose: "register" | "inactivity"): string {
   const isInactivity = purpose === "inactivity";
