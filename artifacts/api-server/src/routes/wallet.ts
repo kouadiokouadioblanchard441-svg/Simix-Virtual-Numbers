@@ -32,6 +32,7 @@ import {
   type ClapayWebhookPayload,
 } from "../lib/clapay";
 import { logger } from "../lib/logger";
+import { resolveGateway } from "../lib/payment-router";
 import { getMinDepositFcfa, getMaxBalanceFcfa } from "../lib/settings";
 import { broadcastNotification } from "./notifications";
 import { notificationsTable } from "@workspace/db";
@@ -217,11 +218,10 @@ router.post(
     /* ════════════════════════════════════════════════════════════
      * MOBILE MONEY PATH — Gateway-aware (PawaPay v2 / Clapay)
      * Account is NEVER credited here; only webhook/poll does it.
-     * Gateway selection via system_settings.mobile_money_gateway:
-     *   "pawapay"             → PawaPay only (default, backward-compat)
-     *   "clapay"              → Clapay only
-     *   "auto_pawapay_first"  → PawaPay primary, Clapay fallback
-     *   "auto_clapay_first"   → Clapay primary, PawaPay fallback
+     *
+     * ROUTING PRIORITY:
+     *  1. Dynamic routing via payment_routes table (admin-configurable)
+     *  2. Legacy fallback via system_settings.mobile_money_gateway
      * ════════════════════════════════════════════════════════════ */
     if (isMobileMoney) {
       if (!phoneNumber || !countryCode) {
@@ -229,26 +229,57 @@ router.post(
         return;
       }
 
-      const gatewayPref = await getGatewayPreference();
-      const isAuto = gatewayPref.startsWith("auto_");
-
-      const pawaPayCtx = (gatewayPref === "pawapay" || isAuto) ? await getPawaPayClient() : null;
-      const clapayCtx  = (gatewayPref === "clapay"  || isAuto) ? await getClapayClient()  : null;
-
-      /* Resolve which gateway is actually usable */
+      /* ── Step 1: Try dynamic routing (PostgreSQL routing table) ── */
+      let pawaPayCtx: { client: PawaPayClient; env: string } | null = null;
+      let clapayCtx:  { client: ClapayClient } | null = null;
       let activeGateway: "pawapay" | "clapay" | null = null;
-      if (gatewayPref === "pawapay") {
-        activeGateway = pawaPayCtx ? "pawapay" : null;
-      } else if (gatewayPref === "clapay") {
-        activeGateway = clapayCtx ? "clapay" : null;
-      } else if (gatewayPref === "auto_pawapay_first") {
-        activeGateway = pawaPayCtx ? "pawapay" : (clapayCtx ? "clapay" : null);
-      } else if (gatewayPref === "auto_clapay_first") {
-        activeGateway = clapayCtx ? "clapay" : (pawaPayCtx ? "pawapay" : null);
+      let routingSource: "dynamic" | "legacy" = "legacy";
+
+      const dynamicRoute = await resolveGateway(countryCode, methodSlug, amountXof);
+
+      if (dynamicRoute) {
+        routingSource = "dynamic";
+        if (dynamicRoute.type === "pawapay") {
+          pawaPayCtx = { client: dynamicRoute.client, env: process.env.PAWAPAY_ENV ?? "sandbox" };
+          activeGateway = "pawapay";
+        } else if (dynamicRoute.type === "clapay") {
+          clapayCtx = { client: dynamicRoute.client };
+          activeGateway = "clapay";
+        }
+        logger.info(
+          { countryCode, methodSlug, gateway: activeGateway, priority: dynamicRoute.priority, routeId: dynamicRoute.routeId },
+          "[Payment] Dynamic route resolved",
+        );
+      }
+
+      /* ── Step 2: Legacy fallback (system_settings.mobile_money_gateway) ── */
+      if (!activeGateway) {
+        const gatewayPref = await getGatewayPreference();
+        const isAuto = gatewayPref.startsWith("auto_");
+
+        const legacyPawaPay = (gatewayPref === "pawapay" || isAuto) ? await getPawaPayClient() : null;
+        const legacyClapay  = (gatewayPref === "clapay"  || isAuto) ? await getClapayClient()  : null;
+
+        if (gatewayPref === "pawapay") {
+          activeGateway = legacyPawaPay ? "pawapay" : null;
+        } else if (gatewayPref === "clapay") {
+          activeGateway = legacyClapay ? "clapay" : null;
+        } else if (gatewayPref === "auto_pawapay_first") {
+          activeGateway = legacyPawaPay ? "pawapay" : (legacyClapay ? "clapay" : null);
+        } else if (gatewayPref === "auto_clapay_first") {
+          activeGateway = legacyClapay ? "clapay" : (legacyPawaPay ? "pawapay" : null);
+        }
+
+        if (activeGateway === "pawapay" && legacyPawaPay) pawaPayCtx = legacyPawaPay;
+        if (activeGateway === "clapay"  && legacyClapay)  clapayCtx  = legacyClapay;
+
+        if (activeGateway) {
+          logger.info({ countryCode, methodSlug, gateway: activeGateway, gatewayPref }, "[Payment] Legacy gateway fallback used");
+        }
       }
 
       if (!activeGateway) {
-        logger.error({ methodSlug, gatewayPref }, "[Payment] No gateway configured — cannot process mobile money");
+        logger.error({ methodSlug, routingSource }, "[Payment] No gateway configured — cannot process mobile money");
         res.status(503).json({
           error: "Le paiement Mobile Money est temporairement indisponible. Contactez le support.",
         });

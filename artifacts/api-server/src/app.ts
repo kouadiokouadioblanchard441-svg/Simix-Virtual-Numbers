@@ -14,6 +14,7 @@ import { seedProvidersFromEnv } from "./lib/seed-providers";
 import { seedPaymentMethods } from "./lib/seed-payment-methods";
 import { startFiveSimSyncScheduler, syncFiveSimCountries, syncFiveSimProducts } from "./lib/fivesim-sync";
 import { startClapayReconciliation } from "./lib/clapay-reconciliation";
+import { seedRoutingData } from "./lib/seed-routing";
 
 const app: Express = express();
 
@@ -110,6 +111,7 @@ if (process.env.NODE_ENV === "production") {
 
 /* ── Seed reference data + providers, then start real-time sync + poller ── */
 void seedPaymentMethods();
+void seedRoutingData();
 
 void seedProvidersFromEnv().then(async () => {
   startFiveSimPoller();
