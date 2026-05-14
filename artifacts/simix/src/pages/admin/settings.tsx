@@ -109,6 +109,21 @@ const SETTINGS_SCHEMA = [
       { key: "pawapay_webhook_secret", label: "Secret webhook PawaPay", placeholder: "webhook-secret", type: "password", hint: "Optionnel — pour valider les webhooks entrants" },
     ],
   },
+  {
+    group: "Clapay — Mobile Money",
+    fields: [
+      { key: "clapay_api_token", label: "Token API Clapay", placeholder: "Bearer ...", type: "password", hint: "Votre clé API Clapay (NoWallet V3) — obtenue sur le portail Clapay" },
+      { key: "clapay_base_url", label: "URL de base Clapay", placeholder: "https://api.clapay.africa", type: "text", hint: "URL de l'API Clapay — laisser vide pour la valeur par défaut" },
+      { key: "clapay_callback_url", label: "URL webhook (callback)", placeholder: "https://simix.site/api/wallet/clapay/webhook", type: "url", hint: "URL que Clapay appellera après chaque paiement" },
+      { key: "clapay_return_url", label: "URL de retour client", placeholder: "https://simix.site/wallet", type: "url", hint: "Page vers laquelle l'utilisateur est redirigé après la page de paiement Clapay" },
+    ],
+  },
+  {
+    group: "Passerelle de paiement",
+    fields: [
+      { key: "mobile_money_gateway", label: "Passerelle Mobile Money active", placeholder: "pawapay", type: "text", hint: "Valeurs : pawapay · clapay · auto_pawapay_first · auto_clapay_first" },
+    ],
+  },
 ];
 
 interface PawaPayTestResult {
@@ -258,6 +273,195 @@ function PawaPaySimulator() {
         <div className="bg-zinc-800/50 border border-zinc-700/50 rounded-lg px-4 py-6 text-center">
           <p className="text-zinc-500 text-sm">Aucun dépôt en attente PawaPay pour l'instant.</p>
           <p className="text-zinc-600 text-xs mt-1">Initie un dépôt depuis l'app pour le voir apparaître ici.</p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {pending.map(dep => (
+            <div key={dep.id} className="flex items-center gap-3 bg-zinc-800/60 border border-zinc-700/50 rounded-xl px-4 py-3">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-sm text-white font-medium">{dep.userFullName || "—"}</span>
+                  <span className="text-xs text-zinc-500">{dep.userPhone || ""}</span>
+                  <span className="text-xs font-mono text-emerald-400 bg-emerald-900/30 px-1.5 py-0.5 rounded">
+                    {dep.amount.toLocaleString()} FCFA
+                  </span>
+                  <span className="text-xs text-zinc-600">{dep.method}</span>
+                </div>
+                <div className="text-[10px] text-zinc-600 mt-0.5 font-mono truncate">
+                  ID: {dep.externalDepositId}
+                </div>
+                <div className="text-[10px] text-zinc-600">
+                  {new Date(dep.createdAt).toLocaleString("fr-FR")}
+                </div>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  onClick={() => simulate.mutate({ depositId: dep.externalDepositId, status: "COMPLETED" })}
+                  disabled={simulate.isPending}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-xs font-medium rounded-lg transition-colors"
+                >
+                  <CheckCheck className="w-3.5 h-3.5" />
+                  Compléter
+                </button>
+                <button
+                  onClick={() => simulate.mutate({ depositId: dep.externalDepositId, status: "FAILED" })}
+                  disabled={simulate.isPending}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-red-700/80 hover:bg-red-700 disabled:opacity-50 text-white text-xs font-medium rounded-lg transition-colors"
+                >
+                  <Ban className="w-3.5 h-3.5" />
+                  Échouer
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ── Clapay Test Button ──────────────────────────────────── */
+interface ClapayTestResult {
+  success: boolean;
+  message: string;
+  latencyMs?: number;
+  countryCount?: number;
+  countries?: { code: string; name: string; currency: string }[];
+}
+
+function ClapayTestButton({ token, baseUrl }: { token: string; baseUrl: string }) {
+  const [result, setResult] = useState<ClapayTestResult | null>(null);
+  const [showCountries, setShowCountries] = useState(false);
+
+  const test = useMutation({
+    mutationFn: () => adminApi.testClapay(token || undefined, baseUrl || undefined),
+    onSuccess: (data) => setResult(data),
+    onError: (e) => setResult({ success: false, message: (e as Error).message }),
+  });
+
+  return (
+    <div className="mt-4 space-y-3">
+      <button
+        onClick={() => { setResult(null); setShowCountries(false); test.mutate(); }}
+        disabled={test.isPending}
+        className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white text-sm font-medium rounded-lg transition-colors"
+      >
+        {test.isPending ? (
+          <><Loader2 className="w-4 h-4 animate-spin" /> Test en cours…</>
+        ) : (
+          <><Wifi className="w-4 h-4" /> Tester la connexion Clapay</>
+        )}
+      </button>
+
+      {result && (
+        <div className={`rounded-xl border p-4 space-y-3 ${result.success ? "bg-emerald-950/40 border-emerald-700/40" : "bg-red-950/40 border-red-700/40"}`}>
+          <div className="flex items-start gap-3">
+            {result.success
+              ? <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
+              : <XCircle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />}
+            <div className="flex-1 min-w-0">
+              <p className={`text-sm font-medium ${result.success ? "text-emerald-300" : "text-red-300"}`}>
+                {result.message}
+              </p>
+              {result.success && (
+                <div className="flex flex-wrap gap-3 mt-2">
+                  {result.latencyMs !== undefined && (
+                    <span className="text-xs text-zinc-400 bg-zinc-800 px-2 py-1 rounded-md">
+                      Latence : <span className="text-white font-mono">{result.latencyMs}ms</span>
+                    </span>
+                  )}
+                  {result.countryCount !== undefined && (
+                    <span className="text-xs text-zinc-400 bg-zinc-800 px-2 py-1 rounded-md">
+                      Pays : <span className="text-white font-mono">{result.countryCount}</span>
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {result.success && result.countries && result.countries.length > 0 && (
+            <div>
+              <button
+                onClick={() => setShowCountries(v => !v)}
+                className="flex items-center gap-1.5 text-xs text-zinc-400 hover:text-zinc-200 transition-colors"
+              >
+                {showCountries ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                {showCountries ? "Masquer" : "Voir"} les pays disponibles
+              </button>
+              {showCountries && (
+                <div className="mt-2 grid grid-cols-2 md:grid-cols-3 gap-1.5">
+                  {result.countries.map(c => (
+                    <div key={c.code} className="flex items-center gap-2 bg-zinc-800/60 rounded-lg px-2.5 py-1.5">
+                      <div className="w-1.5 h-1.5 rounded-full bg-blue-400 shrink-0" />
+                      <div className="min-w-0">
+                        <div className="text-xs text-white font-medium truncate">{c.name || c.code}</div>
+                        <div className="text-[10px] text-zinc-500">{c.code} · {c.currency}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {!result.success && (
+            <div className="flex items-center gap-2 text-xs text-red-400/80">
+              <WifiOff className="w-3.5 h-3.5 shrink-0" />
+              Vérifiez que le token est correct et que l'URL de base est accessible.
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ── Clapay Simulator ────────────────────────────────────── */
+function ClapaySimulator() {
+  const { toast } = useToast();
+  const qc = useQueryClient();
+
+  const { data: pending = [], isLoading, refetch, isFetching } = useQuery({
+    queryKey: ["admin-clapay-pending"],
+    queryFn: adminApi.getPendingClapayDeposits,
+    refetchInterval: 15000,
+  });
+
+  const simulate = useMutation({
+    mutationFn: ({ depositId, status }: { depositId: string; status: "COMPLETED" | "FAILED" }) =>
+      adminApi.simulateClapayDeposit(depositId, status),
+    onSuccess: (data) => {
+      toast({ title: data.success ? "Simulation réussie" : "Erreur", description: data.message, variant: data.success ? "default" : "destructive" });
+      qc.invalidateQueries({ queryKey: ["admin-clapay-pending"] });
+    },
+    onError: (e) => toast({ title: "Erreur", description: (e as Error).message, variant: "destructive" }),
+  });
+
+  return (
+    <div className="mt-6 border-t border-zinc-800 pt-6">
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <FlaskConical className="w-4 h-4 text-blue-400" />
+          <h3 className="text-sm font-semibold text-white">Simulateur de dépôts Clapay</h3>
+          <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-500/15 text-blue-400 border border-blue-500/20 font-medium">TEST</span>
+        </div>
+        <button onClick={() => refetch()} disabled={isFetching} className="flex items-center gap-1.5 text-xs text-zinc-400 hover:text-zinc-200 transition-colors">
+          <RefreshCw className={`w-3.5 h-3.5 ${isFetching ? "animate-spin" : ""}`} />
+          Actualiser
+        </button>
+      </div>
+
+      <p className="text-xs text-zinc-500 mb-4">
+        Simule la réponse Clapay pour un dépôt en attente — utile pour tester l'intégration sans vrai paiement.
+      </p>
+
+      {isLoading ? (
+        <div className="flex items-center gap-2 text-zinc-500 text-xs"><Loader2 className="w-4 h-4 animate-spin" /> Chargement…</div>
+      ) : pending.length === 0 ? (
+        <div className="bg-zinc-800/50 border border-zinc-700/50 rounded-lg px-4 py-6 text-center">
+          <p className="text-zinc-500 text-sm">Aucun dépôt Clapay en attente pour l'instant.</p>
+          <p className="text-zinc-600 text-xs mt-1">Initie un dépôt via la passerelle Clapay depuis l'app pour le voir ici.</p>
         </div>
       ) : (
         <div className="space-y-2">
@@ -526,73 +730,133 @@ function SettingsContent() {
           resendApiKey={values["resend_api_key"]}
         />
 
-        {SETTINGS_SCHEMA.map(({ group, fields }) => (
-          <div
-            key={group}
-            className={`bg-zinc-900 border rounded-xl p-5 space-y-4 ${group === "PawaPay — Mobile Money" ? "border-orange-500/30 lg:col-span-2" : group === "Resend — Emails" ? "border-violet-500/30" : "border-zinc-800"}`}
-          >
-            <div className="flex items-center gap-2 border-b border-zinc-800 pb-3">
-              {group === "PawaPay — Mobile Money" && (
-                <div className="w-5 h-5 rounded-full bg-orange-500/20 border border-orange-500/40 flex items-center justify-center text-orange-400 text-[10px] font-bold">P</div>
-              )}
-              {group === "Resend — Emails" && (
-                <div className="w-5 h-5 rounded-full bg-violet-500/20 border border-violet-500/40 flex items-center justify-center">
-                  <Mail className="w-3 h-3 text-violet-400" />
-                </div>
-              )}
-              <h2 className="text-sm font-semibold text-white">{group}</h2>
-              {group === "PawaPay — Mobile Money" && (
-                <span className="ml-2 text-[10px] px-2 py-0.5 rounded-full bg-orange-500/15 text-orange-400 border border-orange-500/20 font-medium">Paiements Mobile Money</span>
-              )}
-              {group === "Resend — Emails" && (
-                <span className="ml-2 text-[10px] px-2 py-0.5 rounded-full bg-violet-500/15 text-violet-400 border border-violet-500/20 font-medium">Emails transactionnels</span>
-              )}
-            </div>
+        {SETTINGS_SCHEMA.map(({ group, fields }) => {
+          const isPawaPay = group === "PawaPay — Mobile Money";
+          const isClapay  = group === "Clapay — Mobile Money";
+          const isGateway = group === "Passerelle de paiement";
+          const isResend  = group === "Resend — Emails";
 
-            {group === "PawaPay — Mobile Money" && (
-              <div className="bg-zinc-800/60 border border-zinc-700/60 rounded-lg p-3 text-xs text-zinc-400 space-y-1">
-                <p>PawaPay permet d'accepter des paiements Mobile Money réels (Orange Money, MTN, Wave, etc.) via une seule API.</p>
-                <p>
-                  Obtenez vos identifiants sur{" "}
-                  <a href="https://dashboard.pawapay.io" target="_blank" rel="noreferrer" className="text-orange-400 hover:underline">dashboard.pawapay.io</a>.
-                  Utilisez <code className="text-violet-400">sandbox</code> pour les tests et <code className="text-violet-400">production</code> pour le live.
-                </p>
-                <p className="flex flex-col gap-0.5">
-                  <span>URLs webhook à configurer sur PawaPay Dashboard :</span>
-                  <span>• Dépôts : <code className="text-emerald-400">/api/wallet/pawapay/webhook</code></span>
-                  <span>• Remboursements : <code className="text-emerald-400">/api/wallet/pawapay/refund-webhook</code></span>
-                </p>
+          return (
+            <div
+              key={group}
+              className={`bg-zinc-900 border rounded-xl p-5 space-y-4 ${
+                isPawaPay ? "border-orange-500/30 lg:col-span-2" :
+                isClapay  ? "border-blue-500/30 lg:col-span-2" :
+                isGateway ? "border-emerald-500/30" :
+                isResend  ? "border-violet-500/30" :
+                "border-zinc-800"
+              }`}
+            >
+              <div className="flex items-center gap-2 border-b border-zinc-800 pb-3">
+                {isPawaPay && (
+                  <div className="w-5 h-5 rounded-full bg-orange-500/20 border border-orange-500/40 flex items-center justify-center text-orange-400 text-[10px] font-bold">P</div>
+                )}
+                {isClapay && (
+                  <div className="w-5 h-5 rounded-full bg-blue-500/20 border border-blue-500/40 flex items-center justify-center text-blue-400 text-[10px] font-bold">C</div>
+                )}
+                {isResend && (
+                  <div className="w-5 h-5 rounded-full bg-violet-500/20 border border-violet-500/40 flex items-center justify-center">
+                    <Mail className="w-3 h-3 text-violet-400" />
+                  </div>
+                )}
+                <h2 className="text-sm font-semibold text-white">{group}</h2>
+                {isPawaPay && (
+                  <span className="ml-2 text-[10px] px-2 py-0.5 rounded-full bg-orange-500/15 text-orange-400 border border-orange-500/20 font-medium">Paiements Mobile Money</span>
+                )}
+                {isClapay && (
+                  <span className="ml-2 text-[10px] px-2 py-0.5 rounded-full bg-blue-500/15 text-blue-400 border border-blue-500/20 font-medium">Paiements Mobile Money</span>
+                )}
+                {isGateway && (
+                  <span className="ml-2 text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/20 font-medium">Routage</span>
+                )}
+                {isResend && (
+                  <span className="ml-2 text-[10px] px-2 py-0.5 rounded-full bg-violet-500/15 text-violet-400 border border-violet-500/20 font-medium">Emails transactionnels</span>
+                )}
               </div>
-            )}
 
-            <div className={group === "PawaPay — Mobile Money" ? "grid grid-cols-1 md:grid-cols-3 gap-4" : ""}>
-              {fields.map(({ key, label, placeholder, type, hint }: { key: string; label: string; placeholder: string; type: string; hint?: string }) => (
-                <div key={key}>
-                  <label className="text-xs text-zinc-400 mb-1 block">{label}</label>
-                  <input
-                    type={type}
-                    value={values[key] ?? ""}
-                    onChange={e => set(key, e.target.value)}
-                    placeholder={placeholder}
-                    className={`w-full px-3 py-2 text-sm bg-zinc-800 border rounded-lg text-white placeholder:text-zinc-500 focus:outline-none transition-colors ${group === "PawaPay — Mobile Money" ? "border-zinc-700 focus:border-orange-500" : "border-zinc-700 focus:border-violet-500"}`}
-                  />
-                  {hint && <div className="text-xs text-zinc-600 mt-1">{hint}</div>}
-                  {!values[key] && !hint && <div className="text-xs text-zinc-600 mt-1">Défaut : {placeholder}</div>}
+              {isPawaPay && (
+                <div className="bg-zinc-800/60 border border-zinc-700/60 rounded-lg p-3 text-xs text-zinc-400 space-y-1">
+                  <p>PawaPay permet d'accepter des paiements Mobile Money réels (Orange Money, MTN, Wave, etc.) via une seule API.</p>
+                  <p>
+                    Obtenez vos identifiants sur{" "}
+                    <a href="https://dashboard.pawapay.io" target="_blank" rel="noreferrer" className="text-orange-400 hover:underline">dashboard.pawapay.io</a>.
+                    Utilisez <code className="text-violet-400">sandbox</code> pour les tests et <code className="text-violet-400">production</code> pour le live.
+                  </p>
+                  <p className="flex flex-col gap-0.5">
+                    <span>URLs webhook à configurer sur PawaPay Dashboard :</span>
+                    <span>• Dépôts : <code className="text-emerald-400">/api/wallet/pawapay/webhook</code></span>
+                    <span>• Remboursements : <code className="text-emerald-400">/api/wallet/pawapay/refund-webhook</code></span>
+                  </p>
                 </div>
-              ))}
-            </div>
+              )}
 
-            {group === "PawaPay — Mobile Money" && (
-              <>
-                <PawaPayTestButton
-                  token={values["pawapay_api_token"] ?? ""}
-                  env={values["pawapay_env"] ?? "sandbox"}
-                />
-                <PawaPaySimulator />
-              </>
-            )}
-          </div>
-        ))}
+              {isClapay && (
+                <div className="bg-zinc-800/60 border border-zinc-700/60 rounded-lg p-3 text-xs text-zinc-400 space-y-1">
+                  <p>Clapay (NoWallet V3) est un agrégateur de paiements Mobile Money africains (Orange Money, MTN, Wave, Moov, etc.).</p>
+                  <p>
+                    Obtenez votre token sur le portail Clapay. Le tunnel <code className="text-violet-400">CHECKOUTPAGE</code> redirige l'utilisateur vers une page de paiement hébergée par Clapay.
+                  </p>
+                  <p className="flex flex-col gap-0.5">
+                    <span>URL webhook à configurer :</span>
+                    <span>• Paiements : <code className="text-emerald-400">/api/wallet/clapay/webhook</code></span>
+                  </p>
+                </div>
+              )}
+
+              {isGateway && (
+                <div className="bg-zinc-800/60 border border-zinc-700/60 rounded-lg p-3 text-xs text-zinc-400 space-y-1">
+                  <p>Contrôle quelle passerelle est utilisée pour les paiements Mobile Money :</p>
+                  <p>• <code className="text-orange-400">pawapay</code> — PawaPay uniquement (défaut)</p>
+                  <p>• <code className="text-blue-400">clapay</code> — Clapay uniquement</p>
+                  <p>• <code className="text-emerald-400">auto_pawapay_first</code> — PawaPay en priorité, Clapay en secours</p>
+                  <p>• <code className="text-emerald-400">auto_clapay_first</code> — Clapay en priorité, PawaPay en secours</p>
+                </div>
+              )}
+
+              <div className={isPawaPay || isClapay ? "grid grid-cols-1 md:grid-cols-2 gap-4" : ""}>
+                {fields.map(({ key, label, placeholder, type, hint }: { key: string; label: string; placeholder: string; type: string; hint?: string }) => (
+                  <div key={key}>
+                    <label className="text-xs text-zinc-400 mb-1 block">{label}</label>
+                    <input
+                      type={type}
+                      value={values[key] ?? ""}
+                      onChange={e => set(key, e.target.value)}
+                      placeholder={placeholder}
+                      className={`w-full px-3 py-2 text-sm bg-zinc-800 border rounded-lg text-white placeholder:text-zinc-500 focus:outline-none transition-colors ${
+                        isPawaPay ? "border-zinc-700 focus:border-orange-500" :
+                        isClapay  ? "border-zinc-700 focus:border-blue-500" :
+                        isGateway ? "border-zinc-700 focus:border-emerald-500" :
+                        "border-zinc-700 focus:border-violet-500"
+                      }`}
+                    />
+                    {hint && <div className="text-xs text-zinc-600 mt-1">{hint}</div>}
+                    {!values[key] && !hint && <div className="text-xs text-zinc-600 mt-1">Défaut : {placeholder}</div>}
+                  </div>
+                ))}
+              </div>
+
+              {isPawaPay && (
+                <>
+                  <PawaPayTestButton
+                    token={values["pawapay_api_token"] ?? ""}
+                    env={values["pawapay_env"] ?? "sandbox"}
+                  />
+                  <PawaPaySimulator />
+                </>
+              )}
+
+              {isClapay && (
+                <>
+                  <ClapayTestButton
+                    token={values["clapay_api_token"] ?? ""}
+                    baseUrl={values["clapay_base_url"] ?? ""}
+                  />
+                  <ClapaySimulator />
+                </>
+              )}
+            </div>
+          );
+        })}
       </div>
 
       {dirty && (

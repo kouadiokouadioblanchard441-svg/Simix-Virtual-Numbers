@@ -1154,6 +1154,162 @@ router.post("/admin/pawapay/simulate-deposit", requireAdmin, async (req, res): P
   }
 });
 
+/* ─────────────────── CLAPAY CONNECTION TEST ─────────────────── */
+router.post("/admin/clapay/test", requireAdmin, async (req, res): Promise<void> => {
+  const { token: bodyToken, baseUrl: bodyBaseUrl } = req.body as { token?: string; baseUrl?: string };
+
+  let token = bodyToken?.trim() || null;
+  let baseUrl = bodyBaseUrl?.trim() || null;
+
+  if (!token) {
+    const rows = await db.select().from(systemSettingsTable)
+      .where(eq(systemSettingsTable.key, "clapay_api_token")).limit(1);
+    token = rows[0]?.value ?? null;
+
+    if (token && !baseUrl) {
+      const urlRow = await db.select().from(systemSettingsTable)
+        .where(eq(systemSettingsTable.key, "clapay_base_url")).limit(1);
+      baseUrl = urlRow[0]?.value ?? null;
+    }
+  }
+
+  if (!token) {
+    res.status(400).json({ success: false, message: "Aucun token Clapay configuré." });
+    return;
+  }
+
+  const { ClapayClient } = await import("../lib/clapay");
+  const client = new ClapayClient(token, baseUrl ?? undefined);
+  const start = Date.now();
+
+  try {
+    const countries = await client.getCountries();
+    const latencyMs = Date.now() - start;
+
+    res.json({
+      success: true,
+      latencyMs,
+      message: `Connexion Clapay réussie (${latencyMs}ms) — ${countries.length} pays disponible(s)`,
+      countryCount: countries.length,
+      countries: countries.slice(0, 10).map(c => ({
+        code: c.code,
+        name: c.name,
+        currency: c.currency,
+      })),
+    });
+  } catch (e) {
+    res.json({
+      success: false,
+      latencyMs: Date.now() - start,
+      message: (e as Error).message,
+    });
+  }
+});
+
+/* ─────────────────── CLAPAY PENDING DEPOSITS ─────────────────── */
+router.get("/admin/clapay/pending-deposits", requireAdmin, async (_req, res): Promise<void> => {
+  const rows = await db
+    .select({
+      id: transactionsTable.id,
+      externalDepositId: transactionsTable.externalDepositId,
+      amount: transactionsTable.amount,
+      status: transactionsTable.status,
+      method: transactionsTable.method,
+      createdAt: transactionsTable.createdAt,
+      userId: transactionsTable.userId,
+      userFullName: usersTable.fullName,
+      userPhone: usersTable.phone,
+    })
+    .from(transactionsTable)
+    .leftJoin(usersTable, eq(transactionsTable.userId, usersTable.id))
+    .where(and(
+      eq(transactionsTable.status, "pending"),
+      eq(transactionsTable.type, "recharge"),
+      sql`${transactionsTable.externalDepositId} LIKE 'clapay:%'`,
+    ))
+    .orderBy(desc(transactionsTable.createdAt))
+    .limit(50);
+  res.json(rows);
+});
+
+/* ─────────────────── CLAPAY DEPOSIT SIMULATION ─────────────────── */
+router.post("/admin/clapay/simulate-deposit", requireAdmin, async (req, res): Promise<void> => {
+  const { depositId, status = "COMPLETED", depositedAmount } = req.body as {
+    depositId?: string;
+    status?: string;
+    depositedAmount?: string;
+  };
+
+  if (!depositId) { res.status(400).json({ error: "depositId requis" }); return; }
+
+  const [tx] = await db.select().from(transactionsTable)
+    .where(eq(transactionsTable.externalDepositId, depositId))
+    .limit(1);
+
+  if (!tx) {
+    res.status(404).json({ error: `Transaction avec depositId ${depositId} introuvable` });
+    return;
+  }
+
+  if (tx.status !== "pending") {
+    res.status(400).json({ error: `La transaction est déjà en statut "${tx.status}"` });
+    return;
+  }
+
+  if (status === "COMPLETED") {
+    const actualAmount = depositedAmount ? Math.round(Number(depositedAmount)) : tx.amount;
+
+    await db.update(transactionsTable)
+      .set({ status: "completed" })
+      .where(eq(transactionsTable.id, tx.id));
+
+    await db.update(usersTable)
+      .set({ balance: sql`${usersTable.balance} + ${actualAmount}` })
+      .where(eq(usersTable.id, tx.userId));
+
+    logger.info({ depositId, userId: tx.userId, amount: actualAmount }, "[Clapay SIM] Deposit simulated as COMPLETED");
+
+    try {
+      const [userRow] = await db.select({ email: usersTable.email, fullName: usersTable.fullName, balance: usersTable.balance })
+        .from(usersTable).where(eq(usersTable.id, tx.userId)).limit(1);
+      if (userRow?.email) {
+        const phoneMatch = tx.description?.match(/[\+\d]{8,}/);
+        sendDepositConfirmationEmail({
+          userEmail: userRow.email,
+          userFullName: userRow.fullName ?? "Utilisateur",
+          amount: actualAmount,
+          method: tx.method ?? "Mobile Money",
+          phoneNumber: phoneMatch?.[0] ?? null,
+          transactionId: String(tx.id),
+          depositId: tx.externalDepositId ?? depositId,
+          createdAt: tx.createdAt ? new Date(tx.createdAt) : new Date(),
+          newBalance: userRow.balance + actualAmount,
+        }).catch((e: Error) => logger.warn({ error: e.message }, "[Clapay SIM] Email non-critical error"));
+      }
+    } catch { /* non-critical */ }
+
+    res.json({
+      success: true,
+      message: `Dépôt Clapay simulé comme COMPLÉTÉ — ${actualAmount} FCFA crédités`,
+      depositId, userId: tx.userId, amount: actualAmount, status: "completed",
+    });
+  } else if (status === "FAILED") {
+    await db.update(transactionsTable)
+      .set({ status: "failed" })
+      .where(eq(transactionsTable.id, tx.id));
+
+    logger.info({ depositId }, "[Clapay SIM] Deposit simulated as FAILED");
+
+    res.json({
+      success: true,
+      message: `Dépôt Clapay simulé comme ÉCHOUÉ`,
+      depositId, status: "failed",
+    });
+  } else {
+    res.status(400).json({ error: "status doit être COMPLETED ou FAILED" });
+  }
+});
+
 /* ─────────────────── SECURITY EVENTS ─────────────────── */
 router.get("/admin/security-events", requireAdmin, async (req, res): Promise<void> => {
   const limit = Math.min(Number(req.query.limit) || 50, 200);

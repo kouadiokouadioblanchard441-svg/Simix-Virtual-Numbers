@@ -21,6 +21,13 @@ import {
   verifyContentDigest,
   COUNTRY_CURRENCY,
 } from "../lib/pawapay";
+import {
+  ClapayClient,
+  makeClapayDepositId,
+  isClapayDeposit,
+  getOperatorCodeForMethod,
+  type ClapayWebhookPayload,
+} from "../lib/clapay";
 import { logger } from "../lib/logger";
 import { getMinDepositFcfa, getMaxBalanceFcfa } from "../lib/settings";
 import { broadcastNotification } from "./notifications";
@@ -48,6 +55,57 @@ async function getPawaPayClient(): Promise<{ client: PawaPayClient; env: string 
 
   if (!token) return null;
   return { client: new PawaPayClient(token, env), env };
+}
+
+/* ── Load Clapay client from env or DB ── */
+async function getClapayClient(): Promise<{ client: ClapayClient } | null> {
+  let token = process.env.CLAPAY_API_TOKEN ?? null;
+  let baseUrl = process.env.CLAPAY_BASE_URL ?? null;
+
+  if (!token) {
+    const rows = await db.select().from(systemSettingsTable)
+      .where(eq(systemSettingsTable.key, "clapay_api_token")).limit(1);
+    token = rows[0]?.value?.trim() || null;
+
+    if (token && !baseUrl) {
+      const urlRows = await db.select().from(systemSettingsTable)
+        .where(eq(systemSettingsTable.key, "clapay_base_url")).limit(1);
+      baseUrl = urlRows[0]?.value?.trim() || null;
+    }
+  }
+
+  if (!token) return null;
+  return { client: new ClapayClient(token, baseUrl ?? undefined) };
+}
+
+/* ── Active gateway preference from env or DB ── */
+type GatewayPref = "pawapay" | "clapay" | "auto_pawapay_first" | "auto_clapay_first";
+
+async function getGatewayPreference(): Promise<GatewayPref> {
+  const envPref = process.env.MOBILE_MONEY_GATEWAY;
+  if (envPref) return envPref as GatewayPref;
+
+  const rows = await db.select().from(systemSettingsTable)
+    .where(eq(systemSettingsTable.key, "mobile_money_gateway")).limit(1);
+  return (rows[0]?.value as GatewayPref) ?? "pawapay";
+}
+
+/* ── Clapay callback URL (set in admin settings or Plesk env) ── */
+async function getClapayCallbackUrl(): Promise<string> {
+  if (process.env.CLAPAY_CALLBACK_URL) return process.env.CLAPAY_CALLBACK_URL;
+
+  const rows = await db.select().from(systemSettingsTable)
+    .where(eq(systemSettingsTable.key, "clapay_callback_url")).limit(1);
+  return rows[0]?.value?.trim() || "https://simix.site/api/wallet/clapay/webhook";
+}
+
+/* ── Clapay return URL (user is sent here after checkout page) ── */
+async function getClapayReturnUrl(): Promise<string> {
+  if (process.env.CLAPAY_RETURN_URL) return process.env.CLAPAY_RETURN_URL;
+
+  const rows = await db.select().from(systemSettingsTable)
+    .where(eq(systemSettingsTable.key, "clapay_return_url")).limit(1);
+  return rows[0]?.value?.trim() || "https://simix.site/wallet";
 }
 
 /* ── Mobile money operator keyword detection ── */
@@ -124,8 +182,13 @@ router.post(
     const isMobileMoney = isMobileMoneySlug(methodSlug);
 
     /* ════════════════════════════════════════════════════════════
-     * MOBILE MONEY PATH — PawaPay v2 required
-     * Account is NEVER credited here; only the webhook/poll does it.
+     * MOBILE MONEY PATH — Gateway-aware (PawaPay v2 / Clapay)
+     * Account is NEVER credited here; only webhook/poll does it.
+     * Gateway selection via system_settings.mobile_money_gateway:
+     *   "pawapay"             → PawaPay only (default, backward-compat)
+     *   "clapay"              → Clapay only
+     *   "auto_pawapay_first"  → PawaPay primary, Clapay fallback
+     *   "auto_clapay_first"   → Clapay primary, PawaPay fallback
      * ════════════════════════════════════════════════════════════ */
     if (isMobileMoney) {
       if (!phoneNumber || !countryCode) {
@@ -133,132 +196,175 @@ router.post(
         return;
       }
 
-      const pawaPayCtx = await getPawaPayClient();
+      const gatewayPref = await getGatewayPreference();
+      const isAuto = gatewayPref.startsWith("auto_");
 
-      /* PawaPay is not configured — cannot process mobile money */
-      if (!pawaPayCtx) {
-        logger.error({ methodSlug }, "[PawaPay] Client not configured — cannot process mobile money deposit");
+      const pawaPayCtx = (gatewayPref === "pawapay" || isAuto) ? await getPawaPayClient() : null;
+      const clapayCtx  = (gatewayPref === "clapay"  || isAuto) ? await getClapayClient()  : null;
+
+      /* Resolve which gateway is actually usable */
+      let activeGateway: "pawapay" | "clapay" | null = null;
+      if (gatewayPref === "pawapay") {
+        activeGateway = pawaPayCtx ? "pawapay" : null;
+      } else if (gatewayPref === "clapay") {
+        activeGateway = clapayCtx ? "clapay" : null;
+      } else if (gatewayPref === "auto_pawapay_first") {
+        activeGateway = pawaPayCtx ? "pawapay" : (clapayCtx ? "clapay" : null);
+      } else if (gatewayPref === "auto_clapay_first") {
+        activeGateway = clapayCtx ? "clapay" : (pawaPayCtx ? "pawapay" : null);
+      }
+
+      if (!activeGateway) {
+        logger.error({ methodSlug, gatewayPref }, "[Payment] No gateway configured — cannot process mobile money");
         res.status(503).json({
           error: "Le paiement Mobile Money est temporairement indisponible. Contactez le support.",
         });
         return;
       }
 
-      const { client } = pawaPayCtx;
-      const currency = COUNTRY_CURRENCY[countryCode.toUpperCase()] ?? "XOF";
+      /* ── PawaPay v2 path ── */
+      if (activeGateway === "pawapay") {
+        const { client } = pawaPayCtx!;
+        const currency = COUNTRY_CURRENCY[countryCode.toUpperCase()] ?? "XOF";
+        const msisdn = buildMSISDN(phoneNumber, dialCode);
 
-      /* Build MSISDN — country code prefix + local digits (leading 0 preserved) */
-      const msisdn = buildMSISDN(phoneNumber, dialCode);
-
-      /* Step 1: Predict provider (most reliable) */
-      let provider: string | null = null;
-      try {
-        const predicted = await client.predictProvider(msisdn);
-        if (predicted?.provider) {
-          provider = predicted.provider;
-          logger.info({ msisdn, provider }, "[PawaPay] Provider predicted via API");
+        let provider: string | null = null;
+        try {
+          const predicted = await client.predictProvider(msisdn);
+          if (predicted?.provider) {
+            provider = predicted.provider;
+            logger.info({ msisdn, provider }, "[PawaPay] Provider predicted via API");
+          }
+        } catch (e) {
+          logger.warn({ error: (e as Error).message }, "[PawaPay] predict-provider failed, using static map");
         }
-      } catch (e) {
-        logger.warn({ error: (e as Error).message }, "[PawaPay] predict-provider failed, using static map");
-      }
 
-      /* Step 2: Fallback to static mapping */
-      if (!provider) {
-        provider = getProviderForCountry(countryCode, methodSlug);
-        if (provider) {
-          logger.info({ msisdn, provider, fallback: true }, "[PawaPay] Using static provider mapping");
+        if (!provider) {
+          provider = getProviderForCountry(countryCode, methodSlug);
+          if (provider) logger.info({ msisdn, provider, fallback: true }, "[PawaPay] Using static provider mapping");
         }
-      }
 
-      if (!provider) {
-        res.status(422).json({
-          error: `Opérateur Mobile Money non supporté pour ce pays (${countryCode}). Essayez un autre mode de paiement.`,
-        });
+        if (!provider) {
+          res.status(422).json({
+            error: `Opérateur Mobile Money non supporté pour ce pays (${countryCode}). Essayez un autre mode de paiement.`,
+          });
+          return;
+        }
+
+        const depositId = generateDepositId();
+
+        const [pendingTx] = await db.insert(transactionsTable).values({
+          userId: user.id, type: "recharge", amount, status: "pending",
+          method: method?.name ?? methodSlug, description, externalDepositId: depositId,
+        }).returning();
+
+        let depositRes;
+        try {
+          depositRes = await client.initiateDeposit({
+            depositId,
+            amount: String(amount),
+            currency,
+            payer: { type: "MMO", accountDetails: { phoneNumber: msisdn, provider } },
+            customerMessage: "Simix recharge",
+            metadata: [{ userId: user.id }, { methodSlug }],
+          });
+        } catch (e) {
+          logger.error({ error: (e as Error).message, depositId, userId: user.id }, "[PawaPay] Deposit request failed (network)");
+          res.status(502).json({
+            error: "Erreur de communication avec l'opérateur. Votre dépôt est en attente de confirmation — vérifiez l'historique.",
+            depositId, pending: true,
+          });
+          return;
+        }
+
+        if (depositRes.status === "ACCEPTED") {
+          logger.info({ depositId, userId: user.id, amount, provider, msisdn }, "[PawaPay] Deposit ACCEPTED");
+          res.json({
+            ...toTransaction(pendingTx!), pending: true, depositId, provider,
+            message: `Confirmez le paiement sur votre téléphone (${method?.name ?? methodSlug}). Votre solde sera crédité automatiquement.`,
+          });
+          return;
+        }
+
+        if (depositRes.status === "DUPLICATE_IGNORED") {
+          logger.warn({ depositId }, "[PawaPay] Duplicate deposit ID");
+          res.json({ ...toTransaction(pendingTx!), pending: true, depositId, message: "Ce dépôt est déjà en cours de traitement." });
+          return;
+        }
+
+        await db.update(transactionsTable).set({ status: "failed" }).where(eq(transactionsTable.id, pendingTx!.id));
+        const reason = depositRes.failureReason?.failureMessage ?? depositRes.failureReason?.failureCode ?? "Rejeté par l'opérateur";
+        logger.warn({ depositRes, provider, msisdn, depositId }, "[PawaPay] Deposit REJECTED");
+        res.status(422).json({ error: `Dépôt refusé : ${reason}. Vérifiez votre numéro et réessayez.` });
         return;
       }
 
-      /* Step 3: Generate depositId BEFORE calling PawaPay (idempotency) */
-      const depositId = generateDepositId();
+      /* ── Clapay path ── */
+      if (activeGateway === "clapay") {
+        const { client } = clapayCtx!;
 
-      /* Step 4: Create pending transaction BEFORE PawaPay call
-       *         This ensures we never lose track of the deposit even if
-       *         the response is lost due to network error. */
-      const [pendingTx] = await db.insert(transactionsTable).values({
-        userId: user.id,
-        type: "recharge",
-        amount,
-        status: "pending",
-        method: method?.name ?? methodSlug,
-        description,
-        externalDepositId: depositId,
-      }).returning();
+        /* Map methodSlug → Clapay operator code (e.g. "orange" → "OM") */
+        const operatorCode = getOperatorCodeForMethod(methodSlug);
+        if (!operatorCode) {
+          res.status(422).json({
+            error: `Opérateur Mobile Money non supporté via Clapay pour ce pays (${countryCode}). Essayez un autre mode de paiement.`,
+          });
+          return;
+        }
 
-      /* Step 5: Initiate deposit with PawaPay v2 */
-      let depositRes;
-      try {
-        depositRes = await client.initiateDeposit({
-          depositId,
-          amount: String(amount),
-          currency,
-          payer: {
-            type: "MMO",
-            accountDetails: {
-              phoneNumber: msisdn,
-              provider,
+        /* Generate our tracking UUID (sent to Clapay as transaction_id, echoed back in webhook) */
+        const trackingId = generateDepositId(); /* UUID v4 */
+        const externalDepositId = makeClapayDepositId(trackingId);
+
+        /* Create pending transaction BEFORE calling Clapay — idempotency */
+        const [pendingTx] = await db.insert(transactionsTable).values({
+          userId: user.id, type: "recharge", amount, status: "pending",
+          method: method?.name ?? methodSlug, description, externalDepositId,
+        }).returning();
+
+        const [callbackUrl, returnUrl] = await Promise.all([getClapayCallbackUrl(), getClapayReturnUrl()]);
+
+        let clapayRes;
+        try {
+          clapayRes = await client.initiatePayment({
+            transaction_id: trackingId,
+            additional_infos: {
+              customer_phone: `${dialCode ?? ""}${phoneNumber}`,
+              customer_firstname: user.fullName?.split(" ")[0] ?? undefined,
+              customer_lastname: user.fullName?.split(" ").slice(1).join(" ") ?? undefined,
+              customer_email: user.email ?? undefined,
             },
-          },
-          customerMessage: "Simix recharge",
-          metadata: [
-            { userId: user.id },
-            { methodSlug },
-          ],
-        });
-      } catch (e) {
-        /* Network/timeout error — transaction stays pending for reconciliation */
-        logger.error({ error: (e as Error).message, depositId, userId: user.id }, "[PawaPay] Deposit request failed (network)");
-        res.status(502).json({
-          error: "Erreur de communication avec l'opérateur. Votre dépôt est en attente de confirmation — vérifiez l'historique.",
-          depositId,
-          pending: true,
-        });
-        return;
-      }
+            amount,
+            callback_url: callbackUrl,
+            return_url: returnUrl,
+            country_code: countryCode.toUpperCase(),
+            operators_code: [operatorCode],
+            method: "MERCHANT",
+            tunnel: "CHECKOUTPAGE",
+          });
+        } catch (e) {
+          logger.error({ error: (e as Error).message, trackingId, userId: user.id }, "[Clapay] Payment initiation failed");
+          res.status(502).json({
+            error: "Erreur de communication avec l'opérateur. Votre dépôt est en attente de confirmation — vérifiez l'historique.",
+            depositId: externalDepositId, pending: true,
+          });
+          return;
+        }
 
-      if (depositRes.status === "ACCEPTED") {
-        logger.info({ depositId, userId: user.id, amount, provider, msisdn }, "[PawaPay] Deposit ACCEPTED — awaiting confirmation");
+        logger.info({ trackingId, userId: user.id, amount, operatorCode, signature: clapayRes.signature }, "[Clapay] Payment initiated");
+
         res.json({
           ...toTransaction(pendingTx!),
           pending: true,
-          depositId,
-          provider,
-          message: `Confirmez le paiement sur votre téléphone (${method?.name ?? methodSlug}). Votre solde sera crédité automatiquement.`,
+          depositId: externalDepositId,
+          gateway: "clapay",
+          payment_url: clapayRes.payment_url ?? null,
+          message: clapayRes.payment_url
+            ? `Finalisez le paiement sur la page Clapay. Votre solde sera crédité automatiquement dès confirmation.`
+            : `En attente de confirmation de paiement (${method?.name ?? methodSlug}). Votre solde sera crédité automatiquement.`,
         });
         return;
       }
-
-      if (depositRes.status === "DUPLICATE_IGNORED") {
-        /* DepositId was already used — very unlikely but handle gracefully */
-        logger.warn({ depositId }, "[PawaPay] Duplicate deposit ID — already processing");
-        res.json({
-          ...toTransaction(pendingTx!),
-          pending: true,
-          depositId,
-          message: "Ce dépôt est déjà en cours de traitement.",
-        });
-        return;
-      }
-
-      /* REJECTED — cancel the pending transaction, inform user, DO NOT credit */
-      await db.update(transactionsTable)
-        .set({ status: "failed" })
-        .where(eq(transactionsTable.id, pendingTx!.id));
-
-      const reason = depositRes.failureReason?.failureMessage
-        ?? depositRes.failureReason?.failureCode
-        ?? "Rejeté par l'opérateur";
-      logger.warn({ depositRes, provider, msisdn, depositId }, "[PawaPay] Deposit REJECTED");
-      res.status(422).json({ error: `Dépôt refusé : ${reason}. Vérifiez votre numéro et réessayez.` });
-      return;
     }
 
     /* ════════════════════════════════════════════════════════════
@@ -487,6 +593,127 @@ router.post("/wallet/pawapay/refund-webhook", async (req: Request, res: Response
 });
 
 /* ────────────────────────────────────────────────────────────────
+ * Clapay Webhook — Payment Callback
+ * URL: POST /api/wallet/clapay/webhook
+ *
+ * Clapay POSTs the final payment status here.
+ * We match by transaction_id (our UUID sent at initiation).
+ * Account is ONLY credited when status = "COMPLETED".
+ *
+ * IMPORTANT: Respond 200 immediately.
+ * ──────────────────────────────────────────────────────────────── */
+router.post("/wallet/clapay/webhook", async (req: Request, res: Response): Promise<void> => {
+  res.status(200).json({ received: true });
+
+  try {
+    const payload = req.body as ClapayWebhookPayload;
+    const { status, transaction_id, amount } = payload;
+
+    if (!transaction_id || !status) {
+      logger.warn({ payload }, "[Clapay Webhook] Invalid payload — missing transaction_id or status");
+      return;
+    }
+
+    logger.info({ transaction_id, status, amount }, "[Clapay Webhook] Processing callback");
+
+    const externalDepositId = makeClapayDepositId(transaction_id);
+
+    if (status === "COMPLETED") {
+      const [tx] = await db.select().from(transactionsTable)
+        .where(and(
+          eq(transactionsTable.externalDepositId, externalDepositId),
+          eq(transactionsTable.status, "pending"),
+        ))
+        .limit(1);
+
+      if (!tx) {
+        logger.warn({ transaction_id, externalDepositId }, "[Clapay Webhook] Transaction not found or already processed");
+        return;
+      }
+
+      const creditAmount = amount ? Math.round(Number(amount)) : tx.amount;
+
+      const [justCompleted] = await db.update(transactionsTable)
+        .set({ status: "completed" })
+        .where(and(
+          eq(transactionsTable.id, tx.id),
+          eq(transactionsTable.status, "pending"),
+        ))
+        .returning();
+
+      if (!justCompleted) {
+        logger.info({ transaction_id }, "[Clapay Webhook] Already processed — skipping double-credit");
+        return;
+      }
+
+      await db.update(usersTable)
+        .set({ balance: sql`${usersTable.balance} + ${creditAmount}` })
+        .where(eq(usersTable.id, tx.userId));
+
+      logger.info({ transaction_id, userId: tx.userId, creditAmount }, "[Clapay Webhook] Deposit COMPLETED — balance credited ✓");
+
+      /* Push real-time notification */
+      try {
+        const [notif] = await db.insert(notificationsTable).values({
+          userId: tx.userId,
+          title: "💰 Solde rechargé",
+          body: `Votre solde a été crédité de ${creditAmount.toLocaleString("fr-FR")} FCFA avec succès.`,
+          type: "deposit",
+          icon: "wallet",
+          link: "/wallet",
+          metadata: { amount: creditAmount, depositId: transaction_id, gateway: "clapay" },
+        }).returning();
+        if (notif) broadcastNotification(notif);
+      } catch { /* non-critical */ }
+
+      /* Send deposit confirmation email */
+      try {
+        const [userRow] = await db.select({
+          email: usersTable.email, fullName: usersTable.fullName, balance: usersTable.balance,
+        }).from(usersTable).where(eq(usersTable.id, tx.userId)).limit(1);
+
+        if (userRow?.email) {
+          const phoneMatch = tx.description?.match(/[\+\d]{8,}/);
+          await sendDepositConfirmationEmail({
+            userEmail: userRow.email,
+            userFullName: userRow.fullName ?? "Utilisateur",
+            amount: creditAmount,
+            method: tx.method ?? "Mobile Money",
+            phoneNumber: phoneMatch?.[0] ?? null,
+            transactionId: String(tx.id),
+            depositId: transaction_id,
+            createdAt: tx.createdAt ? new Date(tx.createdAt) : new Date(),
+            newBalance: userRow.balance,
+          });
+          logger.info({ userId: tx.userId, transaction_id }, "[Clapay] Deposit confirmation email sent ✓");
+        }
+      } catch (e) {
+        logger.warn({ error: (e as Error).message, transaction_id }, "[Clapay] Email failed (non-critical)");
+      }
+
+    } else if (status === "FAILED" || status === "CANCELLED" || status === "REJECTED") {
+      const updated = await db.update(transactionsTable)
+        .set({ status: "failed" })
+        .where(and(
+          eq(transactionsTable.externalDepositId, externalDepositId),
+          eq(transactionsTable.status, "pending"),
+        ))
+        .returning();
+
+      if (updated.length > 0) {
+        logger.warn({ transaction_id, status }, "[Clapay Webhook] Payment failed — transaction marked failed");
+      } else {
+        logger.warn({ transaction_id }, "[Clapay Webhook] FAILED callback — transaction not found or already processed");
+      }
+    } else {
+      logger.info({ transaction_id, status }, "[Clapay Webhook] Non-final status received, ignoring");
+    }
+  } catch (e) {
+    logger.error({ error: (e as Error).message }, "[Clapay Webhook] Error processing callback");
+  }
+});
+
+/* ────────────────────────────────────────────────────────────────
  * GET /wallet/deposit/:depositId/status
  * Poll PawaPay v2 for live deposit status (frontend polling)
  * Credits balance if COMPLETED and not yet done (reconciliation safety net).
@@ -504,8 +731,15 @@ router.get("/wallet/deposit/:depositId/status", requireAuth, async (req, res): P
 
   if (!tx) { res.status(404).json({ error: "Dépôt introuvable" }); return; }
 
-  /* Only poll PawaPay if transaction is still pending */
+  /* Only poll if transaction is still pending */
   if (tx.status === "pending") {
+    /* Clapay deposits: no individual status API — rely purely on webhook.
+     * Return the current DB state; the frontend polls until webhook fires. */
+    if (isClapayDeposit(depositId)) {
+      res.json({ ...toTransaction(tx), gateway: "clapay" });
+      return;
+    }
+
     const pawaPayCtx = await getPawaPayClient();
     if (pawaPayCtx) {
       try {

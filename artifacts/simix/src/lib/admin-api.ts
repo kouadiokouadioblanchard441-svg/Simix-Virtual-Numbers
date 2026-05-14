@@ -118,6 +118,30 @@ export const adminApi = {
     operators?: { name: string; country: string; currency: string }[];
   }>("POST", "/admin/pawapay/test", { token, env }),
 
+  /* ── Clapay ── */
+  testClapay: (token?: string, baseUrl?: string) => req<{
+    success: boolean;
+    message: string;
+    latencyMs?: number;
+    countryCount?: number;
+    countries?: { code: string; name: string; currency: string }[];
+  }>("POST", "/admin/clapay/test", { token, baseUrl }),
+  getPendingClapayDeposits: () => req<Array<{
+    id: string;
+    externalDepositId: string;
+    amount: number;
+    status: string;
+    method: string;
+    createdAt: string;
+    userId: string;
+    userFullName: string;
+    userPhone: string;
+  }>>("GET", "/admin/clapay/pending-deposits"),
+  simulateClapayDeposit: (depositId: string, status: "COMPLETED" | "FAILED", depositedAmount?: string) =>
+    req<{ success: boolean; message: string; depositId?: string; userId?: string; amount?: number; status?: string }>(
+      "POST", "/admin/clapay/simulate-deposit", { depositId, status, depositedAmount }
+    ),
+
   getSecurityEvents: (severity?: string) => {
     const q = severity ? `?severity=${severity}` : "";
     return req<SecurityEvent[]>("GET", `/admin/security-events${q}`);
