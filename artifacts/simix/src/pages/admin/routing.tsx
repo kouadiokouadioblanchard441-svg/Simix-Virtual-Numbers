@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { AdminLayout } from "@/components/admin-layout";
 import { adminToken } from "@/lib/admin-token";
+import { LogoField } from "@/components/image-upload-button";
 import {
   Route, Server, Cpu, FileText, Plus, Pencil, Trash2,
   CheckCircle, XCircle, Clock, Wifi, WifiOff, AlertTriangle,
@@ -268,14 +269,18 @@ function GatewaysTab() {
               <Input label="Secret API" type="password" value={form.apiSecret ?? ""} onChange={e => setForm(p => ({ ...p, apiSecret: e.target.value }))} placeholder="secret_…" />
             </div>
             <Input label="Webhook Secret" type="password" value={form.webhookSecret ?? ""} onChange={e => setForm(p => ({ ...p, webhookSecret: e.target.value }))} placeholder="whsec_…" />
-            <div className="grid grid-cols-2 gap-3">
-              <Select label="Type" value={form.type ?? "both"} onChange={e => setForm(p => ({ ...p, type: e.target.value }))}>
-                <option value="deposit">Dépôt uniquement</option>
-                <option value="withdrawal">Retrait uniquement</option>
-                <option value="both">Dépôt et retrait</option>
-              </Select>
-              <Input label="Logo URL" value={form.logoUrl ?? ""} onChange={e => setForm(p => ({ ...p, logoUrl: e.target.value }))} placeholder="https://…" />
-            </div>
+            <Select label="Type" value={form.type ?? "both"} onChange={e => setForm(p => ({ ...p, type: e.target.value }))}>
+              <option value="deposit">Dépôt uniquement</option>
+              <option value="withdrawal">Retrait uniquement</option>
+              <option value="both">Dépôt et retrait</option>
+            </Select>
+            <LogoField
+              label="Logo du fournisseur"
+              value={form.logoUrl ?? ""}
+              onChange={v => setForm(p => ({ ...p, logoUrl: v }))}
+              authHeader={{ Authorization: `Bearer ${adminToken.get() ?? ""}` }}
+              placeholder="https://… ou uploader →"
+            />
             <div className="space-y-1">
               <label className="block text-xs text-zinc-400 font-medium">Notes internes</label>
               <textarea value={form.notes ?? ""} onChange={e => setForm(p => ({ ...p, notes: e.target.value }))} rows={2} placeholder="Notes, documentation, remarques…" className="w-full bg-zinc-800/60 border border-zinc-700/60 rounded-xl px-3 py-2 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-violet-500/60 resize-none" />
@@ -408,6 +413,14 @@ function OperatorsTab() {
               </div>
               <Input label="Ordre" type="number" value={form.sortOrder ?? 100} onChange={e => setForm(p => ({ ...p, sortOrder: Number(e.target.value) }))} />
             </div>
+            <LogoField
+              label="Logo de l'opérateur"
+              value={form.logoUrl ?? ""}
+              onChange={v => setForm(p => ({ ...p, logoUrl: v }))}
+              authHeader={{ Authorization: `Bearer ${adminToken.get() ?? ""}` }}
+              placeholder="https://… ou uploader →"
+              previewBg={form.color ?? "transparent"}
+            />
             <div>
               <label className="block text-xs text-zinc-400 mb-1 font-medium">Pays (codes ISO séparés par virgule)</label>
               <input

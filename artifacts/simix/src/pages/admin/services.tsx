@@ -6,6 +6,7 @@ import { AdminLayout } from "@/components/admin-layout";
 import { formatFCFA } from "@/lib/format";
 import { ServiceIcon } from "@/components/service-icon";
 import { useConfirm } from "@/components/ui/confirm-dialog";
+import { ImageUploadButton } from "@/components/image-upload-button";
 import {
   Loader2, Pencil, Check, X, TrendingUp, ToggleLeft, ToggleRight,
   Plus, Trash2, Star, Package, Zap, ChevronDown, ChevronUp,
@@ -477,7 +478,7 @@ function ServiceRow({ service }: { service: AdminService }) {
                   <input
                     value={logoUrl}
                     onChange={e => setLogoUrl(e.target.value)}
-                    placeholder="https://cdn.example.com/logo.png — laisser vide pour utiliser l'icône automatique"
+                    placeholder="https://cdn.example.com/logo.png — laisser vide pour l'icône auto"
                     className="w-full px-2.5 py-2 text-sm bg-zinc-900 border border-zinc-700 rounded-lg text-white placeholder:text-zinc-600 focus:outline-none focus:border-violet-500 pr-10"
                   />
                   {logoUrl && (
@@ -490,6 +491,11 @@ function ServiceRow({ service }: { service: AdminService }) {
                     </button>
                   )}
                 </div>
+                <ImageUploadButton
+                  onUploaded={url => setLogoUrl(url)}
+                  busy={update.isPending}
+                  label="Fichier"
+                />
                 {/* Logo preview */}
                 <div className="flex-shrink-0">
                   <ServiceIcon name={name || service.name} slug={service.slug} logoUrl={logoUrl.trim() || null} size={36} rounded="lg" />
