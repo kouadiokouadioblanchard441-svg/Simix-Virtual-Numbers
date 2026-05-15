@@ -3,7 +3,7 @@
  * Accessible at /api/admin/*
  */
 import { Router, type IRouter, type Request, type Response, type NextFunction } from "express";
-import { desc, eq, count, sql, and, gte, like, or } from "drizzle-orm";
+import { desc, eq, count, sql, and, gte, like, or, inArray } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 import {
   db,
@@ -58,7 +58,11 @@ async function logAdminAction(
   targetId?: string,
   details?: Record<string, unknown>,
 ) {
-  await db.insert(adminLogsTable).values({ adminId, action, targetType, targetId, details, ip });
+  try {
+    await db.insert(adminLogsTable).values({ adminId, action, targetType, targetId, details, ip });
+  } catch (e) {
+    logger.debug({ err: (e as Error).message, action }, "[admin-log] Non-critical: failed to write admin log");
+  }
 }
 
 /* ─────────────────── DASHBOARD STATS ─────────────────── */
@@ -1777,7 +1781,7 @@ router.get("/admin/sync/status", requireAdmin, async (_req, res): Promise<void> 
     "fivesim_countries_sync_status",
   ];
   const rows = await db.select().from(systemSettingsTable)
-    .where(sql`${systemSettingsTable.key} = ANY(${settingKeys})`);
+    .where(inArray(systemSettingsTable.key, settingKeys));
   const settings: Record<string, string> = {};
   for (const r of rows) settings[r.key] = r.value;
 
