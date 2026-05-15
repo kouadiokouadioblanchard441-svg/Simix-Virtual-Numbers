@@ -18,6 +18,12 @@ export const transactionsTable = pgTable("transactions", {
   method: text("method"),
   description: text("description"),
   externalDepositId: text("external_deposit_id"),
+  /**
+   * Gateway-specific metadata stored as JSON string.
+   * For Clapay: { clapaySignature, clapayCurrency, clapayCountry }
+   * For PawaPay: { provider, currency }
+   */
+  gatewayMeta: text("gateway_meta"),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),

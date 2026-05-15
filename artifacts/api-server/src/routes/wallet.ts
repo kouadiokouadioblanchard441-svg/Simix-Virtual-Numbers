@@ -29,6 +29,10 @@ import {
   isClapayDeposit,
   extractClapayTransactionId,
   getOperatorCodeForMethod,
+  serializeClapayMeta,
+  parseClapayMeta,
+  mapClapayStatusToDb,
+  CLAPAY_TERMINAL_FAILURE,
   type ClapayWebhookPayload,
 } from "../lib/clapay";
 import { logger } from "../lib/logger";
@@ -443,7 +447,22 @@ router.post(
           return;
         }
 
-        logger.info({ trackingId, userId: user.id, amount, operatorCode, signature: clapayRes.signature }, "[Clapay] Payment initiated");
+        logger.info(
+          { trackingId, userId: user.id, amount: localAmount, amountXof, operatorCode, signature: clapayRes.signature, currency: clapayRes.currency },
+          "[Clapay] Payment initiated",
+        );
+
+        /* Store Clapay signature in gateway_meta — required for official reconciliation
+         * endpoint GET /nowallet/api/check/transactions/single/signature/:sig */
+        const gatewayMeta = serializeClapayMeta({
+          clapaySignature: clapayRes.signature,
+          clapayCurrency: clapayRes.currency,
+          clapayCountry: clapayRes.country,
+          initiatedAt: new Date().toISOString(),
+        });
+        await db.update(transactionsTable)
+          .set({ gatewayMeta })
+          .where(eq(transactionsTable.id, pendingTx!.id));
 
         res.json({
           ...toTransaction(pendingTx!),
@@ -705,22 +724,30 @@ router.post("/wallet/pawapay/refund-webhook", async (req: Request, res: Response
  * IMPORTANT: Respond 200 immediately.
  * ──────────────────────────────────────────────────────────────── */
 router.post("/wallet/clapay/webhook", async (req: Request, res: Response): Promise<void> => {
+  /* Respond 200 immediately — Clapay requires a fast ACK */
   res.status(200).json({ received: true });
+
+  const receivedAt = new Date().toISOString();
 
   try {
     const payload = req.body as ClapayWebhookPayload;
-    const { status, transaction_id, amount } = payload;
+    const { status, transaction_id, amount, signature, currency } = payload;
 
     if (!transaction_id || !status) {
-      logger.warn({ payload }, "[Clapay Webhook] Invalid payload — missing transaction_id or status");
+      logger.warn({ payload, receivedAt }, "[Clapay Webhook] Invalid payload — missing transaction_id or status");
       return;
     }
 
-    logger.info({ transaction_id, status, amount }, "[Clapay Webhook] Processing callback");
+    /* Log the full webhook for auditability */
+    logger.info(
+      { transaction_id, status, amount, currency, signature, receivedAt },
+      "[Clapay Webhook] Callback received",
+    );
 
     const externalDepositId = makeClapayDepositId(transaction_id);
+    const normalizedStatus = status.toUpperCase();
 
-    if (status === "COMPLETED") {
+    if (normalizedStatus === "COMPLETED") {
       const [tx] = await db.select().from(transactionsTable)
         .where(and(
           eq(transactionsTable.externalDepositId, externalDepositId),
@@ -733,7 +760,10 @@ router.post("/wallet/clapay/webhook", async (req: Request, res: Response): Promi
         return;
       }
 
-      const creditAmount = amount ? Math.round(Number(amount)) : tx.amount;
+      /* ALWAYS use the stored XOF amount (tx.amount) — never the webhook amount.
+       * The webhook `amount` is in the LOCAL currency (e.g. KES, XAF) which may
+       * differ from our internal FCFA amount after FX conversion. */
+      const creditAmount = tx.amount;
 
       const [justCompleted] = await db.update(transactionsTable)
         .set({ status: "completed" })
@@ -752,7 +782,10 @@ router.post("/wallet/clapay/webhook", async (req: Request, res: Response): Promi
         .set({ balance: sql`${usersTable.balance} + ${creditAmount}` })
         .where(eq(usersTable.id, tx.userId));
 
-      logger.info({ transaction_id, userId: tx.userId, creditAmount }, "[Clapay Webhook] Deposit COMPLETED — balance credited ✓");
+      logger.info(
+        { transaction_id, userId: tx.userId, creditAmount, clapayAmount: amount, clapayCurrency: currency },
+        "[Clapay Webhook] Deposit COMPLETED — balance credited ✓",
+      );
 
       /* ── Complete FX profit record if present ── */
       try {
@@ -794,13 +827,14 @@ router.post("/wallet/clapay/webhook", async (req: Request, res: Response): Promi
             createdAt: tx.createdAt ? new Date(tx.createdAt) : new Date(),
             newBalance: userRow.balance,
           });
-          logger.info({ userId: tx.userId, transaction_id }, "[Clapay] Deposit confirmation email sent ✓");
+          logger.info({ userId: tx.userId, transaction_id }, "[Clapay Webhook] Deposit confirmation email sent ✓");
         }
       } catch (e) {
-        logger.warn({ error: (e as Error).message, transaction_id }, "[Clapay] Email failed (non-critical)");
+        logger.warn({ error: (e as Error).message, transaction_id }, "[Clapay Webhook] Email failed (non-critical)");
       }
 
-    } else if (status === "FAILED" || status === "CANCELLED" || status === "REJECTED") {
+    } else if (CLAPAY_TERMINAL_FAILURE.has(normalizedStatus)) {
+      /* Handles: FAILED, CANCELLED, REJECTED, TIMEOUT, EXPIRED */
       const updated = await db.update(transactionsTable)
         .set({ status: "failed" })
         .where(and(
@@ -810,15 +844,16 @@ router.post("/wallet/clapay/webhook", async (req: Request, res: Response): Promi
         .returning();
 
       if (updated.length > 0) {
-        logger.warn({ transaction_id, status }, "[Clapay Webhook] Payment failed — transaction marked failed");
+        logger.warn({ transaction_id, status: normalizedStatus }, "[Clapay Webhook] Payment terminal failure — transaction marked failed");
       } else {
-        logger.warn({ transaction_id }, "[Clapay Webhook] FAILED callback — transaction not found or already processed");
+        logger.warn({ transaction_id, status: normalizedStatus }, "[Clapay Webhook] Failure callback — transaction not found or already processed");
       }
     } else {
-      logger.info({ transaction_id, status }, "[Clapay Webhook] Non-final status received, ignoring");
+      /* PENDING or other non-terminal status — no action required */
+      logger.info({ transaction_id, status: normalizedStatus }, "[Clapay Webhook] Non-terminal status received — waiting for final callback");
     }
   } catch (e) {
-    logger.error({ error: (e as Error).message }, "[Clapay Webhook] Error processing callback");
+    logger.error({ error: (e as Error).message }, "[Clapay Webhook] Unhandled error processing callback");
   }
 });
 
@@ -843,21 +878,35 @@ router.get("/wallet/deposit/:depositId/status", requireAuth, async (req, res): P
   /* Only poll if transaction is still pending */
   if (tx.status === "pending") {
     /* Clapay deposits: try Clapay API for status (reconciliation safety net).
-     * If the webhook was missed, this poll will detect COMPLETED and credit the user. */
+     * If the webhook was missed, this poll will detect COMPLETED and credit the user.
+     *
+     * Lookup order:
+     *  1. By stored signature (official endpoint — primary)
+     *  2. By transaction_id (undocumented fallback)
+     */
     if (isClapayDeposit(depositId)) {
       const clapayCtx = await getClapayClient();
       if (clapayCtx) {
         try {
           const transactionId = extractClapayTransactionId(depositId);
-          const statusResult = await clapayCtx.client.getTransactionByExternalId(transactionId);
+
+          /* Try signature-based lookup first (official API) */
+          const clapayMeta = parseClapayMeta(tx.gatewayMeta);
+          let statusResult = clapayMeta?.clapaySignature
+            ? await clapayCtx.client.getTransactionStatus(clapayMeta.clapaySignature)
+            : null;
+
+          /* Fallback: lookup by our transaction_id */
+          if (!statusResult) {
+            statusResult = await clapayCtx.client.getTransactionByExternalId(transactionId);
+          }
 
           if (statusResult) {
             const clapayStatus = statusResult.status?.toUpperCase();
 
             if (clapayStatus === "COMPLETED") {
-              const creditAmount = statusResult.amount
-                ? Math.round(Number(statusResult.amount))
-                : tx.amount;
+              /* ALWAYS use stored XOF amount — not the Clapay API amount (which is in local currency) */
+              const creditAmount = tx.amount;
 
               const [justCompleted] = await db.update(transactionsTable)
                 .set({ status: "completed" })
@@ -892,10 +941,14 @@ router.get("/wallet/deposit/:depositId/status", requireAuth, async (req, res): P
               res.json({ ...toTransaction(updated ?? tx), gateway: "clapay" });
               return;
 
-            } else if (clapayStatus === "FAILED" || clapayStatus === "CANCELLED" || clapayStatus === "REJECTED") {
+            } else if (CLAPAY_TERMINAL_FAILURE.has(clapayStatus ?? "")) {
+              /* Handles FAILED, CANCELLED, REJECTED, TIMEOUT, EXPIRED */
               await db.update(transactionsTable)
                 .set({ status: "failed" })
-                .where(eq(transactionsTable.id, tx.id));
+                .where(and(
+                  eq(transactionsTable.id, tx.id),
+                  eq(transactionsTable.status, "pending"),
+                ));
               const [updated] = await db.select().from(transactionsTable)
                 .where(eq(transactionsTable.id, tx.id)).limit(1);
               res.json({ ...toTransaction(updated ?? { ...tx, status: "failed" }), gateway: "clapay" });
@@ -906,7 +959,7 @@ router.get("/wallet/deposit/:depositId/status", requireAuth, async (req, res): P
           logger.warn({ error: (e as Error).message }, "[Clapay Poll] Status check failed");
         }
       }
-      /* Clapay not configured or status unknown — return current DB state */
+      /* Clapay not configured or status still pending — return current DB state */
       res.json({ ...toTransaction(tx), gateway: "clapay" });
       return;
     }

@@ -8,12 +8,26 @@
  *
  * Runs every 5 minutes. Only processes transactions pending for > 2 minutes
  * (to avoid racing with in-flight webhooks) and < 24 hours (stale cleanup).
+ *
+ * Lookup order (per transaction):
+ *  1. By stored Clapay signature — official endpoint (primary)
+ *  2. By our transaction_id — undocumented fallback
+ *
+ * CRITICAL: Always credit tx.amount (XOF), never the API-returned amount
+ * (which is in the LOCAL currency and may differ after FX conversion).
  */
 
-import { and, eq, gte, lt, sql } from "drizzle-orm";
+import { and, eq, gte, lt, sql, like } from "drizzle-orm";
 import { db, transactionsTable, usersTable, notificationsTable } from "@workspace/db";
 import { logger } from "./logger";
-import { ClapayClient, extractClapayTransactionId, isClapayDeposit } from "./clapay";
+import {
+  ClapayClient,
+  extractClapayTransactionId,
+  isClapayDeposit,
+  parseClapayMeta,
+  CLAPAY_TERMINAL_FAILURE,
+  mapClapayStatusToDb,
+} from "./clapay";
 import { broadcastNotification } from "../routes/notifications";
 
 const RECONCILE_INTERVAL_MS  = 5 * 60 * 1000;   // every 5 minutes
@@ -54,23 +68,21 @@ async function reconcilePendingClapayTransactions(): Promise<void> {
   const minCreatedAt = new Date(now.getTime() - MAX_AGE_MS);
   const maxCreatedAt = new Date(now.getTime() - MIN_AGE_MS);
 
-  /* Find pending Clapay transactions in the age window */
-  const pendingRows = await db
+  /* Find pending Clapay transactions in the age window.
+   * Filter at SQL level using LIKE 'clapay:%' to avoid loading non-Clapay rows. */
+  const clapayPending = await db
     .select()
     .from(transactionsTable)
     .where(
       and(
         eq(transactionsTable.status, "pending"),
         eq(transactionsTable.type, "recharge"),
+        like(transactionsTable.externalDepositId, "clapay:%"),
         gte(transactionsTable.createdAt, minCreatedAt),
         lt(transactionsTable.createdAt, maxCreatedAt),
       ),
     )
     .limit(50);
-
-  const clapayPending = pendingRows.filter(
-    tx => tx.externalDepositId && isClapayDeposit(tx.externalDepositId),
-  );
 
   if (clapayPending.length === 0) return;
 
@@ -80,20 +92,36 @@ async function reconcilePendingClapayTransactions(): Promise<void> {
     try {
       const transactionId = extractClapayTransactionId(tx.externalDepositId!);
 
-      /* Try to get status by our transaction_id (the UUID we sent to Clapay) */
-      const statusResult = await clapay.getTransactionByExternalId(transactionId);
+      /* ── Step 1: Try lookup by stored Clapay signature (OFFICIAL endpoint) ── */
+      const meta = parseClapayMeta(tx.gatewayMeta);
+      let statusResult = meta?.clapaySignature
+        ? await clapay.getTransactionStatus(meta.clapaySignature)
+        : null;
+
+      if (statusResult) {
+        logger.debug({ transactionId, signature: meta?.clapaySignature }, "[Clapay Reconcile] Status fetched via signature (official)");
+      }
+
+      /* ── Step 2: Fallback — lookup by our transaction_id (undocumented) ── */
+      if (!statusResult) {
+        statusResult = await clapay.getTransactionByExternalId(transactionId);
+        if (statusResult) {
+          logger.debug({ transactionId }, "[Clapay Reconcile] Status fetched via transaction_id (fallback)");
+        }
+      }
 
       if (!statusResult) {
         logger.debug({ transactionId }, "[Clapay Reconcile] No status result — will retry next cycle");
         continue;
       }
 
-      const status = statusResult.status?.toUpperCase();
+      const rawStatus = statusResult.status?.toUpperCase() ?? "";
+      const dbStatus = mapClapayStatusToDb(rawStatus);
 
-      if (status === "COMPLETED") {
-        const creditAmount = statusResult.amount
-          ? Math.round(Number(statusResult.amount))
-          : tx.amount;
+      if (dbStatus === "completed") {
+        /* ALWAYS use stored XOF amount — never the API-returned amount
+         * (which is in LOCAL currency and may differ after FX conversion). */
+        const creditAmount = tx.amount;
 
         /* Atomic transition pending → completed (guards against race with webhook) */
         const [justCompleted] = await db
@@ -134,22 +162,27 @@ async function reconcilePendingClapayTransactions(): Promise<void> {
           if (notif) broadcastNotification(notif);
         } catch { /* non-critical */ }
 
-      } else if (status === "FAILED" || status === "CANCELLED" || status === "REJECTED") {
-        await db
+      } else if (dbStatus === "failed") {
+        /* Handles: FAILED, CANCELLED, REJECTED, TIMEOUT, EXPIRED */
+        const [updated] = await db
           .update(transactionsTable)
           .set({ status: "failed" })
           .where(and(
             eq(transactionsTable.id, tx.id),
             eq(transactionsTable.status, "pending"),
-          ));
+          ))
+          .returning();
 
-        logger.warn(
-          { transactionId, status },
-          "[Clapay Reconcile] Payment failed — transaction marked failed",
-        );
+        if (updated) {
+          logger.warn(
+            { transactionId, clapayStatus: rawStatus },
+            "[Clapay Reconcile] Payment terminal failure — transaction marked failed",
+          );
+        }
       } else {
+        /* Still PENDING / PROCESSING — retry next cycle */
         logger.debug(
-          { transactionId, status },
+          { transactionId, clapayStatus: rawStatus },
           "[Clapay Reconcile] Status still pending/processing — will retry",
         );
       }
