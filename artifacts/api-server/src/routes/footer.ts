@@ -13,7 +13,6 @@
 import { Router, type IRouter, type Request, type Response, type NextFunction } from "express";
 import { eq, asc } from "drizzle-orm";
 import { db, socialLinksTable, paymentOperatorsTable } from "@workspace/db";
-import { requireAuth } from "../lib/auth";
 import { requireAdminJwt } from "../lib/admin-jwt-middleware";
 
 const router: IRouter = Router();
@@ -43,12 +42,12 @@ router.get("/footer", async (_req, res): Promise<void> => {
 
 /* ── ADMIN: SOCIAL LINKS ────────────────────────────────── */
 
-router.get("/admin/social-links", requireAdminJwt, requireAuth, requireAdmin, async (_req, res): Promise<void> => {
+router.get("/admin/social-links", requireAdminJwt, requireAdmin, async (_req, res): Promise<void> => {
   const links = await db.select().from(socialLinksTable).orderBy(asc(socialLinksTable.sortOrder));
   res.json({ links });
 });
 
-router.post("/admin/social-links", requireAdminJwt, requireAuth, requireAdmin, async (req, res): Promise<void> => {
+router.post("/admin/social-links", requireAdminJwt, requireAdmin, async (req, res): Promise<void> => {
   const { platform, name, url, color, isActive, sortOrder } = req.body as {
     platform: string; name: string; url: string;
     color?: string; isActive?: boolean; sortOrder?: number;
@@ -66,7 +65,7 @@ router.post("/admin/social-links", requireAdminJwt, requireAuth, requireAdmin, a
   res.json({ link });
 });
 
-router.put("/admin/social-links/:id", requireAdminJwt, requireAuth, requireAdmin, async (req, res): Promise<void> => {
+router.put("/admin/social-links/:id", requireAdminJwt, requireAdmin, async (req, res): Promise<void> => {
   const { id } = req.params as { id: string };
   const data = req.body as Partial<{ platform: string; name: string; url: string; color: string; isActive: boolean; sortOrder: number }>;
   const [link] = await db.update(socialLinksTable).set(data).where(eq(socialLinksTable.id, id)).returning();
@@ -74,7 +73,7 @@ router.put("/admin/social-links/:id", requireAdminJwt, requireAuth, requireAdmin
   res.json({ link });
 });
 
-router.delete("/admin/social-links/:id", requireAdminJwt, requireAuth, requireAdmin, async (req, res): Promise<void> => {
+router.delete("/admin/social-links/:id", requireAdminJwt, requireAdmin, async (req, res): Promise<void> => {
   const { id } = req.params as { id: string };
   await db.delete(socialLinksTable).where(eq(socialLinksTable.id, id));
   res.json({ success: true });
@@ -82,12 +81,12 @@ router.delete("/admin/social-links/:id", requireAdminJwt, requireAuth, requireAd
 
 /* ── ADMIN: PAYMENT OPERATORS ───────────────────────────── */
 
-router.get("/admin/payment-operators", requireAdminJwt, requireAuth, requireAdmin, async (_req, res): Promise<void> => {
+router.get("/admin/payment-operators", requireAdminJwt, requireAdmin, async (_req, res): Promise<void> => {
   const operators = await db.select().from(paymentOperatorsTable).orderBy(asc(paymentOperatorsTable.sortOrder));
   res.json({ operators });
 });
 
-router.post("/admin/payment-operators", requireAdminJwt, requireAuth, requireAdmin, async (req, res): Promise<void> => {
+router.post("/admin/payment-operators", requireAdminJwt, requireAdmin, async (req, res): Promise<void> => {
   const { name, logoUrl, logoData, websiteUrl, countries, bgColor, isActive, sortOrder } = req.body as {
     name: string; logoUrl?: string; logoData?: string; websiteUrl?: string;
     countries?: string; bgColor?: string; isActive?: boolean; sortOrder?: number;
@@ -107,7 +106,7 @@ router.post("/admin/payment-operators", requireAdminJwt, requireAuth, requireAdm
   res.json({ operator: op });
 });
 
-router.put("/admin/payment-operators/:id", requireAdminJwt, requireAuth, requireAdmin, async (req, res): Promise<void> => {
+router.put("/admin/payment-operators/:id", requireAdminJwt, requireAdmin, async (req, res): Promise<void> => {
   const { id } = req.params as { id: string };
   const data = req.body as Partial<{
     name: string; logoUrl: string; logoData: string; websiteUrl: string;
@@ -118,7 +117,7 @@ router.put("/admin/payment-operators/:id", requireAdminJwt, requireAuth, require
   res.json({ operator: op });
 });
 
-router.delete("/admin/payment-operators/:id", requireAdminJwt, requireAuth, requireAdmin, async (req, res): Promise<void> => {
+router.delete("/admin/payment-operators/:id", requireAdminJwt, requireAdmin, async (req, res): Promise<void> => {
   const { id } = req.params as { id: string };
   await db.delete(paymentOperatorsTable).where(eq(paymentOperatorsTable.id, id));
   res.json({ success: true });

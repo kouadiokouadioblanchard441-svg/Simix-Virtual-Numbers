@@ -338,8 +338,6 @@ const LOGO_MAP: Record<string, string> = {
   swagbucks:       "https://logo.clearbit.com/swagbucks.com",
   truecaller:      "https://logo.clearbit.com/truecaller.com",
   craigslist:      "https://logo.clearbit.com/craigslist.org",
-  gitlab:          "https://logo.clearbit.com/gitlab.com",
-  shopify:         "https://logo.clearbit.com/shopify.com",
 };
 
 /* ─── Sync log entry type ─── */

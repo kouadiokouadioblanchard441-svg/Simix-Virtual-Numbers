@@ -8,7 +8,6 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import { eq, desc, count, and, isNull } from "drizzle-orm";
 import { db, notificationsTable, usersTable } from "@workspace/db";
-import { requireAuth } from "../lib/auth";
 import { requireAdminJwt } from "../lib/admin-jwt-middleware";
 import { broadcastNotification } from "./notifications";
 import { logger } from "../lib/logger";
@@ -26,7 +25,7 @@ function requireAdmin(req: Request, res: Response, next: () => void): void {
 }
 
 /* ── POST /admin/notifications ───────────────────────────── */
-router.post("/admin/notifications", requireAuth, requireAdmin, async (req: Request, res: Response): Promise<void> => {
+router.post("/admin/notifications", requireAdmin, async (req: Request, res: Response): Promise<void> => {
   const {
     title,
     body,
@@ -88,7 +87,7 @@ router.post("/admin/notifications", requireAuth, requireAdmin, async (req: Reque
 });
 
 /* ── GET /admin/notifications ────────────────────────────── */
-router.get("/admin/notifications", requireAuth, requireAdmin, async (req: Request, res: Response): Promise<void> => {
+router.get("/admin/notifications", requireAdmin, async (req: Request, res: Response): Promise<void> => {
   const limit = Math.min(Number(req.query.limit) || 50, 200);
   const offset = Number(req.query.offset) || 0;
 
@@ -107,7 +106,7 @@ router.get("/admin/notifications", requireAuth, requireAdmin, async (req: Reques
 });
 
 /* ── GET /admin/notifications/stats ─────────────────────── */
-router.get("/admin/notifications/stats", requireAuth, requireAdmin, async (_req: Request, res: Response): Promise<void> => {
+router.get("/admin/notifications/stats", requireAdmin, async (_req: Request, res: Response): Promise<void> => {
   const [total] = await db.select({ count: count() }).from(notificationsTable);
   const [global] = await db.select({ count: count() }).from(notificationsTable)
     .where(and(eq(notificationsTable.isGlobal, true), isNull(notificationsTable.userId)));
@@ -122,7 +121,7 @@ router.get("/admin/notifications/stats", requireAuth, requireAdmin, async (_req:
 });
 
 /* ── DELETE /admin/notifications/:id ────────────────────── */
-router.delete("/admin/notifications/:id", requireAuth, requireAdmin, async (req: Request, res: Response): Promise<void> => {
+router.delete("/admin/notifications/:id", requireAdmin, async (req: Request, res: Response): Promise<void> => {
   const { id } = req.params;
   await db.delete(notificationsTable).where(eq(notificationsTable.id, id));
   res.json({ success: true });

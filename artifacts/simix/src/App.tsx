@@ -138,6 +138,7 @@ function InnerRouter() {
   /* ── Secure admin entry points (no wrapper, no mobile container) ── */
   if (location === "/console") return <Console />;
   if (location === "/admin-login") return <SecureLogin />;
+  if (location === "/admin/secure-login") return <SecureLogin />;
 
   if (isAdmin) {
     return <AdminRoutes />;

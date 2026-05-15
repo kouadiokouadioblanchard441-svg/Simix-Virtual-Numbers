@@ -8,7 +8,6 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import { eq, desc, count } from "drizzle-orm";
 import { db, emailCampaignsTable, emailLogsTable, usersTable, systemSettingsTable } from "@workspace/db";
-import { requireAuth } from "../lib/auth";
 import { requireAdminJwt } from "../lib/admin-jwt-middleware";
 import { logger } from "../lib/logger";
 import { Resend } from "resend";
@@ -18,6 +17,7 @@ const router: IRouter = Router();
 router.use(requireAdminJwt);
 
 function requireAdmin(req: Request, res: Response, next: () => void): void {
+  if (req.adminPayload) { next(); return; }
   if (!req.user) { res.status(401).json({ error: "Auth required" }); return; }
   if (!req.user.isAdmin) { res.status(403).json({ error: "Admin only" }); return; }
   next();
@@ -102,7 +102,7 @@ function buildEmailHtml(subject: string, body: string, templateType: string): st
 }
 
 /* ── POST /admin/emails/send ──────────────────────────────── */
-router.post("/admin/emails/send", requireAuth, requireAdmin, async (req: Request, res: Response): Promise<void> => {
+router.post("/admin/emails/send", requireAdmin, async (req: Request, res: Response): Promise<void> => {
   const {
     subject,
     body,
@@ -207,7 +207,7 @@ router.post("/admin/emails/send", requireAuth, requireAdmin, async (req: Request
 });
 
 /* ── GET /admin/emails/campaigns ──────────────────────────── */
-router.get("/admin/emails/campaigns", requireAuth, requireAdmin, async (req: Request, res: Response): Promise<void> => {
+router.get("/admin/emails/campaigns", requireAdmin, async (req: Request, res: Response): Promise<void> => {
   const limit = Math.min(Number(req.query.limit) || 20, 100);
   const offset = Number(req.query.offset) || 0;
 
@@ -224,7 +224,7 @@ router.get("/admin/emails/campaigns", requireAuth, requireAdmin, async (req: Req
 });
 
 /* ── GET /admin/emails/campaigns/:id/logs ─────────────────── */
-router.get("/admin/emails/campaigns/:id/logs", requireAuth, requireAdmin, async (req: Request, res: Response): Promise<void> => {
+router.get("/admin/emails/campaigns/:id/logs", requireAdmin, async (req: Request, res: Response): Promise<void> => {
   const { id } = req.params;
   const limit = Math.min(Number(req.query.limit) || 50, 200);
   const offset = Number(req.query.offset) || 0;
@@ -249,7 +249,7 @@ router.get("/admin/emails/campaigns/:id/logs", requireAuth, requireAdmin, async 
 });
 
 /* ── POST /admin/emails/test ──────────────────────────────── */
-router.post("/admin/emails/test", requireAuth, requireAdmin, async (req: Request, res: Response): Promise<void> => {
+router.post("/admin/emails/test", requireAdmin, async (req: Request, res: Response): Promise<void> => {
   const { email } = req.body as { email?: string };
 
   if (!email || typeof email !== "string" || !email.includes("@")) {
@@ -338,7 +338,7 @@ router.post("/admin/emails/test", requireAuth, requireAdmin, async (req: Request
 });
 
 /* ── GET /admin/emails/stats ─────────────────────────────── */
-router.get("/admin/emails/stats", requireAuth, requireAdmin, async (_req: Request, res: Response): Promise<void> => {
+router.get("/admin/emails/stats", requireAdmin, async (_req: Request, res: Response): Promise<void> => {
   const [total] = await db.select({ count: count() }).from(emailCampaignsTable);
   const [sent] = await db.select({ count: count() }).from(emailLogsTable).where(eq(emailLogsTable.status, "sent"));
   const [failed] = await db.select({ count: count() }).from(emailLogsTable).where(eq(emailLogsTable.status, "failed"));

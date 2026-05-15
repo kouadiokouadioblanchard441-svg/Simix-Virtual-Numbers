@@ -12,7 +12,6 @@ import {
   aiSupportConfigTable,
   usersTable,
 } from "@workspace/db";
-import { requireAuth } from "../lib/auth";
 import { logger } from "../lib/logger";
 import { requireAdminJwt } from "../lib/admin-jwt-middleware";
 
@@ -64,7 +63,7 @@ const DEFAULT_AI_CONFIG: Array<{ key: string; value: string; label: string; grou
 
 /* ─── CONVERSATIONS ───────────────────────────────────────── */
 
-router.get("/admin/support/conversations", requireAuth, requireAdmin, async (req, res): Promise<void> => {
+router.get("/admin/support/conversations", requireAdmin, async (req, res): Promise<void> => {
   const limit = Math.min(Number(req.query.limit) || 50, 200);
   const offset = Number(req.query.offset) || 0;
   const status = req.query.status as string | undefined;
@@ -101,7 +100,7 @@ router.get("/admin/support/conversations", requireAuth, requireAdmin, async (req
   res.json({ conversations: rows, total: totalRow?.c ?? 0 });
 });
 
-router.get("/admin/support/conversations/:id/messages", requireAuth, requireAdmin, async (req, res): Promise<void> => {
+router.get("/admin/support/conversations/:id/messages", requireAdmin, async (req, res): Promise<void> => {
   const { id } = req.params;
   const msgs = await db
     .select()
@@ -111,7 +110,7 @@ router.get("/admin/support/conversations/:id/messages", requireAuth, requireAdmi
   res.json({ messages: msgs });
 });
 
-router.post("/admin/support/conversations/:id/messages", requireAuth, requireAdmin, async (req, res): Promise<void> => {
+router.post("/admin/support/conversations/:id/messages", requireAdmin, async (req, res): Promise<void> => {
   const { id } = req.params;
   const { content, imageData } = req.body as { content: string; imageData?: string };
   if (!content?.trim() && !imageData) { res.status(400).json({ error: "Message requis" }); return; }
@@ -135,7 +134,7 @@ router.post("/admin/support/conversations/:id/messages", requireAuth, requireAdm
   res.json({ message: msg });
 });
 
-router.put("/admin/support/conversations/:id/status", requireAuth, requireAdmin, async (req, res): Promise<void> => {
+router.put("/admin/support/conversations/:id/status", requireAdmin, async (req, res): Promise<void> => {
   const { id } = req.params;
   const { status, isHumanTakeover, agentNote, priority } = req.body as {
     status?: string;
@@ -154,14 +153,14 @@ router.put("/admin/support/conversations/:id/status", requireAuth, requireAdmin,
   res.json({ success: true });
 });
 
-router.delete("/admin/support/conversations/:id", requireAuth, requireAdmin, async (req, res): Promise<void> => {
+router.delete("/admin/support/conversations/:id", requireAdmin, async (req, res): Promise<void> => {
   const { id } = req.params;
   await db.delete(supportConversationsTable).where(eq(supportConversationsTable.id, id));
   res.json({ success: true });
 });
 
 /* ─── ANALYTICS ───────────────────────────────────────────── */
-router.get("/admin/support/stats", requireAuth, requireAdmin, async (_req, res): Promise<void> => {
+router.get("/admin/support/stats", requireAdmin, async (_req, res): Promise<void> => {
   const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
   const dayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
@@ -191,7 +190,7 @@ router.get("/admin/support/stats", requireAuth, requireAdmin, async (_req, res):
 });
 
 /* ─── KNOWLEDGE BASE ──────────────────────────────────────── */
-router.get("/admin/support/knowledge", requireAuth, requireAdmin, async (req, res): Promise<void> => {
+router.get("/admin/support/knowledge", requireAdmin, async (req, res): Promise<void> => {
   const category = req.query.category as string | undefined;
   const where = category ? eq(aiKnowledgeBaseTable.category, category) : undefined;
   const entries = await db
@@ -202,7 +201,7 @@ router.get("/admin/support/knowledge", requireAuth, requireAdmin, async (req, re
   res.json(entries);
 });
 
-router.post("/admin/support/knowledge", requireAuth, requireAdmin, async (req, res): Promise<void> => {
+router.post("/admin/support/knowledge", requireAdmin, async (req, res): Promise<void> => {
   const { category, title, content, isActive, sortOrder } = req.body as {
     category: string;
     title: string;
@@ -223,7 +222,7 @@ router.post("/admin/support/knowledge", requireAuth, requireAdmin, async (req, r
   res.status(201).json(entry);
 });
 
-router.put("/admin/support/knowledge/:id", requireAuth, requireAdmin, async (req, res): Promise<void> => {
+router.put("/admin/support/knowledge/:id", requireAdmin, async (req, res): Promise<void> => {
   const { id } = req.params;
   const { category, title, content, isActive, sortOrder } = req.body as {
     category?: string;
@@ -246,14 +245,14 @@ router.put("/admin/support/knowledge/:id", requireAuth, requireAdmin, async (req
   res.json(entry);
 });
 
-router.delete("/admin/support/knowledge/:id", requireAuth, requireAdmin, async (req, res): Promise<void> => {
+router.delete("/admin/support/knowledge/:id", requireAdmin, async (req, res): Promise<void> => {
   const { id } = req.params;
   await db.delete(aiKnowledgeBaseTable).where(eq(aiKnowledgeBaseTable.id, id));
   res.json({ success: true });
 });
 
 /* ─── AI CONFIG ───────────────────────────────────────────── */
-router.get("/admin/support/config", requireAuth, requireAdmin, async (_req, res): Promise<void> => {
+router.get("/admin/support/config", requireAdmin, async (_req, res): Promise<void> => {
   const entries = await db.select().from(aiSupportConfigTable).orderBy(asc(aiSupportConfigTable.group), asc(aiSupportConfigTable.key));
 
   if (entries.length === 0) {
@@ -274,7 +273,7 @@ router.get("/admin/support/config", requireAuth, requireAdmin, async (_req, res)
   res.json(full);
 });
 
-router.put("/admin/support/config", requireAuth, requireAdmin, async (req, res): Promise<void> => {
+router.put("/admin/support/config", requireAdmin, async (req, res): Promise<void> => {
   const updates = req.body as Record<string, string>;
   if (!updates || typeof updates !== "object") { res.status(400).json({ error: "Données invalides" }); return; }
 

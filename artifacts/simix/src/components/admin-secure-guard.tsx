@@ -36,7 +36,7 @@ export function AdminSecureGuard({ children }: { children: React.ReactNode }) {
     if (!adminToken.isValid()) {
       adminToken.clear();
       setStatus("denied");
-      setLocation("/");
+      setLocation("/admin/secure-login");
       return;
     }
 
@@ -49,7 +49,7 @@ export function AdminSecureGuard({ children }: { children: React.ReactNode }) {
         adminToken.clear();
         AdminSessionContext._admin = null;
         setStatus("denied");
-        setLocation("/");
+        setLocation("/admin/secure-login");
       }
     });
   }, [setLocation]);
