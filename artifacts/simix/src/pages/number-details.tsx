@@ -46,9 +46,13 @@ function NumberDetailsContent() {
       queryClient.invalidateQueries({ queryKey: getListTransactionsQueryKey() });
       setLocation(`/numbers/${number.id}`);
     } catch (error: any) {
+      const msg: string = error?.message || "Impossible d'obtenir un numéro pour ce service en ce moment.";
+      const isBalance = /solde|insuffisant|fonds/i.test(msg);
       toast({
-        title: "Erreur",
-        description: error?.message || "Fonds insuffisants ou erreur serveur",
+        title: isBalance ? "Solde insuffisant" : "Numéro indisponible",
+        description: isBalance
+          ? `${msg} Rendez-vous dans « Recharger » pour créditer votre compte.`
+          : msg,
         variant: "destructive",
       });
     }

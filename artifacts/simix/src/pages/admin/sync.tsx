@@ -342,7 +342,7 @@ export default function AdminSync() {
       toast({ title: "Sync complet terminé", description: res.message });
       void qc.invalidateQueries({ queryKey: ["admin-sync-status"] });
     },
-    onError: (e) => toast({ title: "Erreur", description: (e as Error).message, variant: "destructive" }),
+    onError: (e) => toast({ title: "Synchronisation complète échouée", description: (e as Error).message, variant: "destructive" }),
   });
 
   const syncServices = useMutation({
@@ -351,7 +351,7 @@ export default function AdminSync() {
       toast({ title: "Services synchronisés", description: res.message });
       void qc.invalidateQueries({ queryKey: ["admin-sync-status"] });
     },
-    onError: (e) => toast({ title: "Erreur", description: (e as Error).message, variant: "destructive" }),
+    onError: (e) => toast({ title: "Synchronisation des services échouée", description: (e as Error).message, variant: "destructive" }),
   });
 
   const syncCountries = useMutation({
@@ -360,7 +360,7 @@ export default function AdminSync() {
       toast({ title: "Pays synchronisés", description: res.message });
       void qc.invalidateQueries({ queryKey: ["admin-sync-status"] });
     },
-    onError: (e) => toast({ title: "Erreur", description: (e as Error).message, variant: "destructive" }),
+    onError: (e) => toast({ title: "Synchronisation des pays échouée", description: (e as Error).message, variant: "destructive" }),
   });
 
   const inProgress = status?.inProgress || syncFull.isPending || syncServices.isPending || syncCountries.isPending;

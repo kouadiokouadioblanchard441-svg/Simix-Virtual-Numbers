@@ -138,8 +138,8 @@ export default function Login() {
       }
     } catch (error: any) {
       toast({
-        title: "Erreur de connexion",
-        description: error?.message || "Identifiants incorrects. Veuillez vérifier vos informations.",
+        title: "Connexion refusée",
+        description: error?.message || "Numéro de téléphone ou mot de passe incorrect. Vérifiez vos informations et réessayez.",
         variant: "destructive",
       });
     }

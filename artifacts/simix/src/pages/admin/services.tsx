@@ -64,7 +64,7 @@ function BulkEnablePanel({ services }: { services: AdminService[] }) {
       toast({ title: "Services activés", description: res.message });
       qc.invalidateQueries({ queryKey: ["admin-services"] });
     },
-    onError: (e) => toast({ title: "Erreur", description: (e as Error).message, variant: "destructive" }),
+    onError: (e) => toast({ title: "Activation en masse impossible", description: (e as Error).message, variant: "destructive" }),
   });
 
   const enableAll = () => {
@@ -197,7 +197,7 @@ function AddServiceForm({ onDone }: { onDone: () => void }) {
       qc.invalidateQueries({ queryKey: ["admin-services"] });
       onDone();
     },
-    onError: (e) => toast({ title: "Erreur", description: (e as Error).message, variant: "destructive" }),
+    onError: (e) => toast({ title: "Service non créé", description: (e as Error).message, variant: "destructive" }),
   });
 
   return (
@@ -321,7 +321,7 @@ function ServiceRow({ service }: { service: AdminService }) {
       logoUrl: logoUrl.trim() || null,
     }),
     onSuccess: () => { toast({ title: "Service mis à jour" }); qc.invalidateQueries({ queryKey: ["admin-services"] }); setEditing(false); },
-    onError: (e) => toast({ title: "Erreur", description: (e as Error).message, variant: "destructive" }),
+    onError: (e) => toast({ title: "Service non mis à jour", description: (e as Error).message, variant: "destructive" }),
   });
 
   const toggleEnabled = useMutation({
@@ -332,7 +332,7 @@ function ServiceRow({ service }: { service: AdminService }) {
   const deleteSvc = useMutation({
     mutationFn: () => adminApi.deleteService(service.id),
     onSuccess: () => { toast({ title: "Service supprimé" }); qc.invalidateQueries({ queryKey: ["admin-services"] }); },
-    onError: (e) => toast({ title: "Erreur", description: (e as Error).message, variant: "destructive" }),
+    onError: (e) => toast({ title: "Service non supprimé", description: (e as Error).message, variant: "destructive" }),
   });
 
   const openEdit = () => {

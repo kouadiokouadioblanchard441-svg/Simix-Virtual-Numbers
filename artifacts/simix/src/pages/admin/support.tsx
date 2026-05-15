@@ -129,7 +129,7 @@ function ConversationDetail({ conv, onClose }: { conv: SupportConversation; onCl
       qc.invalidateQueries({ queryKey: ["support-messages", conv.id] });
       qc.invalidateQueries({ queryKey: ["support-conversations"] });
     },
-    onError: (e: Error) => toast({ title: "Erreur", description: e.message, variant: "destructive" }),
+    onError: (e: Error) => toast({ title: "Réponse non envoyée", description: e.message, variant: "destructive" }),
   });
 
   const statusMutation = useMutation({
@@ -467,7 +467,7 @@ function KnowledgeTab() {
       setForm({ category: "general", title: "", content: "", isActive: true, sortOrder: 0 });
       toast({ title: "Entrée créée ✓" });
     },
-    onError: (e: Error) => toast({ title: "Erreur", description: e.message, variant: "destructive" }),
+    onError: (e: Error) => toast({ title: "Entrée non créée", description: e.message, variant: "destructive" }),
   });
 
   const updateMutation = useMutation({
@@ -477,7 +477,7 @@ function KnowledgeTab() {
       setEditingId(null);
       toast({ title: "Mis à jour ✓" });
     },
-    onError: (e: Error) => toast({ title: "Erreur", description: e.message, variant: "destructive" }),
+    onError: (e: Error) => toast({ title: "Mise à jour impossible", description: e.message, variant: "destructive" }),
   });
 
   const deleteMutation = useMutation({
@@ -707,7 +707,7 @@ function ConfigTab() {
       setIsDirty(false);
       toast({ title: "Configuration sauvegardée ✓", description: "L'IA utilisera ces paramètres immédiatement" });
     },
-    onError: (e: Error) => toast({ title: "Erreur", description: e.message, variant: "destructive" }),
+    onError: (e: Error) => toast({ title: "Configuration non sauvegardée", description: e.message, variant: "destructive" }),
   });
 
   const updateLocal = (key: string, value: string) => {

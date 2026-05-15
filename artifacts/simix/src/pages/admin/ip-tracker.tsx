@@ -39,7 +39,7 @@ function IpTrackerContent() {
       qc.invalidateQueries({ queryKey: ["admin-login-history"] });
       qc.invalidateQueries({ queryKey: ["admin-blacklist"] });
     },
-    onError: (e) => toast({ title: "Erreur", description: (e as Error).message, variant: "destructive" }),
+    onError: (e) => toast({ title: "IP non bloquée", description: (e as Error).message, variant: "destructive" }),
   });
 
   const entries = data?.entries ?? [];

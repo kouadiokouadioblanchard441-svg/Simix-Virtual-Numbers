@@ -186,7 +186,7 @@ function MediaContent() {
       setPending({});
       toast({ title: "Images mises à jour", description: "Les nouvelles images sont actives sur la vitrine." });
     } catch (e) {
-      toast({ title: "Erreur", description: (e as Error).message, variant: "destructive" });
+      toast({ title: "Images non sauvegardées", description: (e as Error).message, variant: "destructive" });
     } finally {
       setSaving(false);
     }

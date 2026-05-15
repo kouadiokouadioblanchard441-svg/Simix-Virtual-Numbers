@@ -499,7 +499,7 @@ function BannersContent() {
         setShowCreate(false);
       }
     } catch (e) {
-      toast({ title: "Erreur", description: (e as Error).message, variant: "destructive" });
+      toast({ title: "Bannière non sauvegardée", description: (e as Error).message, variant: "destructive" });
     } finally { setSaving(false); }
   }
 
@@ -508,7 +508,7 @@ function BannersContent() {
       const updated = await api<Banner>("PATCH", `/admin/banners/${b.id}/toggle`);
       setBanners(bs => bs.map(x => x.id === b.id ? updated : x));
     } catch (e) {
-      toast({ title: "Erreur", description: (e as Error).message, variant: "destructive" });
+      toast({ title: "Activation non modifiée", description: (e as Error).message, variant: "destructive" });
     }
   }
 
@@ -520,7 +520,7 @@ function BannersContent() {
       if (editingId === id) setEditingId(null);
       toast({ title: "Bannière supprimée" });
     } catch (e) {
-      toast({ title: "Erreur", description: (e as Error).message, variant: "destructive" });
+      toast({ title: "Bannière non supprimée", description: (e as Error).message, variant: "destructive" });
     }
   }
 

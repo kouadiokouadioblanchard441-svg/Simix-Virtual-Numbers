@@ -27,7 +27,7 @@ export function useImageUpload(onUploaded: (url: string) => void, authHeader?: R
       onUploaded(serveUrl);
       toast({ title: "Image uploadée ✓", description: "Le logo a été mis à jour." });
     } catch (e) {
-      toast({ title: "Erreur d'upload", description: (e as Error).message, variant: "destructive" });
+      toast({ title: "Image non uploadée", description: (e as Error).message || "L'upload a échoué. Vérifiez votre connexion et réessayez.", variant: "destructive" });
     } finally {
       setUploading(false);
     }

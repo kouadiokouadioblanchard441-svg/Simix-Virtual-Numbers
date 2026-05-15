@@ -93,7 +93,7 @@ function InformationsContent() {
     const file = e.target.files?.[0];
     if (!file) return;
     if (file.size > 8_000_000) {
-      toast({ title: "Image trop grande", description: "Maximum 8MB", variant: "destructive" });
+      toast({ title: "Image trop volumineuse", description: "Votre photo dépasse la taille maximale de 8 Mo. Veuillez en choisir une plus légère.", variant: "destructive" });
       return;
     }
     setUploadingAvatar(true);
@@ -114,7 +114,7 @@ function InformationsContent() {
       toast({ title: "Photo de profil mise à jour ✓" });
     } catch (err) {
       setAvatarPreview(null);
-      toast({ title: "Erreur", description: (err as Error).message, variant: "destructive" });
+      toast({ title: "Photo non mise à jour", description: (err as Error).message || "Une erreur est survenue lors de l'enregistrement de votre photo. Réessayez.", variant: "destructive" });
     } finally {
       setUploadingAvatar(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -123,7 +123,7 @@ function InformationsContent() {
 
   const handleSave = async () => {
     if (!form.fullName.trim()) {
-      toast({ title: "Erreur", description: "Le nom complet est requis.", variant: "destructive" });
+      toast({ title: "Champ obligatoire", description: "Votre nom complet est requis pour enregistrer les modifications.", variant: "destructive" });
       return;
     }
     setSaving(true);
@@ -145,7 +145,7 @@ function InformationsContent() {
       queryClient.invalidateQueries({ queryKey: getGetMeQueryKey() });
       toast({ title: "Profil mis à jour ✓", description: "Vos informations ont été sauvegardées." });
     } catch (err) {
-      toast({ title: "Erreur", description: (err as Error).message, variant: "destructive" });
+      toast({ title: "Modifications non enregistrées", description: (err as Error).message || "Une erreur est survenue. Vérifiez votre connexion et réessayez.", variant: "destructive" });
     } finally {
       setSaving(false);
     }

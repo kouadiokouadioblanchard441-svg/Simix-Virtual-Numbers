@@ -147,7 +147,7 @@ export default function Register() {
       }
     } catch (error: unknown) {
       const msg = error instanceof Error ? error.message : "Une erreur est survenue";
-      toast({ title: "Erreur d'inscription", description: msg, variant: "destructive" });
+      toast({ title: "Inscription impossible", description: msg || "Vérifiez vos informations et réessayez. Si le problème persiste, contactez le support.", variant: "destructive" });
     }
   }
 

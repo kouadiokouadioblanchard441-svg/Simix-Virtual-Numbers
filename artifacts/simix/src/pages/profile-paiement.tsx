@@ -52,7 +52,7 @@ function PaiementContent() {
 
   const handleAdd = () => {
     if (!newPhone.trim() || newPhone.length < 8) {
-      toast({ title: "Erreur", description: "Numéro de téléphone invalide.", variant: "destructive" });
+      toast({ title: "Numéro de téléphone invalide", description: "Le numéro saisi n'est pas reconnu. Vérifiez qu'il est correct et qu'il correspond à l'opérateur choisi.", variant: "destructive" });
       return;
     }
     const op = OPERATORS.find((o) => o.name === newOp)!;

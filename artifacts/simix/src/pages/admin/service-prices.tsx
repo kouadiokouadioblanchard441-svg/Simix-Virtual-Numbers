@@ -189,7 +189,7 @@ function ServicePricesContent() {
       setAdding(false);
       toast({ title: "Prix enregistré" });
     },
-    onError: (e: Error) => toast({ title: "Erreur", description: e.message, variant: "destructive" }),
+    onError: (e: Error) => toast({ title: "Prix non mis à jour", description: e.message, variant: "destructive" }),
   });
 
   const update = useMutation({
@@ -200,7 +200,7 @@ function ServicePricesContent() {
       setEditing(null);
       toast({ title: "Prix mis à jour" });
     },
-    onError: (e: Error) => toast({ title: "Erreur", description: e.message, variant: "destructive" }),
+    onError: (e: Error) => toast({ title: "Prix non mis à jour", description: e.message, variant: "destructive" }),
   });
 
   const remove = useMutation({
@@ -210,7 +210,7 @@ function ServicePricesContent() {
       setConfirmDelete(null);
       toast({ title: "Prix supprimé" });
     },
-    onError: (e: Error) => toast({ title: "Erreur", description: e.message, variant: "destructive" }),
+    onError: (e: Error) => toast({ title: "Prix non mis à jour", description: e.message, variant: "destructive" }),
   });
 
   const toggleEnabled = (row: ServicePrice) =>

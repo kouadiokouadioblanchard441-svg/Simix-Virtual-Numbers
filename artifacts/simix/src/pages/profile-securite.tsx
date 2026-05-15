@@ -34,9 +34,9 @@ function SecuriteContent() {
   const [pwd, setPwd] = useState({ current: "", newPwd: "", confirm: "" });
 
   const handleChangePwd = async () => {
-    if (!pwd.current) { toast({ title: "Erreur", description: "Mot de passe actuel requis.", variant: "destructive" }); return; }
-    if (pwd.newPwd.length < 6) { toast({ title: "Erreur", description: "Le nouveau mot de passe doit contenir au moins 6 caractères.", variant: "destructive" }); return; }
-    if (pwd.newPwd !== pwd.confirm) { toast({ title: "Erreur", description: "Les mots de passe ne correspondent pas.", variant: "destructive" }); return; }
+    if (!pwd.current) { toast({ title: "Mot de passe actuel manquant", description: "Veuillez saisir votre mot de passe actuel pour confirmer le changement.", variant: "destructive" }); return; }
+    if (pwd.newPwd.length < 6) { toast({ title: "Mot de passe trop court", description: "Votre nouveau mot de passe doit contenir au moins 6 caractères.", variant: "destructive" }); return; }
+    if (pwd.newPwd !== pwd.confirm) { toast({ title: "Mots de passe différents", description: "La confirmation ne correspond pas au nouveau mot de passe saisi. Veuillez les vérifier.", variant: "destructive" }); return; }
     setSaving(true);
     await new Promise((r) => setTimeout(r, 1000));
     setSaving(false);

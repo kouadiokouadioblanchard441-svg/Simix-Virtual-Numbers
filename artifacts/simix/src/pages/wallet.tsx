@@ -787,7 +787,7 @@ function DepositContent() {
       queryClient.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() });
       setTimeout(() => setLocation("/dashboard"), 2500);
     } catch (e: unknown) {
-      toast({ variant: "destructive", title: "Erreur", description: (e as Error).message || "Erreur de paiement" });
+      toast({ variant: "destructive", title: "Paiement non abouti", description: (e as Error).message || "Une erreur est survenue lors du paiement. Vérifiez vos informations et réessayez." });
     } finally {
       setConfirming(false);
     }

@@ -243,10 +243,10 @@ function PawaPaySimulator() {
     mutationFn: ({ depositId, status }: { depositId: string; status: "COMPLETED" | "FAILED" }) =>
       adminApi.simulatePawaPayDeposit(depositId, status),
     onSuccess: (data) => {
-      toast({ title: data.success ? "Simulation réussie" : "Erreur", description: data.message, variant: data.success ? "default" : "destructive" });
+      toast({ title: data.success ? "Simulation réussie" : "Simulation échouée", description: data.message, variant: data.success ? "default" : "destructive" });
       qc.invalidateQueries({ queryKey: ["admin-pawapay-pending"] });
     },
-    onError: (e) => toast({ title: "Erreur", description: (e as Error).message, variant: "destructive" }),
+    onError: (e) => toast({ title: "Simulation impossible", description: (e as Error).message, variant: "destructive" }),
   });
 
   return (
@@ -432,10 +432,10 @@ function ClapaySimulator() {
     mutationFn: ({ depositId, status }: { depositId: string; status: "COMPLETED" | "FAILED" }) =>
       adminApi.simulateClapayDeposit(depositId, status),
     onSuccess: (data) => {
-      toast({ title: data.success ? "Simulation réussie" : "Erreur", description: data.message, variant: data.success ? "default" : "destructive" });
+      toast({ title: data.success ? "Simulation réussie" : "Simulation échouée", description: data.message, variant: data.success ? "default" : "destructive" });
       qc.invalidateQueries({ queryKey: ["admin-clapay-pending"] });
     },
-    onError: (e) => toast({ title: "Erreur", description: (e as Error).message, variant: "destructive" }),
+    onError: (e) => toast({ title: "Simulation impossible", description: (e as Error).message, variant: "destructive" }),
   });
 
   return (
@@ -532,7 +532,7 @@ function EmailOtpSection({
     },
     onError: (e) => {
       setTestResult({ success: false, message: (e as Error).message });
-      toast({ title: "Erreur", description: (e as Error).message, variant: "destructive" });
+      toast({ title: "Test d'email impossible", description: (e as Error).message, variant: "destructive" });
     },
   });
 
@@ -692,7 +692,7 @@ function SettingsContent() {
   const save = useMutation({
     mutationFn: () => adminApi.updateSettings(values),
     onSuccess: () => { toast({ title: "Paramètres enregistrés" }); setDirty(false); },
-    onError: (e) => toast({ title: "Erreur", description: (e as Error).message, variant: "destructive" }),
+    onError: (e) => toast({ title: "Paramètres non enregistrés", description: (e as Error).message, variant: "destructive" }),
   });
 
   const set = (key: string, val: string) => {

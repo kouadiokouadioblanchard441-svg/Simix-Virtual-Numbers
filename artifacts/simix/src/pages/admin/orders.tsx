@@ -28,7 +28,7 @@ function OrderRow({ order }: { order: AdminOrder }) {
   const cancel = useMutation({
     mutationFn: () => adminApi.cancelOrder(order.id),
     onSuccess: () => { toast({ title: "Commande annulée et remboursée" }); qc.invalidateQueries({ queryKey: ["admin-orders"] }); },
-    onError: (e) => toast({ title: "Erreur", description: (e as Error).message, variant: "destructive" }),
+    onError: (e) => toast({ title: "Commande non mise à jour", description: (e as Error).message, variant: "destructive" }),
   });
 
   const expiresAt = new Date(order.expiresAt);

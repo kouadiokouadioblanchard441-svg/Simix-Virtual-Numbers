@@ -35,7 +35,7 @@ function useImageUpload(onUploaded: (url: string) => void) {
       onUploaded(serveUrl);
       toast({ title: "Image uploadée", description: "Le logo a été mis à jour." });
     } catch (e) {
-      toast({ title: "Erreur d'upload", description: (e as Error).message, variant: "destructive" });
+      toast({ title: "Image non uploadée", description: (e as Error).message || "L'upload a échoué. Vérifiez votre connexion et réessayez.", variant: "destructive" });
     } finally {
       setUploading(false);
     }
@@ -118,7 +118,7 @@ function MethodRow({ method, onSaved, onDeleted }: { method: AdminPaymentMethod;
       name, description: desc, color, logoUrl: logoUrl || null, recommended, sortOrder: Number(sortOrder),
     }),
     onSuccess: () => { toast({ title: "Opérateur mis à jour" }); qc.invalidateQueries({ queryKey: ["admin-payment-methods"] }); qc.invalidateQueries({ queryKey: ["admin-payment-configs"] }); onSaved(); setEditing(false); },
-    onError: (e) => toast({ title: "Erreur", description: (e as Error).message, variant: "destructive" }),
+    onError: (e) => toast({ title: "Opérateur non mis à jour", description: (e as Error).message, variant: "destructive" }),
   });
 
   const del = useMutation({
@@ -239,7 +239,7 @@ function AddMethodForm({ onDone }: { onDone: () => void }) {
   const create = useMutation({
     mutationFn: () => adminApi.createPaymentMethod({ name, slug, description: desc, color, logoUrl: logoUrl || null, recommended: false }),
     onSuccess: () => { toast({ title: "Opérateur créé" }); qc.invalidateQueries({ queryKey: ["admin-payment-methods"] }); qc.invalidateQueries({ queryKey: ["admin-payment-configs"] }); onDone(); },
-    onError: (e) => toast({ title: "Erreur", description: (e as Error).message, variant: "destructive" }),
+    onError: (e) => toast({ title: "Opérateur non créé", description: (e as Error).message, variant: "destructive" }),
   });
 
   const autoSlug = (v: string) => v.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
@@ -310,7 +310,7 @@ function ConfigCell({
     mutationFn: (newEnabled: boolean) =>
       adminApi.updatePaymentConfig({ countryCode, methodSlug: method.slug, enabled: newEnabled, minDeposit: Number(minDep), feePercent: Number(fee) }),
     onSuccess: () => { toast({ title: "Configuré" }); qc.invalidateQueries({ queryKey: ["admin-payment-configs"] }); setEditing(false); },
-    onError: (e) => toast({ title: "Erreur", description: (e as Error).message, variant: "destructive" }),
+    onError: (e) => toast({ title: "Configuration non sauvegardée", description: (e as Error).message, variant: "destructive" }),
   });
 
   return (
@@ -513,7 +513,7 @@ function DepositCountriesTab() {
       setShowPicker(false);
       setPickerSearch("");
     },
-    onError: (e) => toast({ title: "Erreur", description: (e as Error).message, variant: "destructive" }),
+    onError: (e) => toast({ title: "Pays non ajouté", description: (e as Error).message, variant: "destructive" }),
   });
 
   return (
@@ -657,7 +657,7 @@ function PaymentConfigContent() {
       qc.invalidateQueries({ queryKey: ["admin-payment-configs"] });
       qc.invalidateQueries({ queryKey: ["admin-countries"] });
     },
-    onError: (e) => toast({ title: "Erreur", description: (e as Error).message, variant: "destructive" }),
+    onError: (e) => toast({ title: "Ajout de pays impossible", description: (e as Error).message, variant: "destructive" }),
   });
 
   const TABS: { id: Tab; label: string; count?: number }[] = [

@@ -88,7 +88,7 @@ function ComposeForm() {
       qc.invalidateQueries({ queryKey: ["admin-notifications"] });
       qc.invalidateQueries({ queryKey: ["admin-notif-stats"] });
     },
-    onError: (e: Error) => toast({ title: "Erreur", description: e.message, variant: "destructive" }),
+    onError: (e: Error) => toast({ title: "Notification non envoyée", description: e.message, variant: "destructive" }),
   });
 
   const applyTemplate = (t: typeof QUICK_TEMPLATES[0]) => {

@@ -71,7 +71,7 @@ function NumberAssignedContent({ id }: { id: string }) {
       queryClient.invalidateQueries({ queryKey: getListTransactionsQueryKey() });
       toast({ title: "Prolongé", description: "Le temps a été prolongé de 5 min." });
     } catch (e) {
-      toast({ variant: "destructive", title: "Erreur", description: "Impossible de prolonger" });
+      toast({ variant: "destructive", title: "Prolongation impossible", description: (e as Error).message || "Votre solde est peut-être insuffisant ou le numéro a déjà expiré." });
     }
   }
 

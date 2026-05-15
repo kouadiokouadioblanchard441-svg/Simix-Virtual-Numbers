@@ -238,19 +238,19 @@ export default function AdminCurrencies() {
   const createMut = useMutation({
     mutationFn: (d: Parameters<typeof adminApi.createCurrency>[0]) => adminApi.createCurrency(d),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["admin-currencies"] }); setShowForm(false); toast({ title: "Devise créée" }); },
-    onError: (e: Error) => toast({ variant: "destructive", title: "Erreur", description: e.message }),
+    onError: (e: Error) => toast({ variant: "destructive", title: "Devise non créée", description: e.message }),
   });
 
   const updateMut = useMutation({
     mutationFn: ({ id, data }: { id: number; data: Parameters<typeof adminApi.updateCurrency>[1] }) => adminApi.updateCurrency(id, data),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["admin-currencies"] }); setEditTarget(null); toast({ title: "Devise mise à jour" }); },
-    onError: (e: Error) => toast({ variant: "destructive", title: "Erreur", description: e.message }),
+    onError: (e: Error) => toast({ variant: "destructive", title: "Devise non mise à jour", description: e.message }),
   });
 
   const deleteMut = useMutation({
     mutationFn: (id: number) => adminApi.deleteCurrency(id),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["admin-currencies"] }); toast({ title: "Devise supprimée" }); },
-    onError: (e: Error) => toast({ variant: "destructive", title: "Erreur", description: e.message }),
+    onError: (e: Error) => toast({ variant: "destructive", title: "Devise non supprimée", description: e.message }),
   });
 
   function handleSave(form: typeof EMPTY_FORM) {

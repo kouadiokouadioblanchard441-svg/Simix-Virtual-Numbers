@@ -361,7 +361,7 @@ function ProviderModal({ provider, onClose }: { provider: Partial<ApiProvider> |
       qc.invalidateQueries({ queryKey: ["admin-providers"] });
       onClose();
     },
-    onError: (e) => toast({ title: "Erreur", description: (e as Error).message, variant: "destructive" }),
+    onError: (e) => toast({ title: "Fournisseur non mis à jour", description: (e as Error).message, variant: "destructive" }),
   });
 
   const set = (k: string, v: unknown) => setForm(f => ({ ...f, [k]: v }));

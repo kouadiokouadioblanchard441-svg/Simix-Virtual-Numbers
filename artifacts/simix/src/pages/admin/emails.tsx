@@ -111,7 +111,7 @@ function ComposeForm() {
       qc.invalidateQueries({ queryKey: ["email-campaigns"] });
       qc.invalidateQueries({ queryKey: ["email-stats"] });
     },
-    onError: (e: Error) => toast({ title: "Erreur", description: e.message, variant: "destructive" }),
+    onError: (e: Error) => toast({ title: "Email non sauvegardé", description: e.message, variant: "destructive" }),
   });
 
   const applyTemplate = (t: typeof EMAIL_TEMPLATES[0]) => {

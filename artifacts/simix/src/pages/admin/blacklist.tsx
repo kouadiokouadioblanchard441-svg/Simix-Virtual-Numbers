@@ -29,7 +29,7 @@ function AddBanForm({ onDone }: { onDone: () => void }) {
       qc.invalidateQueries({ queryKey: ["admin-blacklist"] });
       onDone();
     },
-    onError: (e) => toast({ title: "Erreur", description: (e as Error).message, variant: "destructive" }),
+    onError: (e) => toast({ title: "Bannissement impossible", description: (e as Error).message, variant: "destructive" }),
   });
 
   return (
@@ -121,7 +121,7 @@ function BlacklistContent() {
   const remove = useMutation({
     mutationFn: (id: string) => adminApi.removeBlacklist(id),
     onSuccess: () => { toast({ title: "Bannissement levé" }); qc.invalidateQueries({ queryKey: ["admin-blacklist"] }); },
-    onError: (e) => toast({ title: "Erreur", description: (e as Error).message, variant: "destructive" }),
+    onError: (e) => toast({ title: "Levée de bannissement impossible", description: (e as Error).message, variant: "destructive" }),
   });
 
   const filtered = entries.filter(e => {

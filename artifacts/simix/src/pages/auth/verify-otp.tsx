@@ -160,7 +160,7 @@ export default function VerifyOtp() {
       toast({ title: "Code renvoyé", description: `Un nouveau code a été envoyé à ${userEmail}` });
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Erreur lors du renvoi";
-      toast({ title: "Erreur", description: msg, variant: "destructive" });
+      toast({ title: "Code non renvoyé", description: msg || "Une erreur est survenue lors du renvoi du code. Réessayez dans quelques instants.", variant: "destructive" });
     } finally {
       setIsResending(false);
     }
