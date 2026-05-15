@@ -9,6 +9,7 @@ import {
   usersTable,
   virtualNumbersTable,
   apiProvidersTable,
+  servicePricesTable,
 } from "@workspace/db";
 import {
   GetNumberQuoteQueryParams,
@@ -113,7 +114,20 @@ router.get("/numbers/quote", async (req, res): Promise<void> => {
     logger.debug({ err: (e as Error).message }, "[quote] 5sim availability check skipped");
   }
 
-  const price = country.price;
+  /* Check for a service+country price override */
+  const [priceOverride] = await db
+    .select()
+    .from(servicePricesTable)
+    .where(
+      and(
+        eq(servicePricesTable.countryCode, country.code.toLowerCase()),
+        eq(servicePricesTable.serviceSlug, service.slug.toLowerCase()),
+        eq(servicePricesTable.enabled, true),
+      ),
+    )
+    .limit(1);
+
+  const price = priceOverride?.price ?? country.price;
   const validityMinutes = await getNumberValidityMinutes();
   res.json({
     service: {
@@ -215,7 +229,20 @@ router.post("/numbers", requireAuth, async (req, res): Promise<void> => {
     return;
   }
 
-  const price = country.price;
+  /* Check for a service+country price override */
+  const [purchasePriceOverride] = await db
+    .select()
+    .from(servicePricesTable)
+    .where(
+      and(
+        eq(servicePricesTable.countryCode, country.code.toLowerCase()),
+        eq(servicePricesTable.serviceSlug, service.slug.toLowerCase()),
+        eq(servicePricesTable.enabled, true),
+      ),
+    )
+    .limit(1);
+
+  const price = purchasePriceOverride?.price ?? country.price;
   if (user.balance < price) {
     res.status(402).json({ error: "Solde insuffisant. Rechargez votre portefeuille." });
     return;

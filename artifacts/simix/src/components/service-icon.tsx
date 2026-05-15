@@ -39,6 +39,33 @@ type BrandEntry =
   | { type: "google" }
   | { type: "microsoft" };
 
+const LINKEDIN_PATH =
+  "M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z";
+
+const YOUTUBE_PATH =
+  "M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z";
+
+const SPOTIFY_PATH =
+  "M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z";
+
+const NETFLIX_PATH =
+  "M5.398 0v.006c3.028 8.556 5.37 15.175 8.348 23.596 2.344.058 4.85.398 4.854.398-2.8-7.924-5.923-16.747-8.487-24zm8.489 0v9.63L18.6 24c-.966-.99-3.043-2.085-3.043-2.085l-1.612-4.412v-.012l-5.32-13.79c0-.002-.087-.25-.188-.301zm-8.489 4.862L0 24h4.957z";
+
+const AMAZON_PATH =
+  "M.045 23.763c.183.066.38.066.563 0 5.155-2.838 11.01-4.456 17.04-4.725.11-.005.18-.11.17-.22a25.4 25.4 0 0 0-.23-1.698c-.02-.105-.115-.175-.22-.165-5.643.51-11.096 2.134-16.025 4.73-.1.053-.14.178-.095.282l.797 1.796zm7.376-7.394c1.96-.744 4.026-1.248 6.137-1.488.122-.015.212-.12.202-.243l-.13-1.726c-.012-.123-.12-.213-.243-.202-2.27.254-4.492.784-6.603 1.572-.116.044-.176.172-.14.29l.508 1.655c.037.12.163.183.27.142zm8.617-1.842c1.09-.06 2.19-.076 3.29-.048.12.004.222-.089.228-.21l.072-1.72c.006-.12-.088-.222-.21-.228-1.14-.032-2.287-.016-3.427.05-.12.007-.213.11-.207.232l.1 1.722c.006.12.11.21.231.202zm5.557 9.073c.36.24.755.44 1.175.597 1.898.7 4.016.498 5.757-.548.12-.073.16-.23.086-.35l-.848-1.478c-.073-.128-.232-.167-.36-.094-1.194.7-2.65.854-3.973.42a4.5 4.5 0 0 1-.805-.393c-.116-.075-.27-.042-.347.074l-1.048 1.528c-.077.112-.044.266.072.343l.29.901z";
+
+const PAYPAL_PATH =
+  "M7.076 21.337H2.47a.641.641 0 0 1-.633-.74L4.944.901C5.026.382 5.474 0 5.998 0h7.46c2.57 0 4.578.543 5.69 1.81 1.01 1.15 1.304 2.42 1.012 4.287-.023.143-.047.288-.077.437-.983 5.05-4.349 6.797-8.647 6.797h-2.19c-.524 0-.968.382-1.05.9l-1.12 7.106zm14.146-14.42a3.35 3.35 0 0 0-.607-.541c-.625 4.453-3.546 6.487-8.73 6.487h-2.83l-1.037 6.577-.056.337a.641.641 0 0 0 .632.74h4.434c.458 0 .848-.334.92-.786l.038-.2 1.007-6.38.065-.35c.072-.453.462-.786.92-.786h.58c3.752 0 6.693-1.523 7.549-5.93.358-1.84.173-3.375-.885-4.168z";
+
+const UBER_PATH =
+  "M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.445 7.2h-1.8v5.4c0 1.492-1.208 2.7-2.7 2.7h-2.7a2.7 2.7 0 0 1-2.7-2.7V7.2h-1.8v5.4a4.5 4.5 0 0 0 4.5 4.5h2.7a4.5 4.5 0 0 0 4.5-4.5V7.2z";
+
+const AIRBNB_PATH =
+  "M11.993 1.957l.077.16 2.919 6.094 6.58.976c.064.01.124.038.172.082a.372.372 0 0 1 .09.358.37.37 0 0 1-.097.18l-4.762 4.712 1.122 6.654a.374.374 0 0 1-.148.364.367.367 0 0 1-.387.028L12 18.345l-5.56 2.97a.367.367 0 0 1-.387-.028.374.374 0 0 1-.148-.364l1.122-6.654-4.762-4.712a.37.37 0 0 1-.097-.18.372.372 0 0 1 .09-.358.364.364 0 0 1 .172-.082l6.58-.976 2.919-6.094a.372.372 0 0 1 .064-.11z";
+
+const BINANCE_PATH =
+  "M16.624 13.9202l2.7175 2.7154-7.353 7.353-7.353-7.352 2.7175-2.7164 4.6355 4.6595 4.6357-4.6595zm4.6366-4.6366L24 12l-2.7154 2.7164L18.5682 12l2.6924-2.7164zm-14.措置 0L9.974 12l-2.7164 2.7164L4.5432 12l2.7154-2.7164zM12.0003 0l7.353 7.353-2.7154 2.7164-4.6366-4.6595-4.636 4.6595L4.6473 7.353 12.0003 0z";
+
 const brands: Record<string, BrandEntry> = {
   whatsapp:  { type: "mono", path: WHATSAPP_PATH,  bg: "#25D366", fg: "#fff" },
   telegram:  { type: "mono", path: TELEGRAM_PATH,  bg: "#229ED9", fg: "#fff" },
@@ -53,23 +80,41 @@ const brands: Record<string, BrandEntry> = {
   apple:     { type: "mono", path: APPLE_PATH,     bg: "#000",    fg: "#fff" },
   google:    { type: "google" },
   microsoft: { type: "microsoft" },
+  linkedin:  { type: "mono", path: LINKEDIN_PATH,  bg: "#0A66C2", fg: "#fff" },
+  youtube:   { type: "mono", path: YOUTUBE_PATH,   bg: "#FF0000", fg: "#fff" },
+  spotify:   { type: "mono", path: SPOTIFY_PATH,   bg: "#1DB954", fg: "#fff" },
+  netflix:   { type: "mono", path: NETFLIX_PATH,   bg: "#E50914", fg: "#fff" },
+  amazon:    { type: "mono", path: AMAZON_PATH,    bg: "#FF9900", fg: "#fff" },
+  paypal:    { type: "mono", path: PAYPAL_PATH,    bg: "#00457C", fg: "#fff" },
+  uber:      { type: "mono", path: UBER_PATH,      bg: "#000",    fg: "#fff" },
+  airbnb:    { type: "mono", path: AIRBNB_PATH,    bg: "#FF5A5F", fg: "#fff" },
+  binance:   { type: "mono", path: BINANCE_PATH,   bg: "#F3BA2F", fg: "#fff" },
 };
 
 function keyFor(name: string, slug?: string) {
   const raw = (slug || name).toLowerCase().replace(/\s*\/\s*/g, "_").replace(/\s+/g, "_");
   if (brands[raw]) return raw;
-  if (raw.includes("whatsapp"))                   return "whatsapp";
-  if (raw.includes("telegram"))                   return "telegram";
-  if (raw.includes("facebook"))                   return "facebook";
-  if (raw.includes("instagram"))                  return "instagram";
-  if (raw.includes("twitter") || raw === "x")     return "x";
-  if (raw.includes("tiktok"))                     return "tiktok";
-  if (raw.includes("snap"))                       return "snapchat";
-  if (raw.includes("discord"))                    return "discord";
-  if (raw.includes("signal"))                     return "signal";
-  if (raw.includes("apple"))                      return "apple";
-  if (raw.includes("google"))                     return "google";
-  if (raw.includes("microsoft"))                  return "microsoft";
+  if (raw.includes("whatsapp"))                          return "whatsapp";
+  if (raw.includes("telegram"))                          return "telegram";
+  if (raw.includes("facebook"))                          return "facebook";
+  if (raw.includes("instagram"))                         return "instagram";
+  if (raw.includes("twitter") || raw === "x")            return "x";
+  if (raw.includes("tiktok"))                            return "tiktok";
+  if (raw.includes("snap"))                              return "snapchat";
+  if (raw.includes("discord"))                           return "discord";
+  if (raw.includes("signal"))                            return "signal";
+  if (raw.includes("apple"))                             return "apple";
+  if (raw.includes("google"))                            return "google";
+  if (raw.includes("microsoft"))                         return "microsoft";
+  if (raw.includes("linkedin"))                          return "linkedin";
+  if (raw.includes("youtube"))                           return "youtube";
+  if (raw.includes("spotify"))                           return "spotify";
+  if (raw.includes("netflix"))                           return "netflix";
+  if (raw.includes("amazon") && !raw.includes("prime"))  return "amazon";
+  if (raw.includes("paypal"))                            return "paypal";
+  if (raw.includes("uber"))                              return "uber";
+  if (raw.includes("airbnb"))                            return "airbnb";
+  if (raw.includes("binance"))                           return "binance";
   return "";
 }
 
@@ -140,17 +185,25 @@ function MicrosoftIcon({ size, radius }: { size: number; radius: number }) {
   );
 }
 
+/* ─── Resolve logo URL — convert dead clearbit URLs to Google favicon service ─── */
+function resolveLogoUrl(url: string): string {
+  const m = url.match(/logo\.clearbit\.com\/(.+)/);
+  if (m) return `https://www.google.com/s2/favicons?domain=${m[1]!}&sz=128`;
+  return url;
+}
+
 /* ─── Custom logo image (URL-based) ─── */
 function CustomLogoIcon({ logoUrl, name, size, radius }: { logoUrl: string; name: string; size: number; radius: number }) {
+  const src = resolveLogoUrl(logoUrl);
   return (
     <div
       className="flex items-center justify-center shrink-0 shadow-sm overflow-hidden bg-zinc-900"
       style={{ width: size, height: size, borderRadius: radius }}
     >
       <img
-        src={logoUrl}
+        src={src}
         alt={name}
-        className="w-full h-full object-contain"
+        className="w-full h-full object-contain p-1"
         onError={(e) => {
           const el = e.currentTarget as HTMLImageElement;
           el.style.display = "none";
