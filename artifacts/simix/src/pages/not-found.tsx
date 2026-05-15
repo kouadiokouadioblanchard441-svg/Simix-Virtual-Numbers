@@ -28,7 +28,7 @@ export default function NotFound() {
             Retour à l'accueil
           </button>
           <button
-            onClick={() => window.history.back()}
+            onClick={() => { if (window.history.length > 1) window.history.back(); else setLocation("/dashboard"); }}
             className="flex items-center justify-center gap-2 w-full h-12 rounded-2xl bg-card border border-card-border text-foreground text-sm font-medium hover:bg-secondary transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />

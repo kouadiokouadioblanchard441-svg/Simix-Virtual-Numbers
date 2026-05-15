@@ -5,7 +5,7 @@ import {
   useListPopularCountries, getListPopularCountriesQueryKey,
   useListServices, getListServicesQueryKey,
 } from "@workspace/api-client-react";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { Link, useLocation } from "wouter";
 import { Search, ChevronLeft, ChevronRight, Edit2, Zap, Globe, ShieldCheck } from "lucide-react";
 import { motion } from "framer-motion";
@@ -83,6 +83,10 @@ export default function Countries() {
 
 function CountriesContent() {
   const [, setLocation] = useLocation();
+  const goBack = useCallback(() => {
+    if (window.history.length > 1) window.history.back();
+    else setLocation("/services");
+  }, [setLocation]);
   const searchParams = new URLSearchParams(window.location.search);
   const serviceId = searchParams.get("serviceId") || undefined;
 
@@ -107,7 +111,7 @@ function CountriesContent() {
         <div className="sticky top-0 z-20 bg-background pt-5 pb-3 px-5 border-b border-card-border/40">
           <div className="flex items-center justify-between mb-4">
             <button
-              onClick={() => window.history.back()}
+              onClick={goBack}
               className="w-9 h-9 rounded-xl bg-card border border-card-border flex items-center justify-center text-foreground hover:bg-secondary transition-colors"
             >
               <ChevronLeft className="w-5 h-5" />
@@ -171,7 +175,7 @@ function CountriesContent() {
         {/* Top bar */}
         <div className="flex items-center justify-between mb-4">
           <button
-            onClick={() => window.history.back()}
+            onClick={goBack}
             className="w-9 h-9 rounded-xl bg-card border border-card-border flex items-center justify-center text-foreground hover:bg-secondary transition-colors"
           >
             <ChevronLeft className="w-5 h-5" />

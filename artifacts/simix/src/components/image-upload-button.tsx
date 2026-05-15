@@ -2,6 +2,12 @@ import { useRef, useState, useCallback } from "react";
 import { Upload, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
+/**
+ * Two-phase upload strategy:
+ * 1. Try Replit GCS presigned URL (works on Replit hosting).
+ * 2. If the server returns 503 (sidecar unavailable, e.g. on Plesk/VPS),
+ *    fall back to a direct raw binary upload via /api/storage/uploads/direct.
+ */
 export function useImageUpload(onUploaded: (url: string) => void, authHeader?: Record<string, string>) {
   const [uploading, setUploading] = useState(false);
   const { toast } = useToast();
@@ -13,19 +19,44 @@ export function useImageUpload(onUploaded: (url: string) => void, authHeader?: R
     }
     setUploading(true);
     try {
+      /* ── Phase 1: try GCS presigned URL ── */
       const metaRes = await fetch("/api/storage/uploads/request-url", {
         method: "POST",
         headers: { "Content-Type": "application/json", ...(authHeader ?? {}) },
         credentials: "include",
         body: JSON.stringify({ name: file.name, size: file.size, contentType: file.type }),
       });
-      if (!metaRes.ok) throw new Error("Impossible d'obtenir l'URL d'upload");
-      const { uploadURL, objectPath } = await metaRes.json() as { uploadURL: string; objectPath: string };
-      const putRes = await fetch(uploadURL, { method: "PUT", body: file, headers: { "Content-Type": file.type } });
-      if (!putRes.ok) throw new Error("Upload échoué");
-      const serveUrl = `/api/storage${objectPath}`;
-      onUploaded(serveUrl);
-      toast({ title: "Image uploadée ✓", description: "Le logo a été mis à jour." });
+
+      if (metaRes.ok) {
+        /* GCS path: upload file directly to signed URL */
+        const { uploadURL, objectPath } = await metaRes.json() as { uploadURL: string; objectPath: string };
+        const putRes = await fetch(uploadURL, { method: "PUT", body: file, headers: { "Content-Type": file.type } });
+        if (!putRes.ok) throw new Error("Upload GCS échoué");
+        const serveUrl = `/api/storage${objectPath}`;
+        onUploaded(serveUrl);
+        toast({ title: "Image uploadée ✓", description: "Le logo a été mis à jour." });
+        return;
+      }
+
+      /* ── Phase 2: direct filesystem upload (Plesk / VPS fallback) ── */
+      if (metaRes.status === 503) {
+        const directRes = await fetch("/api/storage/uploads/direct", {
+          method: "POST",
+          headers: { "Content-Type": file.type, ...(authHeader ?? {}) },
+          credentials: "include",
+          body: file,
+        });
+        if (!directRes.ok) {
+          const err = await directRes.json().catch(() => ({})) as { error?: string };
+          throw new Error(err.error ?? "Upload direct échoué");
+        }
+        const { url } = await directRes.json() as { url: string };
+        onUploaded(url);
+        toast({ title: "Image uploadée ✓", description: "Le logo a été mis à jour." });
+        return;
+      }
+
+      throw new Error("Impossible d'obtenir l'URL d'upload");
     } catch (e) {
       toast({ title: "Image non uploadée", description: (e as Error).message || "L'upload a échoué. Vérifiez votre connexion et réessayez.", variant: "destructive" });
     } finally {

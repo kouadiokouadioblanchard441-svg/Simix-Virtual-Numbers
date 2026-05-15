@@ -20,6 +20,10 @@ export default function Services() {
 
 function ServicesContent() {
   const [, setLocation] = useLocation();
+  const goBack = (() => {
+    if (window.history.length > 1) window.history.back();
+    else setLocation("/dashboard");
+  });
   const searchParams = new URLSearchParams(window.location.search);
   const countryId = searchParams.get("countryId") || undefined;
 
@@ -57,7 +61,7 @@ function ServicesContent() {
       <div className="pt-6 pb-4 px-5 bg-background sticky top-0 z-20">
         <div className="flex items-center justify-between mb-6">
           <button
-            onClick={() => window.history.back()}
+            onClick={goBack}
             className="w-10 h-10 rounded-full flex items-center justify-center text-foreground hover:bg-secondary transition-colors -ml-2"
           >
             <ChevronLeft className="w-6 h-6" />

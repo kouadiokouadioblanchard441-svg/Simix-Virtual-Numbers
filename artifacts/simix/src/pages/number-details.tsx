@@ -2,6 +2,7 @@ import { AppLayout } from "@/components/layout/app-layout";
 import { AuthGuard } from "@/components/auth-guard";
 import { useGetNumberQuote, getGetNumberQuoteQueryKey, useRequestNumber, getListActiveNumbersQueryKey, getGetDashboardSummaryQueryKey, getGetWalletQueryKey, getListTransactionsQueryKey } from "@workspace/api-client-react";
 import { useLocation } from "wouter";
+import { useGoBack } from "@/hooks/use-go-back";
 import { ChevronLeft, Info, CheckCircle2, Shield, Edit2, Phone, Clock, Lock } from "lucide-react";
 import { Link } from "wouter";
 import { formatFCFA } from "@/lib/format";
@@ -22,6 +23,7 @@ export default function NumberDetails() {
 
 function NumberDetailsContent() {
   const [, setLocation] = useLocation();
+  const goBack = useGoBack("/services");
   const searchParams = new URLSearchParams(window.location.search);
   const serviceId = searchParams.get('serviceId') || "";
   const countryId = searchParams.get('countryId') || "";
@@ -90,7 +92,7 @@ function NumberDetailsContent() {
           Ce service n'est pas disponible pour ce pays actuellement. Essayez un autre pays ou service.
         </p>
         <div className="flex gap-3 mt-2">
-          <button onClick={() => window.history.back()} className="px-5 py-3 border border-card-border text-foreground rounded-2xl text-sm font-bold">
+          <button onClick={goBack} className="px-5 py-3 border border-card-border text-foreground rounded-2xl text-sm font-bold">
             ← Retour
           </button>
           <button onClick={() => setLocation("/services")} className="px-5 py-3 bg-primary text-white rounded-2xl text-sm font-bold">
@@ -105,7 +107,7 @@ function NumberDetailsContent() {
     <div className="flex-1 w-full bg-background flex flex-col h-full relative">
       <div className="pt-6 pb-4 px-5 flex items-center justify-between sticky top-0 z-20 bg-background/90 backdrop-blur-xl border-b border-card-border">
         <div className="flex items-center gap-4">
-          <button onClick={() => window.history.back()} className="w-10 h-10 rounded-full flex items-center justify-center text-foreground hover:bg-secondary transition-colors -ml-2">
+          <button onClick={goBack} className="w-10 h-10 rounded-full flex items-center justify-center text-foreground hover:bg-secondary transition-colors -ml-2">
             <ChevronLeft className="w-6 h-6" />
           </button>
           <h1 className="text-lg font-bold text-foreground">Détails de votre numéro</h1>

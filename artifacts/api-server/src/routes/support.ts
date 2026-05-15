@@ -432,7 +432,7 @@ router.post("/support/chat", async (req, res): Promise<void> => {
     const cfgMap: Record<string, string> = {};
     for (const r of cfgRows) cfgMap[r.key] = r.value;
 
-    const aiProvider = cfgMap["ai_provider"] ?? "openai";
+    const aiProvider = cfgMap["ai_provider"] ?? "gemini";
     const maxTokens = parseInt(cfgMap["ai_max_tokens"] ?? "1200", 10);
 
     if (aiProvider === "gemini") {
@@ -621,21 +621,68 @@ router.post("/support/chat", async (req, res): Promise<void> => {
       }
 
     } else {
-      /* ── OpenAI streaming (default) ── */
-      const stream = await openai.chat.completions.create({
-        model: "gpt-4.1",
-        max_completion_tokens: isNaN(maxTokens) ? 1200 : maxTokens,
-        messages: chatMessages as Parameters<typeof openai.chat.completions.create>[0]["messages"],
-        stream: true,
+      /* ── OpenAI streaming ── */
+      const openaiApiKey = cfgMap["openai_api_key"] ?? process.env.OPENAI_API_KEY ?? "";
+      const openaiModel = cfgMap["openai_model"] ?? "gpt-4o";
+
+      if (!openaiApiKey) {
+        res.write(`data: ${JSON.stringify({ error: "Clé API OpenAI non configurée. Veuillez la configurer dans le panneau administrateur." })}\n\n`);
+        res.end();
+        return;
+      }
+
+      const flatMessages = chatMessages.map(m => ({
+        role: m.role,
+        content: typeof m.content === "string"
+          ? m.content
+          : (m.content as Array<{ type: string; text?: string }>).find(p => p.type === "text")?.text ?? "",
+      }));
+
+      const oaiRes = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${openaiApiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: openaiModel,
+          messages: flatMessages,
+          max_tokens: isNaN(maxTokens) ? 1200 : maxTokens,
+          stream: true,
+        }),
       });
 
-      for await (const chunk of stream) {
-        const content = chunk.choices[0]?.delta?.content;
-        if (content) {
-          fullResponse += content;
-          res.write(`data: ${JSON.stringify({ content })}\n\n`);
+      if (!oaiRes.ok) {
+        const errText = await oaiRes.text();
+        throw new Error(`OpenAI API error ${oaiRes.status}: ${errText}`);
+      }
+
+      const oaiReader = oaiRes.body!.getReader();
+      const oaiDecoder = new TextDecoder();
+      let oaiBuffer = "";
+
+      while (true) {
+        const { done, value } = await oaiReader.read();
+        if (done) break;
+        oaiBuffer += oaiDecoder.decode(value, { stream: true });
+        const lines = oaiBuffer.split("\n");
+        oaiBuffer = lines.pop() ?? "";
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed.startsWith("data: ")) continue;
+          const data = trimmed.slice(6);
+          if (data === "[DONE]") continue;
+          try {
+            const parsed = JSON.parse(data);
+            const content = parsed.choices?.[0]?.delta?.content;
+            if (content) {
+              fullResponse += content;
+              res.write(`data: ${JSON.stringify({ content })}\n\n`);
+            }
+          } catch { /* ignore malformed SSE chunks */ }
         }
       }
+
     }
 
     await db.insert(supportMessagesTable).values({

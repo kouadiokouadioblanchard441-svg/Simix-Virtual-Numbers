@@ -1,6 +1,10 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import { Readable } from "stream";
 import { z } from "zod";
+import { randomUUID } from "crypto";
+import path from "path";
+import fs from "fs";
+import express from "express";
 import { ObjectStorageService, ObjectNotFoundError } from "../lib/objectStorage";
 
 const RequestUploadUrlBody = z.object({
@@ -17,12 +21,15 @@ const RequestUploadUrlResponse = z.object({
 const router: IRouter = Router();
 const objectStorageService = new ObjectStorageService();
 
+/* ── Uploads directory for direct (non-GCS) uploads ── */
+const UPLOAD_DIR = path.resolve(process.env.UPLOAD_DIR ?? "uploads");
+fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+
 /**
  * POST /storage/uploads/request-url
  *
- * Request a presigned URL for file upload.
- * The client sends JSON metadata (name, size, contentType) — NOT the file.
- * Then uploads the file directly to the returned presigned URL.
+ * Request a presigned URL for file upload via Replit object storage (GCS).
+ * Falls back gracefully — if the sidecar is unavailable use /uploads/direct.
  */
 router.post("/storage/uploads/request-url", async (req: Request, res: Response) => {
   const parsed = RequestUploadUrlBody.safeParse(req.body);
@@ -45,17 +52,84 @@ router.post("/storage/uploads/request-url", async (req: Request, res: Response) 
       }),
     );
   } catch (error) {
-    req.log.error({ err: error }, "Error generating upload URL");
-    res.status(500).json({ error: "Failed to generate upload URL" });
+    req.log.warn({ err: error }, "GCS upload URL unavailable — client should fall back to /uploads/direct");
+    res.status(503).json({ error: "GCS unavailable", fallback: "/api/storage/uploads/direct" });
   }
+});
+
+/**
+ * POST /storage/uploads/direct
+ *
+ * Filesystem-based direct upload for environments where the Replit GCS
+ * sidecar is not available (Plesk, VPS, Docker, etc.).
+ *
+ * Client must send the raw image bytes with the correct Content-Type header:
+ *   fetch('/api/storage/uploads/direct', { method: 'POST', body: file, headers: { 'Content-Type': file.type } })
+ *
+ * Returns { url: string, objectPath: string } — same shape as the GCS flow.
+ */
+router.post(
+  "/storage/uploads/direct",
+  express.raw({ type: "image/*", limit: "5mb" }),
+  (req: Request, res: Response) => {
+    const contentType = req.headers["content-type"] ?? "application/octet-stream";
+
+    if (!contentType.startsWith("image/")) {
+      res.status(400).json({ error: "Seules les images sont acceptées (image/*)" });
+      return;
+    }
+
+    const body = req.body as Buffer;
+    if (!Buffer.isBuffer(body) || body.length === 0) {
+      res.status(400).json({ error: "Corps de la requête vide ou invalide" });
+      return;
+    }
+
+    const ext = contentType.split("/")[1]?.replace("jpeg", "jpg").replace("+xml", "") ?? "png";
+    const filename = `${randomUUID()}.${ext}`;
+    const filepath = path.join(UPLOAD_DIR, filename);
+
+    try {
+      fs.writeFileSync(filepath, body);
+      const url = `/api/storage/uploads/files/${filename}`;
+      res.json({ url, objectPath: url });
+    } catch (err) {
+      req.log.error({ err }, "Direct upload: failed to write file");
+      res.status(500).json({ error: "Échec de l'enregistrement du fichier" });
+    }
+  },
+);
+
+/**
+ * GET /storage/uploads/files/:filename
+ *
+ * Serve files uploaded via /uploads/direct.
+ */
+router.get("/storage/uploads/files/:filename", (req: Request, res: Response) => {
+  const { filename } = req.params;
+
+  if (!filename || filename.includes("..") || filename.includes("/") || filename.includes("\\")) {
+    res.status(400).end();
+    return;
+  }
+
+  const filepath = path.join(UPLOAD_DIR, filename);
+  if (!fs.existsSync(filepath)) {
+    res.status(404).json({ error: "Fichier introuvable" });
+    return;
+  }
+
+  const ext = path.extname(filename).slice(1).replace("jpg", "jpeg");
+  const contentType = ext === "svg" ? "image/svg+xml" : `image/${ext || "png"}`;
+  res.setHeader("Content-Type", contentType);
+  res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+  res.sendFile(filepath);
 });
 
 /**
  * GET /storage/public-objects/*
  *
  * Serve public assets from PUBLIC_OBJECT_SEARCH_PATHS.
- * These are unconditionally public — no authentication or ACL checks.
- * IMPORTANT: Always provide this endpoint when object storage is set up.
  */
 router.get("/storage/public-objects/*filePath", async (req: Request, res: Response) => {
   try {
@@ -87,9 +161,7 @@ router.get("/storage/public-objects/*filePath", async (req: Request, res: Respon
 /**
  * GET /storage/objects/*
  *
- * Serve object entities from PRIVATE_OBJECT_DIR.
- * These are served from a separate path from /public-objects and can optionally
- * be protected with authentication or ACL checks based on the use case.
+ * Serve private object entities.
  */
 router.get("/storage/objects/*path", async (req: Request, res: Response) => {
   try {
@@ -97,21 +169,6 @@ router.get("/storage/objects/*path", async (req: Request, res: Response) => {
     const wildcardPath = Array.isArray(raw) ? raw.join("/") : raw;
     const objectPath = `/objects/${wildcardPath}`;
     const objectFile = await objectStorageService.getObjectEntityFile(objectPath);
-
-    // --- Protected route example (uncomment when using replit-auth) ---
-    // if (!req.isAuthenticated()) {
-    //   res.status(401).json({ error: "Unauthorized" });
-    //   return;
-    // }
-    // const canAccess = await objectStorageService.canAccessObjectEntity({
-    //   userId: req.user.id,
-    //   objectFile,
-    //   requestedPermission: ObjectPermission.READ,
-    // });
-    // if (!canAccess) {
-    //   res.status(403).json({ error: "Forbidden" });
-    //   return;
-    // }
 
     const response = await objectStorageService.downloadObject(objectFile);
 
