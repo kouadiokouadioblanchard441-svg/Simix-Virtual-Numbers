@@ -275,6 +275,8 @@ export const adminApi = {
   getServicePrices: () => req<ServicePrice[]>("GET", "/admin/service-prices"),
   upsertServicePrice: (data: { countryCode: string; serviceSlug: string; price: number; enabled?: boolean }) =>
     req<ServicePrice>("POST", "/admin/service-prices", data),
+  bulkUpsertServicePrices: (prices: Array<{ countryCode: string; serviceSlug: string; price: number; enabled: boolean }>) =>
+    req<{ updated: number; prices: ServicePrice[] }>("POST", "/admin/service-prices/bulk", { prices }),
   updateServicePrice: (id: string, data: { price?: number; enabled?: boolean }) =>
     req<ServicePrice>("PUT", `/admin/service-prices/${id}`, data),
   deleteServicePrice: (id: string) => req("DELETE", `/admin/service-prices/${id}`),

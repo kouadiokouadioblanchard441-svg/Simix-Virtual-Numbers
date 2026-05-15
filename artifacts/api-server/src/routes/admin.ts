@@ -1866,6 +1866,43 @@ router.get("/admin/sync/logs", requireAdmin, async (_req, res): Promise<void> =>
 
 /* ─────────────────── SERVICE PRICES (per country) ─────────────────── */
 
+/**
+ * POST /admin/service-prices/bulk
+ * Upsert multiple service+country prices in one request.
+ * Accepts { prices: [{ countryCode, serviceSlug, price, enabled }] }
+ */
+router.post("/admin/service-prices/bulk", requireAdmin, async (req, res): Promise<void> => {
+  const { prices: items } = req.body as {
+    prices: Array<{ countryCode: string; serviceSlug: string; price: number; enabled: boolean }>;
+  };
+  if (!Array.isArray(items) || items.length === 0) {
+    res.status(400).json({ error: "prices doit être un tableau non vide" }); return;
+  }
+
+  const results = [];
+  for (const item of items) {
+    const { countryCode, serviceSlug, price, enabled } = item;
+    if (!countryCode || !serviceSlug || price == null || Number(price) <= 0) continue;
+    const [row] = await db
+      .insert(servicePricesTable)
+      .values({
+        countryCode: countryCode.toLowerCase(),
+        serviceSlug: serviceSlug.toLowerCase(),
+        price: Number(price),
+        enabled: enabled ?? true,
+      })
+      .onConflictDoUpdate({
+        target: [servicePricesTable.countryCode, servicePricesTable.serviceSlug],
+        set: { price: Number(price), enabled: enabled ?? true, updatedAt: new Date() },
+      })
+      .returning();
+    if (row) results.push(row);
+  }
+
+  await logAdminAction(adminId(req), "service_prices_bulk_upsert", req.ip, "service_price", undefined, { count: results.length });
+  res.json({ updated: results.length, prices: results });
+});
+
 router.get("/admin/service-prices", requireAdmin, async (_req, res): Promise<void> => {
   const rows = await db.select().from(servicePricesTable).orderBy(servicePricesTable.countryCode, servicePricesTable.serviceSlug);
   res.json(rows);
