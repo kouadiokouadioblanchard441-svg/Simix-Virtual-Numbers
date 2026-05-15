@@ -1,0 +1,152 @@
+MISSION : REVÉRIFIER ET AUDITER ENTIÈREMENT L’INTÉGRATION CLAPAY
+
+Je vais ajouter la documentation officielle Clapay en dessous de ce message.
+
+Je veux que tu analyses entièrement mon intégration actuelle de Clapay et que tu vérifies que tout est correctement implémenté dans mon projet de plateforme de vente de numéros virtuels.
+
+---
+
+OBJECTIF
+
+Faire un audit complet de l’intégration Clapay existante et corriger tous les problèmes potentiels.
+
+Je veux une intégration :
+
+- stable
+- sécurisée
+- optimisée
+- professionnelle
+- prête pour la production
+
+---
+
+POINTS À VÉRIFIER
+
+1. AUTHENTIFICATION API
+
+- Vérifier les API Keys
+- Vérifier les headers
+- Vérifier les tokens
+- Vérifier les environnements sandbox/live
+- Vérifier les signatures si nécessaires
+
+2. REQUÊTES DE PAIEMENT
+
+- Vérifier la création des paiements
+- Vérifier les paramètres envoyés
+- Vérifier les montants
+- Vérifier les devises
+- Vérifier les numéros mobiles
+- Vérifier les opérateurs
+- Vérifier les pays
+- Vérifier les validations backend
+
+3. WEBHOOKS / CALLBACKS
+
+- Vérifier que les webhooks Clapay fonctionnent correctement
+- Vérifier la réception des callbacks
+- Vérifier la mise à jour automatique des statuts
+- Vérifier la sécurité des webhooks
+- Vérifier les signatures des callbacks
+- Vérifier les erreurs de synchronisation
+
+4. STATUTS DES TRANSACTIONS
+   Vérifier la gestion correcte des statuts :
+
+- pending
+- success
+- failed
+- cancelled
+- timeout
+- expired
+
+Vérifier que les statuts sont correctement enregistrés en base de données.
+
+5. GESTION DES ERREURS
+
+- Vérifier les erreurs API
+- Vérifier les timeouts
+- Vérifier les retries
+- Vérifier les erreurs réseau
+- Vérifier les erreurs utilisateur
+- Ajouter des messages propres et clairs
+
+6. LOGS
+   Créer ou améliorer les logs :
+
+- requêtes envoyées
+- réponses API
+- erreurs
+- temps de réponse
+- callbacks reçus
+- statut final
+
+7. SÉCURITÉ
+
+- Vérifier protection CSRF
+- Vérifier validation des données
+- Vérifier protection contre injections
+- Vérifier protection des clés API
+- Vérifier stockage sécurisé des secrets
+
+8. OPTIMISATION
+   Le projet est hébergé sur Plesk.
+
+Optimiser :
+
+- performances
+- requêtes SQL
+- consommation mémoire
+- vitesse des requêtes API
+- cache si nécessaire
+
+9. COMPATIBILITÉ AVEC LE NOUVEAU SYSTÈME DE GESTION APIs
+   Vérifier que Clapay fonctionne parfaitement avec le nouveau système de gestion :
+
+- pays
+- opérateurs
+- mapping APIs
+- sélection automatique des APIs
+- fallback APIs
+
+---
+
+IMPORTANT
+
+NE PAS casser le système existant.
+
+Faire les modifications proprement.
+
+Conserver :
+
+- les clés APIs existantes
+- les configurations existantes
+- les données utilisateurs
+- les historiques de paiements
+
+---
+
+JE VEUX AUSSI
+
+- Détection automatique des bugs
+- Correction des bugs potentiels
+- Vérification du code backend et frontend
+- Vérification des routes API
+- Vérification des services de paiement
+- Vérification des webhooks
+- Vérification de la logique métier
+
+---
+
+RÉSULTAT ATTENDU
+
+À la fin :
+
+- Clapay doit fonctionner parfaitement
+- les paiements doivent être fiables
+- les callbacks doivent être stables
+- les logs doivent être complets
+- les erreurs doivent être bien gérées
+- le système doit être prêt pour des milliers d’utilisateurs
+
+Analyse également la documentation officielle que je vais ajouter ci-dessous et compare-la avec l’implémentation actuelle afin de détecter toute incohérence ou fonctionnalité manquante.

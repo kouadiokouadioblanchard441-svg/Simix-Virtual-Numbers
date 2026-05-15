@@ -446,258 +446,307 @@ function OperatorsTab() {
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   ROUTING TAB
+   ROUTING TAB — Country → Operator → Gateway matrix view
    ═══════════════════════════════════════════════════════════════ */
+interface GwBasic { id: string; name: string; slug: string; active: boolean; logoUrl: string | null; testMode: boolean; }
+interface RouteBasic {
+  id: string; countryCode: string; operatorSlug: string; transactionType: string;
+  primaryGatewayId: string | null; secondaryGatewayId: string | null; tertiaryGatewayId: string | null;
+  active: boolean; maintenanceMode: boolean; maintenanceMessage: string | null;
+}
+interface CountryEntry { code: string; name: string; flag: string; operatorSlugs: string[]; }
+type RouteKey = string;
+
 function RoutingTab() {
-  const [routes, setRoutes] = useState<PayRoute[]>([]);
-  const [gateways, setGateways] = useState<{ id: string; name: string; slug: string; active: boolean }[]>([]);
-  const [operators, setOperators] = useState<{ id: string; name: string; slug: string }[]>([]);
+  const [countries, setCountries] = useState<CountryEntry[]>([]);
+  const [operatorMap, setOperatorMap] = useState<Record<string, Operator>>({});
+  const [gateways, setGateways] = useState<GwBasic[]>([]);
+  const [routeMap, setRouteMap] = useState<Record<RouteKey, RouteBasic>>({});
   const [loading, setLoading] = useState(true);
-  const [modal, setModal] = useState<null | "create" | PayRoute>(null);
-  const [switchModal, setSwitchModal] = useState<PayRoute | null>(null);
-  const [form, setForm] = useState<Partial<PayRoute & { notes: string }>>({});
-  const [filterCountry, setFilterCountry] = useState("");
-  const [filterOp, setFilterOp] = useState("");
-  const [filterType, setFilterType] = useState("");
-  const [switching, setSwitching] = useState<string | null>(null);
+  const [saving, setSaving] = useState<Record<string, boolean>>({});
+  const [savedOk, setSavedOk] = useState<Record<string, boolean>>({});
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  const [search, setSearch] = useState("");
+  const [showFallback, setShowFallback] = useState<Record<string, boolean>>({});
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const params = new URLSearchParams();
-      if (filterCountry) params.set("country", filterCountry);
-      if (filterOp) params.set("operator", filterOp);
-      if (filterType) params.set("type", filterType);
-      const r = await apiFetch(`${BASE()}/admin/payment-routing/routes?${params}`, { headers: H() });
+      const r = await apiFetch(`${BASE()}/admin/payment-routing/matrix`, { headers: H() });
       const d = await r.json();
-      setRoutes(d.routes ?? []);
+      const ctrs: CountryEntry[] = d.countries ?? [];
+      const ops: Operator[] = d.operators ?? [];
+      const rts: RouteBasic[] = d.routes ?? [];
+      const opMap: Record<string, Operator> = {};
+      for (const op of ops) opMap[op.slug] = op;
+      const rMap: Record<string, RouteBasic> = {};
+      for (const rt of rts) rMap[`${rt.countryCode}:${rt.operatorSlug}:${rt.transactionType}`] = rt;
+      setCountries(ctrs);
+      setOperatorMap(opMap);
       setGateways(d.gateways ?? []);
-      setOperators(d.operators ?? []);
+      setRouteMap(rMap);
+      const exp: Record<string, boolean> = {};
+      ctrs.forEach((c, i) => { exp[c.code] = i < 5; });
+      setExpanded(exp);
     } finally { setLoading(false); }
-  }, [filterCountry, filterOp, filterType]);
+  }, []);
 
   useEffect(() => { void load(); }, [load]);
 
-  const save = async () => {
-    const isEdit = modal !== "create";
-    const body = {
-      countryCode: form.countryCode, operatorSlug: form.operatorSlug,
-      transactionType: form.transactionType || "deposit",
-      primaryGatewayId: form.primaryGatewayId || null,
-      secondaryGatewayId: form.secondaryGatewayId || null,
-      tertiaryGatewayId: form.tertiaryGatewayId || null,
-      active: form.active ?? true,
-      maintenanceMode: form.maintenanceMode ?? false,
-      maintenanceMessage: form.maintenanceMessage || null,
-      notes: form.notes || null,
-    };
-    const url = isEdit ? `${BASE()}/admin/payment-routing/routes/${(modal as PayRoute).id}` : `${BASE()}/admin/payment-routing/routes`;
-    await apiFetch(url, { method: isEdit ? "PUT" : "POST", headers: H(), body: JSON.stringify(body) });
-    setModal(null);
-    void load();
+  const upsertRoute = async (
+    countryCode: string, operatorSlug: string,
+    primaryGatewayId: string | null,
+    secondaryGatewayId?: string | null,
+    tertiaryGatewayId?: string | null,
+  ) => {
+    const rowKey = `${countryCode}:${operatorSlug}`;
+    const routeKey = `${countryCode}:${operatorSlug}:deposit`;
+    setRouteMap(prev => {
+      const ex = prev[routeKey];
+      return {
+        ...prev,
+        [routeKey]: {
+          ...(ex ?? { id: "", countryCode, operatorSlug, transactionType: "deposit", active: true, maintenanceMode: false, maintenanceMessage: null }),
+          primaryGatewayId,
+          secondaryGatewayId: secondaryGatewayId !== undefined ? secondaryGatewayId : (ex?.secondaryGatewayId ?? null),
+          tertiaryGatewayId: tertiaryGatewayId !== undefined ? tertiaryGatewayId : (ex?.tertiaryGatewayId ?? null),
+        } as RouteBasic,
+      };
+    });
+    setSaving(p => ({ ...p, [rowKey]: true }));
+    try {
+      const r = await apiFetch(`${BASE()}/admin/payment-routing/routes/upsert`, {
+        method: "POST", headers: H(),
+        body: JSON.stringify({
+          countryCode, operatorSlug, transactionType: "deposit",
+          primaryGatewayId,
+          ...(secondaryGatewayId !== undefined && { secondaryGatewayId }),
+          ...(tertiaryGatewayId !== undefined && { tertiaryGatewayId }),
+        }),
+      });
+      const d = await r.json();
+      if (d.success && d.route) {
+        setRouteMap(p => ({ ...p, [routeKey]: d.route as RouteBasic }));
+        setSavedOk(p => ({ ...p, [rowKey]: true }));
+        setTimeout(() => setSavedOk(p => { const n = { ...p }; delete n[rowKey]; return n; }), 2000);
+      }
+    } catch { void load(); }
+    finally { setSaving(p => { const n = { ...p }; delete n[rowKey]; return n; }); }
   };
 
-  const del = async (id: string) => {
-    if (!confirm("Supprimer cette route ?")) return;
-    await apiFetch(`${BASE()}/admin/payment-routing/routes/${id}`, { method: "DELETE", headers: H() });
-    void load();
-  };
-
-  const toggleMaintenance = async (route: PayRoute) => {
+  const toggleMaintenance = async (countryCode: string, operatorSlug: string) => {
+    const routeKey = `${countryCode}:${operatorSlug}:deposit`;
+    const route = routeMap[routeKey];
+    if (!route?.id) return;
+    const newMode = !route.maintenanceMode;
+    setRouteMap(p => ({ ...p, [routeKey]: { ...p[routeKey]!, maintenanceMode: newMode } }));
     await apiFetch(`${BASE()}/admin/payment-routing/routes/${route.id}/maintenance`, {
       method: "POST", headers: H(),
-      body: JSON.stringify({ maintenanceMode: !route.maintenanceMode }),
+      body: JSON.stringify({ maintenanceMode: newMode }),
     });
-    void load();
   };
 
-  const doSwitch = async (routeId: string, gatewayId: string) => {
-    setSwitching(routeId);
-    try {
-      await apiFetch(`${BASE()}/admin/payment-routing/routes/${routeId}/switch`, {
-        method: "POST", headers: H(),
-        body: JSON.stringify({ gatewayId }),
-      });
-      setSwitchModal(null);
-      void load();
-    } finally { setSwitching(null); }
-  };
+  const toggleExpand = (code: string) => setExpanded(p => ({ ...p, [code]: !p[code] }));
+  const expandAll = () => { const e: Record<string, boolean> = {}; countries.forEach(c => { e[c.code] = true; }); setExpanded(e); };
+  const collapseAll = () => setExpanded({});
+  const activeGateways = gateways.filter(g => g.active);
+  const filteredCountries = countries.filter(c =>
+    search === "" || c.code.toLowerCase().includes(search.toLowerCase()) || c.name.toLowerCase().includes(search.toLowerCase()),
+  );
 
-  const uniqueCountries = [...new Set(routes.map(r => r.countryCode))].sort();
+  if (loading) return <div className="flex justify-center py-16"><Loader2 className="w-6 h-6 text-violet-400 animate-spin" /></div>;
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="flex items-center gap-2">
-          <select value={filterCountry} onChange={e => setFilterCountry(e.target.value)} className="bg-zinc-800/60 border border-zinc-700/60 rounded-xl px-3 py-2 text-sm text-white focus:outline-none">
-            <option value="">Tous les pays</option>
-            {uniqueCountries.map(c => <option key={c} value={c}>{c}</option>)}
-          </select>
-          <select value={filterOp} onChange={e => setFilterOp(e.target.value)} className="bg-zinc-800/60 border border-zinc-700/60 rounded-xl px-3 py-2 text-sm text-white focus:outline-none">
-            <option value="">Tous les opérateurs</option>
-            {operators.map(o => <option key={o.slug} value={o.slug}>{o.name}</option>)}
-          </select>
-          <select value={filterType} onChange={e => setFilterType(e.target.value)} className="bg-zinc-800/60 border border-zinc-700/60 rounded-xl px-3 py-2 text-sm text-white focus:outline-none">
-            <option value="">Tous types</option>
-            <option value="deposit">Dépôt</option>
-            <option value="withdrawal">Retrait</option>
-          </select>
-          <button onClick={() => { setFilterCountry(""); setFilterOp(""); setFilterType(""); }} className="p-2 text-zinc-500 hover:text-white"><RefreshCw className="w-4 h-4" /></button>
+      {/* Controls */}
+      <div className="flex items-center gap-3 flex-wrap">
+        <div className="relative flex-1 min-w-[200px] max-w-xs">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+          <input
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Rechercher un pays…"
+            className="w-full bg-zinc-800/60 border border-zinc-700/60 rounded-xl pl-9 pr-3 py-2 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-violet-500/60"
+          />
         </div>
-        <button onClick={() => { setForm({ transactionType: "deposit", active: true, maintenanceMode: false }); setModal("create"); }} className="ml-auto flex items-center gap-2 px-4 py-2 bg-violet-600 hover:bg-violet-500 rounded-xl text-white text-sm font-semibold transition-colors">
-          <Plus className="w-4 h-4" /> Nouvelle route
-        </button>
+        <div className="flex gap-2 ml-auto">
+          <button onClick={expandAll} className="px-3 py-2 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700/60 rounded-xl text-xs text-zinc-400 hover:text-white transition-colors">
+            Tout ouvrir
+          </button>
+          <button onClick={collapseAll} className="px-3 py-2 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700/60 rounded-xl text-xs text-zinc-400 hover:text-white transition-colors">
+            Tout fermer
+          </button>
+          <button onClick={load} className="p-2 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700/60 rounded-xl text-zinc-400 hover:text-white transition-colors">
+            <RefreshCw className="w-4 h-4" />
+          </button>
+        </div>
       </div>
 
-      {loading ? (
-        <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 text-violet-400 animate-spin" /></div>
-      ) : (
-        <Card>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-zinc-800/80">
-                  <th className="text-left px-4 py-3 text-xs text-zinc-500 font-semibold uppercase tracking-wider">Pays</th>
-                  <th className="text-left px-4 py-3 text-xs text-zinc-500 font-semibold uppercase tracking-wider">Opérateur</th>
-                  <th className="text-left px-4 py-3 text-xs text-zinc-500 font-semibold uppercase tracking-wider">Type</th>
-                  <th className="text-left px-4 py-3 text-xs text-zinc-500 font-semibold uppercase tracking-wider">Principale</th>
-                  <th className="text-left px-4 py-3 text-xs text-zinc-500 font-semibold uppercase tracking-wider">Backup</th>
-                  <th className="text-left px-4 py-3 text-xs text-zinc-500 font-semibold uppercase tracking-wider">Statut</th>
-                  <th className="text-right px-4 py-3 text-xs text-zinc-500 font-semibold uppercase tracking-wider">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {routes.map(r => (
-                  <tr key={r.id} className="border-b border-zinc-800/40 hover:bg-zinc-800/20 transition-colors">
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        <Globe className="w-3.5 h-3.5 text-zinc-500" />
-                        <span className="font-bold text-white">{r.countryCode}</span>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className="text-zinc-300">{r.operator?.name ?? r.operatorSlug}</span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className="text-[10px] bg-zinc-800 text-zinc-400 px-2 py-0.5 rounded-full font-medium">{TYPE_LABELS[r.transactionType] ?? r.transactionType}</span>
-                    </td>
-                    <td className="px-4 py-3">
-                      {r.primaryGateway ? (
-                        <span className={`text-xs font-semibold ${r.primaryGateway.active ? "text-emerald-400" : "text-zinc-500 line-through"}`}>{r.primaryGateway.name}</span>
-                      ) : <span className="text-zinc-600 text-xs">—</span>}
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex flex-col gap-0.5">
-                        {r.secondaryGateway && <span className="text-xs text-zinc-500">{r.secondaryGateway.name}</span>}
-                        {r.tertiaryGateway && <span className="text-xs text-zinc-600">{r.tertiaryGateway.name}</span>}
-                        {!r.secondaryGateway && !r.tertiaryGateway && <span className="text-zinc-600 text-xs">—</span>}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-1.5">
-                        <StatusBadge active={r.active && !r.maintenanceMode} label={r.maintenanceMode ? "Maintenance" : r.active ? "Actif" : "Inactif"} />
-                      </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center justify-end gap-1">
-                        <button onClick={() => setSwitchModal(r)} title="Basculer API" className="p-1.5 hover:bg-blue-500/15 rounded-lg text-zinc-500 hover:text-blue-400 transition-colors">
-                          <ArrowRightLeft className="w-3.5 h-3.5" />
-                        </button>
-                        <button onClick={() => toggleMaintenance(r)} title={r.maintenanceMode ? "Désactiver maintenance" : "Mode maintenance"} className="p-1.5 hover:bg-amber-500/15 rounded-lg text-zinc-500 hover:text-amber-400 transition-colors">
-                          <Wrench className="w-3.5 h-3.5" />
-                        </button>
-                        <button onClick={() => { setForm({ ...r }); setModal(r); }} className="p-1.5 hover:bg-violet-500/15 rounded-lg text-zinc-500 hover:text-violet-400 transition-colors"><Pencil className="w-3.5 h-3.5" /></button>
-                        <button onClick={() => del(r.id)} className="p-1.5 hover:bg-red-500/15 rounded-lg text-zinc-500 hover:text-red-400 transition-colors"><Trash2 className="w-3.5 h-3.5" /></button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            {routes.length === 0 && !loading && (
-              <div className="text-center py-12 text-zinc-500">Aucune route configurée</div>
-            )}
-          </div>
-        </Card>
+      {/* No active gateways warning */}
+      {activeGateways.length === 0 && (
+        <div className="bg-amber-500/10 border border-amber-500/25 rounded-xl p-4 text-sm text-amber-400 flex items-center gap-3">
+          <AlertTriangle className="w-5 h-5 flex-shrink-0" />
+          Aucun fournisseur actif. Activez d'abord un fournisseur dans l'onglet "Fournisseurs".
+        </div>
       )}
 
-      {/* Route modal */}
-      <AnimatePresence>
-        {modal !== null && (
-          <Modal title={modal === "create" ? "Nouvelle route de paiement" : "Modifier la route"} onClose={() => setModal(null)}>
-            <div className="grid grid-cols-2 gap-3">
-              <Input label="Code pays *" value={form.countryCode ?? ""} onChange={e => setForm(p => ({ ...p, countryCode: e.target.value.toUpperCase() }))} placeholder="CI" />
-              <Select label="Opérateur *" value={form.operatorSlug ?? ""} onChange={e => setForm(p => ({ ...p, operatorSlug: e.target.value }))}>
-                <option value="">Sélectionner…</option>
-                {operators.map(o => <option key={o.slug} value={o.slug}>{o.name}</option>)}
-              </Select>
-            </div>
-            <Select label="Type de transaction" value={form.transactionType ?? "deposit"} onChange={e => setForm(p => ({ ...p, transactionType: e.target.value }))}>
-              <option value="deposit">Dépôt</option>
-              <option value="withdrawal">Retrait</option>
-            </Select>
-            <Select label="Passerelle principale" value={form.primaryGatewayId ?? ""} onChange={e => setForm(p => ({ ...p, primaryGatewayId: e.target.value || null }))}>
-              <option value="">— Aucune —</option>
-              {gateways.map(g => <option key={g.id} value={g.id}>{g.name}{!g.active ? " (inactif)" : ""}</option>)}
-            </Select>
-            <Select label="Passerelle secondaire (backup)" value={form.secondaryGatewayId ?? ""} onChange={e => setForm(p => ({ ...p, secondaryGatewayId: e.target.value || null }))}>
-              <option value="">— Aucune —</option>
-              {gateways.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
-            </Select>
-            <Select label="Passerelle de secours (tertiary)" value={form.tertiaryGatewayId ?? ""} onChange={e => setForm(p => ({ ...p, tertiaryGatewayId: e.target.value || null }))}>
-              <option value="">— Aucune —</option>
-              {gateways.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
-            </Select>
-            <div>
-              <label className="block text-xs text-zinc-400 mb-1 font-medium">Message de maintenance</label>
-              <input value={form.maintenanceMessage ?? ""} onChange={e => setForm(p => ({ ...p, maintenanceMessage: e.target.value }))} className="w-full bg-zinc-800/60 border border-zinc-700/60 rounded-xl px-3 py-2 text-sm text-white placeholder-zinc-600 focus:outline-none" placeholder="Service temporairement indisponible…" />
-            </div>
-            <div className="flex items-center gap-4">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input type="checkbox" checked={form.active ?? true} onChange={e => setForm(p => ({ ...p, active: e.target.checked }))} className="accent-violet-500" />
-                <span className="text-sm text-zinc-300">Route active</span>
-              </label>
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input type="checkbox" checked={form.maintenanceMode ?? false} onChange={e => setForm(p => ({ ...p, maintenanceMode: e.target.checked }))} className="accent-amber-500" />
-                <span className="text-sm text-zinc-300">Maintenance</span>
-              </label>
-            </div>
-            <div className="flex gap-2 pt-1">
-              <button onClick={() => setModal(null)} className="flex-1 py-2 rounded-xl bg-zinc-800 text-zinc-300 text-sm hover:bg-zinc-700 transition-colors">Annuler</button>
-              <button onClick={save} className="flex-1 py-2 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-sm font-semibold transition-colors">Enregistrer</button>
-            </div>
-          </Modal>
-        )}
-      </AnimatePresence>
+      {/* Summary bar */}
+      <p className="text-xs text-zinc-500">
+        {filteredCountries.length} pays · {Object.keys(routeMap).length} routes · {activeGateways.length} fournisseur{activeGateways.length !== 1 ? "s" : ""} actif{activeGateways.length !== 1 ? "s" : ""}
+      </p>
 
-      {/* Switch modal */}
-      <AnimatePresence>
-        {switchModal !== null && (
-          <Modal title={`Basculer — ${switchModal.countryCode} / ${switchModal.operator?.name ?? switchModal.operatorSlug}`} onClose={() => setSwitchModal(null)}>
-            <p className="text-sm text-zinc-400">Choisir la nouvelle passerelle principale pour cette route :</p>
-            <div className="space-y-2">
-              {gateways.filter(g => g.active).map(g => (
-                <button
-                  key={g.id}
-                  disabled={switching === switchModal.id}
-                  onClick={() => doSwitch(switchModal.id, g.id)}
-                  className={`w-full flex items-center gap-3 p-3 rounded-xl border transition-all ${
-                    g.id === switchModal.primaryGatewayId
-                      ? "bg-violet-600/20 border-violet-500/50 text-white"
-                      : "bg-zinc-800/40 border-zinc-700/60 text-zinc-300 hover:border-violet-500/30 hover:bg-zinc-800/80"
-                  }`}
-                >
-                  <Zap className="w-4 h-4 flex-shrink-0" />
-                  <span className="font-semibold text-sm">{g.name}</span>
-                  {g.id === switchModal.primaryGatewayId && <span className="ml-auto text-[10px] text-violet-400 font-bold">ACTUELLE</span>}
-                  {switching === switchModal.id && <Loader2 className="ml-auto w-3.5 h-3.5 animate-spin" />}
-                </button>
-              ))}
-            </div>
-            <p className="text-xs text-zinc-600">Le changement est instantané et journalisé.</p>
-          </Modal>
+      {/* Country accordion cards */}
+      <div className="space-y-3">
+        {filteredCountries.map(country => {
+          const isOpen = expanded[country.code] ?? false;
+          const configuredCount = country.operatorSlugs.filter(s => routeMap[`${country.code}:${s}:deposit`]?.primaryGatewayId != null).length;
+          const total = country.operatorSlugs.length;
+          const pct = total > 0 ? Math.round((configuredCount / total) * 100) : 0;
+
+          return (
+            <Card key={country.code} className="overflow-hidden">
+              <button
+                onClick={() => toggleExpand(country.code)}
+                className="w-full flex items-center gap-3 px-4 py-3 hover:bg-zinc-800/40 transition-colors text-left"
+              >
+                <span className="text-2xl flex-shrink-0 leading-none">{country.flag}</span>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-white font-bold text-sm">{country.name}</span>
+                    <code className="text-[10px] text-zinc-500 bg-zinc-800/60 px-1.5 py-0.5 rounded">{country.code}</code>
+                  </div>
+                  <p className="text-[11px] text-zinc-500 mt-0.5">{configuredCount}/{total} opérateur{total !== 1 ? "s" : ""} configuré{configuredCount !== 1 ? "s" : ""}</p>
+                </div>
+                <div className="hidden sm:flex items-center gap-2 mr-3">
+                  <div className="w-20 h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+                    <div className={`h-full rounded-full transition-all ${pct === 100 ? "bg-emerald-500" : pct > 0 ? "bg-violet-500" : "bg-zinc-700"}`} style={{ width: `${pct}%` }} />
+                  </div>
+                  <span className="text-[10px] text-zinc-500 w-8 text-right">{pct}%</span>
+                </div>
+                <ChevronDown className={`w-4 h-4 text-zinc-500 flex-shrink-0 transition-transform ${isOpen ? "rotate-180" : ""}`} />
+              </button>
+
+              {isOpen && (
+                <div className="px-3 pb-3 border-t border-zinc-800/60">
+                  <div className="pt-3 space-y-2">
+                    {country.operatorSlugs.map(slug => {
+                      const rowKey = `${country.code}:${slug}`;
+                      const routeKey = `${country.code}:${slug}:deposit`;
+                      const route = routeMap[routeKey];
+                      const isSaving = saving[rowKey] ?? false;
+                      const isSaved = savedOk[rowKey] ?? false;
+                      const fallbackOpen = showFallback[rowKey] ?? false;
+                      const operator = operatorMap[slug];
+
+                      return (
+                        <div key={slug} className="rounded-xl bg-zinc-800/30 border border-zinc-800/60 hover:border-zinc-700/60 transition-colors overflow-hidden">
+                          <div className="flex items-center gap-3 p-3 flex-wrap">
+                            <div className="flex items-center gap-2 w-28 flex-shrink-0">
+                              <div
+                                className="w-7 h-7 rounded-lg flex items-center justify-center text-[10px] font-bold flex-shrink-0"
+                                style={{ backgroundColor: (operator?.color ?? "#6B7280") + "20", border: `1px solid ${operator?.color ?? "#6B7280"}40` }}
+                              >
+                                <span style={{ color: operator?.color ?? "#9CA3AF" }}>{slug.slice(0, 2).toUpperCase()}</span>
+                              </div>
+                              <p className="text-white text-[11px] font-bold truncate">{operator?.name ?? slug}</p>
+                            </div>
+
+                            <div className="flex flex-wrap gap-1.5 flex-1">
+                              {activeGateways.map(gw => {
+                                const isActive = route?.primaryGatewayId === gw.id;
+                                return (
+                                  <button
+                                    key={gw.id}
+                                    onClick={() => upsertRoute(country.code, slug, isActive ? null : gw.id)}
+                                    disabled={isSaving}
+                                    title={isActive ? `Désactiver ${gw.name}` : `Utiliser ${gw.name}`}
+                                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all border ${isActive ? "bg-violet-600 border-violet-500 text-white shadow-md shadow-violet-500/20" : "bg-zinc-800/60 border-zinc-700/60 text-zinc-400 hover:border-violet-500/40 hover:text-zinc-200 hover:bg-zinc-800"}`}
+                                  >
+                                    {isSaving && isActive ? <Loader2 className="w-3 h-3 animate-spin" />
+                                      : isSaved && isActive ? <CheckCircle className="w-3 h-3 text-emerald-300" />
+                                        : <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${isActive ? "bg-white" : "bg-zinc-600"}`} />}
+                                    {gw.name}
+                                    {gw.testMode && <span className="text-[8px] bg-amber-500/25 text-amber-400 px-1 rounded">TEST</span>}
+                                  </button>
+                                );
+                              })}
+                              {activeGateways.length === 0 && <span className="text-xs text-zinc-600 italic">Aucun fournisseur actif</span>}
+                            </div>
+
+                            <div className="flex items-center gap-2 flex-shrink-0">
+                              {route?.maintenanceMode && (
+                                <span className="text-[9px] bg-amber-500/15 text-amber-400 border border-amber-500/25 px-1.5 py-0.5 rounded-full font-bold flex items-center gap-1">
+                                  <Wrench className="w-2.5 h-2.5" />Maint.
+                                </span>
+                              )}
+                              {!route?.primaryGatewayId && <span className="text-[10px] text-zinc-600 italic hidden sm:inline">Non configuré</span>}
+                              {gateways.length > 1 && (
+                                <button
+                                  onClick={() => setShowFallback(p => ({ ...p, [rowKey]: !p[rowKey] }))}
+                                  className={`text-[10px] flex items-center gap-0.5 px-2 py-1 rounded-lg border transition-colors ${fallbackOpen ? "bg-violet-600/15 border-violet-500/30 text-violet-400" : "bg-zinc-800/60 border-zinc-700/60 text-zinc-500 hover:text-violet-400 hover:border-violet-500/30"}`}
+                                >
+                                  <ChevronDown className={`w-3 h-3 transition-transform ${fallbackOpen ? "rotate-180" : ""}`} />
+                                  Fallback
+                                </button>
+                              )}
+                            </div>
+                          </div>
+
+                          {fallbackOpen && (
+                            <div className="flex items-center gap-4 px-3 py-2.5 border-t border-zinc-800/60 bg-zinc-900/50 flex-wrap">
+                              <div className="flex items-center gap-2">
+                                <span className="text-[10px] text-zinc-500 font-semibold w-10">2ème :</span>
+                                <select
+                                  value={route?.secondaryGatewayId ?? ""}
+                                  onChange={e => upsertRoute(country.code, slug, route?.primaryGatewayId ?? null, e.target.value || null)}
+                                  className="bg-zinc-800/80 border border-zinc-700/60 rounded-lg px-2 py-1 text-[11px] text-white focus:outline-none focus:border-violet-500/60"
+                                >
+                                  <option value="">— Aucun —</option>
+                                  {gateways.filter(g => g.id !== route?.primaryGatewayId).map(g => (
+                                    <option key={g.id} value={g.id}>{g.name}{!g.active ? " ✗" : ""}</option>
+                                  ))}
+                                </select>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <span className="text-[10px] text-zinc-500 font-semibold w-10">3ème :</span>
+                                <select
+                                  value={route?.tertiaryGatewayId ?? ""}
+                                  onChange={e => upsertRoute(country.code, slug, route?.primaryGatewayId ?? null, route?.secondaryGatewayId, e.target.value || null)}
+                                  className="bg-zinc-800/80 border border-zinc-700/60 rounded-lg px-2 py-1 text-[11px] text-white focus:outline-none focus:border-violet-500/60"
+                                >
+                                  <option value="">— Aucun —</option>
+                                  {gateways.filter(g => g.id !== route?.primaryGatewayId && g.id !== route?.secondaryGatewayId).map(g => (
+                                    <option key={g.id} value={g.id}>{g.name}{!g.active ? " ✗" : ""}</option>
+                                  ))}
+                                </select>
+                              </div>
+                              {route?.id && (
+                                <button
+                                  onClick={() => toggleMaintenance(country.code, slug)}
+                                  className={`ml-auto text-[10px] flex items-center gap-1 px-2.5 py-1 rounded-lg border transition-colors ${route.maintenanceMode ? "bg-amber-500/20 border-amber-500/40 text-amber-400" : "bg-zinc-800 border-zinc-700/60 text-zinc-500 hover:border-amber-500/30 hover:text-amber-400"}`}
+                                >
+                                  <Wrench className="w-3 h-3" />
+                                  {route.maintenanceMode ? "Désactiver maintenance" : "Mode maintenance"}
+                                </button>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </Card>
+          );
+        })}
+
+        {filteredCountries.length === 0 && (
+          <div className="text-center py-12 text-zinc-500">
+            {search ? `Aucun pays correspondant à "${search}"` : "Aucun opérateur configuré. Ajoutez des opérateurs dans l'onglet Opérateurs."}
+          </div>
         )}
-      </AnimatePresence>
+      </div>
     </div>
   );
 }

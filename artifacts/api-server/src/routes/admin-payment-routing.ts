@@ -10,6 +10,7 @@ import {
   paymentGatewaysTable,
   paymentRoutesTable,
   paymentRouteLogsTable,
+  countriesTable,
 } from "@workspace/db";
 import { requireAdminJwt } from "../lib/admin-jwt-middleware";
 import { logger } from "../lib/logger";
@@ -461,6 +462,78 @@ router.post("/admin/payment-routing/routes", requireAdmin, async (req: Request, 
   res.status(201).json(route);
 });
 
+/* ── Upsert route — create or update for a country+operator+type ─── */
+router.post("/admin/payment-routing/routes/upsert", requireAdmin, async (req: Request, res: Response): Promise<void> => {
+  const {
+    countryCode, operatorSlug, transactionType = "deposit",
+    primaryGatewayId, secondaryGatewayId, tertiaryGatewayId,
+  } = req.body as {
+    countryCode: string; operatorSlug: string; transactionType?: string;
+    primaryGatewayId?: string | null; secondaryGatewayId?: string | null; tertiaryGatewayId?: string | null;
+  };
+
+  if (!countryCode?.trim() || !operatorSlug?.trim()) {
+    res.status(400).json({ error: "Pays et opérateur requis" });
+    return;
+  }
+
+  const cc = countryCode.trim().toUpperCase();
+  const op = operatorSlug.trim().toLowerCase();
+  const type = transactionType || "deposit";
+
+  const [existing] = await db
+    .select()
+    .from(paymentRoutesTable)
+    .where(
+      and(
+        eq(paymentRoutesTable.countryCode, cc),
+        eq(paymentRoutesTable.operatorSlug, op),
+        eq(paymentRoutesTable.transactionType, type),
+      ),
+    )
+    .limit(1);
+
+  let route;
+  if (existing) {
+    [route] = await db.update(paymentRoutesTable)
+      .set({
+        ...(primaryGatewayId !== undefined && { primaryGatewayId: primaryGatewayId || null }),
+        ...(secondaryGatewayId !== undefined && { secondaryGatewayId: secondaryGatewayId || null }),
+        ...(tertiaryGatewayId !== undefined && { tertiaryGatewayId: tertiaryGatewayId || null }),
+        updatedAt: new Date(),
+      })
+      .where(eq(paymentRoutesTable.id, existing.id))
+      .returning();
+    await db.insert(paymentRouteLogsTable).values({
+      routeId: existing.id,
+      eventType: "gateway_switch",
+      status: "success",
+      adminId: adminId(req),
+      metadata: { countryCode: cc, operatorSlug: op, primaryGatewayId: primaryGatewayId ?? null },
+    });
+  } else {
+    [route] = await db.insert(paymentRoutesTable).values({
+      countryCode: cc,
+      operatorSlug: op,
+      transactionType: type,
+      primaryGatewayId: primaryGatewayId || null,
+      secondaryGatewayId: secondaryGatewayId || null,
+      tertiaryGatewayId: tertiaryGatewayId || null,
+      active: true,
+    }).returning();
+    await db.insert(paymentRouteLogsTable).values({
+      routeId: route!.id,
+      eventType: "route_created",
+      status: "success",
+      adminId: adminId(req),
+      metadata: { countryCode: cc, operatorSlug: op, primaryGatewayId: primaryGatewayId ?? null },
+    });
+  }
+
+  logger.info({ countryCode: cc, operatorSlug: op, primaryGatewayId, adminId: adminId(req) }, "[payment-routing] Route upserted");
+  res.json({ success: true, route });
+});
+
 router.put("/admin/payment-routing/routes/:id", requireAdmin, async (req: Request, res: Response): Promise<void> => {
   const { id } = req.params;
   const body = req.body as Partial<{
@@ -578,6 +651,51 @@ router.get("/admin/payment-routing/logs", requireAdmin, async (req: Request, res
   const [{ total }] = await db.select({ total: count() }).from(paymentRouteLogsTable);
 
   res.json({ logs: rows, total: Number(total) });
+});
+
+/* ═══════════════════════════════════════════════════════
+   MATRIX — full country → operator → gateway view
+   ═══════════════════════════════════════════════════════ */
+router.get("/admin/payment-routing/matrix", requireAdmin, async (_req: Request, res: Response): Promise<void> => {
+  const [operators, gateways, routes, countries] = await Promise.all([
+    db.select().from(mobileOperatorsTable).orderBy(asc(mobileOperatorsTable.sortOrder)),
+    db.select({
+      id: paymentGatewaysTable.id,
+      name: paymentGatewaysTable.name,
+      slug: paymentGatewaysTable.slug,
+      active: paymentGatewaysTable.active,
+      logoUrl: paymentGatewaysTable.logoUrl,
+      testMode: paymentGatewaysTable.testMode,
+    }).from(paymentGatewaysTable).orderBy(asc(paymentGatewaysTable.name)),
+    db.select().from(paymentRoutesTable).orderBy(
+      asc(paymentRoutesTable.countryCode),
+      asc(paymentRoutesTable.operatorSlug),
+    ),
+    db.select({ code: countriesTable.code, name: countriesTable.name, flag: countriesTable.flag }).from(countriesTable),
+  ]);
+
+  /* Build country → operator slugs map */
+  const countryOpMap = new Map<string, string[]>();
+  for (const op of operators) {
+    for (const cc of (op.countryCodes as string[])) {
+      if (!countryOpMap.has(cc)) countryOpMap.set(cc, []);
+      countryOpMap.get(cc)!.push(op.slug);
+    }
+  }
+
+  /* Country info lookup */
+  const countryInfo = new Map(countries.map(c => [c.code, { name: c.name, flag: c.flag }]));
+
+  const countryList = [...countryOpMap.entries()]
+    .map(([code, opSlugs]) => ({
+      code,
+      name: countryInfo.get(code)?.name ?? code,
+      flag: countryInfo.get(code)?.flag ?? "🌍",
+      operatorSlugs: opSlugs,
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+
+  res.json({ countries: countryList, operators, gateways, routes });
 });
 
 /* ═══════════════════════════════════════════════════════
