@@ -1,0 +1,324 @@
+MISSION : CRÉER UN SYSTÈME PROFESSIONNEL DE GESTION DES APIs DE PAIEMENT PAR PAYS ET OPÉRATEURS
+
+Je travaille sur une plateforme professionnelle de vente de numéros virtuels avec paiements Mobile Money.
+
+Actuellement, j’ai déjà intégré deux APIs de paiement :
+
+- PawaPay
+- Clapay
+
+Le problème est que chaque API ne supporte pas les mêmes pays ni les mêmes opérateurs mobiles.
+
+Exemple :
+
+- En Côte d’Ivoire, Clapay supporte tous les opérateurs
+- Alors que PawaPay supporte seulement MTN et Orange
+
+Dans certains pays :
+
+- une API possède certains opérateurs
+- une autre API ne possède aucun opérateur
+- certaines APIs ne supportent même pas le pays
+
+Je veux donc créer un système COMPLET de gestion des APIs de paiement dans le panel administrateur afin de contrôler précisément quelle API gère chaque opérateur de chaque pays.
+
+---
+
+OBJECTIF PRINCIPAL
+
+Créer une nouvelle page dédiée dans le Panel Admin nommée par exemple :
+
+"Gestion des APIs de Paiement"
+
+Cette page doit être totalement professionnelle, moderne, responsive et optimisée.
+
+Elle doit permettre de :
+
+- gérer les APIs de paiement
+- gérer les pays
+- gérer les opérateurs
+- choisir quelle API gère quel opérateur
+- activer/désactiver des opérateurs
+- activer/désactiver des APIs
+- centraliser toutes les configurations de paiement
+
+---
+
+STRUCTURE ATTENDUE
+
+Je veux une interface organisée par :
+
+PAYS → OPÉRATEURS → API UTILISÉE
+
+Exemple :
+
+CÔTE D’IVOIRE
+
+- Orange CI
+  [ Pawapay ] [ Clapay ]
+- MTN CI
+  [ Pawapay ] [ Clapay ]
+- Moov CI
+  [ Pawapay ] [ Clapay ]
+
+CAMEROUN
+
+- MTN CM
+  [ Pawapay ] [ Clapay ]
+- Orange CM
+  [ Pawapay ] [ Clapay ]
+
+etc.
+
+---
+
+FONCTIONNEMENT DES BOUTONS
+
+Pour chaque opérateur :
+
+- je dois pouvoir sélectionner quelle API sera utilisée
+- si je clique sur "Pawapay", alors cet opérateur utilise Pawapay
+- si je clique sur "Clapay", alors cet opérateur utilise Clapay
+
+Le système doit empêcher plusieurs APIs actives simultanément pour le même opérateur sauf si je l’autorise plus tard.
+
+Donc :
+
+- 1 opérateur = 1 API active par défaut
+
+Les boutons doivent être :
+
+- modernes
+- visuellement clairs
+- avec état actif/inactif
+- sauvegarde instantanée via AJAX sans rechargement
+
+---
+
+SYSTÈME DYNAMIQUE
+
+Le système doit être totalement dynamique.
+
+Si plus tard j’ajoute une nouvelle API comme :
+
+- CinetPay
+- PayDunya
+- Flutterwave
+- Stripe
+- etc.
+
+Alors :
+
+- les nouveaux boutons doivent apparaître automatiquement dans tous les opérateurs concernés
+- sans modifier manuellement le frontend
+
+Créer donc une architecture extensible.
+
+---
+
+BASE DE DONNÉES
+
+Créer une structure propre et scalable.
+
+Exemple de tables possibles :
+
+payment_apis
+countries
+operators
+operator_api_mapping
+
+Chaque mapping doit contenir :
+
+- pays
+- opérateur
+- API utilisée
+- statut actif/inactif
+- priorité
+- date de modification
+
+---
+
+GESTION DES CLÉS APIs
+
+IMPORTANT :
+
+Les clés APIs déjà configurées actuellement dans le panel NE DOIVENT PAS ÊTRE SUPPRIMÉES.
+
+Je veux :
+
+- récupérer automatiquement les clés existantes
+- les transférer vers la nouvelle section
+- conserver toutes les configurations existantes
+- ne perdre aucune donnée
+
+Créer une section :
+"Configuration des APIs"
+
+Avec :
+
+- API Key
+- Secret Key
+- Environment (sandbox/live)
+- webhook URL
+- statut API
+- test connexion
+
+---
+
+VÉRIFICATION DES APIs
+
+Je veux aussi un système automatique de vérification.
+
+Pour chaque API :
+
+- vérifier si les clés fonctionnent
+- vérifier si l’API répond correctement
+- afficher :
+  - CONNECTÉ
+  - ERREUR
+  - CLÉ INVALIDE
+  - TIMEOUT
+  - API HORS LIGNE
+
+Ajouter un bouton :
+"Tester la connexion"
+
+---
+
+OPTIMISATION DES PAIEMENTS
+
+Quand un utilisateur effectue un paiement :
+
+Le système doit automatiquement :
+
+1. détecter le pays
+2. détecter l’opérateur
+3. vérifier quelle API est assignée
+4. envoyer le paiement vers la bonne API
+
+Exemple :
+
+- Orange Côte d’Ivoire → Pawapay
+- Moov Côte d’Ivoire → Clapay
+
+Tout doit être automatique.
+
+---
+
+SYSTÈME DE FALLBACK
+
+Ajouter un système intelligent :
+
+Si l’API principale échoue :
+
+- automatiquement essayer une API secondaire si configurée
+
+Exemple :
+
+1. Pawapay échoue
+2. basculer automatiquement vers Clapay
+
+Ajouter :
+
+- ordre de priorité
+- fallback automatique
+- logs d’erreurs
+
+---
+
+LOGS ET MONITORING
+
+Créer une section :
+"Logs Paiements APIs"
+
+Avec :
+
+- API utilisée
+- pays
+- opérateur
+- montant
+- utilisateur
+- statut
+- erreur éventuelle
+- temps de réponse API
+- date
+
+Ajouter :
+
+- filtres
+- recherche
+- pagination
+
+---
+
+INTERFACE ADMIN PROFESSIONNELLE
+
+Je veux une UI très moderne :
+
+- design premium
+- responsive mobile/tablette/desktop
+- tableau propre
+- animations légères
+- badges de statut
+- switch ON/OFF
+- couleurs professionnelles
+- dark mode compatible
+
+---
+
+SÉCURITÉ
+
+Ajouter :
+
+- validation backend
+- protection CSRF
+- protection XSS
+- rate limiting
+- logs admin
+- permissions admin
+
+---
+
+OPTIMISATION PLESK
+
+IMPORTANT :
+
+Le projet est hébergé sur Plesk.
+
+Donc :
+
+- optimiser les performances
+- réduire les requêtes inutiles
+- utiliser cache propre
+- optimiser MySQL
+- éviter les tâches lourdes
+- vérifier compatibilité Plesk
+- optimiser mémoire et CPU
+
+---
+
+IMPORTANT
+
+Vérifier entièrement :
+
+- intégration Pawapay
+- intégration Clapay
+- webhooks
+- statuts de paiements
+- callbacks
+- mises à jour automatiques
+
+Corriger tous les bugs potentiels.
+
+Je veux un système robuste, professionnel, scalable et prêt pour la production.
+
+Le code doit être :
+
+- propre
+- sécurisé
+- maintenable
+- modulaire
+- documenté
+
+Ne rien casser dans le système existant.
+Faire une migration propre.
