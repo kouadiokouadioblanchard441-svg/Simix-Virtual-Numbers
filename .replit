@@ -33,7 +33,7 @@ outputType = "console"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "fuser -k 3000/tcp 2>/dev/null; cd artifacts/api-server && pnpm run build && cd ../.. && PORT=3000 NODE_ENV=development node --enable-source-maps dist/index.cjs"
+args = "fuser -k 3000/tcp 2>/dev/null; fuser -k 8080/tcp 2>/dev/null; cd artifacts/api-server && pnpm run build && cd ../.. && PORT=3000 NODE_ENV=development node --enable-source-maps dist/index.cjs"
 waitForPort = 3000
 
 [[workflows.workflow]]
@@ -59,10 +59,6 @@ timeoutMs = 20000
 [[ports]]
 localPort = 3000
 externalPort = 3000
-
-[[ports]]
-localPort = 3001
-externalPort = 3003
 
 [[ports]]
 localPort = 5000
