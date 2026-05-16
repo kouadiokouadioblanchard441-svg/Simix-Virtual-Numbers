@@ -162,12 +162,19 @@ router.post("/admin-auth/login", async (req: Request, res: Response): Promise<vo
   resetKey(loginKey);
 
   const fp = fingerprint ?? `${ua}:${ip}`;
-  const token = signAdminJwt({
-    sub: user.id,
-    email: user.email,
-    name: user.fullName ?? user.email,
-    fingerprint: fp,
-  });
+  let token: string;
+  try {
+    token = signAdminJwt({
+      sub: user.id,
+      email: user.email,
+      name: user.fullName ?? user.email,
+      fingerprint: fp,
+    });
+  } catch (jwtErr) {
+    logger.error({ err: jwtErr }, "Admin JWT signing failed — ADMIN_JWT_SECRET may not be configured");
+    res.status(503).json({ error: "Service d'authentification admin non configuré. Contactez l'administrateur système." });
+    return;
+  }
 
   await logAccess(ip, "login_success", true, email, { userId: user.id }, ua);
   logger.info({ ip, email, userId: user.id }, "Admin login success");

@@ -26,8 +26,15 @@ async function start(): Promise<void> {
     logger.info("[startup] Database migrations applied ✓");
   } catch (err) {
     /* Non-fatal: tables may already exist (e.g. after drizzle-kit push).
-     * Log and continue — app works correctly with existing schema. */
-    logger.warn({ err }, "[startup] Migration skipped (schema already up to date)");
+     * Common case: constraint/table already exists from a previous push.
+     * Log at info level and continue — app works correctly with existing schema. */
+    const msg = (err as Error)?.message ?? "";
+    const isAlreadyExists = msg.includes("already exists") || msg.includes("duplicate");
+    if (isAlreadyExists) {
+      logger.info("[startup] Schema already up to date — no new migrations needed");
+    } else {
+      logger.warn({ err }, "[startup] Migration skipped (schema already up to date)");
+    }
   }
 
   /* ── Start HTTP server ─────────────────────────────────────────── */

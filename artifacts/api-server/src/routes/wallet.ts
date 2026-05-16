@@ -508,7 +508,7 @@ router.post(
      * ════════════════════════════════════════════════════════════ */
     await db
       .update(usersTable)
-      .set({ balance: sql`${usersTable.balance} + ${amount}` })
+      .set({ balance: sql`${usersTable.balance} + ${amountXof}` })
       .where(eq(usersTable.id, user.id));
 
     const [tx] = await db
@@ -516,7 +516,7 @@ router.post(
       .values({
         userId: user.id,
         type: "recharge",
-        amount,
+        amount: amountXof,
         status: "completed",
         method: method?.name ?? methodSlug,
         description,
@@ -525,11 +525,11 @@ router.post(
 
     /* ── Send deposit confirmation email (non-mobile-money instant credit) ── */
     if (tx && user.email) {
-      const newBalanceAfter = user.balance + amount;
+      const newBalanceAfter = user.balance + amountXof;
       sendDepositConfirmationEmail({
         userEmail: user.email,
         userFullName: user.fullName ?? "Utilisateur",
-        amount,
+        amount: amountXof,
         method: method?.name ?? methodSlug,
         phoneNumber: phoneNumber ? `${dialCode ?? ""}${phoneNumber}` : null,
         transactionId: String(tx.id),
@@ -634,8 +634,10 @@ async function processDepositCallback(payload: PawaPayDepositCallback): Promise<
       return;
     }
 
-    /* In v2, amount = requested amount. If payment completed, that amount was received. */
-    const creditAmount = amount ? Math.round(Number(amount)) : tx.amount;
+    /* ALWAYS use the stored XOF amount (tx.amount) — never the webhook `amount`.
+     * The webhook `amount` is in the payer's LOCAL currency (e.g. KES, GHS)
+     * which may differ from our internal FCFA amount after FX conversion. */
+    const creditAmount = tx.amount;
 
     /* Atomic: update transaction + credit user balance */
     await db.update(transactionsTable)
