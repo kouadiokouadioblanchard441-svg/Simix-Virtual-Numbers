@@ -653,11 +653,21 @@ function PaymentConfigContent() {
   const seedMutation = useMutation({
     mutationFn: adminApi.seedAfricanCountries,
     onSuccess: (result) => {
-      toast({ title: `🌍 Pays africains ajoutés`, description: `${result.inserted} insérés, ${result.updated} mis à jour sur ${result.total} pays` });
+      toast({ title: `Pays africains ajoutés`, description: `${result.inserted} insérés, ${result.updated} mis à jour sur ${result.total} pays` });
       qc.invalidateQueries({ queryKey: ["admin-payment-configs"] });
       qc.invalidateQueries({ queryKey: ["admin-countries"] });
     },
     onError: (e) => toast({ title: "Ajout de pays impossible", description: (e as Error).message, variant: "destructive" }),
+  });
+
+  const seedWorldMutation = useMutation({
+    mutationFn: adminApi.seedWorldCountries,
+    onSuccess: (result) => {
+      toast({ title: `Tous les pays du monde ajoutés`, description: `${result.inserted} nouveaux, ${result.updated} mis à jour · ${result.total} pays au total` });
+      qc.invalidateQueries({ queryKey: ["admin-payment-configs"] });
+      qc.invalidateQueries({ queryKey: ["admin-countries"] });
+    },
+    onError: (e) => toast({ title: "Erreur", description: (e as Error).message, variant: "destructive" }),
   });
 
   const TABS: { id: Tab; label: string; count?: number }[] = [
@@ -677,6 +687,19 @@ function PaymentConfigContent() {
           </p>
         </div>
         <div className="flex items-center gap-3">
+          {/* Seed world countries button */}
+          <button
+            onClick={() => {
+              if (confirm("Ajouter / mettre à jour tous les pays du monde (~195 pays) dans la base ?")) {
+                seedWorldMutation.mutate();
+              }
+            }}
+            disabled={seedWorldMutation.isPending}
+            className="flex items-center gap-2 px-3 py-2 text-sm font-medium bg-violet-600/20 border border-violet-600/30 text-violet-400 rounded-xl hover:bg-violet-600/30 transition-colors disabled:opacity-50"
+          >
+            {seedWorldMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Globe className="w-4 h-4" />}
+            Tous les pays
+          </button>
           {/* Seed African countries button */}
           <button
             onClick={() => {
@@ -688,7 +711,7 @@ function PaymentConfigContent() {
             className="flex items-center gap-2 px-3 py-2 text-sm font-medium bg-emerald-600/20 border border-emerald-600/30 text-emerald-400 rounded-xl hover:bg-emerald-600/30 transition-colors disabled:opacity-50"
           >
             {seedMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <MapPin className="w-4 h-4" />}
-            Seed pays africains
+            Pays africains
           </button>
           {/* Operator logo preview strip */}
           <div className="flex items-center gap-2 bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-2.5">

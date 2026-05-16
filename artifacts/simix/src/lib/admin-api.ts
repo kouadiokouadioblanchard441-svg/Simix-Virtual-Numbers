@@ -77,6 +77,7 @@ export const adminApi = {
   getCountries: () => req<AdminCountry[]>("GET", "/admin/countries"),
   updateCountry: (id: string, data: Partial<AdminCountry>) => req("PUT", `/admin/countries/${id}`, data),
   seedAfricanCountries: () => req<{ success: boolean; inserted: number; updated: number; total: number }>("POST", "/admin/countries/seed-africa"),
+  seedWorldCountries: () => req<{ success: boolean; inserted: number; updated: number; total: number }>("POST", "/admin/countries/seed-world"),
 
   getPaymentMethods: () => req<AdminPaymentMethod[]>("GET", "/admin/payment-methods"),
   createPaymentMethod: (data: Partial<AdminPaymentMethod>) => req<AdminPaymentMethod>("POST", "/admin/payment-methods", data),

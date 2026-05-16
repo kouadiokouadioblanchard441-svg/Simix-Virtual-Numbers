@@ -531,6 +531,246 @@ router.post("/admin/countries/seed-africa", requireAdmin, async (req, res): Prom
   res.json({ success: true, inserted, updated: skipped, total: AFRICAN_COUNTRIES.length });
 });
 
+/* ─── Seed ALL world countries (ISO 3166-1 alpha-2, French names) ─── */
+router.post("/admin/countries/seed-world", requireAdmin, async (req, res): Promise<void> => {
+  const WORLD_COUNTRIES = [
+    // Europe
+    { code: "AD", name: "Andorre",                     dialCode: "+376",  popular: false, sortOrder: 900 },
+    { code: "AL", name: "Albanie",                     dialCode: "+355",  popular: false, sortOrder: 900 },
+    { code: "AM", name: "Arménie",                     dialCode: "+374",  popular: false, sortOrder: 900 },
+    { code: "AT", name: "Autriche",                    dialCode: "+43",   popular: false, sortOrder: 900 },
+    { code: "AZ", name: "Azerbaïdjan",                 dialCode: "+994",  popular: false, sortOrder: 900 },
+    { code: "BA", name: "Bosnie-Herzégovine",          dialCode: "+387",  popular: false, sortOrder: 900 },
+    { code: "BE", name: "Belgique",                    dialCode: "+32",   popular: false, sortOrder: 900 },
+    { code: "BG", name: "Bulgarie",                    dialCode: "+359",  popular: false, sortOrder: 900 },
+    { code: "BY", name: "Biélorussie",                 dialCode: "+375",  popular: false, sortOrder: 900 },
+    { code: "CH", name: "Suisse",                      dialCode: "+41",   popular: false, sortOrder: 900 },
+    { code: "CY", name: "Chypre",                      dialCode: "+357",  popular: false, sortOrder: 900 },
+    { code: "CZ", name: "République tchèque",          dialCode: "+420",  popular: false, sortOrder: 900 },
+    { code: "DE", name: "Allemagne",                   dialCode: "+49",   popular: true,  sortOrder: 900 },
+    { code: "DK", name: "Danemark",                    dialCode: "+45",   popular: false, sortOrder: 900 },
+    { code: "EE", name: "Estonie",                     dialCode: "+372",  popular: false, sortOrder: 900 },
+    { code: "ES", name: "Espagne",                     dialCode: "+34",   popular: false, sortOrder: 900 },
+    { code: "FI", name: "Finlande",                    dialCode: "+358",  popular: false, sortOrder: 900 },
+    { code: "FR", name: "France",                      dialCode: "+33",   popular: true,  sortOrder: 900 },
+    { code: "GB", name: "Royaume-Uni",                 dialCode: "+44",   popular: true,  sortOrder: 900 },
+    { code: "GE", name: "Géorgie",                     dialCode: "+995",  popular: false, sortOrder: 900 },
+    { code: "GR", name: "Grèce",                       dialCode: "+30",   popular: false, sortOrder: 900 },
+    { code: "HR", name: "Croatie",                     dialCode: "+385",  popular: false, sortOrder: 900 },
+    { code: "HU", name: "Hongrie",                     dialCode: "+36",   popular: false, sortOrder: 900 },
+    { code: "IE", name: "Irlande",                     dialCode: "+353",  popular: false, sortOrder: 900 },
+    { code: "IS", name: "Islande",                     dialCode: "+354",  popular: false, sortOrder: 900 },
+    { code: "IT", name: "Italie",                      dialCode: "+39",   popular: false, sortOrder: 900 },
+    { code: "LI", name: "Liechtenstein",               dialCode: "+423",  popular: false, sortOrder: 900 },
+    { code: "LT", name: "Lituanie",                    dialCode: "+370",  popular: false, sortOrder: 900 },
+    { code: "LU", name: "Luxembourg",                  dialCode: "+352",  popular: false, sortOrder: 900 },
+    { code: "LV", name: "Lettonie",                    dialCode: "+371",  popular: false, sortOrder: 900 },
+    { code: "MC", name: "Monaco",                      dialCode: "+377",  popular: false, sortOrder: 900 },
+    { code: "MD", name: "Moldavie",                    dialCode: "+373",  popular: false, sortOrder: 900 },
+    { code: "ME", name: "Monténégro",                  dialCode: "+382",  popular: false, sortOrder: 900 },
+    { code: "MK", name: "Macédoine du Nord",           dialCode: "+389",  popular: false, sortOrder: 900 },
+    { code: "MT", name: "Malte",                       dialCode: "+356",  popular: false, sortOrder: 900 },
+    { code: "NL", name: "Pays-Bas",                    dialCode: "+31",   popular: false, sortOrder: 900 },
+    { code: "NO", name: "Norvège",                     dialCode: "+47",   popular: false, sortOrder: 900 },
+    { code: "PL", name: "Pologne",                     dialCode: "+48",   popular: false, sortOrder: 900 },
+    { code: "PT", name: "Portugal",                    dialCode: "+351",  popular: false, sortOrder: 900 },
+    { code: "RO", name: "Roumanie",                    dialCode: "+40",   popular: false, sortOrder: 900 },
+    { code: "RS", name: "Serbie",                      dialCode: "+381",  popular: false, sortOrder: 900 },
+    { code: "RU", name: "Russie",                      dialCode: "+7",    popular: true,  sortOrder: 900 },
+    { code: "SE", name: "Suède",                       dialCode: "+46",   popular: false, sortOrder: 900 },
+    { code: "SI", name: "Slovénie",                    dialCode: "+386",  popular: false, sortOrder: 900 },
+    { code: "SK", name: "Slovaquie",                   dialCode: "+421",  popular: false, sortOrder: 900 },
+    { code: "SM", name: "Saint-Marin",                 dialCode: "+378",  popular: false, sortOrder: 900 },
+    { code: "UA", name: "Ukraine",                     dialCode: "+380",  popular: false, sortOrder: 900 },
+    { code: "VA", name: "Vatican",                     dialCode: "+379",  popular: false, sortOrder: 900 },
+    { code: "XK", name: "Kosovo",                      dialCode: "+383",  popular: false, sortOrder: 900 },
+    // Amériques
+    { code: "AG", name: "Antigua-et-Barbuda",         dialCode: "+1268", popular: false, sortOrder: 900 },
+    { code: "AR", name: "Argentine",                   dialCode: "+54",   popular: false, sortOrder: 900 },
+    { code: "BB", name: "Barbade",                     dialCode: "+1246", popular: false, sortOrder: 900 },
+    { code: "BO", name: "Bolivie",                     dialCode: "+591",  popular: false, sortOrder: 900 },
+    { code: "BR", name: "Brésil",                      dialCode: "+55",   popular: true,  sortOrder: 900 },
+    { code: "BS", name: "Bahamas",                     dialCode: "+1242", popular: false, sortOrder: 900 },
+    { code: "BZ", name: "Belize",                      dialCode: "+501",  popular: false, sortOrder: 900 },
+    { code: "CA", name: "Canada",                      dialCode: "+1",    popular: true,  sortOrder: 900 },
+    { code: "CL", name: "Chili",                       dialCode: "+56",   popular: false, sortOrder: 900 },
+    { code: "CO", name: "Colombie",                    dialCode: "+57",   popular: false, sortOrder: 900 },
+    { code: "CR", name: "Costa Rica",                  dialCode: "+506",  popular: false, sortOrder: 900 },
+    { code: "CU", name: "Cuba",                        dialCode: "+53",   popular: false, sortOrder: 900 },
+    { code: "DM", name: "Dominique",                   dialCode: "+1767", popular: false, sortOrder: 900 },
+    { code: "DO", name: "République dominicaine",      dialCode: "+1809", popular: false, sortOrder: 900 },
+    { code: "EC", name: "Équateur",                    dialCode: "+593",  popular: false, sortOrder: 900 },
+    { code: "GD", name: "Grenade",                     dialCode: "+1473", popular: false, sortOrder: 900 },
+    { code: "GT", name: "Guatemala",                   dialCode: "+502",  popular: false, sortOrder: 900 },
+    { code: "GY", name: "Guyana",                      dialCode: "+592",  popular: false, sortOrder: 900 },
+    { code: "HN", name: "Honduras",                    dialCode: "+504",  popular: false, sortOrder: 900 },
+    { code: "HT", name: "Haïti",                       dialCode: "+509",  popular: false, sortOrder: 900 },
+    { code: "JM", name: "Jamaïque",                    dialCode: "+1876", popular: false, sortOrder: 900 },
+    { code: "KN", name: "Saint-Kitts-et-Nevis",       dialCode: "+1869", popular: false, sortOrder: 900 },
+    { code: "LC", name: "Sainte-Lucie",                dialCode: "+1758", popular: false, sortOrder: 900 },
+    { code: "MX", name: "Mexique",                     dialCode: "+52",   popular: true,  sortOrder: 900 },
+    { code: "NI", name: "Nicaragua",                   dialCode: "+505",  popular: false, sortOrder: 900 },
+    { code: "PA", name: "Panama",                      dialCode: "+507",  popular: false, sortOrder: 900 },
+    { code: "PE", name: "Pérou",                       dialCode: "+51",   popular: false, sortOrder: 900 },
+    { code: "PY", name: "Paraguay",                    dialCode: "+595",  popular: false, sortOrder: 900 },
+    { code: "SR", name: "Suriname",                    dialCode: "+597",  popular: false, sortOrder: 900 },
+    { code: "SV", name: "Salvador",                    dialCode: "+503",  popular: false, sortOrder: 900 },
+    { code: "TT", name: "Trinité-et-Tobago",          dialCode: "+1868", popular: false, sortOrder: 900 },
+    { code: "US", name: "États-Unis",                  dialCode: "+1",    popular: true,  sortOrder: 900 },
+    { code: "UY", name: "Uruguay",                     dialCode: "+598",  popular: false, sortOrder: 900 },
+    { code: "VC", name: "Saint-Vincent-et-les-Grenadines", dialCode: "+1784", popular: false, sortOrder: 900 },
+    { code: "VE", name: "Vénézuela",                   dialCode: "+58",   popular: false, sortOrder: 900 },
+    // Asie-Pacifique
+    { code: "AF", name: "Afghanistan",                 dialCode: "+93",   popular: false, sortOrder: 900 },
+    { code: "AU", name: "Australie",                   dialCode: "+61",   popular: false, sortOrder: 900 },
+    { code: "BD", name: "Bangladesh",                  dialCode: "+880",  popular: false, sortOrder: 900 },
+    { code: "BN", name: "Brunéi",                      dialCode: "+673",  popular: false, sortOrder: 900 },
+    { code: "BT", name: "Bhoutan",                     dialCode: "+975",  popular: false, sortOrder: 900 },
+    { code: "CN", name: "Chine",                       dialCode: "+86",   popular: true,  sortOrder: 900 },
+    { code: "FJ", name: "Fidji",                       dialCode: "+679",  popular: false, sortOrder: 900 },
+    { code: "FM", name: "Micronésie",                  dialCode: "+691",  popular: false, sortOrder: 900 },
+    { code: "HK", name: "Hong Kong",                   dialCode: "+852",  popular: false, sortOrder: 900 },
+    { code: "ID", name: "Indonésie",                   dialCode: "+62",   popular: false, sortOrder: 900 },
+    { code: "IN", name: "Inde",                        dialCode: "+91",   popular: true,  sortOrder: 900 },
+    { code: "JP", name: "Japon",                       dialCode: "+81",   popular: false, sortOrder: 900 },
+    { code: "KG", name: "Kirghizistan",                dialCode: "+996",  popular: false, sortOrder: 900 },
+    { code: "KH", name: "Cambodge",                    dialCode: "+855",  popular: false, sortOrder: 900 },
+    { code: "KI", name: "Kiribati",                    dialCode: "+686",  popular: false, sortOrder: 900 },
+    { code: "KP", name: "Corée du Nord",               dialCode: "+850",  popular: false, sortOrder: 900 },
+    { code: "KR", name: "Corée du Sud",                dialCode: "+82",   popular: false, sortOrder: 900 },
+    { code: "KZ", name: "Kazakhstan",                  dialCode: "+7",    popular: false, sortOrder: 900 },
+    { code: "LA", name: "Laos",                        dialCode: "+856",  popular: false, sortOrder: 900 },
+    { code: "LK", name: "Sri Lanka",                   dialCode: "+94",   popular: false, sortOrder: 900 },
+    { code: "MH", name: "Îles Marshall",               dialCode: "+692",  popular: false, sortOrder: 900 },
+    { code: "MM", name: "Myanmar",                     dialCode: "+95",   popular: false, sortOrder: 900 },
+    { code: "MN", name: "Mongolie",                    dialCode: "+976",  popular: false, sortOrder: 900 },
+    { code: "MV", name: "Maldives",                    dialCode: "+960",  popular: false, sortOrder: 900 },
+    { code: "MY", name: "Malaisie",                    dialCode: "+60",   popular: false, sortOrder: 900 },
+    { code: "NP", name: "Népal",                       dialCode: "+977",  popular: false, sortOrder: 900 },
+    { code: "NR", name: "Nauru",                       dialCode: "+674",  popular: false, sortOrder: 900 },
+    { code: "NZ", name: "Nouvelle-Zélande",            dialCode: "+64",   popular: false, sortOrder: 900 },
+    { code: "PG", name: "Papouasie-Nouvelle-Guinée",  dialCode: "+675",  popular: false, sortOrder: 900 },
+    { code: "PH", name: "Philippines",                 dialCode: "+63",   popular: false, sortOrder: 900 },
+    { code: "PK", name: "Pakistan",                    dialCode: "+92",   popular: false, sortOrder: 900 },
+    { code: "PW", name: "Palaos",                      dialCode: "+680",  popular: false, sortOrder: 900 },
+    { code: "SB", name: "Îles Salomon",                dialCode: "+677",  popular: false, sortOrder: 900 },
+    { code: "SG", name: "Singapour",                   dialCode: "+65",   popular: false, sortOrder: 900 },
+    { code: "TH", name: "Thaïlande",                   dialCode: "+66",   popular: false, sortOrder: 900 },
+    { code: "TJ", name: "Tadjikistan",                 dialCode: "+992",  popular: false, sortOrder: 900 },
+    { code: "TL", name: "Timor oriental",              dialCode: "+670",  popular: false, sortOrder: 900 },
+    { code: "TM", name: "Turkménistan",                dialCode: "+993",  popular: false, sortOrder: 900 },
+    { code: "TO", name: "Tonga",                       dialCode: "+676",  popular: false, sortOrder: 900 },
+    { code: "TV", name: "Tuvalu",                      dialCode: "+688",  popular: false, sortOrder: 900 },
+    { code: "TW", name: "Taïwan",                      dialCode: "+886",  popular: false, sortOrder: 900 },
+    { code: "UZ", name: "Ouzbékistan",                 dialCode: "+998",  popular: false, sortOrder: 900 },
+    { code: "VN", name: "Viêt Nam",                    dialCode: "+84",   popular: false, sortOrder: 900 },
+    { code: "VU", name: "Vanuatu",                     dialCode: "+678",  popular: false, sortOrder: 900 },
+    { code: "WS", name: "Samoa",                       dialCode: "+685",  popular: false, sortOrder: 900 },
+    // Moyen-Orient
+    { code: "AE", name: "Émirats arabes unis",        dialCode: "+971",  popular: false, sortOrder: 900 },
+    { code: "BH", name: "Bahreïn",                    dialCode: "+973",  popular: false, sortOrder: 900 },
+    { code: "IL", name: "Israël",                      dialCode: "+972",  popular: false, sortOrder: 900 },
+    { code: "IQ", name: "Irak",                        dialCode: "+964",  popular: false, sortOrder: 900 },
+    { code: "IR", name: "Iran",                        dialCode: "+98",   popular: false, sortOrder: 900 },
+    { code: "JO", name: "Jordanie",                    dialCode: "+962",  popular: false, sortOrder: 900 },
+    { code: "KW", name: "Koweït",                      dialCode: "+965",  popular: false, sortOrder: 900 },
+    { code: "LB", name: "Liban",                       dialCode: "+961",  popular: false, sortOrder: 900 },
+    { code: "OM", name: "Oman",                        dialCode: "+968",  popular: false, sortOrder: 900 },
+    { code: "PS", name: "Palestine",                   dialCode: "+970",  popular: false, sortOrder: 900 },
+    { code: "QA", name: "Qatar",                       dialCode: "+974",  popular: false, sortOrder: 900 },
+    { code: "SA", name: "Arabie saoudite",             dialCode: "+966",  popular: false, sortOrder: 900 },
+    { code: "SY", name: "Syrie",                       dialCode: "+963",  popular: false, sortOrder: 900 },
+    { code: "TR", name: "Turquie",                     dialCode: "+90",   popular: false, sortOrder: 900 },
+    { code: "YE", name: "Yémen",                       dialCode: "+967",  popular: false, sortOrder: 900 },
+    // Afrique
+    { code: "AO", name: "Angola",                      dialCode: "+244",  popular: false, sortOrder: 900 },
+    { code: "BF", name: "Burkina Faso",                dialCode: "+226",  popular: true,  sortOrder: 900 },
+    { code: "BI", name: "Burundi",                     dialCode: "+257",  popular: false, sortOrder: 900 },
+    { code: "BJ", name: "Bénin",                       dialCode: "+229",  popular: false, sortOrder: 900 },
+    { code: "BW", name: "Botswana",                    dialCode: "+267",  popular: false, sortOrder: 900 },
+    { code: "CD", name: "RD Congo",                    dialCode: "+243",  popular: true,  sortOrder: 900 },
+    { code: "CF", name: "Centrafrique",                dialCode: "+236",  popular: false, sortOrder: 900 },
+    { code: "CG", name: "Congo-Brazzaville",           dialCode: "+242",  popular: false, sortOrder: 900 },
+    { code: "CI", name: "Côte d'Ivoire",               dialCode: "+225",  popular: true,  sortOrder: 900 },
+    { code: "CM", name: "Cameroun",                    dialCode: "+237",  popular: true,  sortOrder: 900 },
+    { code: "CV", name: "Cap-Vert",                    dialCode: "+238",  popular: false, sortOrder: 900 },
+    { code: "DJ", name: "Djibouti",                    dialCode: "+253",  popular: false, sortOrder: 900 },
+    { code: "DZ", name: "Algérie",                     dialCode: "+213",  popular: false, sortOrder: 900 },
+    { code: "EG", name: "Égypte",                      dialCode: "+20",   popular: true,  sortOrder: 900 },
+    { code: "ER", name: "Érythrée",                    dialCode: "+291",  popular: false, sortOrder: 900 },
+    { code: "ET", name: "Éthiopie",                    dialCode: "+251",  popular: false, sortOrder: 900 },
+    { code: "GA", name: "Gabon",                       dialCode: "+241",  popular: false, sortOrder: 900 },
+    { code: "GH", name: "Ghana",                       dialCode: "+233",  popular: true,  sortOrder: 900 },
+    { code: "GM", name: "Gambie",                      dialCode: "+220",  popular: false, sortOrder: 900 },
+    { code: "GN", name: "Guinée",                      dialCode: "+224",  popular: false, sortOrder: 900 },
+    { code: "GQ", name: "Guinée équatoriale",          dialCode: "+240",  popular: false, sortOrder: 900 },
+    { code: "GW", name: "Guinée-Bissau",               dialCode: "+245",  popular: false, sortOrder: 900 },
+    { code: "KE", name: "Kenya",                       dialCode: "+254",  popular: true,  sortOrder: 900 },
+    { code: "KM", name: "Comores",                     dialCode: "+269",  popular: false, sortOrder: 900 },
+    { code: "LR", name: "Liberia",                     dialCode: "+231",  popular: false, sortOrder: 900 },
+    { code: "LS", name: "Lesotho",                     dialCode: "+266",  popular: false, sortOrder: 900 },
+    { code: "LY", name: "Libye",                       dialCode: "+218",  popular: false, sortOrder: 900 },
+    { code: "MA", name: "Maroc",                       dialCode: "+212",  popular: true,  sortOrder: 900 },
+    { code: "MG", name: "Madagascar",                  dialCode: "+261",  popular: false, sortOrder: 900 },
+    { code: "ML", name: "Mali",                        dialCode: "+223",  popular: true,  sortOrder: 900 },
+    { code: "MR", name: "Mauritanie",                  dialCode: "+222",  popular: false, sortOrder: 900 },
+    { code: "MU", name: "Maurice",                     dialCode: "+230",  popular: false, sortOrder: 900 },
+    { code: "MW", name: "Malawi",                      dialCode: "+265",  popular: false, sortOrder: 900 },
+    { code: "MZ", name: "Mozambique",                  dialCode: "+258",  popular: false, sortOrder: 900 },
+    { code: "NA", name: "Namibie",                     dialCode: "+264",  popular: false, sortOrder: 900 },
+    { code: "NE", name: "Niger",                       dialCode: "+227",  popular: false, sortOrder: 900 },
+    { code: "NG", name: "Nigeria",                     dialCode: "+234",  popular: true,  sortOrder: 900 },
+    { code: "RW", name: "Rwanda",                      dialCode: "+250",  popular: false, sortOrder: 900 },
+    { code: "SC", name: "Seychelles",                  dialCode: "+248",  popular: false, sortOrder: 900 },
+    { code: "SD", name: "Soudan",                      dialCode: "+249",  popular: false, sortOrder: 900 },
+    { code: "SL", name: "Sierra Leone",                dialCode: "+232",  popular: false, sortOrder: 900 },
+    { code: "SN", name: "Sénégal",                     dialCode: "+221",  popular: true,  sortOrder: 900 },
+    { code: "SO", name: "Somalie",                     dialCode: "+252",  popular: false, sortOrder: 900 },
+    { code: "SS", name: "Soudan du Sud",               dialCode: "+211",  popular: false, sortOrder: 900 },
+    { code: "ST", name: "São Tomé-et-Príncipe",       dialCode: "+239",  popular: false, sortOrder: 900 },
+    { code: "SZ", name: "Eswatini",                    dialCode: "+268",  popular: false, sortOrder: 900 },
+    { code: "TD", name: "Tchad",                       dialCode: "+235",  popular: false, sortOrder: 900 },
+    { code: "TG", name: "Togo",                        dialCode: "+228",  popular: false, sortOrder: 900 },
+    { code: "TN", name: "Tunisie",                     dialCode: "+216",  popular: false, sortOrder: 900 },
+    { code: "TZ", name: "Tanzanie",                    dialCode: "+255",  popular: false, sortOrder: 900 },
+    { code: "UG", name: "Ouganda",                     dialCode: "+256",  popular: false, sortOrder: 900 },
+    { code: "ZA", name: "Afrique du Sud",              dialCode: "+27",   popular: true,  sortOrder: 900 },
+    { code: "ZM", name: "Zambie",                      dialCode: "+260",  popular: false, sortOrder: 900 },
+    { code: "ZW", name: "Zimbabwe",                    dialCode: "+263",  popular: false, sortOrder: 900 },
+  ];
+
+  function flagEmoji(code: string): string {
+    return [...code.toUpperCase()].map(c => String.fromCodePoint(0x1F1E6 - 65 + c.charCodeAt(0))).join("");
+  }
+
+  let inserted = 0;
+  let updated = 0;
+
+  for (const c of WORLD_COUNTRIES) {
+    const existing = await db
+      .select({ id: countriesTable.id })
+      .from(countriesTable)
+      .where(eq(countriesTable.code, c.code));
+
+    if (existing.length > 0) {
+      await db.update(countriesTable).set({
+        name: c.name, dialCode: c.dialCode, flag: flagEmoji(c.code), popular: c.popular,
+      }).where(eq(countriesTable.code, c.code));
+      updated++;
+    } else {
+      await db.insert(countriesTable).values({
+        code: c.code, name: c.name, dialCode: c.dialCode, flag: flagEmoji(c.code),
+        popular: c.popular, sortOrder: c.sortOrder, available: 0, price: 0,
+      });
+      inserted++;
+    }
+  }
+
+  const [{ total }] = await db.select({ total: sql<number>`COUNT(*)` }).from(countriesTable);
+  await logAdminAction(adminId(req), "seed_world_countries", req.ip, "countries", "bulk", { inserted, updated, total });
+  res.json({ success: true, inserted, updated, total: Number(total) });
+});
+
 /* ─── Sync all countries from 5sim ─── */
 router.post("/admin/countries/sync-5sim", requireAdmin, async (req, res): Promise<void> => {
   try {
@@ -1886,7 +2126,9 @@ router.post("/admin/service-prices/bulk", requireAdmin, async (req, res): Promis
   const results = [];
   for (const item of items) {
     const { countryCode, serviceSlug, price, enabled } = item;
-    if (!countryCode || !serviceSlug || price == null || Number(price) <= 0) continue;
+    if (!countryCode || !serviceSlug) continue;
+    /* Allow price=0 only when explicitly disabling a country+service */
+    if (Number(price) <= 0 && enabled !== false) continue;
     const [row] = await db
       .insert(servicePricesTable)
       .values({

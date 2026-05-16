@@ -143,16 +143,26 @@ function ServicePricesContent() {
 
   const handleSave = async () => {
     const toSave = dirtyEntries
-      .filter(([, v]) => v.price.trim() !== "" && Number(v.price) > 0)
-      .map(([countryCode, v]) => ({
-        countryCode,
-        serviceSlug: selectedSlug,
-        price: Number(v.price),
-        enabled: v.enabled,
-      }));
+      .filter(([, v]) => {
+        /* Save entries that have a valid price OR entries being explicitly disabled */
+        const hasPrice = v.price.trim() !== "" && Number(v.price) > 0;
+        return hasPrice || !v.enabled;
+      })
+      .map(([countryCode, v]) => {
+        /* For disabled entries without a price, fall back to the existing DB price */
+        const existing = allPrices.find(
+          p => p.serviceSlug === selectedSlug && p.countryCode === countryCode,
+        );
+        return {
+          countryCode,
+          serviceSlug: selectedSlug,
+          price: Number(v.price) > 0 ? Number(v.price) : (existing?.price ?? 0),
+          enabled: v.enabled,
+        };
+      });
 
     if (toSave.length === 0) {
-      toast({ title: "Aucun prix à enregistrer", description: "Entrez au moins un prix > 0 FCFA.", variant: "destructive" });
+      toast({ title: "Aucun changement à enregistrer", description: "Entrez un prix > 0 FCFA ou désactivez un pays.", variant: "destructive" });
       return;
     }
     await bulkUpsert.mutateAsync(toSave);
