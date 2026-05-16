@@ -260,8 +260,10 @@ export class ClapayClient {
     try { json = JSON.parse(text); } catch { json = text; }
 
     if (!res.ok) {
+      /* Log the full raw response so the error is visible in server logs */
+      console.error(`[Clapay] HTTP ${res.status} on ${method} ${path} — raw body: ${text.slice(0, 2000)}`);
       const errMsg = typeof json === "object" && json !== null
-        ? ((json as Record<string, unknown>).message ?? JSON.stringify(json))
+        ? ((json as Record<string, unknown>).message ?? (json as Record<string, unknown>).error ?? JSON.stringify(json))
         : text;
       const err = new Error(`Clapay ${res.status}: ${errMsg}`);
       (err as NodeJS.ErrnoException).code = String(res.status);

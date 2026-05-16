@@ -351,11 +351,22 @@ router.post(
             metadata: [{ userId: user.id }, { methodSlug }],
           });
         } catch (e) {
-          logger.error({ error: (e as Error).message, depositId, userId: user.id }, "[PawaPay] Deposit request failed (network)");
-          res.status(502).json({
-            error: "Erreur de communication avec l'opérateur. Votre dépôt est en attente de confirmation — vérifiez l'historique.",
-            depositId, pending: true,
-          });
+          const errMsg = (e as Error).message ?? "Erreur inconnue";
+          logger.error({ error: errMsg, depositId, userId: user.id }, "[PawaPay] Deposit request failed");
+
+          /* Distinguish API rejection (4xx/5xx from PawaPay) vs true network error.
+           * API rejections mean the payment never started → mark as failed immediately.
+           * Network errors leave the tx pending so reconciliation can catch it. */
+          const isApiError = /^PawaPay\s+\d+/.test(errMsg) || (e as NodeJS.ErrnoException).code?.match(/^[345]\d\d$/) !== null;
+          if (isApiError) {
+            await db.update(transactionsTable).set({ status: "failed" }).where(eq(transactionsTable.id, pendingTx!.id));
+            res.status(422).json({ error: `Dépôt refusé par l'opérateur. ${errMsg}` });
+          } else {
+            res.status(502).json({
+              error: "Erreur de communication avec l'opérateur. Votre dépôt est en attente de confirmation — vérifiez l'historique.",
+              depositId, pending: true,
+            });
+          }
           return;
         }
 
@@ -439,11 +450,24 @@ router.post(
             tunnel: "CHECKOUTPAGE",
           });
         } catch (e) {
-          logger.error({ error: (e as Error).message, trackingId, userId: user.id }, "[Clapay] Payment initiation failed");
-          res.status(502).json({
-            error: "Erreur de communication avec l'opérateur. Votre dépôt est en attente de confirmation — vérifiez l'historique.",
-            depositId: externalDepositId, pending: true,
-          });
+          const errMsg = (e as Error).message ?? "Erreur inconnue";
+          logger.error({ error: errMsg, trackingId, userId: user.id }, "[Clapay] Payment initiation failed");
+
+          /* Distinguish API rejection (Clapay returned 4xx/5xx) vs true network error.
+           * The ClapayClient throws errors prefixed "Clapay {status}: ..." for API errors.
+           * API rejections mean the payment never started → mark transaction as failed.
+           * Network errors (DNS, timeout, ECONNRESET) leave tx pending for reconciliation. */
+          const isClapayApiError = /^Clapay\s+\d+/.test(errMsg);
+          if (isClapayApiError) {
+            await db.update(transactionsTable).set({ status: "failed" }).where(eq(transactionsTable.id, pendingTx!.id));
+            const userMsg = errMsg.replace(/^Clapay\s+\d+:\s*/, "");
+            res.status(422).json({ error: `Paiement refusé par l'opérateur : ${userMsg}` });
+          } else {
+            res.status(502).json({
+              error: "Erreur de communication avec l'opérateur. Votre dépôt est en attente de confirmation — vérifiez l'historique.",
+              depositId: externalDepositId, pending: true,
+            });
+          }
           return;
         }
 
