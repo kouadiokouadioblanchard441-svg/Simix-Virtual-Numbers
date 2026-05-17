@@ -6,7 +6,7 @@ import {
   useListServices, getListServicesQueryKey,
 } from "@workspace/api-client-react";
 import { useState, useMemo, useCallback } from "react";
-import { Link, useLocation } from "wouter";
+import { Link, useLocation, useSearch } from "wouter";
 import { Search, ChevronLeft, ChevronRight, Edit2, Zap, Globe, ShieldCheck } from "lucide-react";
 import { motion } from "framer-motion";
 import { formatFCFA } from "@/lib/format";
@@ -87,7 +87,8 @@ function CountriesContent() {
     if (window.history.length > 1) window.history.back();
     else setLocation("/services");
   }, [setLocation]);
-  const searchParams = new URLSearchParams(window.location.search);
+  const locationSearch = useSearch();
+  const searchParams = new URLSearchParams(locationSearch);
   const serviceId = searchParams.get("serviceId") || undefined;
 
   const [search, setSearch] = useState("");

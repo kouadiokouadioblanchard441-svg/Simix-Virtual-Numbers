@@ -15,10 +15,15 @@
  */
 
 import { sql } from "drizzle-orm";
-import { db, apiProvidersTable, servicesTable, systemSettingsTable, countriesTable } from "@workspace/db";
+import { db, apiProvidersTable, servicesTable, systemSettingsTable, countriesTable, serviceCountryAvailabilityTable } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
-import { FiveSimClient, type FiveSimProductsResponse } from "./fivesim";
+import { FiveSimClient, type FiveSimProductsResponse, ISO_TO_5SIM } from "./fivesim";
 import { logger } from "./logger";
+
+/** Reverse map: 5sim country slug → ISO code */
+const FIVESIM_TO_ISO: Record<string, string> = Object.fromEntries(
+  Object.entries(ISO_TO_5SIM).map(([iso, slug]) => [slug, iso]),
+);
 
 /* ─── Config ─── */
 const SYNC_INTERVAL_MS  = 6 * 60 * 60 * 1000;   // 6 hours
@@ -462,8 +467,11 @@ export async function syncFiveSimProducts(triggeredBy: "scheduler" | "admin" = "
 
     /* ── 1. Collect products across all sample countries ── */
     const merged: Record<string, { category: string; qty: number; price: number }> = {};
+    /* Per-country per-product availability cache rows */
+    const availRows: Array<{ serviceSlug: string; countryCode: string; available: number; providerPriceFcfa: number }> = [];
 
     for (const country of SAMPLE_COUNTRIES) {
+      const isoCode = FIVESIM_TO_ISO[country]?.toUpperCase();
       try {
         const products: FiveSimProductsResponse = await client.getProducts(country, "any");
         for (const [name, info] of Object.entries(products)) {
@@ -478,6 +486,15 @@ export async function syncFiveSimProducts(triggeredBy: "scheduler" | "admin" = "
           } else {
             merged[name].qty = Math.max(merged[name].qty, info.Qty);
           }
+          /* Store per-country availability if we have a valid ISO code */
+          if (isoCode && info.Qty > 0) {
+            availRows.push({
+              serviceSlug:      name.toLowerCase(),
+              countryCode:      isoCode,
+              available:        info.Qty,
+              providerPriceFcfa: Math.round(info.Price * 655),
+            });
+          }
         }
       } catch (e) {
         const msg = `Pays "${country}": ${(e as Error).message}`;
@@ -485,6 +502,29 @@ export async function syncFiveSimProducts(triggeredBy: "scheduler" | "admin" = "
         countryErrors++;
         logger.warn({ country, err: (e as Error).message }, "[5sim-sync] Skipping country");
       }
+    }
+
+    /* ── 1b. Upsert per-country availability cache (batched, non-blocking) ── */
+    if (availRows.length > 0) {
+      const AVAIL_BATCH = 200;
+      for (let i = 0; i < availRows.length; i += AVAIL_BATCH) {
+        const batch = availRows.slice(i, i + AVAIL_BATCH);
+        try {
+          await db.insert(serviceCountryAvailabilityTable)
+            .values(batch)
+            .onConflictDoUpdate({
+              target: [serviceCountryAvailabilityTable.serviceSlug, serviceCountryAvailabilityTable.countryCode],
+              set: {
+                available:        sql`excluded.available`,
+                providerPriceFcfa: sql`excluded.provider_price_fcfa`,
+                updatedAt:        sql`NOW()`,
+              },
+            });
+        } catch (e) {
+          logger.warn({ err: (e as Error).message }, "[5sim-sync] Availability cache upsert failed (non-fatal)");
+        }
+      }
+      logger.info({ rows: availRows.length }, "[5sim-sync] Per-country availability cache updated");
     }
 
     const productList = Object.entries(merged);

@@ -43,6 +43,13 @@
       "when": 1778640000000,
       "tag": "0005_users_missing_columns",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1778650000000,
+      "tag": "0006_service_country_availability",
+      "breakpoints": true
     }
   ]
 }

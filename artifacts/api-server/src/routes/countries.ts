@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { and, asc, eq, ilike, sql } from "drizzle-orm";
-import { db, countriesTable, servicesTable } from "@workspace/db";
+import { db, countriesTable, servicesTable, serviceCountryAvailabilityTable } from "@workspace/db";
 import { pool } from "@workspace/db";
 import { ListCountriesQueryParams } from "@workspace/api-zod";
 import { toCountry } from "../lib/serializers";
@@ -31,9 +31,12 @@ router.get("/countries", async (req, res): Promise<void> => {
   }
 
   if (serviceSlug) {
-    /* Raw SQL query: LEFT JOIN service_prices; exclude rows where enabled = false.
-       No row (null) or enabled = true both mean the country is available. */
-    const params: unknown[] = [serviceSlug];
+    /* Raw SQL query:
+       - LEFT JOIN service_prices: exclude rows where enabled = false (admin toggle)
+       - LEFT JOIN service_country_availability: per-service availability count from 5sim
+       No row in service_prices (null) or enabled = true both mean the country is available.
+       sca.available gives the real-time number count for this specific service. */
+    const params: unknown[] = [serviceSlug, serviceSlug];
     let searchClause = "";
     if (search && search.length > 0) {
       params.push(`%${search}%`);
@@ -45,11 +48,16 @@ router.get("/countries", async (req, res): Promise<void> => {
       available: number; price: number; popular: boolean; sort_order: number;
     }>(
       `SELECT c.id, c.code, c.name, c.dial_code, c.flag,
-              c.available, c.price, c.popular, c.sort_order
+              COALESCE(sca.available, c.available, 0) AS available,
+              COALESCE(sp.price, c.price) AS price,
+              c.popular, c.sort_order
        FROM countries c
        LEFT JOIN service_prices sp
          ON LOWER(c.code) = sp.country_code
         AND sp.service_slug = $1
+       LEFT JOIN service_country_availability sca
+         ON UPPER(c.code) = sca.country_code
+        AND sca.service_slug = $2
        WHERE (sp.enabled IS NULL OR sp.enabled = true)
        ${searchClause}
        ORDER BY c.sort_order ASC`,
