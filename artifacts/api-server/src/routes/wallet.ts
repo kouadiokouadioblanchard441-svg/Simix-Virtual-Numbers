@@ -28,7 +28,6 @@ import {
   makeClapayDepositId,
   isClapayDeposit,
   extractClapayTransactionId,
-  getOperatorCodeForMethod,
   serializeClapayMeta,
   parseClapayMeta,
   mapClapayStatusToDb,
@@ -401,14 +400,18 @@ router.post(
       if (activeGateway === "clapay") {
         const { client } = clapayCtx!;
 
-        /* Map methodSlug → Clapay operator code (e.g. "orange" → "OM") */
-        const operatorCode = getOperatorCodeForMethod(methodSlug);
+        /* Resolve operator code: try dynamic API lookup first, fall back to hardcoded map.
+         * Dynamic resolution calls GET /nowallet/api/opérateurs/données?pays=CC to get
+         * the exact codeoperator for this country, avoiding hardcoding mismatches. */
+        const operatorCode = await client.resolveOperatorCode(countryCode.toUpperCase(), methodSlug);
         if (!operatorCode) {
           res.status(422).json({
             error: `Opérateur Mobile Money non supporté via Clapay pour ce pays (${countryCode}). Essayez un autre mode de paiement.`,
           });
           return;
         }
+
+        logger.info({ country: countryCode, methodSlug, operatorCode }, "[Clapay] Resolved operator code");
 
         /* Generate our tracking UUID (sent to Clapay as transaction_id, echoed back in webhook) */
         const trackingId = generateDepositId(); /* UUID v4 */
@@ -908,89 +911,11 @@ router.get("/wallet/deposit/:depositId/status", requireAuth, async (req, res): P
 
   /* Only poll if transaction is still pending */
   if (tx.status === "pending") {
-    /* Clapay deposits: try Clapay API for status (reconciliation safety net).
-     * If the webhook was missed, this poll will detect COMPLETED and credit the user.
-     *
-     * Lookup order:
-     *  1. By stored signature (official endpoint — primary)
-     *  2. By transaction_id (undocumented fallback)
-     */
+    /* Clapay deposits: Clapay V3 API does NOT provide a status polling endpoint.
+     * Payment confirmation is done exclusively via webhook (callback_url).
+     * This endpoint simply returns the current DB state.
+     * If a webhook was missed, the reconciliation job will expire the tx after 2h. */
     if (isClapayDeposit(depositId)) {
-      const clapayCtx = await getClapayClient();
-      if (clapayCtx) {
-        try {
-          const transactionId = extractClapayTransactionId(depositId);
-
-          /* Try signature-based lookup first (official API) */
-          const clapayMeta = parseClapayMeta(tx.gatewayMeta);
-          let statusResult = clapayMeta?.clapaySignature
-            ? await clapayCtx.client.getTransactionStatus(clapayMeta.clapaySignature)
-            : null;
-
-          /* Fallback: lookup by our transaction_id */
-          if (!statusResult) {
-            statusResult = await clapayCtx.client.getTransactionByExternalId(transactionId);
-          }
-
-          if (statusResult) {
-            const clapayStatus = statusResult.status?.toUpperCase();
-
-            if (clapayStatus === "COMPLETED") {
-              /* ALWAYS use stored XOF amount — not the Clapay API amount (which is in local currency) */
-              const creditAmount = tx.amount;
-
-              const [justCompleted] = await db.update(transactionsTable)
-                .set({ status: "completed" })
-                .where(and(
-                  eq(transactionsTable.id, tx.id),
-                  eq(transactionsTable.status, "pending"),
-                ))
-                .returning();
-
-              if (justCompleted) {
-                await db.update(usersTable)
-                  .set({ balance: sql`${usersTable.balance} + ${creditAmount}` })
-                  .where(eq(usersTable.id, user.id));
-                logger.info({ depositId, userId: user.id, creditAmount }, "[Clapay Poll] Deposit COMPLETED via polling — balance credited ✓");
-
-                try {
-                  const [notif] = await db.insert(notificationsTable).values({
-                    userId: user.id,
-                    title: "💰 Solde rechargé",
-                    body: `Votre solde a été crédité de ${creditAmount.toLocaleString("fr-FR")} FCFA avec succès.`,
-                    type: "deposit", icon: "wallet", link: "/wallet",
-                    metadata: { amount: creditAmount, depositId: transactionId, gateway: "clapay", source: "poll" },
-                  }).returning();
-                  if (notif) broadcastNotification(notif);
-                } catch { /* non-critical */ }
-              } else {
-                logger.info({ depositId }, "[Clapay Poll] Already processed by webhook — skipping");
-              }
-
-              const [updated] = await db.select().from(transactionsTable)
-                .where(eq(transactionsTable.id, tx.id)).limit(1);
-              res.json({ ...toTransaction(updated ?? tx), gateway: "clapay" });
-              return;
-
-            } else if (CLAPAY_TERMINAL_FAILURE.has(clapayStatus ?? "")) {
-              /* Handles FAILED, CANCELLED, REJECTED, TIMEOUT, EXPIRED */
-              await db.update(transactionsTable)
-                .set({ status: "failed" })
-                .where(and(
-                  eq(transactionsTable.id, tx.id),
-                  eq(transactionsTable.status, "pending"),
-                ));
-              const [updated] = await db.select().from(transactionsTable)
-                .where(eq(transactionsTable.id, tx.id)).limit(1);
-              res.json({ ...toTransaction(updated ?? { ...tx, status: "failed" }), gateway: "clapay" });
-              return;
-            }
-          }
-        } catch (e) {
-          logger.warn({ error: (e as Error).message }, "[Clapay Poll] Status check failed");
-        }
-      }
-      /* Clapay not configured or status still pending — return current DB state */
       res.json({ ...toTransaction(tx), gateway: "clapay" });
       return;
     }

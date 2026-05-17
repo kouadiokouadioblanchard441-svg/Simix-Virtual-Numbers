@@ -3,19 +3,28 @@
  * Docs: NoWallet V3 / Clapay API (OAS 3.0)
  *
  * Auth: Bearer token (API key from Clapay dashboard)
- * Base URL: configurable — default https://api.clapay.africa
+ * Base URL: configurable — defaults to https://api.clapay.net
  *
- * Flow:
- *  1. POST /nowallet/api/init/payment  → receive signature + payment_url
- *  2. Store signature in DB (gateway_meta), wait for webhook callback
- *  3. Webhook: POST /api/wallet/clapay/webhook → credit user on COMPLETED
- *  4. Cancel: POST /nowallet/api/destroyer/signature (if needed)
- *  5. Reconciliation: GET /nowallet/api/check/transactions/single/signature/:sig
+ * Documented endpoints (used by this client):
+ *  POST /nowallet/api/init/payment            ← initiate payment
+ *  POST /nowallet/api/destroyer/signature     ← cancel payment
+ *  GET  /nowallet/api/check/transactions/single/balances/{country}  ← merchant balance
+ *  GET  /nowallet/api/check/transactions/global/balances/{currency} ← global balance
+ *  GET  /nowallet/api/pays/données            ← supported countries  (query: pays)
+ *  GET  /nowallet/api/opérateurs/données      ← operators by country (query: pays)
+ *  GET  /nowallet/api/fees/by/country         ← fees by country      (query: pays)
+ *  GET  /nowallet/api/limitation/paiement     ← payment limits       (query: pays)
+ *
+ * NOTE: There is NO transaction status polling endpoint in the official V3 API.
+ *  Payment confirmation is done exclusively via webhook callbacks (callback_url).
+ *  If a webhook is missed, the only recovery is contacting Clapay support.
  *
  * IMPORTANT:
  *  - All GET endpoints use the query parameter "pays" (French) for country code.
  *  - The signature returned on payment init MUST be stored — it is the primary
- *    reconciliation key accepted by the official Clapay API.
+ *    key for any future reconciliation or cancellation.
+ *  - operators_code takes the `codeoperator` short code (e.g. "OM", "MTN"),
+ *    NOT the code.MERCHANT internal value.
  */
 
 export interface ClapayPaymentRequest {
@@ -26,11 +35,11 @@ export interface ClapayPaymentRequest {
     customer_firstname?: string;
     customer_phone?: string;
   };
-  amount: number;
+  amount: number;                     // Integer amount in local currency (floor before sending)
   callback_url: string;               // Our webhook URL
   return_url: string;                 // Redirect after payment
   country_code: string;               // ISO alpha-2 (CI, CM, SN…)
-  operators_code: string[];           // ["OM"], ["MTN"], ["WAVE"], etc.
+  operators_code: string[];           // ["OM"], ["MTN"], ["WAVE"], etc. (codeoperator values)
   method: "MERCHANT" | "CASHIN";
   tunnel: "CHECKOUTPAGE" | "DIRECT";
   operator_otp?: string;
@@ -82,10 +91,10 @@ export interface ClapayCountry {
 
 export interface ClapayOperator {
   name: string;
-  codeoperator: string;
+  codeoperator: string;               // Short code used in operators_code[] (e.g. "OM", "MTN")
   logo: string;
   code: {
-    MERCHANT: string;
+    MERCHANT: string;                 // Internal merchant code (NOT used in operators_code)
     CASHIN: string;
     CASHOUT: string;
   };
@@ -123,6 +132,11 @@ export interface ClapayBalance {
   update: string;
 }
 
+export interface ClapayGlobalBalance {
+  bglobal: ClapayBalance;
+  bcountry: ClapayBalance[];
+}
+
 export interface ClapayPaymentLimit {
   max_amount: number;
   min_amount: number;
@@ -130,34 +144,24 @@ export interface ClapayPaymentLimit {
   country: string;
 }
 
-export interface ClapayTransactionStatus {
-  status: string;               // "COMPLETED", "FAILED", "PENDING", "CANCELLED", "TIMEOUT", "EXPIRED"
-  transaction_id?: string;      // Our UUID we sent
-  signature?: string;           // Clapay's signature for this transaction
-  amount?: number | string;     // LOCAL currency amount — informational only
-  currency?: string;
-  transaction_date?: string;
-  transaction_phone_number?: string;
-  transaction_service_name?: string;
-  additional_infos?: {
-    customer_phone?: string;
-    customer_firstname?: string;
-    customer_lastname?: string;
-    customer_email?: string;
-  };
-}
-
 /* ─────────────────────────────────────────────────────────────────
- * Operator slug → Clapay operator code mapping
+ * Operator slug → Clapay operator code mapping (fallback)
+ * Used when dynamic resolution from /opérateurs/données fails.
+ * These are the `codeoperator` values as defined in the Clapay API.
  * ─────────────────────────────────────────────────────────────── */
 export const METHOD_TO_CLAPAY_OPERATOR: Record<string, string> = {
   orange: "OM",
+  "orange money": "OM",
   mtn: "MTN",
+  "mtn money": "MTN",
   wave: "WAVE",
   moov: "MOOV",
+  "moov africa": "MOOV",
   free: "FREE",
+  "free money": "FREE",
   expresso: "EXPRESSO",
   airtel: "AIRTEL",
+  "airtel money": "AIRTEL",
   mpesa: "MPESA",
   "m-pesa": "MPESA",
   tmoney: "TMONEY",
@@ -226,9 +230,27 @@ export class ClapayClient {
   private token: string;
   private baseUrl: string;
 
-  constructor(token: string, baseUrl = "https://api.clapay.africa") {
+  constructor(token: string, baseUrl = "https://api.clapay.net") {
     this.token = token;
     this.baseUrl = baseUrl.replace(/\/$/, "");
+  }
+
+  private buildUrl(path: string, params?: Record<string, string>): string {
+    /* Use the URL constructor so non-ASCII path segments are correctly
+     * percent-encoded by the runtime (e.g. é → %C3%A9).
+     * We split on '/' and encode each segment individually so forward
+     * slashes in the path are preserved. */
+    const encoded = path
+      .split("/")
+      .map(seg => encodeURIComponent(decodeURIComponent(seg)))
+      .join("/");
+    const url = new URL(`${this.baseUrl}${encoded}`);
+    if (params) {
+      for (const [k, v] of Object.entries(params)) {
+        url.searchParams.set(k, v);
+      }
+    }
+    return url.toString();
   }
 
   private async request<T>(
@@ -237,10 +259,10 @@ export class ClapayClient {
     body?: unknown,
     params?: Record<string, string>,
   ): Promise<T> {
-    let url = `${this.baseUrl}${path}`;
-    if (params && Object.keys(params).length > 0) {
-      url += "?" + new URLSearchParams(params).toString();
-    }
+    const url = this.buildUrl(path, params);
+
+    /* Log outgoing request (body redacted in prod if sensitive) */
+    console.log(`[Clapay] → ${method} ${url}${body ? ` body=${JSON.stringify(body).slice(0, 500)}` : ""}`);
 
     const start = Date.now();
     const res = await fetch(url, {
@@ -261,16 +283,16 @@ export class ClapayClient {
 
     if (!res.ok) {
       /* Log the full raw response so the error is visible in server logs */
-      console.error(`[Clapay] HTTP ${res.status} on ${method} ${path} — raw body: ${text.slice(0, 2000)}`);
-      const errMsg = typeof json === "object" && json !== null
-        ? ((json as Record<string, unknown>).message ?? (json as Record<string, unknown>).error ?? JSON.stringify(json))
-        : text;
+      console.error(`[Clapay] ✗ HTTP ${res.status} on ${method} ${path} (${elapsed}ms) — body: ${text.slice(0, 2000)}`);
+      const errData = (typeof json === "object" && json !== null) ? json as Record<string, unknown> : {};
+      const errMsg = String(errData.message ?? errData.error ?? text).slice(0, 500);
       const err = new Error(`Clapay ${res.status}: ${errMsg}`);
       (err as NodeJS.ErrnoException).code = String(res.status);
       throw err;
     }
 
-    /* Log slow responses (> 5s) */
+    console.log(`[Clapay] ✓ ${method} ${path} — ${res.status} (${elapsed}ms)`);
+
     if (elapsed > 5000) {
       console.warn(`[Clapay] Slow response: ${method} ${path} took ${elapsed}ms`);
     }
@@ -281,14 +303,21 @@ export class ClapayClient {
   /**
    * Initiate a Mobile Money payment.
    * Returns a signature (tracking ID) and optionally a payment_url for CHECKOUTPAGE tunnel.
-   * IMPORTANT: Store `signature` in transactions.gateway_meta for reconciliation.
+   *
+   * IMPORTANT:
+   *  - amount must be a whole integer (floor before calling)
+   *  - operators_code takes codeoperator short codes (e.g. ["OM"], ["MTN"])
+   *  - Store `signature` in transactions.gateway_meta — required for cancellation
    */
   async initiatePayment(params: ClapayPaymentRequest): Promise<ClapayPaymentResponse> {
-    return this.request<ClapayPaymentResponse>("/nowallet/api/init/payment", "POST", params);
+    /* Ensure amount is a whole integer — some operators reject decimals */
+    const safeParams = { ...params, amount: Math.floor(params.amount) };
+    return this.request<ClapayPaymentResponse>("/nowallet/api/init/payment", "POST", safeParams);
   }
 
   /**
    * Cancel a pending payment by signature.
+   * Docs: POST /nowallet/api/destroyer/signature
    */
   async cancelPayment(signature: string): Promise<{ success: boolean }> {
     return this.request<{ success: boolean }>("/nowallet/api/destroyer/signature", "POST", { signature });
@@ -299,7 +328,19 @@ export class ClapayClient {
    * Docs: GET /nowallet/api/check/transactions/single/balances/{country}
    */
   async getBalance(country: string): Promise<ClapayBalance> {
-    return this.request<ClapayBalance>(`/nowallet/api/check/transactions/single/balances/${country}`);
+    return this.request<ClapayBalance>(
+      `/nowallet/api/check/transactions/single/balances/${encodeURIComponent(country)}`,
+    );
+  }
+
+  /**
+   * Get global merchant balances by currency.
+   * Docs: GET /nowallet/api/check/transactions/global/balances/{currency}
+   */
+  async getGlobalBalance(currency: string): Promise<ClapayGlobalBalance> {
+    return this.request<ClapayGlobalBalance>(
+      `/nowallet/api/check/transactions/global/balances/${encodeURIComponent(currency)}`,
+    );
   }
 
   /**
@@ -310,7 +351,7 @@ export class ClapayClient {
     const params: Record<string, string> = {};
     if (country) params.pays = country;     // ← official API uses "pays" not "country"
     const result = await this.request<ClapayCountry | ClapayCountry[]>(
-      "/nowallet/api/pays/donn%C3%A9es", "GET", undefined, params,
+      "/nowallet/api/pays/données", "GET", undefined, params,
     );
     return Array.isArray(result) ? result : [result];
   }
@@ -318,12 +359,64 @@ export class ClapayClient {
   /**
    * Get available operators for a country.
    * Docs: GET /nowallet/api/opérateurs/données — query param: "pays"
+   * Returns the list of operators with their codeoperator (short code) and code.MERCHANT.
    */
   async getOperators(country: string): Promise<ClapayOperator[]> {
     const result = await this.request<ClapayOperator | ClapayOperator[]>(
-      "/nowallet/api/op%C3%A9rateurs/donn%C3%A9es", "GET", undefined, { pays: country },
+      "/nowallet/api/opérateurs/données", "GET", undefined, { pays: country },
     );
     return Array.isArray(result) ? result : [result];
+  }
+
+  /**
+   * Resolve the correct operator code for a given method slug and country.
+   * Dynamically fetches operators from Clapay for the country and finds
+   * the matching one by name/codeoperator. Falls back to hardcoded mapping.
+   *
+   * @param country  ISO alpha-2 country code (e.g. "CI", "CM")
+   * @param methodSlug  e.g. "orange", "mtn", "wave"
+   */
+  async resolveOperatorCode(country: string, methodSlug: string): Promise<string | null> {
+    try {
+      const operators = await this.getOperators(country);
+      const slug = methodSlug.toLowerCase();
+
+      /* Try exact codeoperator match first (e.g. slug "om" → codeoperator "OM") */
+      const exactMatch = operators.find(op =>
+        op.active && op.codeoperator.toLowerCase() === slug,
+      );
+      if (exactMatch) return exactMatch.codeoperator;
+
+      /* Try name match (case-insensitive, partial) */
+      const nameMatch = operators.find(op =>
+        op.active && (
+          op.name.toLowerCase().includes(slug) ||
+          slug.includes(op.codeoperator.toLowerCase()) ||
+          op.codeoperator.toLowerCase().includes(slug)
+        ),
+      );
+      if (nameMatch) return nameMatch.codeoperator;
+
+      /* Try keyword match against operator name */
+      for (const [keyword, code] of Object.entries(METHOD_TO_CLAPAY_OPERATOR)) {
+        if (slug.includes(keyword) || keyword.includes(slug)) {
+          const kwMatch = operators.find(op =>
+            op.active && op.codeoperator === code,
+          );
+          if (kwMatch) return kwMatch.codeoperator;
+        }
+      }
+
+      /* Log available operators for debugging */
+      console.warn(
+        `[Clapay] No operator match for "${methodSlug}" in ${country}. Available: ${operators.map(o => `${o.codeoperator}(${o.name})`).join(", ")}`,
+      );
+    } catch (e) {
+      console.warn(`[Clapay] resolveOperatorCode fetch failed — falling back to hardcoded map: ${(e as Error).message}`);
+    }
+
+    /* Fallback to hardcoded mapping */
+    return getOperatorCodeForMethod(methodSlug);
   }
 
   /**
@@ -346,36 +439,6 @@ export class ClapayClient {
       "/nowallet/api/limitation/paiement", "GET", undefined, { pays: country },
     );
     return Array.isArray(result) ? result : [result];
-  }
-
-  /**
-   * Check the status of a specific transaction by its Clapay SIGNATURE.
-   * This is the PRIMARY reconciliation method (officially documented).
-   * Docs: GET /nowallet/api/check/transactions/single/signature/:sig
-   */
-  async getTransactionStatus(signature: string): Promise<ClapayTransactionStatus | null> {
-    try {
-      return await this.request<ClapayTransactionStatus>(
-        `/nowallet/api/check/transactions/single/signature/${encodeURIComponent(signature)}`,
-      );
-    } catch {
-      return null;
-    }
-  }
-
-  /**
-   * Check the status of a transaction by our transaction_id (the UUID we sent).
-   * NOTE: This endpoint is NOT in the official V3 docs — use getTransactionStatus(signature)
-   * as primary, and fall back to this only if signature is unavailable.
-   */
-  async getTransactionByExternalId(transactionId: string): Promise<ClapayTransactionStatus | null> {
-    try {
-      return await this.request<ClapayTransactionStatus>(
-        `/nowallet/api/check/transactions/single/transaction_id/${encodeURIComponent(transactionId)}`,
-      );
-    } catch {
-      return null;
-    }
   }
 }
 
