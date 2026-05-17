@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AdminGuard } from "@/components/admin-guard";
 import { AdminLayout } from "@/components/admin-layout";
@@ -9,16 +9,17 @@ import {
   Mail, Send, Users, Globe, Loader2, BarChart3, CheckCircle2,
   XCircle, Eye, EyeOff, ChevronDown, ChevronRight, AlertCircle,
   Shield, Gift, Star, Megaphone, Info, Zap, Clock, Settings,
+  Search, X, UserCheck, UserX,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const TEMPLATE_TYPES = [
-  { value: "info", label: "Information", icon: Info, color: "text-violet-400", accent: "#7c3aed" },
-  { value: "security", label: "Sécurité", icon: Shield, color: "text-red-400", accent: "#ef4444" },
-  { value: "bonus", label: "Bonus", icon: Gift, color: "text-green-400", accent: "#22c55e" },
-  { value: "promotion", label: "Promotion", icon: Star, color: "text-emerald-400", accent: "#f59e0b" },
-  { value: "system", label: "Système", icon: Zap, color: "text-blue-400", accent: "#3b82f6" },
-  { value: "announcement", label: "Annonce", icon: Megaphone, color: "text-purple-400", accent: "#a855f7" },
+  { value: "info",         label: "Information", icon: Info,      color: "text-violet-400", accent: "#7c3aed" },
+  { value: "security",     label: "Sécurité",    icon: Shield,    color: "text-red-400",    accent: "#ef4444" },
+  { value: "bonus",        label: "Bonus",       icon: Gift,      color: "text-green-400",  accent: "#22c55e" },
+  { value: "promotion",    label: "Promotion",   icon: Star,      color: "text-yellow-400", accent: "#f59e0b" },
+  { value: "system",       label: "Système",     icon: Zap,       color: "text-blue-400",   accent: "#3b82f6" },
+  { value: "announcement", label: "Annonce",     icon: Megaphone, color: "text-purple-400", accent: "#a855f7" },
 ];
 
 const EMAIL_TEMPLATES = [
@@ -44,6 +45,8 @@ const EMAIL_TEMPLATES = [
   },
 ];
 
+type Recipient = { id: string; fullName: string; email: string; phone?: string; status: string };
+
 function timeAgo(d: string) {
   const diff = Date.now() - new Date(d).getTime();
   if (diff < 60000) return "À l'instant";
@@ -61,7 +64,7 @@ function statusBadge(status: string) {
   }
 }
 
-/* ── Stats ───────────────────────────────────────────────── */
+/* ── Stats ─────────────────────────────────────────────── */
 function StatsSection() {
   const { data } = useQuery({
     queryKey: ["email-stats"],
@@ -72,19 +75,164 @@ function StatsSection() {
   return (
     <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
       {[
-        { label: "Campagnes", value: data?.totalCampaigns ?? 0, icon: Mail, color: "text-violet-400", bg: "bg-violet-500/10 border-violet-500/20" },
-        { label: "Emails envoyés", value: data?.totalSent ?? 0, icon: CheckCircle2, color: "text-green-400", bg: "bg-green-500/10 border-green-500/20" },
+        { label: "Campagnes", value: data?.totalCampaigns ?? 0, icon: Mail, color: "text-white", bg: "bg-violet-500/10 border-violet-500/20" },
+        { label: "Emails envoyés", value: data?.totalSent ?? 0, icon: CheckCircle2, color: "text-white", bg: "bg-green-500/10 border-green-500/20" },
         { label: "Échecs", value: data?.totalFailed ?? 0, icon: XCircle, color: "text-red-400", bg: "bg-red-500/10 border-red-500/20" },
-        { label: "Resend", value: data?.resendConfigured ? "✓ Actif" : "⚠ Absent", icon: Settings, color: data?.resendConfigured ? "text-green-400" : "text-emerald-400", bg: data?.resendConfigured ? "bg-green-500/10 border-green-500/20" : "bg-emerald-500/10 border-emerald-500/20" },
+        {
+          label: "Resend",
+          value: data?.resendConfigured ? "✓ Actif" : "⚠ Absent",
+          icon: Settings,
+          color: data?.resendConfigured ? "text-green-400" : "text-yellow-400",
+          bg: data?.resendConfigured ? "bg-green-500/10 border-green-500/20" : "bg-yellow-500/10 border-yellow-500/20",
+        },
       ].map(c => (
         <div key={c.label} className={cn("rounded-2xl border p-4 flex flex-col gap-1.5", c.bg)}>
           <c.icon className={cn("w-4 h-4", c.color)} />
-          <div className={cn("text-xl font-bold", typeof c.value === "string" ? "text-sm" : "", c.color === "text-green-400" || c.color === "text-violet-400" ? "text-white" : c.color)}>
+          <div className={cn("text-xl font-bold", c.color)}>
             {typeof c.value === "number" ? c.value.toLocaleString() : c.value}
           </div>
           <div className="text-xs text-zinc-400">{c.label}</div>
         </div>
       ))}
+    </div>
+  );
+}
+
+/* ── User Selector (specific mode) ─────────────────────── */
+function UserSelector({
+  selectedIds,
+  onToggle,
+  onSelectAll,
+  onClear,
+}: {
+  selectedIds: Set<string>;
+  onToggle: (id: string) => void;
+  onSelectAll: (ids: string[]) => void;
+  onClear: () => void;
+}) {
+  const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(search), 300);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  const { data, isLoading } = useQuery({
+    queryKey: ["email-recipients", debouncedSearch],
+    queryFn: () => adminApi.getEmailRecipients({ search: debouncedSearch || undefined, limit: 100 }),
+    staleTime: 10000,
+  });
+
+  const recipients = data?.recipients ?? [];
+
+  return (
+    <div className="rounded-2xl border border-zinc-700/50 overflow-hidden mt-2">
+      {/* Header */}
+      <div className="flex items-center justify-between gap-3 px-4 py-3 bg-zinc-800/60 border-b border-zinc-700/40">
+        <span className="text-sm text-white font-semibold flex items-center gap-2">
+          <UserCheck className="w-4 h-4 text-violet-400" />
+          Sélectionner des destinataires
+        </span>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => onSelectAll(recipients.map(r => r.id))}
+            className="text-xs text-violet-400 hover:text-violet-300 bg-violet-500/10 border border-violet-500/20 px-2.5 py-1 rounded-lg transition-all"
+          >
+            Tout sélectionner
+          </button>
+          {selectedIds.size > 0 && (
+            <button
+              onClick={onClear}
+              className="text-xs text-zinc-400 hover:text-white bg-zinc-700/40 border border-zinc-600/30 px-2.5 py-1 rounded-lg transition-all"
+            >
+              Tout désélectionner
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Search */}
+      <div className="px-4 py-3 border-b border-zinc-700/30 bg-zinc-800/30">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-500" />
+          <input
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Rechercher par nom, email ou téléphone…"
+            className="w-full bg-zinc-700/60 text-white text-sm rounded-xl pl-9 pr-4 py-2 outline-none border border-zinc-600/40 focus:border-violet-500/60 placeholder-zinc-500"
+          />
+          {search && (
+            <button onClick={() => setSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-white">
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* List */}
+      <div className="max-h-64 overflow-y-auto">
+        {isLoading ? (
+          <div className="flex justify-center py-6">
+            <Loader2 className="w-5 h-5 animate-spin text-violet-400" />
+          </div>
+        ) : recipients.length === 0 ? (
+          <div className="text-center py-8">
+            <UserX className="w-8 h-8 text-zinc-600 mx-auto mb-2" />
+            <p className="text-zinc-500 text-sm">Aucun utilisateur trouvé</p>
+            {search && <p className="text-zinc-600 text-xs mt-1">Essayez avec un autre terme</p>}
+          </div>
+        ) : (
+          recipients.map(r => {
+            const selected = selectedIds.has(r.id);
+            return (
+              <button
+                key={r.id}
+                onClick={() => onToggle(r.id)}
+                className={cn(
+                  "w-full flex items-center gap-3 px-4 py-2.5 border-b border-zinc-800/50 last:border-0 text-left transition-all",
+                  selected ? "bg-violet-500/10" : "hover:bg-zinc-700/30"
+                )}
+              >
+                {/* Checkbox */}
+                <div className={cn(
+                  "w-4 h-4 rounded-md border flex items-center justify-center flex-shrink-0 transition-all",
+                  selected ? "bg-violet-600 border-violet-500" : "border-zinc-600"
+                )}>
+                  {selected && <CheckCircle2 className="w-3 h-3 text-white" />}
+                </div>
+                {/* Avatar */}
+                <div className="w-7 h-7 rounded-full bg-gradient-to-br from-violet-600 to-indigo-600 flex items-center justify-center flex-shrink-0">
+                  <span className="text-white text-xs font-bold">
+                    {(r.fullName?.[0] ?? r.email[0]).toUpperCase()}
+                  </span>
+                </div>
+                {/* Info */}
+                <div className="flex-1 min-w-0">
+                  <p className="text-white text-xs font-semibold truncate">{r.fullName}</p>
+                  <p className="text-zinc-500 text-[10px] truncate">{r.email}</p>
+                </div>
+                {/* Status */}
+                <span className={cn(
+                  "text-[10px] font-semibold px-2 py-0.5 rounded-full",
+                  r.status === "Premium" ? "text-yellow-400 bg-yellow-400/10" : "text-zinc-400 bg-zinc-700/50"
+                )}>
+                  {r.status}
+                </span>
+              </button>
+            );
+          })
+        )}
+      </div>
+
+      {/* Footer */}
+      {selectedIds.size > 0 && (
+        <div className="px-4 py-2.5 bg-violet-500/10 border-t border-violet-500/20">
+          <p className="text-violet-300 text-xs font-semibold">
+            {selectedIds.size} destinataire{selectedIds.size > 1 ? "s" : ""} sélectionné{selectedIds.size > 1 ? "s" : ""}
+          </p>
+        </div>
+      )}
     </div>
   );
 }
@@ -99,20 +247,42 @@ function ComposeForm() {
   const [recipientsType, setRecipientsType] = useState<"all" | "specific">("all");
   const [showPreview, setShowPreview] = useState(false);
   const [showTemplates, setShowTemplates] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  /* Count eligible users for "all" mode */
+  const { data: allRecipientsData } = useQuery({
+    queryKey: ["email-recipients-count"],
+    queryFn: () => adminApi.getEmailRecipients({ limit: 200 }),
+    staleTime: 30000,
+  });
+  const allCount = allRecipientsData?.total ?? 0;
 
   const sendMutation = useMutation({
-    mutationFn: () => adminApi.sendEmailCampaign({ subject, body, templateType, recipientsType }),
+    mutationFn: () => adminApi.sendEmailCampaign({
+      subject,
+      body,
+      templateType,
+      recipientsType,
+      userIds: recipientsType === "specific" ? Array.from(selectedIds) : undefined,
+    }),
     onSuccess: (data) => {
       toast({
         title: "📧 Campagne lancée !",
-        description: `Envoi en cours pour ${data.totalRecipients} destinataire(s)...`,
+        description: `Envoi en cours pour ${data.totalRecipients} destinataire(s)…`,
       });
-      setSubject(""); setBody("");
+      setSubject(""); setBody(""); setSelectedIds(new Set());
       qc.invalidateQueries({ queryKey: ["email-campaigns"] });
       qc.invalidateQueries({ queryKey: ["email-stats"] });
     },
-    onError: (e: Error) => toast({ title: "Email non sauvegardé", description: e.message, variant: "destructive" }),
+    onError: (e: Error) => toast({
+      title: "Échec de l'envoi",
+      description: e.message,
+      variant: "destructive",
+    }),
   });
+
+  const canSend = !!subject.trim() && !!body.trim() &&
+    (recipientsType === "all" ? true : selectedIds.size > 0);
 
   const applyTemplate = (t: typeof EMAIL_TEMPLATES[0]) => {
     setTemplateType(t.type);
@@ -142,7 +312,7 @@ function ComposeForm() {
             className="flex items-center gap-1.5 text-xs text-zinc-400 hover:text-white bg-zinc-700/40 border border-zinc-600/30 px-3 py-1.5 rounded-lg transition-all"
           >
             {showPreview ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
-            {showPreview ? "Masquer aperçu" : "Aperçu HTML"}
+            {showPreview ? "Masquer aperçu" : "Aperçu"}
           </button>
         </div>
       </div>
@@ -182,7 +352,7 @@ function ComposeForm() {
               className={cn(
                 "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium border transition-all",
                 templateType === t.value
-                  ? `bg-[${t.accent}]/20 ${t.color} border-current`
+                  ? "bg-violet-600/30 text-violet-300 border-violet-500/50"
                   : "border-zinc-700/50 text-zinc-500 hover:text-zinc-300"
               )}
             >
@@ -198,7 +368,7 @@ function ComposeForm() {
         <input
           value={subject}
           onChange={e => setSubject(e.target.value)}
-          placeholder="Ex: 🎉 Nouvelle offre exclusive sur Simix !"
+          placeholder="Ex : 🎉 Nouvelle offre exclusive sur Simix !"
           className="w-full bg-zinc-700/60 text-white text-sm rounded-xl px-3 py-2.5 outline-none border border-zinc-600/40 focus:border-violet-500/60"
         />
       </div>
@@ -209,11 +379,11 @@ function ComposeForm() {
         <textarea
           value={body}
           onChange={e => setBody(e.target.value)}
-          rows={8}
-          placeholder="Rédigez le contenu de votre email ici...\n\nConseils :\n- Soyez clair et concis\n- Personnalisez votre message\n- Ajoutez un call-to-action fort"
-          className="w-full bg-zinc-700/60 text-white text-sm rounded-xl px-3 py-2.5 outline-none border border-zinc-600/40 focus:border-violet-500/60 resize-y font-mono"
+          rows={7}
+          placeholder={"Rédigez le contenu de votre email ici…\n\nConseils :\n- Soyez clair et concis\n- Personnalisez votre message\n- Ajoutez un appel à l'action"}
+          className="w-full bg-zinc-700/60 text-white text-sm rounded-xl px-3 py-2.5 outline-none border border-zinc-600/40 focus:border-violet-500/60 resize-y"
         />
-        <p className="text-[11px] text-zinc-500 mt-1">Le contenu sera automatiquement mis en page avec le template Simix professionnel</p>
+        <p className="text-[11px] text-zinc-500 mt-1">Le contenu sera mis en page avec le template Simix professionnel</p>
       </div>
 
       {/* HTML Preview */}
@@ -250,8 +420,8 @@ function ComposeForm() {
         <label className="text-xs text-zinc-400 mb-2 block font-medium">Destinataires</label>
         <div className="flex gap-2">
           {[
-            { value: "all", label: "Tous les utilisateurs actifs", icon: Globe },
-            { value: "specific", label: "Sélection manuelle", icon: Users },
+            { value: "all",      label: "Tous les utilisateurs", icon: Globe },
+            { value: "specific", label: "Sélection manuelle",    icon: Users },
           ].map(r => (
             <button key={r.value} onClick={() => setRecipientsType(r.value as "all" | "specific")}
               className={cn(
@@ -265,22 +435,46 @@ function ComposeForm() {
             </button>
           ))}
         </div>
+
         {recipientsType === "all" && (
-          <p className="text-[11px] text-zinc-500 mt-1.5 flex items-center gap-1">
-            <AlertCircle className="w-3 h-3 text-emerald-400" />
-            Enverra à tous les utilisateurs au statut "Actif" dans Supabase
+          <p className="text-[11px] text-zinc-400 mt-1.5 flex items-center gap-1.5">
+            <Users className="w-3 h-3 text-violet-400" />
+            {allCount > 0 ? (
+              <span><span className="text-violet-300 font-semibold">{allCount}</span> utilisateur{allCount > 1 ? "s" : ""} avec email enregistré (non bloqués)</span>
+            ) : (
+              <span className="text-yellow-400">Chargement du nombre d'utilisateurs…</span>
+            )}
           </p>
+        )}
+
+        {recipientsType === "specific" && (
+          <UserSelector
+            selectedIds={selectedIds}
+            onToggle={id => {
+              setSelectedIds(prev => {
+                const next = new Set(prev);
+                if (next.has(id)) next.delete(id); else next.add(id);
+                return next;
+              });
+            }}
+            onSelectAll={ids => setSelectedIds(new Set(ids))}
+            onClear={() => setSelectedIds(new Set())}
+          />
         )}
       </div>
 
       {/* Send button */}
       <button
         onClick={() => sendMutation.mutate()}
-        disabled={sendMutation.isPending || !subject.trim() || !body.trim()}
+        disabled={sendMutation.isPending || !canSend}
         className="w-full flex items-center justify-center gap-2 px-5 py-3.5 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white font-bold text-sm transition-all disabled:opacity-40 disabled:cursor-not-allowed shadow-lg shadow-violet-500/20"
       >
         {sendMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-        {recipientsType === "all" ? "🚀 Envoyer à tous les utilisateurs" : "🎯 Envoyer à la sélection"}
+        {recipientsType === "all"
+          ? `🚀 Envoyer à tous (${allCount} utilisateurs)`
+          : selectedIds.size > 0
+            ? `🎯 Envoyer à ${selectedIds.size} sélectionné${selectedIds.size > 1 ? "s" : ""}`
+            : "🎯 Sélectionnez des destinataires"}
       </button>
     </div>
   );
@@ -322,7 +516,7 @@ function CampaignsList() {
         </div>
       ) : (
         <div className="divide-y divide-zinc-700/30">
-          {data.campaigns.map((c: {
+          {(data.campaigns as Array<{
             id: string;
             subject: string;
             templateType: string;
@@ -332,7 +526,7 @@ function CampaignsList() {
             totalRecipients: number;
             createdAt: string;
             sentAt?: string;
-          }) => {
+          }>).map(c => {
             const ti = TEMPLATE_TYPES.find(t => t.value === c.templateType) ?? TEMPLATE_TYPES[0];
             const isExpanded = expandedId === c.id;
             const successRate = c.totalRecipients > 0 ? Math.round((c.sentCount / c.totalRecipients) * 100) : 0;
@@ -343,7 +537,7 @@ function CampaignsList() {
                   className="flex items-start gap-3 p-4 hover:bg-white/2 transition-colors cursor-pointer"
                   onClick={() => setExpandedId(isExpanded ? null : c.id)}
                 >
-                  <div className={cn("w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5", ti.color === "text-violet-400" ? "bg-violet-500/15" : ti.color === "text-red-400" ? "bg-red-500/15" : ti.color === "text-green-400" ? "bg-green-500/15" : ti.color === "text-emerald-400" ? "bg-emerald-500/15" : "bg-blue-500/15")}>
+                  <div className="w-9 h-9 rounded-xl bg-violet-500/15 flex items-center justify-center flex-shrink-0 mt-0.5">
                     <ti.icon className={cn("w-4 h-4", ti.color)} />
                   </div>
                   <div className="flex-1 min-w-0">
@@ -351,7 +545,7 @@ function CampaignsList() {
                       <p className="text-white text-sm font-semibold truncate">{c.subject}</p>
                       {statusBadge(c.status)}
                     </div>
-                    <div className="flex items-center gap-3 text-[11px] text-zinc-500">
+                    <div className="flex items-center gap-3 text-[11px] text-zinc-500 flex-wrap">
                       <span className="flex items-center gap-1"><Users className="w-3 h-3" />{c.totalRecipients} destinataires</span>
                       <span className="flex items-center gap-1 text-green-400"><CheckCircle2 className="w-3 h-3" />{c.sentCount} envoyés</span>
                       {c.failedCount > 0 && <span className="flex items-center gap-1 text-red-400"><XCircle className="w-3 h-3" />{c.failedCount} échecs</span>}
@@ -369,7 +563,6 @@ function CampaignsList() {
                   <ChevronRight className={cn("w-4 h-4 text-zinc-600 flex-shrink-0 mt-1 transition-transform", isExpanded && "rotate-90")} />
                 </div>
 
-                {/* Expanded logs */}
                 <AnimatePresence>
                   {isExpanded && (
                     <motion.div
@@ -387,14 +580,14 @@ function CampaignsList() {
                             {!logsData?.logs?.length ? (
                               <div className="py-4 text-center text-zinc-500 text-xs">Aucun log disponible</div>
                             ) : (
-                              logsData.logs.map((log: { id: string; email: string; status: string; fullName?: string; error?: string; sentAt?: string }) => (
+                              (logsData.logs as Array<{ id: string; email: string; status: string; fullName?: string; error?: string; sentAt?: string }>).map(log => (
                                 <div key={log.id} className="flex items-center gap-3 px-3 py-2 border-b border-zinc-800/60 last:border-0">
                                   {log.status === "sent"
                                     ? <CheckCircle2 className="w-3.5 h-3.5 text-green-400 flex-shrink-0" />
                                     : <XCircle className="w-3.5 h-3.5 text-red-400 flex-shrink-0" />}
                                   <span className="text-xs text-white flex-1 truncate">{log.fullName ?? log.email}</span>
                                   <span className="text-[10px] text-zinc-500 truncate">{log.email}</span>
-                                  {log.error && <span className="text-[10px] text-red-400 truncate max-w-[100px]">{log.error}</span>}
+                                  {log.error && <span className="text-[10px] text-red-400 truncate max-w-[120px]">{log.error}</span>}
                                 </div>
                               ))
                             )}
@@ -413,19 +606,19 @@ function CampaignsList() {
   );
 }
 
-/* ── Resend config warning ───────────────────────────────── */
+/* ── Resend config warning ─────────────────────────────── */
 function ResendWarning() {
   const { data } = useQuery({ queryKey: ["email-stats"], queryFn: () => adminApi.getEmailStats() });
   if (data?.resendConfigured) return null;
 
   return (
-    <div className="flex items-start gap-3 p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20">
-      <AlertCircle className="w-5 h-5 text-emerald-400 flex-shrink-0 mt-0.5" />
+    <div className="flex items-start gap-3 p-4 rounded-2xl bg-yellow-500/10 border border-yellow-500/20">
+      <AlertCircle className="w-5 h-5 text-yellow-400 flex-shrink-0 mt-0.5" />
       <div>
-        <p className="text-emerald-300 text-sm font-semibold">Resend API non configuré</p>
-        <p className="text-emerald-400/70 text-xs mt-0.5 leading-relaxed">
-          La clé API Resend n'est pas configurée. Les emails seront simulés (loggés mais non envoyés).
-          Ajoutez la variable <code className="bg-emerald-500/20 px-1 rounded text-emerald-300">RESEND_API_KEY</code> dans les paramètres de l'environnement pour activer l'envoi réel.
+        <p className="text-yellow-300 text-sm font-semibold">Resend API non configuré</p>
+        <p className="text-yellow-400/70 text-xs mt-0.5 leading-relaxed">
+          La clé API Resend n'est pas configurée. Les emails seront simulés (loggés mais pas envoyés).
+          Ajoutez <code className="bg-yellow-500/20 px-1 rounded text-yellow-300">RESEND_API_KEY</code> dans les secrets d'environnement pour activer l'envoi réel.
         </p>
       </div>
     </div>

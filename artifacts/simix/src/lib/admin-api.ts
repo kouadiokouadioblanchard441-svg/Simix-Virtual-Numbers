@@ -243,6 +243,14 @@ export const adminApi = {
     req<{ logs: unknown[] }>("GET", `/admin/emails/campaigns/${campaignId}/logs`),
   getEmailStats: () =>
     req<{ totalCampaigns: number; totalSent: number; totalFailed: number; resendConfigured: boolean }>("GET", "/admin/emails/stats"),
+  getEmailRecipients: (params?: { search?: string; limit?: number }) => {
+    const q = new URLSearchParams();
+    if (params?.search) q.set("search", params.search);
+    if (params?.limit) q.set("limit", String(params.limit));
+    return req<{ recipients: Array<{ id: string; fullName: string; email: string; phone?: string; status: string }>; total: number }>(
+      "GET", `/admin/emails/recipients?${q}`
+    );
+  },
 
   /* ── Blacklist ── */
   getBlacklist: () => req<BlacklistEntry[]>("GET", "/admin/blacklist"),

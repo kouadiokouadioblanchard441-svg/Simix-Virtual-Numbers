@@ -6,7 +6,7 @@
  * GET  /admin/emails/preview    — preview rendered template
  */
 import { Router, type IRouter, type Request, type Response } from "express";
-import { eq, desc, count } from "drizzle-orm";
+import { eq, desc, count, ne, isNotNull, and, ilike, or } from "drizzle-orm";
 import { db, emailCampaignsTable, emailLogsTable, usersTable, systemSettingsTable } from "@workspace/db";
 import { requireAdminJwt } from "../lib/admin-jwt-middleware";
 import { logger } from "../lib/logger";
@@ -127,18 +127,26 @@ router.post("/admin/emails/send", requireAdmin, async (req: Request, res: Respon
   let recipients: { id: string | null; email: string; fullName: string | null }[] = [];
 
   if (recipientsType === "all") {
+    /* Include all users except blocked ones who have an email address */
     recipients = await db
       .select({ id: usersTable.id, email: usersTable.email, fullName: usersTable.fullName })
       .from(usersTable)
-      .where(eq(usersTable.status, "Actif"));
+      .where(
+        and(
+          ne(usersTable.status, "Bloqué"),
+          isNotNull(usersTable.email),
+        )
+      );
+    recipients = recipients.filter(r => r.email && r.email.trim().length > 0 && r.email.includes("@"));
   } else if (recipientsType === "specific" && userIds?.length) {
-    recipients = await db
+    const allUsers = await db
       .select({ id: usersTable.id, email: usersTable.email, fullName: usersTable.fullName })
-      .from(usersTable);
-    recipients = recipients.filter(r => r.id && userIds.includes(r.id));
+      .from(usersTable)
+      .where(isNotNull(usersTable.email));
+    recipients = allUsers.filter(r => r.id && userIds.includes(r.id) && r.email?.includes("@"));
   }
 
-  if (recipients.length === 0) { res.status(400).json({ error: "Aucun destinataire trouvé" }); return; }
+  if (recipients.length === 0) { res.status(400).json({ error: "Aucun destinataire trouvé. Assurez-vous que vos utilisateurs ont un email enregistré." }); return; }
 
   const [campaign] = await db.insert(emailCampaignsTable).values({
     subject: subject.trim(),
@@ -335,6 +343,39 @@ router.post("/admin/emails/test", requireAdmin, async (req: Request, res: Respon
     logger.error({ err: msg, email, latencyMs }, "[admin] Test email failed");
     res.status(500).json({ success: false, error: msg, latencyMs });
   }
+});
+
+/* ── GET /admin/emails/recipients ────────────────────────── */
+router.get("/admin/emails/recipients", requireAdmin, async (req: Request, res: Response): Promise<void> => {
+  const search = (req.query.search as string | undefined)?.trim();
+  const limit = Math.min(Number(req.query.limit) || 50, 200);
+
+  const rows = await db
+    .select({
+      id: usersTable.id,
+      fullName: usersTable.fullName,
+      email: usersTable.email,
+      phone: usersTable.phone,
+      status: usersTable.status,
+    })
+    .from(usersTable)
+    .where(
+      search
+        ? and(
+            ne(usersTable.status, "Bloqué"),
+            isNotNull(usersTable.email),
+            or(
+              ilike(usersTable.fullName, `%${search}%`),
+              ilike(usersTable.email, `%${search}%`),
+              ilike(usersTable.phone ?? "", `%${search}%`),
+            )
+          )
+        : and(ne(usersTable.status, "Bloqué"), isNotNull(usersTable.email))
+    )
+    .limit(limit);
+
+  const eligible = rows.filter(r => r.email?.includes("@"));
+  res.json({ recipients: eligible, total: eligible.length });
 });
 
 /* ── GET /admin/emails/stats ─────────────────────────────── */
