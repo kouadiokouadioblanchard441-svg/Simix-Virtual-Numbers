@@ -16,6 +16,7 @@ import { startFiveSimSyncScheduler, syncFiveSimCountries, syncFiveSimProducts } 
 import { startClapayReconciliation } from "./lib/clapay-reconciliation";
 import { startPawaPayReconciliation } from "./lib/pawapay-reconciliation";
 import { seedRoutingData } from "./lib/seed-routing";
+import { seedCountryPaymentConfigs } from "./lib/seed-country-payment-configs";
 
 const app: Express = express();
 
@@ -112,6 +113,7 @@ if (process.env.NODE_ENV === "production") {
 
 /* ── Seed reference data + providers, then start real-time sync + poller ── */
 void seedPaymentMethods();
+void seedCountryPaymentConfigs();
 void seedRoutingData();
 
 void seedProvidersFromEnv().then(async () => {

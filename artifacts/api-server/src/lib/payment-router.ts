@@ -27,12 +27,17 @@ const KNOWN_OPERATOR_SLUGS = [
 export function extractOperatorSlug(methodSlug: string): string {
   const s = methodSlug.toLowerCase().trim();
   for (const slug of KNOWN_OPERATOR_SLUGS) {
-    if (s === slug || s.startsWith(slug + "-") || s.includes("-" + slug + "-") || s.endsWith("-" + slug)) {
+    if (
+      s === slug ||
+      s.startsWith(slug + "-") || s.startsWith(slug + "_") ||
+      s.includes("-" + slug + "-") || s.includes("_" + slug + "_") ||
+      s.endsWith("-" + slug) || s.endsWith("_" + slug)
+    ) {
       return slug;
     }
   }
-  /* Fallback: return the first segment before any dash */
-  return s.split("-")[0] ?? s;
+  /* Fallback: return the first segment before any dash or underscore */
+  return s.split(/[-_]/)[0] ?? s;
 }
 
 /* Lookup operator slug via DB (returns slug or null) */
@@ -43,8 +48,13 @@ async function resolveOperatorSlugFromDb(methodSlug: string): Promise<string | n
 
   const s = methodSlug.toLowerCase();
   for (const op of rows) {
-    if (s === op.slug || s.startsWith(op.slug + "-") || s.includes("-" + op.slug)) {
-      return op.slug;
+    const slug = op.slug;
+    if (
+      s === slug ||
+      s.startsWith(slug + "-") || s.startsWith(slug + "_") ||
+      s.includes("-" + slug) || s.includes("_" + slug)
+    ) {
+      return slug;
     }
   }
   return null;

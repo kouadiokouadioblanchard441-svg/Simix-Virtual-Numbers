@@ -124,6 +124,8 @@ async function getClapayReturnUrl(): Promise<string> {
 const MOBILE_MONEY_KEYWORDS = [
   "orange", "mtn", "wave", "moov", "airtel", "mpesa", "m-pesa",
   "free", "expresso", "tmoney", "flooz", "mvola", "mobile",
+  "vodacom", "vodafone", "tigo", "zamtel", "africell",
+  "econet", "ecocash", "tnm", "unitel", "mpamba",
 ];
 
 function isMobileMoneySlug(slug: string): boolean {
