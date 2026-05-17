@@ -770,7 +770,6 @@ function DepositContent() {
           phoneNumber: phone,
           countryCode: selectedCountry.code,
           dialCode: selectedCountry.dialCode,
-          // @ts-expect-error — extended fields not in generated schema
           currencyCode: currencyCode !== "XOF" ? currencyCode : undefined,
         },
       }) as { pending?: boolean; depositId?: string; status?: string };

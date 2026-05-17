@@ -47,7 +47,7 @@ export default function AdminFxProfits() {
   const profits = result?.profits ?? [];
 
   return (
-    <AdminLayout title="Profits FX">
+    <AdminLayout>
       <div className="space-y-6">
 
         {/* Global summary cards */}

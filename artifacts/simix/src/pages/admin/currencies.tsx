@@ -274,7 +274,7 @@ export default function AdminCurrencies() {
   const foreignCount= currencies.filter(c => !["XOF","XAF"].includes(c.currencyCode)).length;
 
   return (
-    <AdminLayout title="Devises & Taux FX">
+    <AdminLayout>
       <div className="space-y-6">
 
         {/* Stats */}
