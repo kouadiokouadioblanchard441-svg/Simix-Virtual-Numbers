@@ -345,10 +345,26 @@ router.put("/admin/services/:serviceId", requireAdmin, async (req, res): Promise
 
   if (Object.keys(updates).length === 0) { res.status(400).json({ error: "Aucun champ à mettre à jour" }); return; }
 
-  if (updates.providerPrice !== undefined && updates.margin !== undefined) {
+  /*
+   * Price recalculation logic:
+   * 1. If both providerPrice + margin provided → compute price from those
+   * 2. If only margin changed (no explicit price) → fetch existing providerPrice and recompute
+   * 3. If only price changed → save it as a fixed price (margin unchanged)
+   */
+  if (updates.margin !== undefined && updates.price === undefined) {
+    // Fetch existing providerPrice from DB to recalculate final price at the new margin
+    const [existing] = await db
+      .select({ providerPrice: servicesTable.providerPrice })
+      .from(servicesTable)
+      .where(eq(servicesTable.id, serviceId))
+      .limit(1);
+    const pp = Number(existing?.providerPrice ?? 0);
+    const m = Number(updates.margin);
+    if (pp > 0) updates.price = Math.round(pp * (1 + m / 100));
+  } else if (updates.providerPrice !== undefined && updates.margin !== undefined) {
     const pp = Number(updates.providerPrice);
     const m = Number(updates.margin);
-    if (pp > 0) updates.price = Math.round(pp + pp * (m / 100));
+    if (pp > 0) updates.price = Math.round(pp * (1 + m / 100));
   }
 
   await db.update(servicesTable).set(updates).where(eq(servicesTable.id, serviceId));

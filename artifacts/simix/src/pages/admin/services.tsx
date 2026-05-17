@@ -271,6 +271,7 @@ function ServiceRow({ service }: { service: AdminService }) {
   const [category, setCategory] = useState(service.category || "Autres");
   const [color, setColor] = useState(service.color || "#7C3AED");
   const [price, setPrice] = useState(String(service.price));
+  const [margin, setMargin] = useState(String(service.margin ?? 20));
   const [available, setAvailable] = useState(String(service.available));
   const [popular, setPopular] = useState(service.popular);
   const [enabled, setEnabled] = useState(service.enabled ?? true);
@@ -278,12 +279,19 @@ function ServiceRow({ service }: { service: AdminService }) {
   const { toast } = useToast();
   const qc = useQueryClient();
 
+  /* Auto-compute displayed price from margin when providerPrice is known */
+  const computedPrice = service.providerPrice > 0
+    ? Math.round(service.providerPrice * (1 + Number(margin) / 100))
+    : null;
+
   const update = useMutation({
     mutationFn: () => adminApi.updateService(service.id, {
       name,
       category,
       color,
-      price: Number(price),
+      margin: Number(margin),
+      /* only send explicit price if admin deliberately overrides it past the computed value */
+      price: (computedPrice !== null && Number(price) === computedPrice) ? undefined : Number(price),
       available: Number(available), popular, enabled,
       logoUrl: logoUrl.trim() || null,
     }),
@@ -304,7 +312,8 @@ function ServiceRow({ service }: { service: AdminService }) {
 
   const openEdit = () => {
     setName(service.name); setCategory(service.category || "Autres"); setColor(service.color || "#7C3AED");
-    setPrice(String(service.price)); setAvailable(String(service.available));
+    setPrice(String(service.price)); setMargin(String(service.margin ?? 20));
+    setAvailable(String(service.available));
     setPopular(service.popular); setEnabled(service.enabled ?? true);
     setLogoUrl(service.logoUrl ?? "");
     setEditing(true);
@@ -326,13 +335,24 @@ function ServiceRow({ service }: { service: AdminService }) {
           <span className="text-zinc-400 text-xs px-2 py-1 bg-zinc-800 rounded-lg">{service.category || "—"}</span>
         </td>
         <td className="py-3 px-4">
-          <div className="flex items-center gap-1.5">
-            <div className="w-3 h-3 rounded-full flex-shrink-0 border border-zinc-600" style={{ backgroundColor: service.color || "#7C3AED" }} />
-            <span className="text-zinc-500 text-xs font-mono">{service.color || "—"}</span>
+          <div className="flex items-center gap-1">
+            <span className="text-emerald-400 text-sm font-bold">{service.margin ?? 20}%</span>
+            {service.providerPrice > 0 && (
+              <span className="text-zinc-600 text-xs ml-1">({formatFCFA(service.providerPrice)} coût)</span>
+            )}
           </div>
         </td>
         <td className="py-3 px-4">
-          <span className="text-white text-sm font-bold">{formatFCFA(service.price)}</span>
+          <div>
+            <span className="text-white text-sm font-bold">{formatFCFA(service.price)}</span>
+            {service.providerPrice > 0 && service.margin !== undefined && (
+              <div className="text-zinc-600 text-[10px]">
+                {Math.round(service.providerPrice * (1 + service.margin / 100)) === service.price
+                  ? <span className="text-emerald-600">Auto ({service.margin}%)</span>
+                  : <span className="text-amber-500">Override fixe</span>}
+              </div>
+            )}
+          </div>
         </td>
         <td className="py-3 px-4">
           <span className="text-zinc-300 text-sm">{service.available.toLocaleString("fr-FR")}</span>
@@ -399,10 +419,65 @@ function ServiceRow({ service }: { service: AdminService }) {
                 <label className="text-xs text-zinc-400 mb-1 block">Stock</label>
                 <input type="number" value={available} onChange={e => setAvailable(e.target.value)} className="w-full px-2.5 py-2 text-sm bg-zinc-900 border border-zinc-700 rounded-lg text-white focus:outline-none" />
               </div>
+
+              {/* Margin field — primary way to set pricing */}
               <div>
-                <label className="text-xs text-zinc-400 mb-1 block">Prix par défaut (FCFA)</label>
-                <input type="number" value={price} onChange={e => setPrice(e.target.value)} className="w-full px-2.5 py-2 text-sm bg-zinc-900 border border-violet-500/50 rounded-lg text-white focus:outline-none" />
+                <label className="text-xs text-zinc-400 mb-1 block">
+                  Marge (%) <span className="text-zinc-600">— appliquée au coût fournisseur</span>
+                </label>
+                <div className="flex gap-1.5 items-center">
+                  <div className="relative flex-1">
+                    <input
+                      type="number"
+                      min="0"
+                      max="500"
+                      value={margin}
+                      onChange={e => {
+                        setMargin(e.target.value);
+                        /* sync displayed price with new margin */
+                        if (service.providerPrice > 0) {
+                          const m = Number(e.target.value);
+                          if (!isNaN(m)) setPrice(String(Math.round(service.providerPrice * (1 + m / 100))));
+                        }
+                      }}
+                      className="w-full px-2.5 py-2 text-sm bg-zinc-900 border border-emerald-500/60 rounded-lg text-emerald-300 font-bold focus:outline-none focus:border-emerald-400"
+                    />
+                    <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-zinc-500 pointer-events-none">%</span>
+                  </div>
+                  {service.providerPrice > 0 && (
+                    <div className="text-xs text-zinc-500 whitespace-nowrap">
+                      Coût: <span className="text-zinc-400">{formatFCFA(service.providerPrice)}</span>
+                    </div>
+                  )}
+                </div>
+                {computedPrice !== null && (
+                  <p className="text-[10px] text-emerald-500/70 mt-1">
+                    Prix calculé : <span className="font-bold">{formatFCFA(computedPrice)}</span>
+                    {service.margin !== Number(margin) && (
+                      <span className="text-amber-400/80 ml-1">(était {service.margin}%)</span>
+                    )}
+                  </p>
+                )}
               </div>
+
+              {/* Price override — advanced, only if admin wants a fixed price ignoring margin */}
+              <div>
+                <label className="text-xs text-zinc-400 mb-1 block">
+                  Prix fixe (FCFA) <span className="text-zinc-600">— override manuel</span>
+                </label>
+                <input
+                  type="number"
+                  value={price}
+                  onChange={e => setPrice(e.target.value)}
+                  className="w-full px-2.5 py-2 text-sm bg-zinc-900 border border-zinc-700 rounded-lg text-white focus:outline-none focus:border-violet-500"
+                />
+                {computedPrice !== null && Number(price) !== computedPrice && (
+                  <p className="text-[10px] text-amber-400/70 mt-1">
+                    ⚠ Override actif — le prix ne suit plus la marge
+                  </p>
+                )}
+              </div>
+
               <div>
                 <label className="text-xs text-zinc-400 mb-1 block">Options</label>
                 <div className="flex gap-2 flex-wrap pt-1">
@@ -580,7 +655,7 @@ function ServicesContent() {
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-zinc-800 bg-zinc-900/80">
-                    {["Service", "Catégorie", "Couleur", "Prix par défaut", "Stock", "Badge", "Activé", ""].map(h => (
+                    {["Service", "Catégorie", "Marge", "Prix affiché", "Stock", "Badge", "Activé", ""].map(h => (
                       <th key={h} className="text-left py-3 px-4 text-xs font-semibold text-zinc-500 uppercase tracking-wide whitespace-nowrap">{h}</th>
                     ))}
                   </tr>

@@ -548,25 +548,33 @@ export async function syncFiveSimProducts(triggeredBy: "scheduler" | "admin" = "
             /* Update logo only when sync provides one (don't overwrite admin-set logos with null) */
             logoUrl: sql`CASE WHEN excluded.logo_url IS NOT NULL THEN excluded.logo_url ELSE services.logo_url END`,
 
-            /* Price protection: only update `price` if it matches the auto-calculated value */
+            /*
+             * Price protection + Margin preservation:
+             *
+             * The `margin` is NEVER overwritten by the sync — it is an admin setting.
+             * When the admin sets margin=30%, the sync must honour that indefinitely.
+             *
+             * The `price` is recalculated only when it still matches the auto-formula
+             * at the CURRENT admin margin (services.margin), meaning the admin hasn't
+             * set a custom fixed price. If the admin typed a specific price, we keep it.
+             *
+             * Detection: auto-price = ROUND(provider_price * (1 + services.margin / 100))
+             * If |current_price - auto_price| <= 10 FCFA → price is auto → update it
+             *                                         else → price is manual → preserve it
+             *
+             * When the price IS auto, we recalculate using the NEW provider_price but the
+             * EXISTING margin (services.margin), so a 30% margin stays 30% after the sync.
+             */
             price: sql`
               CASE
                 WHEN services.provider_price IS NULL
                   OR ABS(services.price::numeric - ROUND(services.provider_price::numeric * (1.0 + services.margin::numeric / 100.0))) <= 10
-                THEN excluded.price
+                THEN ROUND(excluded.provider_price::numeric * (1.0 + services.margin::numeric / 100.0))
                 ELSE services.price
               END
             `,
 
-            /* Margin protection: only update margin if price was auto-calculated */
-            margin: sql`
-              CASE
-                WHEN services.provider_price IS NULL
-                  OR ABS(services.price::numeric - ROUND(services.provider_price::numeric * (1.0 + services.margin::numeric / 100.0))) <= 10
-                THEN excluded.margin
-                ELSE services.margin
-              END
-            `,
+            /* margin is NEVER updated by the sync — admin owns this field entirely */
 
             /* Auto-enable if 5sim confirms stock is available */
             enabled: sql`CASE WHEN excluded.available > 0 THEN true ELSE services.enabled END`,
