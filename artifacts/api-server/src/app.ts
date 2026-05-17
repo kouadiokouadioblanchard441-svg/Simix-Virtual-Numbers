@@ -14,6 +14,7 @@ import { seedProvidersFromEnv } from "./lib/seed-providers";
 import { seedPaymentMethods } from "./lib/seed-payment-methods";
 import { startFiveSimSyncScheduler, syncFiveSimCountries, syncFiveSimProducts } from "./lib/fivesim-sync";
 import { startClapayReconciliation } from "./lib/clapay-reconciliation";
+import { startPawaPayReconciliation } from "./lib/pawapay-reconciliation";
 import { seedRoutingData } from "./lib/seed-routing";
 
 const app: Express = express();
@@ -117,6 +118,7 @@ void seedProvidersFromEnv().then(async () => {
   startFiveSimPoller();
   startFiveSimSyncScheduler();
   startClapayReconciliation();
+  startPawaPayReconciliation(); // polls PawaPay every 30s — no webhook required
 
   /* Sync countries from 5sim immediately at startup (non-blocking) */
   try {

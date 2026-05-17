@@ -47,7 +47,10 @@ const router: IRouter = Router();
 /* ── Load PawaPay client from env or DB ── */
 async function getPawaPayClient(): Promise<{ client: PawaPayClient; env: string } | null> {
   let token = process.env.PAWAPAY_API_TOKEN ?? null;
-  let env: "sandbox" | "production" = (process.env.PAWAPAY_ENV as "sandbox" | "production") ?? "sandbox";
+
+  /* Normalize env — trim spaces and lowercase to handle "Production ", "SANDBOX", etc. */
+  const rawEnvFromEnvVar = process.env.PAWAPAY_ENV?.trim().toLowerCase();
+  let env: "sandbox" | "production" = (rawEnvFromEnvVar === "production") ? "production" : "sandbox";
 
   if (!token) {
     const rows = await db.select().from(systemSettingsTable)
@@ -57,7 +60,9 @@ async function getPawaPayClient(): Promise<{ client: PawaPayClient; env: string 
     if (token) {
       const envRows = await db.select().from(systemSettingsTable)
         .where(eq(systemSettingsTable.key, "pawapay_env")).limit(1);
-      env = (envRows[0]?.value as "sandbox" | "production") ?? "sandbox";
+      /* Normalize: trim + lowercase to handle "Production ", "SANDBOX", "sandbox", etc. */
+      const rawDbEnv = envRows[0]?.value?.trim().toLowerCase();
+      env = (rawDbEnv === "production") ? "production" : "sandbox";
     }
   }
 
