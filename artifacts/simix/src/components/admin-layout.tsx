@@ -26,46 +26,109 @@ import {
   Ban,
   TrendingUp,
   Layers,
-  GitMerge,
   Tag,
   RefreshCw,
   DollarSign,
+  GitMerge,
+  Activity,
 } from "lucide-react";
 import { SimixLogo } from "@/components/simix-logo";
 import { cn } from "@/lib/utils";
 
-const NAV_ITEMS = [
-  { href: "/admin", label: "Tableau de bord", icon: LayoutDashboard },
-  { href: "/admin/realtime", label: "Temps réel", icon: Radio },
-  { href: "/admin/analytics", label: "Analytiques", icon: BarChart3 },
-  { href: "/admin/users", label: "Utilisateurs", icon: Users },
-  { href: "/admin/orders", label: "Commandes", icon: ShoppingBag },
-  { href: "/admin/transactions", label: "Transactions", icon: CreditCard },
-  { href: "/admin/services", label: "Services & Prix", icon: Globe },
-  { href: "/admin/service-prices", label: "Prix par pays", icon: Tag },
-  { href: "/admin/live-prices", label: "Prix live 5sim", icon: TrendingUp },
-  { href: "/admin/payment-config", label: "Paiements / Pays", icon: MapPin },
-  { href: "/admin/routing", label: "Routage API", icon: GitMerge },
-  { href: "/admin/sync", label: "Sync 5sim", icon: RefreshCw },
-  { href: "/admin/providers", label: "Fournisseurs API", icon: Zap },
-  { href: "/admin/support", label: "Support IA", icon: MessageSquare },
-  { href: "/admin/notifications", label: "Notifications", icon: Bell },
-  { href: "/admin/emails", label: "Campagnes Email", icon: Mail },
-  { href: "/admin/banners", label: "Bannières", icon: Image },
-  { href: "/admin/media", label: "Médias & Icônes", icon: Layers },
-  { href: "/admin/footer", label: "Footer & Vitrine", icon: Globe },
-  { href: "/admin/ip-tracker", label: "IP Tracker", icon: MapPin },
-  { href: "/admin/blacklist", label: "Liste Noire", icon: Ban },
-  { href: "/admin/security", label: "Sécurité", icon: Shield },
-  { href: "/admin/logs", label: "Journaux", icon: FileText },
-  { href: "/admin/currencies", label: "Devises & Taux FX", icon: DollarSign },
-  { href: "/admin/fx-profits", label: "Profits FX", icon: TrendingUp },
-  { href: "/admin/settings", label: "Paramètres", icon: Settings },
+/* ─── Navigation structure ─────────────────────────────────────
+   Items can have an optional `highlight: true` flag to render
+   them with a special "pill" style that makes them stand out.
+   Items can also have a `section` to add a divider label above.
+   ─────────────────────────────────────────────────────────────── */
+interface NavItem {
+  href: string;
+  label: string;
+  icon: React.ElementType;
+  highlight?: boolean;
+  section?: string;
+}
+
+const NAV_ITEMS: NavItem[] = [
+  /* ── Vue d'ensemble ── */
+  { href: "/admin",           label: "Tableau de bord",      icon: LayoutDashboard, section: "Vue d'ensemble" },
+  { href: "/admin/realtime",  label: "Temps réel",           icon: Radio },
+  { href: "/admin/analytics", label: "Analytiques",          icon: BarChart3 },
+
+  /* ── Utilisateurs & Commandes ── */
+  { href: "/admin/users",        label: "Utilisateurs",      icon: Users,       section: "Utilisateurs & Ventes" },
+  { href: "/admin/orders",       label: "Commandes",         icon: ShoppingBag },
+  { href: "/admin/transactions", label: "Transactions",      icon: CreditCard },
+
+  /* ── Paiements ── */
+  {
+    href: "/admin/routing",
+    label: "Config. Paiements",
+    icon: Zap,
+    highlight: true,
+    section: "Paiements",
+  },
+  { href: "/admin/payment-config", label: "Disponibilité / Pays", icon: MapPin },
+  { href: "/admin/currencies",     label: "Devises & Taux FX",   icon: DollarSign },
+  { href: "/admin/fx-profits",     label: "Profits FX",           icon: TrendingUp },
+
+  /* ── Catalogue ── */
+  { href: "/admin/services",       label: "Services & Prix",   icon: Globe,       section: "Catalogue" },
+  { href: "/admin/service-prices", label: "Prix par pays",     icon: Tag },
+  { href: "/admin/live-prices",    label: "Prix live 5sim",    icon: TrendingUp },
+  { href: "/admin/sync",           label: "Sync 5sim",         icon: RefreshCw },
+  { href: "/admin/providers",      label: "Fournisseurs API",  icon: Activity },
+
+  /* ── Communication ── */
+  { href: "/admin/support",       label: "Support IA",        icon: MessageSquare, section: "Communication" },
+  { href: "/admin/notifications", label: "Notifications",     icon: Bell },
+  { href: "/admin/emails",        label: "Campagnes Email",   icon: Mail },
+
+  /* ── Contenu ── */
+  { href: "/admin/banners", label: "Bannières",      icon: Image,   section: "Contenu" },
+  { href: "/admin/media",   label: "Médias & Icônes", icon: Layers },
+  { href: "/admin/footer",  label: "Footer & Vitrine", icon: Globe },
+
+  /* ── Sécurité & Système ── */
+  { href: "/admin/ip-tracker", label: "IP Tracker",    icon: MapPin,  section: "Sécurité & Système" },
+  { href: "/admin/blacklist",  label: "Liste Noire",   icon: Ban },
+  { href: "/admin/security",   label: "Sécurité",      icon: Shield },
+  { href: "/admin/logs",       label: "Journaux",      icon: FileText },
+  { href: "/admin/settings",   label: "Paramètres",    icon: Settings },
 ];
 
-function NavLink({ href, label, icon: Icon, onClick }: { href: string; label: string; icon: React.ElementType; onClick?: () => void }) {
+function NavLink({
+  href, label, icon: Icon, onClick, highlight,
+}: {
+  href: string; label: string; icon: React.ElementType;
+  onClick?: () => void; highlight?: boolean;
+}) {
   const [location] = useLocation();
   const isActive = location === href || (href !== "/admin" && location.startsWith(href));
+
+  if (highlight) {
+    return (
+      <Link href={href} onClick={onClick}>
+        <div className={cn(
+          "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all cursor-pointer border",
+          isActive
+            ? "bg-violet-600/90 text-white shadow-md shadow-violet-500/25 border-violet-500/40"
+            : "text-violet-300 hover:text-white bg-violet-600/10 hover:bg-violet-600/20 border-violet-500/20 hover:border-violet-500/40"
+        )}>
+          <div className={cn(
+            "w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors",
+            isActive ? "bg-white/15" : "bg-violet-500/20"
+          )}>
+            <Icon className="w-3.5 h-3.5" />
+          </div>
+          <span className="truncate flex-1">{label}</span>
+          {isActive
+            ? <div className="w-1.5 h-1.5 rounded-full bg-white/60 flex-shrink-0" />
+            : <span className="text-[9px] bg-violet-500/30 text-violet-300 px-1.5 py-0.5 rounded-full font-bold flex-shrink-0">LIVE</span>
+          }
+        </div>
+      </Link>
+    );
+  }
 
   return (
     <Link href={href} onClick={onClick}>
@@ -109,6 +172,8 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
   const hoursLeft = Math.floor(secsRemaining / 3600);
   const minsLeft = Math.floor((secsRemaining % 3600) / 60);
 
+  let currentSection = "";
+
   return (
     <div className="flex flex-col h-full">
       <div className="flex items-center gap-3 px-4 py-5 border-b border-zinc-800/80">
@@ -118,14 +183,31 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
         </div>
       </div>
 
-      <div className="px-3 pt-4 pb-1">
-        <p className="text-[10px] font-bold text-zinc-600 uppercase tracking-widest px-1 mb-1.5">Navigation</p>
-      </div>
-
-      <nav className="flex-1 px-3 pb-3 space-y-0.5 overflow-y-auto">
-        {NAV_ITEMS.map((item) => (
-          <NavLink key={item.href} {...item} onClick={onClose} />
-        ))}
+      <nav className="flex-1 px-3 pb-3 space-y-0.5 overflow-y-auto pt-3">
+        {NAV_ITEMS.map((item) => {
+          const showDivider = item.section && item.section !== currentSection;
+          if (showDivider) currentSection = item.section!;
+          return (
+            <div key={item.href}>
+              {showDivider && (
+                <p className={cn(
+                  "text-[10px] font-bold uppercase tracking-widest px-1 mb-1.5",
+                  item.href === NAV_ITEMS[0].href ? "pt-1" : "pt-4",
+                  item.highlight ? "text-violet-500" : "text-zinc-600"
+                )}>
+                  {item.section}
+                </p>
+              )}
+              <NavLink
+                href={item.href}
+                label={item.label}
+                icon={item.icon}
+                onClick={onClose}
+                highlight={item.highlight}
+              />
+            </div>
+          );
+        })}
       </nav>
 
       <div className="p-3 border-t border-zinc-800/80 space-y-2">
@@ -201,7 +283,12 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
               {currentPage && (
                 <>
                   <span className="text-zinc-700 hidden sm:inline">/</span>
-                  <span className="text-white font-semibold">{currentPage.label}</span>
+                  <span className={cn("font-semibold", currentPage.highlight ? "text-violet-300" : "text-white")}>
+                    {currentPage.label}
+                  </span>
+                  {currentPage.highlight && (
+                    <span className="text-[10px] bg-violet-600/20 text-violet-400 border border-violet-500/30 px-2 py-0.5 rounded-full font-bold">LIVE</span>
+                  )}
                 </>
               )}
             </div>
