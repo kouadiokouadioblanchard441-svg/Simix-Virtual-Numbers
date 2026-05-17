@@ -2165,8 +2165,12 @@ router.post("/admin/service-prices/bulk", requireAdmin, async (req, res): Promis
   res.json({ updated: results.length, prices: results });
 });
 
-router.get("/admin/service-prices", requireAdmin, async (_req, res): Promise<void> => {
-  const rows = await db.select().from(servicePricesTable).orderBy(servicePricesTable.countryCode, servicePricesTable.serviceSlug);
+router.get("/admin/service-prices", requireAdmin, async (req, res): Promise<void> => {
+  const { serviceSlug } = req.query as { serviceSlug?: string };
+  const query = db.select().from(servicePricesTable);
+  const rows = serviceSlug
+    ? await query.where(eq(servicePricesTable.serviceSlug, serviceSlug.toLowerCase())).orderBy(servicePricesTable.countryCode)
+    : await query.orderBy(servicePricesTable.countryCode, servicePricesTable.serviceSlug);
   res.json(rows);
 });
 

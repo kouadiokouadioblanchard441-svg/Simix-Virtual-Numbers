@@ -274,6 +274,8 @@ export const adminApi = {
 
   /* ── Service Prices (per country) ── */
   getServicePrices: () => req<ServicePrice[]>("GET", "/admin/service-prices"),
+  getServicePricesBySlug: (serviceSlug: string) =>
+    req<ServicePrice[]>("GET", `/admin/service-prices?serviceSlug=${encodeURIComponent(serviceSlug)}`),
   upsertServicePrice: (data: { countryCode: string; serviceSlug: string; price: number; enabled?: boolean }) =>
     req<ServicePrice>("POST", "/admin/service-prices", data),
   bulkUpsertServicePrices: (prices: Array<{ countryCode: string; serviceSlug: string; price: number; enabled: boolean }>) =>

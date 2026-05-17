@@ -9,7 +9,7 @@ import { useConfirm } from "@/components/ui/confirm-dialog";
 import { ImageUploadButton } from "@/components/image-upload-button";
 import {
   Loader2, Pencil, Check, X, TrendingUp, ToggleLeft, ToggleRight,
-  Plus, Trash2, Star, Package, Zap, ChevronDown, ChevronUp,
+  Plus, Trash2, Star, Package, Zap, ChevronDown, ChevronUp, Globe,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -263,10 +263,91 @@ function AddServiceForm({ onDone }: { onDone: () => void }) {
   );
 }
 
+/* ─── Country Availability Panel ─── */
+function CountryAvailabilityPanel({ service }: { service: AdminService }) {
+  const { toast } = useToast();
+  const qc = useQueryClient();
+
+  const { data: countries, isLoading: loadingC } = useQuery({
+    queryKey: ["admin-countries"],
+    queryFn: adminApi.getCountries,
+  });
+
+  const { data: servicePrices, isLoading: loadingP } = useQuery({
+    queryKey: ["admin-service-prices", service.slug],
+    queryFn: () => adminApi.getServicePricesBySlug(service.slug),
+  });
+
+  const toggle = useMutation({
+    mutationFn: ({ countryCode, enabled, existingId }: { countryCode: string; enabled: boolean; existingId?: string }) => {
+      if (existingId) {
+        return adminApi.updateServicePrice(existingId, { enabled });
+      }
+      return adminApi.upsertServicePrice({ countryCode: countryCode.toLowerCase(), serviceSlug: service.slug, price: 0, enabled });
+    },
+    onSuccess: (_data, vars) => {
+      toast({ title: vars.enabled ? "Pays activé" : "Pays désactivé pour ce service" });
+      qc.invalidateQueries({ queryKey: ["admin-service-prices", service.slug] });
+    },
+    onError: (e) => toast({ title: "Erreur", description: (e as Error).message, variant: "destructive" }),
+  });
+
+  if (loadingC || loadingP) {
+    return <div className="py-6 text-center"><Loader2 className="w-5 h-5 animate-spin text-violet-500 mx-auto" /></div>;
+  }
+
+  const priceMap = new Map((servicePrices ?? []).map(p => [p.countryCode.toLowerCase(), p]));
+  const disabledCount = (servicePrices ?? []).filter(p => !p.enabled).length;
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <p className="text-xs text-zinc-400">
+          Désactivez un pays pour <span className="text-white font-semibold">{service.name}</span> sans affecter les autres services.
+        </p>
+        {disabledCount > 0 && (
+          <span className="text-xs px-2 py-0.5 rounded-full bg-red-500/10 text-red-400 border border-red-500/20">
+            {disabledCount} pays désactivé{disabledCount > 1 ? "s" : ""}
+          </span>
+        )}
+      </div>
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
+        {(countries ?? []).map(country => {
+          const sp = priceMap.get(country.code.toLowerCase());
+          const isEnabled = sp ? sp.enabled : true;
+          return (
+            <button
+              key={country.id}
+              onClick={() => toggle.mutate({ countryCode: country.code, enabled: !isEnabled, existingId: sp?.id })}
+              disabled={toggle.isPending}
+              className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-left transition-all ${
+                isEnabled
+                  ? "border-zinc-700 bg-zinc-800/50 hover:border-emerald-500/40 hover:bg-emerald-500/5"
+                  : "border-red-500/30 bg-red-500/5 hover:border-red-500/50"
+              }`}
+            >
+              <span className="text-base leading-none">{country.flag}</span>
+              <div className="flex-1 min-w-0">
+                <div className={`text-xs font-medium truncate ${isEnabled ? "text-zinc-300" : "text-red-400"}`}>{country.name}</div>
+                <div className="text-[10px] text-zinc-600 font-mono">{country.code}</div>
+              </div>
+              <div className={`w-2 h-2 rounded-full flex-shrink-0 ${isEnabled ? "bg-emerald-500" : "bg-red-500"}`} />
+            </button>
+          );
+        })}
+      </div>
+      <p className="text-[11px] text-zinc-600">
+        🟢 Actif — le pays apparaît dans ce service &middot; 🔴 Désactivé — masqué uniquement pour <span className="text-violet-400">{service.name}</span>, disponible pour les autres services
+      </p>
+    </div>
+  );
+}
+
 /* ─── Service Row ─── */
 function ServiceRow({ service }: { service: AdminService }) {
   const confirm = useConfirm();
   const [editing, setEditing] = useState(false);
+  const [showCountries, setShowCountries] = useState(false);
   const [name, setName] = useState(service.name);
   const [category, setCategory] = useState(service.category || "Autres");
   const [color, setColor] = useState(service.color || "#7C3AED");
@@ -372,7 +453,14 @@ function ServiceRow({ service }: { service: AdminService }) {
         </td>
         <td className="py-3 px-4">
           <div className="flex gap-1.5">
-            <button onClick={openEdit} className="p-1.5 rounded hover:bg-zinc-700 text-zinc-500 hover:text-white transition-colors"><Pencil className="w-3.5 h-3.5" /></button>
+            <button
+              onClick={() => { setShowCountries(v => !v); setEditing(false); }}
+              title="Gérer les pays disponibles"
+              className={`p-1.5 rounded transition-colors ${showCountries ? "bg-violet-600/20 text-violet-400" : "hover:bg-zinc-700 text-zinc-500 hover:text-white"}`}
+            >
+              <Globe className="w-3.5 h-3.5" />
+            </button>
+            <button onClick={() => { openEdit(); setShowCountries(false); }} className="p-1.5 rounded hover:bg-zinc-700 text-zinc-500 hover:text-white transition-colors"><Pencil className="w-3.5 h-3.5" /></button>
             <button
               onClick={async () => {
                 const ok = await confirm({
@@ -392,6 +480,19 @@ function ServiceRow({ service }: { service: AdminService }) {
           </div>
         </td>
       </tr>
+
+      {/* Country availability panel */}
+      {showCountries && (
+        <tr className="border-b border-violet-700/30 bg-violet-950/10">
+          <td colSpan={8} className="px-4 py-4">
+            <div className="flex items-center gap-2 text-violet-400 font-semibold text-sm mb-3">
+              <Globe className="w-4 h-4" />
+              Disponibilité par pays — {service.name}
+            </div>
+            <CountryAvailabilityPanel service={service} />
+          </td>
+        </tr>
+      )}
 
       {/* Edit panel */}
       {editing && (
