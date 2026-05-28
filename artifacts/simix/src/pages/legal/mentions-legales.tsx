@@ -1,8 +1,8 @@
-import { useLocation } from "wouter";
 import { motion } from "framer-motion";
 import { ArrowLeft, Building2 } from "lucide-react";
 import { SimixLogo } from "@/components/simix-logo";
 import { useContactSettings } from "@/hooks/use-contact-settings";
+import { useGoBack } from "@/hooks/use-go-back";
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -26,7 +26,6 @@ function InfoRow({ label, value }: { label: string; value: string }) {
 }
 
 export default function LegalMentionsLegales() {
-  const [, setLocation] = useLocation();
   const { supportEmail, supportPhone, platformName, legal } = useContactSettings();
 
   const displayPhone = supportPhone || "";
@@ -34,10 +33,7 @@ export default function LegalMentionsLegales() {
   const companyName = legal.companyName || `${platformName} Technologies`;
   const companyDirector = legal.companyDirector || `Direction ${platformName} Technologies`;
 
-  const goBack = () => {
-    if (window.history.length > 1) window.history.back();
-    else setLocation("/");
-  };
+  const goBack = useGoBack("/");
 
   return (
     <div className="min-h-[100dvh] bg-background">

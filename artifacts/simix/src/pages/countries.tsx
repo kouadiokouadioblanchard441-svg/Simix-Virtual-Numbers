@@ -6,7 +6,8 @@ import {
   useListServices, getListServicesQueryKey,
 } from "@workspace/api-client-react";
 import { useState, useMemo, useCallback } from "react";
-import { Link, useLocation, useSearch } from "wouter";
+import { Link, useSearch } from "wouter";
+import { useGoBack } from "@/hooks/use-go-back";
 import { Search, ChevronLeft, ChevronRight, Edit2, Zap, Globe, ShieldCheck } from "lucide-react";
 import { motion } from "framer-motion";
 import { formatFCFA } from "@/lib/format";
@@ -82,11 +83,7 @@ export default function Countries() {
 }
 
 function CountriesContent() {
-  const [, setLocation] = useLocation();
-  const goBack = useCallback(() => {
-    if (window.history.length > 1) window.history.back();
-    else setLocation("/services");
-  }, [setLocation]);
+  const goBack = useGoBack("/services");
   const locationSearch = useSearch();
   const searchParams = new URLSearchParams(locationSearch);
   const serviceId = searchParams.get("serviceId") || undefined;

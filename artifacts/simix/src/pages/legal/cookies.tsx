@@ -1,8 +1,8 @@
-import { useLocation } from "wouter";
 import { motion } from "framer-motion";
 import { ArrowLeft, Cookie } from "lucide-react";
 import { SimixLogo } from "@/components/simix-logo";
 import { useContactSettings } from "@/hooks/use-contact-settings";
+import { useGoBack } from "@/hooks/use-go-back";
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -28,16 +28,12 @@ const COOKIES: CookieRow[] = [
 ];
 
 export default function LegalCookies() {
-  const [, setLocation] = useLocation();
   const { supportEmail, supportWhatsapp, supportPhone } = useContactSettings();
 
   const privacyEmail = supportEmail || "privacy@simix.app";
   const contactPhone = supportWhatsapp || supportPhone || "+225 07 00 00 00";
 
-  const goBack = () => {
-    if (window.history.length > 1) window.history.back();
-    else setLocation("/");
-  };
+  const goBack = useGoBack("/");
 
   return (
     <div className="min-h-[100dvh] bg-background">

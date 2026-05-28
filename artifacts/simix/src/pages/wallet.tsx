@@ -14,6 +14,7 @@ import {
   Zap, Star, ChevronRight,
 } from "lucide-react";
 import { useLocation } from "wouter";
+import { useGoBack } from "@/hooks/use-go-back";
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
@@ -681,6 +682,7 @@ export default function Wallet() {
 /* ─── Deposit Content ─── */
 function DepositContent() {
   const [, setLocation] = useLocation();
+  const goBack = useGoBack("/dashboard");
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const rechargeMutation = useRechargeWallet();
@@ -818,7 +820,7 @@ function DepositContent() {
       <div className="sticky top-0 z-20 bg-background/95 backdrop-blur-md border-b border-card-border/30 px-5 pt-5 pb-4">
         <div className="flex items-center justify-between">
           <button
-            onClick={() => { if (window.history.length > 1) window.history.back(); else setLocation("/dashboard"); }}
+            onClick={goBack}
             className="w-9 h-9 bg-card border border-card-border rounded-xl flex items-center justify-center text-foreground hover:bg-secondary transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
@@ -1133,7 +1135,7 @@ function DepositContent() {
         </motion.button>
 
         <button
-          onClick={() => { if (window.history.length > 1) window.history.back(); else setLocation("/dashboard"); }}
+          onClick={goBack}
           className="w-full h-10 rounded-2xl bg-transparent border border-card-border text-muted-foreground font-semibold text-sm transition-colors hover:bg-secondary text-xs"
         >
           Annuler

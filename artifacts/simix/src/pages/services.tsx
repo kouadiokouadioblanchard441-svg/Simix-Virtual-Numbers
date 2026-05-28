@@ -2,11 +2,12 @@ import { AppLayout } from "@/components/layout/app-layout";
 import { AuthGuard } from "@/components/auth-guard";
 import { useListServices, getListServicesQueryKey, useListPopularServices, getListPopularServicesQueryKey } from "@workspace/api-client-react";
 import { useState, useMemo } from "react";
-import { Link, useLocation } from "wouter";
+import { Link } from "wouter";
 import { Search, ChevronLeft, Filter, ShieldCheck, ChevronRight, Zap } from "lucide-react";
 import { motion } from "framer-motion";
 import { formatFCFA } from "@/lib/format";
 import { ServiceIcon } from "@/components/service-icon";
+import { useGoBack } from "@/hooks/use-go-back";
 
 export default function Services() {
   return (
@@ -19,11 +20,7 @@ export default function Services() {
 }
 
 function ServicesContent() {
-  const [, setLocation] = useLocation();
-  const goBack = (() => {
-    if (window.history.length > 1) window.history.back();
-    else setLocation("/dashboard");
-  });
+  const goBack = useGoBack("/dashboard");
   const searchParams = new URLSearchParams(window.location.search);
   const countryId = searchParams.get("countryId") || undefined;
 

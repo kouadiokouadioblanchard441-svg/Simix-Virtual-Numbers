@@ -1,9 +1,11 @@
-import { useLocation } from "wouter";
 import { motion } from "framer-motion";
 import { Home, ArrowLeft, SearchX } from "lucide-react";
+import { useGoBack } from "@/hooks/use-go-back";
+import { useLocation } from "wouter";
 
 export default function NotFound() {
   const [, setLocation] = useLocation();
+  const goBack = useGoBack("/dashboard");
   return (
     <div className="min-h-[100dvh] w-full flex items-center justify-center bg-background px-5">
       <motion.div
@@ -28,7 +30,7 @@ export default function NotFound() {
             Retour à l'accueil
           </button>
           <button
-            onClick={() => { if (window.history.length > 1) window.history.back(); else setLocation("/dashboard"); }}
+            onClick={goBack}
             className="flex items-center justify-center gap-2 w-full h-12 rounded-2xl bg-card border border-card-border text-foreground text-sm font-medium hover:bg-secondary transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />

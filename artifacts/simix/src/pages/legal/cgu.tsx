@@ -1,7 +1,7 @@
-import { useLocation } from "wouter";
 import { motion } from "framer-motion";
 import { ArrowLeft, FileText } from "lucide-react";
 import { SimixLogo } from "@/components/simix-logo";
+import { useGoBack } from "@/hooks/use-go-back";
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -16,12 +16,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 }
 
 export default function LegalCGU() {
-  const [, setLocation] = useLocation();
-
-  const goBack = () => {
-    if (window.history.length > 1) window.history.back();
-    else setLocation("/");
-  };
+  const goBack = useGoBack("/");
 
   return (
     <div className="min-h-[100dvh] bg-background">

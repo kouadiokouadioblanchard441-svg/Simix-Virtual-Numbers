@@ -19,23 +19,60 @@ function useImageUpload(onUploaded: (url: string) => void) {
       toast({ title: "Fichier invalide", description: "Veuillez sélectionner une image (PNG, JPG, SVG, WebP).", variant: "destructive" });
       return;
     }
+    if (file.size > 2 * 1024 * 1024) {
+      toast({ title: "Fichier trop grand", description: "Taille maximale : 2 MB.", variant: "destructive" });
+      return;
+    }
     setUploading(true);
     try {
-      const metaRes = await fetch("/api/storage/uploads/request-url", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ name: file.name, size: file.size, contentType: file.type }),
+      /* 1. Try GCS presigned upload */
+      try {
+        const metaRes = await fetch("/api/storage/uploads/request-url", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ name: file.name, size: file.size, contentType: file.type }),
+        });
+        if (metaRes.ok) {
+          const { uploadURL, objectPath } = await metaRes.json();
+          const putRes = await fetch(uploadURL, { method: "PUT", body: file, headers: { "Content-Type": file.type } });
+          if (putRes.ok) {
+            onUploaded(`/api/storage${objectPath}`);
+            toast({ title: "Image uploadée", description: "Le logo a été mis à jour." });
+            return;
+          }
+        }
+      } catch { /* fall through */ }
+
+      /* 2. Fallback: direct server upload */
+      try {
+        const directRes = await fetch("/api/storage/uploads/direct", {
+          method: "POST",
+          body: file,
+          headers: { "Content-Type": file.type },
+          credentials: "include",
+        });
+        if (directRes.ok) {
+          const { url } = await directRes.json();
+          onUploaded(url);
+          toast({ title: "Image uploadée", description: "Le logo a été mis à jour." });
+          return;
+        }
+      } catch { /* fall through */ }
+
+      /* 3. Final fallback: base64 data URI (works everywhere, no storage needed) */
+      await new Promise<void>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          onUploaded(reader.result as string);
+          toast({ title: "Image uploadée", description: "Le logo a été mis à jour." });
+          resolve();
+        };
+        reader.onerror = () => reject(new Error("Lecture du fichier impossible"));
+        reader.readAsDataURL(file);
       });
-      if (!metaRes.ok) throw new Error("Impossible d'obtenir l'URL d'upload");
-      const { uploadURL, objectPath } = await metaRes.json();
-      const putRes = await fetch(uploadURL, { method: "PUT", body: file, headers: { "Content-Type": file.type } });
-      if (!putRes.ok) throw new Error("Upload échoué");
-      const serveUrl = `/api/storage${objectPath}`;
-      onUploaded(serveUrl);
-      toast({ title: "Image uploadée", description: "Le logo a été mis à jour." });
     } catch (e) {
-      toast({ title: "Image non uploadée", description: (e as Error).message || "L'upload a échoué. Vérifiez votre connexion et réessayez.", variant: "destructive" });
+      toast({ title: "Upload échoué", description: (e as Error).message || "Vérifiez votre connexion et réessayez.", variant: "destructive" });
     } finally {
       setUploading(false);
     }
