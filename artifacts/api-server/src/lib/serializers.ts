@@ -46,7 +46,7 @@ export function toService(s: Service) {
   };
 }
 
-export function toCountry(c: Country) {
+export function toCountry(c: Country & { enabled?: boolean; numbersEnabled?: boolean }) {
   return {
     id: c.id,
     name: c.name,
@@ -56,6 +56,8 @@ export function toCountry(c: Country) {
     available: c.available,
     price: c.price,
     popular: c.popular,
+    enabled: c.enabled ?? true,
+    numbersEnabled: c.numbersEnabled ?? true,
   };
 }
 

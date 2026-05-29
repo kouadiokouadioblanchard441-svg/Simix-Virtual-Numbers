@@ -412,6 +412,10 @@ export interface AdminCountry {
   available: number;
   price: number;
   popular: boolean;
+  /** When false: country hidden from registration picker + deposits blocked */
+  enabled: boolean;
+  /** When false: country hidden from virtual numbers (5sim) picker */
+  numbersEnabled: boolean;
 }
 
 export interface AdminPaymentMethod {

@@ -448,17 +448,20 @@ router.get("/admin/countries", requireAdmin, async (_req, res): Promise<void> =>
 
 router.put("/admin/countries/:countryId", requireAdmin, async (req, res): Promise<void> => {
   const countryId = String(req.params.countryId);
-  const { price, available, popular } = req.body;
+  const { price, available, popular, enabled, numbersEnabled } = req.body;
 
   const updates: Record<string, unknown> = {};
   if (price !== undefined) updates.price = Number(price);
   if (available !== undefined) updates.available = Number(available);
   if (popular !== undefined) updates.popular = Boolean(popular);
+  if (enabled !== undefined) updates.enabled = Boolean(enabled);
+  if (numbersEnabled !== undefined) updates.numbersEnabled = Boolean(numbersEnabled);
 
   if (Object.keys(updates).length === 0) { res.status(400).json({ error: "Aucun champ à mettre à jour" }); return; }
   await db.update(countriesTable).set(updates).where(eq(countriesTable.id, countryId));
   await logAdminAction(adminId(req), "update_country", req.ip, "country", countryId, updates);
-  res.json({ success: true });
+  const [updated] = await db.select().from(countriesTable).where(eq(countriesTable.id, countryId)).limit(1);
+  res.json(updated);
 });
 
 /* ─────────────────── AFRICAN COUNTRIES SEEDING ─────────────────── */

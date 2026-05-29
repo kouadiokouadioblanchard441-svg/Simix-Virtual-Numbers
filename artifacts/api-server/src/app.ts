@@ -8,6 +8,7 @@ import { existsSync } from "fs";
 import router from "./routes";
 import { logger } from "./lib/logger";
 import { attachUser } from "./lib/auth";
+import { pool } from "@workspace/db";
 import { globalRateLimit, checkUserBlocked, checkMaintenanceMode, checkIpBlacklist } from "./middlewares/security";
 import { startFiveSimPoller } from "./lib/fivesim-poller";
 import { seedProvidersFromEnv } from "./lib/seed-providers";
@@ -91,6 +92,26 @@ app.use(attachUser);
 
 /* ── Block suspended users from all routes ── */
 app.use(checkUserBlocked);
+
+/* ── Public: registration country picker (no auth required) ── */
+app.get("/api/public/registration-countries", async (_req, res) => {
+  try {
+    const { rows } = await pool.query<{
+      code: string; dial_code: string; name: string; flag: string;
+    }>(
+      `SELECT code, dial_code, name, flag FROM countries WHERE enabled = true ORDER BY sort_order ASC`
+    );
+    res.json(rows.map(r => ({
+      code: r.code.toLowerCase(),
+      dial: r.dial_code,
+      label: r.name,
+      flag: r.flag,
+    })));
+  } catch (err) {
+    logger.error({ err }, "[public] registration-countries query failed");
+    res.status(500).json({ error: "Impossible de charger les pays.", detail: String(err) });
+  }
+});
 
 app.use("/api", router);
 

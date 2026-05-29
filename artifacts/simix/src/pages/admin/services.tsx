@@ -648,6 +648,8 @@ function CountryRow({ country }: { country: AdminCountry }) {
   const [editing, setEditing] = useState(false);
   const [price, setPrice] = useState(String(country.price));
   const [available, setAvailable] = useState(String(country.available));
+  const [enabled, setEnabled] = useState(country.enabled ?? true);
+  const [numbersEnabled, setNumbersEnabled] = useState(country.numbersEnabled ?? true);
   const { toast } = useToast();
   const qc = useQueryClient();
 
@@ -656,18 +658,37 @@ function CountryRow({ country }: { country: AdminCountry }) {
     onSuccess: () => { toast({ title: "Pays mis à jour" }); qc.invalidateQueries({ queryKey: ["admin-countries"] }); setEditing(false); },
   });
 
+  const toggleEnabled = useMutation({
+    mutationFn: (val: boolean) => adminApi.updateCountry(country.id, { enabled: val }),
+    onSuccess: (_data, val) => {
+      setEnabled(val);
+      toast({ title: val ? `${country.name} activé` : `${country.name} désactivé` });
+      qc.invalidateQueries({ queryKey: ["admin-countries"] });
+    },
+    onError: () => toast({ title: "Erreur", variant: "destructive" }),
+  });
+
+  const toggleNumbers = useMutation({
+    mutationFn: (val: boolean) => adminApi.updateCountry(country.id, { numbersEnabled: val }),
+    onSuccess: (_data, val) => {
+      setNumbersEnabled(val);
+      toast({ title: val ? `Numéros activés — ${country.name}` : `Numéros désactivés — ${country.name}` });
+      qc.invalidateQueries({ queryKey: ["admin-countries"] });
+    },
+    onError: () => toast({ title: "Erreur", variant: "destructive" }),
+  });
+
   return (
-    <tr className="border-b border-zinc-800 hover:bg-zinc-800/20 transition-colors">
+    <tr className={`border-b border-zinc-800 transition-colors ${!enabled ? "opacity-50 bg-red-950/10" : "hover:bg-zinc-800/20"}`}>
       <td className="py-3 px-4">
         <div className="flex items-center gap-2">
           <span className="text-lg">{country.flag}</span>
           <div>
             <span className="text-white text-sm">{country.name}</span>
-            <div className="text-zinc-600 text-xs font-mono">{country.code}</div>
+            <div className="text-zinc-600 text-xs font-mono">{country.code} · {country.dialCode}</div>
           </div>
         </div>
       </td>
-      <td className="py-3 px-4 text-zinc-400 text-sm">{country.dialCode}</td>
       <td className="py-3 px-4">
         {editing ? <input type="number" value={price} onChange={e => setPrice(e.target.value)} className="w-24 px-2 py-1 text-sm bg-zinc-800 border border-violet-500 rounded text-white focus:outline-none" />
           : <span className="text-white text-sm font-semibold">{formatFCFA(country.price)}</span>}
@@ -675,6 +696,38 @@ function CountryRow({ country }: { country: AdminCountry }) {
       <td className="py-3 px-4">
         {editing ? <input type="number" value={available} onChange={e => setAvailable(e.target.value)} className="w-20 px-2 py-1 text-sm bg-zinc-800 border border-zinc-600 rounded text-white focus:outline-none" />
           : <span className="text-zinc-300 text-sm">{country.available.toLocaleString("fr-FR")}</span>}
+      </td>
+      {/* Toggle: Inscription / Dépôt */}
+      <td className="py-3 px-4">
+        <button
+          onClick={() => toggleEnabled.mutate(!enabled)}
+          disabled={toggleEnabled.isPending}
+          title={enabled ? "Désactiver (inscription + dépôts)" : "Activer (inscription + dépôts)"}
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all disabled:opacity-50 ${
+            enabled
+              ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20"
+              : "bg-red-500/10 border-red-500/30 text-red-400 hover:bg-red-500/20"
+          }`}
+        >
+          {toggleEnabled.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : enabled ? <ToggleRight className="w-4 h-4" /> : <ToggleLeft className="w-4 h-4" />}
+          {enabled ? "Actif" : "Inactif"}
+        </button>
+      </td>
+      {/* Toggle: Numéros 5sim */}
+      <td className="py-3 px-4">
+        <button
+          onClick={() => toggleNumbers.mutate(!numbersEnabled)}
+          disabled={toggleNumbers.isPending}
+          title={numbersEnabled ? "Désactiver les numéros virtuels" : "Activer les numéros virtuels"}
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all disabled:opacity-50 ${
+            numbersEnabled
+              ? "bg-violet-500/10 border-violet-500/30 text-violet-400 hover:bg-violet-500/20"
+              : "bg-zinc-800 border-zinc-700 text-zinc-500 hover:text-zinc-300"
+          }`}
+        >
+          {toggleNumbers.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : numbersEnabled ? <ToggleRight className="w-4 h-4" /> : <ToggleLeft className="w-4 h-4" />}
+          {numbersEnabled ? "Numéros" : "Bloqué"}
+        </button>
       </td>
       <td className="py-3 px-4">
         {editing ? (
@@ -772,14 +825,14 @@ function ServicesContent() {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-zinc-800 bg-zinc-900/80">
-                  {["Pays", "Indicatif", "Prix", "Stock", ""].map(h => (
-                    <th key={h} className="text-left py-3 px-4 text-xs font-semibold text-zinc-500 uppercase tracking-wide">{h}</th>
+                  {["Pays", "Prix", "Stock 5sim", "Inscription / Dépôt", "Numéros virtuels", ""].map(h => (
+                    <th key={h} className="text-left py-3 px-4 text-xs font-semibold text-zinc-500 uppercase tracking-wide whitespace-nowrap">{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {loadingC
-                  ? <tr><td colSpan={5} className="py-12 text-center"><Loader2 className="w-6 h-6 text-violet-500 animate-spin mx-auto" /></td></tr>
+                  ? <tr><td colSpan={6} className="py-12 text-center"><Loader2 className="w-6 h-6 text-violet-500 animate-spin mx-auto" /></td></tr>
                   : countries?.map(c => <CountryRow key={c.id} country={c} />)}
               </tbody>
             </table>

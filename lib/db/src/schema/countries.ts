@@ -16,6 +16,10 @@ export const countriesTable = pgTable("countries", {
   price: integer("price").notNull(),
   popular: boolean("popular").notNull().default(false),
   sortOrder: integer("sort_order").notNull().default(100),
+  /** When false: country is hidden from registration picker + deposits are blocked */
+  enabled: boolean("enabled").notNull().default(true),
+  /** When false: country is hidden from the virtual numbers (5sim) picker */
+  numbersEnabled: boolean("numbers_enabled").notNull().default(true),
 });
 
 export type Country = typeof countriesTable.$inferSelect;

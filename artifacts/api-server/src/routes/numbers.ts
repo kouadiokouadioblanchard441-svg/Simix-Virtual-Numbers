@@ -223,6 +223,12 @@ router.post("/numbers", requireAuth, async (req, res): Promise<void> => {
     return;
   }
 
+  /* Check if country is enabled for virtual numbers */
+  if (country.numbersEnabled === false) {
+    res.status(400).json({ error: `Les numéros virtuels ne sont pas disponibles pour ${country.name}.` });
+    return;
+  }
+
   /* Check if country is available (available is a count — 0 means no numbers) */
   if (country.available <= 0) {
     res.status(400).json({ error: `Le pays ${country.name} n'est pas disponible pour le moment.` });

@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -26,67 +26,18 @@ const formSchema = z.object({
   path: ["confirmPassword"],
 });
 
-const ALL_COUNTRIES = [
-  { code: "ci", dial: "+225", label: "Côte d'Ivoire" },
-  { code: "sn", dial: "+221", label: "Sénégal" },
-  { code: "ml", dial: "+223", label: "Mali" },
-  { code: "bf", dial: "+226", label: "Burkina Faso" },
-  { code: "gn", dial: "+224", label: "Guinée" },
-  { code: "tg", dial: "+228", label: "Togo" },
-  { code: "bj", dial: "+229", label: "Bénin" },
-  { code: "ne", dial: "+227", label: "Niger" },
-  { code: "cm", dial: "+237", label: "Cameroun" },
-  { code: "ng", dial: "+234", label: "Nigéria" },
-  { code: "gh", dial: "+233", label: "Ghana" },
-  { code: "ke", dial: "+254", label: "Kenya" },
-  { code: "tz", dial: "+255", label: "Tanzanie" },
-  { code: "ug", dial: "+256", label: "Ouganda" },
-  { code: "rw", dial: "+250", label: "Rwanda" },
-  { code: "ma", dial: "+212", label: "Maroc" },
-  { code: "dz", dial: "+213", label: "Algérie" },
-  { code: "tn", dial: "+216", label: "Tunisie" },
-  { code: "eg", dial: "+20", label: "Égypte" },
-  { code: "ly", dial: "+218", label: "Libye" },
-  { code: "sd", dial: "+249", label: "Soudan" },
-  { code: "ss", dial: "+211", label: "Soudan du Sud" },
-  { code: "et", dial: "+251", label: "Éthiopie" },
-  { code: "so", dial: "+252", label: "Somalie" },
-  { code: "dj", dial: "+253", label: "Djibouti" },
-  { code: "er", dial: "+291", label: "Érythrée" },
-  { code: "za", dial: "+27", label: "Afrique du Sud" },
-  { code: "mz", dial: "+258", label: "Mozambique" },
-  { code: "zm", dial: "+260", label: "Zambie" },
-  { code: "zw", dial: "+263", label: "Zimbabwe" },
-  { code: "mw", dial: "+265", label: "Malawi" },
-  { code: "bw", dial: "+267", label: "Botswana" },
-  { code: "na", dial: "+264", label: "Namibie" },
-  { code: "sz", dial: "+268", label: "Eswatini" },
-  { code: "ls", dial: "+266", label: "Lesotho" },
-  { code: "mg", dial: "+261", label: "Madagascar" },
-  { code: "mu", dial: "+230", label: "Maurice" },
-  { code: "sc", dial: "+248", label: "Seychelles" },
-  { code: "km", dial: "+269", label: "Comores" },
-  { code: "ga", dial: "+241", label: "Gabon" },
-  { code: "gq", dial: "+240", label: "Guinée Équatoriale" },
-  { code: "st", dial: "+239", label: "Sao Tomé-et-Príncipe" },
-  { code: "cf", dial: "+236", label: "Centrafrique" },
-  { code: "td", dial: "+235", label: "Tchad" },
-  { code: "cg", dial: "+242", label: "Congo" },
-  { code: "cd", dial: "+243", label: "Congo RDC" },
-  { code: "ao", dial: "+244", label: "Angola" },
-  { code: "gw", dial: "+245", label: "Guinée-Bissau" },
-  { code: "cv", dial: "+238", label: "Cap-Vert" },
-  { code: "gm", dial: "+220", label: "Gambie" },
-  { code: "sl", dial: "+232", label: "Sierra Leone" },
-  { code: "lr", dial: "+231", label: "Liberia" },
-  { code: "bi", dial: "+257", label: "Burundi" },
-  { code: "mr", dial: "+222", label: "Mauritanie" },
-  { code: "fr", dial: "+33", label: "France" },
-  { code: "gb", dial: "+44", label: "Royaume-Uni" },
-  { code: "be", dial: "+32", label: "Belgique" },
-  { code: "us", dial: "+1", label: "États-Unis" },
-  { code: "ca", dial: "+1", label: "Canada" },
+/* ── Minimal fallback countries in case API is unreachable ── */
+const FALLBACK_COUNTRIES = [
+  { code: "ci", dial: "+225", label: "Côte d'Ivoire", flag: "🇨🇮" },
+  { code: "sn", dial: "+221", label: "Sénégal", flag: "🇸🇳" },
+  { code: "ml", dial: "+223", label: "Mali", flag: "🇲🇱" },
+  { code: "bf", dial: "+226", label: "Burkina Faso", flag: "🇧🇫" },
+  { code: "cm", dial: "+237", label: "Cameroun", flag: "🇨🇲" },
+  { code: "fr", dial: "+33", label: "France", flag: "🇫🇷" },
+  { code: "gb", dial: "+44", label: "Royaume-Uni", flag: "🇬🇧" },
 ];
+
+interface RegistrationCountry { code: string; dial: string; label: string; flag?: string; }
 
 function FlagImg({ code }: { code: string }) {
   const [err, setErr] = useState(false);
@@ -113,15 +64,26 @@ export default function Register() {
   const [showCountryPicker, setShowCountryPicker] = useState(false);
   const [countrySearch, setCountrySearch] = useState("");
 
-  const selectedCountry = ALL_COUNTRIES.find(c => c.code === selectedCountryCode) ?? ALL_COUNTRIES[0];
+  /* ── Fetch enabled registration countries from API ── */
+  const [countries, setCountries] = useState<RegistrationCountry[]>(FALLBACK_COUNTRIES);
+  useEffect(() => {
+    fetch("/api/public/registration-countries", { credentials: "include" })
+      .then(r => r.ok ? r.json() : Promise.reject())
+      .then((data: RegistrationCountry[]) => {
+        if (Array.isArray(data) && data.length > 0) setCountries(data);
+      })
+      .catch(() => { /* keep fallback */ });
+  }, []);
+
+  const selectedCountry = countries.find(c => c.code === selectedCountryCode) ?? countries[0];
 
   const filteredCountries = useMemo(() => {
-    if (!countrySearch.trim()) return ALL_COUNTRIES;
-    return ALL_COUNTRIES.filter(c =>
+    if (!countrySearch.trim()) return countries;
+    return countries.filter(c =>
       c.label.toLowerCase().includes(countrySearch.toLowerCase()) ||
       c.dial.includes(countrySearch)
     );
-  }, [countrySearch]);
+  }, [countrySearch, countries]);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -135,7 +97,7 @@ export default function Register() {
           fullName: values.fullName,
           phone: values.phone,
           password: values.password,
-          countryCode: selectedCountry.dial,
+          countryCode: selectedCountry?.dial ?? "+225",
           email: values.email,
         }
       }) as { requiresEmailVerification?: boolean };
@@ -225,8 +187,8 @@ export default function Register() {
                       onClick={() => { setShowCountryPicker(p => !p); setCountrySearch(""); }}
                       className="flex items-center gap-1.5 px-3 bg-secondary/50 border-r border-card-border text-sm font-medium text-foreground hover:bg-secondary transition-colors shrink-0 rounded-l-xl"
                     >
-                      <FlagImg code={selectedCountry.code} />
-                      <span className="font-mono text-xs">{selectedCountry.dial}</span>
+                      <FlagImg code={selectedCountry?.code ?? "ci"} />
+                      <span className="font-mono text-xs">{selectedCountry?.dial ?? "+225"}</span>
                       <span className="text-muted-foreground text-xs">▾</span>
                     </button>
                     <input {...field} type="tel" autoComplete="tel" className="flex-1 bg-transparent border-none px-3 text-foreground focus:outline-none placeholder:text-muted-foreground text-sm rounded-r-xl" placeholder="07 01 23 45 67" />
@@ -275,8 +237,17 @@ export default function Register() {
                 <FormControl>
                   <div className="relative h-14">
                     <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                    <Input type={showPassword ? "text" : "password"} placeholder="Minimum 6 caractères" autoComplete="new-password" className="pl-11 pr-12 bg-card border-card-border focus-visible:ring-primary h-full rounded-xl" {...field} />
-                    <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors">
+                    <Input
+                      type={showPassword ? "text" : "password"}
+                      placeholder="••••••••"
+                      className="pl-11 pr-11 bg-card border-card-border focus-visible:ring-primary h-full rounded-xl"
+                      {...field}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(p => !p)}
+                      className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                    >
                       {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
                   </div>
@@ -291,8 +262,17 @@ export default function Register() {
                 <FormControl>
                   <div className="relative h-14">
                     <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                    <Input type={showConfirmPassword ? "text" : "password"} placeholder="Répétez votre mot de passe" autoComplete="new-password" className="pl-11 pr-12 bg-card border-card-border focus-visible:ring-primary h-full rounded-xl" {...field} />
-                    <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors">
+                    <Input
+                      type={showConfirmPassword ? "text" : "password"}
+                      placeholder="••••••••"
+                      className="pl-11 pr-11 bg-card border-card-border focus-visible:ring-primary h-full rounded-xl"
+                      {...field}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPassword(p => !p)}
+                      className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                    >
                       {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
                   </div>
@@ -302,60 +282,44 @@ export default function Register() {
             )} />
 
             <FormField control={form.control} name="terms" render={({ field }) => (
-              <FormItem className="flex flex-row items-start space-x-3 space-y-0 pt-1">
+              <FormItem>
                 <FormControl>
-                  <input type="checkbox" className="w-5 h-5 mt-0.5 rounded border-card-border bg-card text-primary focus:ring-primary accent-primary" checked={field.value} onChange={field.onChange} />
+                  <label className="flex items-start gap-3 cursor-pointer">
+                    <div
+                      onClick={() => field.onChange(!field.value)}
+                      className={`mt-0.5 w-5 h-5 rounded flex items-center justify-center border-2 transition-colors flex-shrink-0 ${field.value ? "bg-primary border-primary" : "border-card-border bg-card"}`}
+                    >
+                      {field.value && <svg className="w-3 h-3 text-primary-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>}
+                    </div>
+                    <span className="text-sm text-muted-foreground leading-relaxed">
+                      J'accepte les{" "}
+                      <Link href="/legal/terms" className="text-primary hover:underline font-medium">conditions d'utilisation</Link>
+                      {" "}et la{" "}
+                      <Link href="/legal/privacy" className="text-primary hover:underline font-medium">politique de confidentialité</Link>
+                    </span>
+                  </label>
                 </FormControl>
-                <div className="leading-tight">
-                  <FormLabel className="text-sm text-muted-foreground font-normal cursor-pointer">
-                    J'accepte les <Link href="/legal/cgu" className="text-primary hover:underline">Conditions d'utilisation</Link> et la <Link href="/legal/politique-confidentialite" className="text-primary hover:underline">Politique de confidentialité</Link>
-                  </FormLabel>
-                  <FormMessage />
-                </div>
+                <FormMessage />
               </FormItem>
             )} />
 
-            <div className="pt-2">
-              <Button
-                type="submit"
-                className="w-full h-14 rounded-2xl text-base font-semibold bg-gradient-to-r from-violet-600 to-indigo-600 hover:opacity-90 text-white shadow-lg shadow-primary/25"
-                disabled={registerMutation.isPending}
-              >
-                {registerMutation.isPending ? "Création en cours..." : "Créer mon compte gratuitement"}
-              </Button>
-            </div>
+            <Button
+              type="submit"
+              disabled={registerMutation.isPending}
+              className="w-full h-14 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-base mt-2"
+            >
+              {registerMutation.isPending ? (
+                <span className="flex items-center gap-2"><svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>Création en cours...</span>
+              ) : "Créer mon compte gratuitement"}
+            </Button>
+
           </form>
         </Form>
 
-        <div className="relative my-6">
-          <div className="absolute inset-0 flex items-center"><span className="w-full border-t border-card-border" /></div>
-          <div className="relative flex justify-center text-xs tracking-wider font-medium text-muted-foreground uppercase">
-            <span className="bg-background px-4">Ou continuer avec</span>
-          </div>
-        </div>
-
-        <div className="flex flex-col gap-3">
-          <a href="/api/auth/google" className="w-full">
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full h-12 bg-card border-card-border hover:bg-secondary rounded-xl gap-3 text-sm font-medium text-foreground"
-            >
-              <svg className="w-5 h-5 flex-shrink-0" viewBox="0 0 24 24">
-                <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
-                <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
-                <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
-                <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
-              </svg>
-              S'inscrire avec Google
-            </Button>
-          </a>
-        </div>
-
-        <div className="mt-6 text-center text-sm font-medium text-muted-foreground">
-          Vous avez déjà un compte ?{" "}
+        <p className="text-center text-sm text-muted-foreground mt-6">
+          Déjà un compte ?{" "}
           <Link href="/login" className="text-primary hover:underline font-semibold">Se connecter</Link>
-        </div>
+        </p>
       </motion.div>
     </div>
   );

@@ -50,6 +50,13 @@
       "when": 1778650000000,
       "tag": "0006_service_country_availability",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1748527200000,
+      "tag": "0007_country_enabled_flags",
+      "breakpoints": true
     }
   ]
 }

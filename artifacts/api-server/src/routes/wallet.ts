@@ -239,6 +239,17 @@ router.post(
         return;
       }
 
+      /* ── Check country is enabled for deposits ── */
+      const [depositCountry] = await db
+        .select({ enabled: countriesTable.enabled })
+        .from(countriesTable)
+        .where(eq(countriesTable.code, countryCode.toUpperCase()))
+        .limit(1);
+      if (depositCountry && depositCountry.enabled === false) {
+        res.status(400).json({ error: "Les dépôts ne sont pas disponibles pour ce pays pour le moment." });
+        return;
+      }
+
       /* ── Step 1: Try dynamic routing (PostgreSQL routing table) ── */
       let pawaPayCtx: { client: PawaPayClient; env: string } | null = null;
       let clapayCtx:  { client: ClapayClient } | null = null;

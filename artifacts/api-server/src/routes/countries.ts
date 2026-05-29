@@ -1,11 +1,36 @@
 import { Router, type IRouter } from "express";
-import { and, asc, eq, ilike, sql } from "drizzle-orm";
+import { and, asc, eq, ilike } from "drizzle-orm";
 import { db, countriesTable, servicesTable, serviceCountryAvailabilityTable } from "@workspace/db";
 import { pool } from "@workspace/db";
 import { ListCountriesQueryParams } from "@workspace/api-zod";
 import { toCountry } from "../lib/serializers";
 
 const router: IRouter = Router();
+
+/* ─── GET /public/registration-countries
+ * Returns countries enabled for registration (enabled = true), sorted by popularity.
+ * Used by the registration page to build the dial-code picker.
+ * ─────────────────────────────────────────────────────────────────── */
+router.get("/public/registration-countries", async (_req, res): Promise<void> => {
+  try {
+    const { rows } = await pool.query<{
+      code: string; dial_code: string; name: string; flag: string;
+    }>(
+      `SELECT code, dial_code, name, flag
+       FROM countries
+       WHERE enabled = true
+       ORDER BY sort_order ASC`
+    );
+    res.json(rows.map(r => ({
+      code: r.code.toLowerCase(),
+      dial: r.dial_code,
+      label: r.name,
+      flag: r.flag,
+    })));
+  } catch (err) {
+    res.status(500).json({ error: "Impossible de charger les pays." });
+  }
+});
 
 router.get("/countries", async (req, res): Promise<void> => {
   const parsed = ListCountriesQueryParams.safeParse(req.query);
@@ -46,11 +71,13 @@ router.get("/countries", async (req, res): Promise<void> => {
     const { rows } = await pool.query<{
       id: string; code: string; name: string; dial_code: string; flag: string;
       available: number; price: number; popular: boolean; sort_order: number;
+      enabled: boolean; numbers_enabled: boolean;
     }>(
       `SELECT c.id, c.code, c.name, c.dial_code, c.flag,
               COALESCE(sca.available, c.available, 0) AS available,
               COALESCE(sp.price, c.price) AS price,
-              c.popular, c.sort_order
+              c.popular, c.sort_order,
+              c.enabled, c.numbers_enabled
        FROM countries c
        LEFT JOIN service_prices sp
          ON LOWER(c.code) = sp.country_code
@@ -59,6 +86,7 @@ router.get("/countries", async (req, res): Promise<void> => {
          ON UPPER(c.code) = sca.country_code
         AND sca.service_slug = $2
        WHERE (sp.enabled IS NULL OR sp.enabled = true)
+         AND c.numbers_enabled = true
        ${searchClause}
        ORDER BY c.sort_order ASC`,
       params,
@@ -74,11 +102,15 @@ router.get("/countries", async (req, res): Promise<void> => {
       price: r.price,
       popular: r.popular,
       sortOrder: r.sort_order,
+      enabled: r.enabled,
+      numbersEnabled: r.numbers_enabled,
     })));
     return;
   }
 
   const nameConditions = [];
+  /* Always filter by enabled (registration/deposit countries) */
+  nameConditions.push(eq(countriesTable.enabled, true));
   if (search && search.length > 0) {
     nameConditions.push(ilike(countriesTable.name, `%${search}%`));
   }
@@ -86,7 +118,7 @@ router.get("/countries", async (req, res): Promise<void> => {
   const rows = await db
     .select()
     .from(countriesTable)
-    .where(nameConditions.length > 0 ? and(...nameConditions) : undefined)
+    .where(and(...nameConditions))
     .orderBy(asc(countriesTable.sortOrder));
 
   res.json(rows.map(toCountry));
@@ -96,7 +128,7 @@ router.get("/countries/popular", async (_req, res): Promise<void> => {
   const rows = await db
     .select()
     .from(countriesTable)
-    .where(eq(countriesTable.popular, true))
+    .where(and(eq(countriesTable.popular, true), eq(countriesTable.enabled, true)))
     .orderBy(asc(countriesTable.sortOrder));
   res.json(rows.map(toCountry));
 });
