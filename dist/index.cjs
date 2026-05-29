@@ -85932,7 +85932,10 @@ async function syncFiveSimCountries(triggeredBy = "scheduler") {
       target: countriesTable.code,
       set: {
         name: sql`CASE WHEN excluded.name != countries.name AND countries.name = countries.code THEN excluded.name ELSE countries.name END`,
-        dialCode: sql`excluded.dial_code`,
+        /* Preserve existing dialCode — 5sim guest API returns wrong codes for some
+           countries (e.g. France → +594/Guyane). Only set it when the row is new
+           (dialCode is blank) rather than on every sync. */
+        dialCode: sql`CASE WHEN countries.dial_code IS NULL OR countries.dial_code = '' THEN excluded.dial_code ELSE countries.dial_code END`,
         flag: sql`excluded.flag`,
         popular: sql`excluded.popular`,
         sortOrder: sql`excluded.sort_order`
@@ -112115,7 +112118,7 @@ router8.post("/numbers", requireAuth, async (req, res) => {
     res.status(400).json({ error: `Le service ${service.name} est temporairement d\xE9sactiv\xE9.` });
     return;
   }
-  if (!country.available) {
+  if (country.available <= 0) {
     res.status(400).json({ error: `Le pays ${country.name} n'est pas disponible pour le moment.` });
     return;
   }
@@ -112136,7 +112139,6 @@ router8.post("/numbers", requireAuth, async (req, res) => {
     res.status(402).json({ error: "Solde insuffisant. Veuillez r\xE9essayer." });
     return;
   }
-  const externalOrderId = null;
   const validityMin = await getNumberValidityMinutes();
   const expiresAt = new Date(Date.now() + validityMin * 60 * 1e3);
   const fiveSimClient = await getActive5SimClient();
@@ -112154,9 +112156,11 @@ router8.post("/numbers", requireAuth, async (req, res) => {
     return;
   }
   let phoneNumber;
+  let externalOrderId = null;
   try {
     const order = await fiveSimClient.buyNumber(countrySlug, "any", productSlug);
     phoneNumber = order.phone;
+    externalOrderId = String(order.id);
     logger.info(
       { orderId: order.id, phone: phoneNumber, userId: user.id, countrySlug, productSlug },
       "[5sim] Real number acquired"

@@ -5,7 +5,7 @@ import {
   useListPopularCountries, getListPopularCountriesQueryKey,
   useListServices, getListServicesQueryKey,
 } from "@workspace/api-client-react";
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo } from "react";
 import { Link, useSearch } from "wouter";
 import { useGoBack } from "@/hooks/use-go-back";
 import { Search, ChevronLeft, ChevronRight, Edit2, Zap, Globe, ShieldCheck } from "lucide-react";

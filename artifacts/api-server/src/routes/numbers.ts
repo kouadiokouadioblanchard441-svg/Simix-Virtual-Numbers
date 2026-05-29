@@ -223,8 +223,8 @@ router.post("/numbers", requireAuth, async (req, res): Promise<void> => {
     return;
   }
 
-  /* Check if country is available */
-  if (!country.available) {
+  /* Check if country is available (available is a count — 0 means no numbers) */
+  if (country.available <= 0) {
     res.status(400).json({ error: `Le pays ${country.name} n'est pas disponible pour le moment.` });
     return;
   }
@@ -260,7 +260,6 @@ router.post("/numbers", requireAuth, async (req, res): Promise<void> => {
     return;
   }
 
-  const externalOrderId: string | null = null;
   const validityMin = await getNumberValidityMinutes();
   const expiresAt = new Date(Date.now() + validityMin * 60 * 1000);
 
@@ -290,9 +289,11 @@ router.post("/numbers", requireAuth, async (req, res): Promise<void> => {
   }
 
   let phoneNumber: string;
+  let externalOrderId: string | null = null; // will be set after successful buyNumber
   try {
     const order = await fiveSimClient.buyNumber(countrySlug, "any", productSlug);
     phoneNumber = order.phone;
+    externalOrderId = String(order.id); // ← save 5sim order ID for poller
     logger.info(
       { orderId: order.id, phone: phoneNumber, userId: user.id, countrySlug, productSlug },
       "[5sim] Real number acquired",

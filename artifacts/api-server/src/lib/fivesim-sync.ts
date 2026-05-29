@@ -717,7 +717,10 @@ export async function syncFiveSimCountries(triggeredBy: "scheduler" | "admin" = 
         target: countriesTable.code,
         set: {
           name:      sql`CASE WHEN excluded.name != countries.name AND countries.name = countries.code THEN excluded.name ELSE countries.name END`,
-          dialCode:  sql`excluded.dial_code`,
+          /* Preserve existing dialCode — 5sim guest API returns wrong codes for some
+             countries (e.g. France → +594/Guyane). Only set it when the row is new
+             (dialCode is blank) rather than on every sync. */
+          dialCode:  sql`CASE WHEN countries.dial_code IS NULL OR countries.dial_code = '' THEN excluded.dial_code ELSE countries.dial_code END`,
           flag:      sql`excluded.flag`,
           popular:   sql`excluded.popular`,
           sortOrder: sql`excluded.sort_order`,

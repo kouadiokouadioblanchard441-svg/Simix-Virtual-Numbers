@@ -4,7 +4,7 @@ import { useGetNumber, getGetNumberQueryKey, useListNumberMessages, getListNumbe
 import { useLocation, Link } from "wouter";
 import { Copy, Clock, X, MessageSquare, Shield, CheckCircle2, Download, MoreVertical, RefreshCw, AlertTriangle, Lightbulb } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, useMutation } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -35,11 +35,28 @@ function NumberAssignedContent({ id }: { id: string }) {
     query: { 
       enabled: !!id && number?.status !== 'cancelled' && number?.status !== 'expired', 
       queryKey: getListNumberMessagesQueryKey(id),
-      refetchInterval: 4000
+      refetchInterval: 4000,
     } 
   });
 
   const extendMutation = useExtendNumber();
+
+  /* On-demand 5sim poll — triggers the server to check 5sim immediately */
+  const pollMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch(`/api/numbers/${id}/poll`, {
+        method: "POST",
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("Erreur de vérification");
+      return res.json();
+    },
+    onSuccess: () => {
+      /* After polling, refresh the number status AND messages */
+      queryClient.invalidateQueries({ queryKey: getGetNumberQueryKey(id) });
+      void refetchMessages();
+    },
+  });
 
   const [timeLeft, setTimeLeft] = useState(0);
   const TOTAL_SECONDS = 15 * 60; // Assume 15 minutes total for the ring progress
@@ -197,10 +214,11 @@ function NumberAssignedContent({ id }: { id: string }) {
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-bold text-foreground">Messages reçus</h2>
             <button 
-              onClick={() => refetchMessages()}
-              className="text-sm font-semibold text-primary flex items-center gap-1.5"
+              onClick={() => pollMutation.mutate()}
+              disabled={pollMutation.isPending}
+              className="text-sm font-semibold text-primary flex items-center gap-1.5 disabled:opacity-50"
             >
-              <RefreshCw className={`w-4 h-4 ${isFetchingMessages ? 'animate-spin' : ''}`} />
+              <RefreshCw className={`w-4 h-4 ${(pollMutation.isPending || isFetchingMessages) ? 'animate-spin' : ''}`} />
               Actualiser
             </button>
           </div>
