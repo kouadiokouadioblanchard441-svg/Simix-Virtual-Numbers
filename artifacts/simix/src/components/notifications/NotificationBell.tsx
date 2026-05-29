@@ -191,14 +191,19 @@ export function NotificationBell({ isAuthenticated = false }: { isAuthenticated?
               )}
             </div>
 
-            {/* Footer */}
-            {notifications.length > 0 && (
-              <div className="px-4 py-2.5 border-t border-white/8 flex-shrink-0">
-                <p className="text-[10px] text-white/25 text-center">
-                  Temps réel activé · Notifications sécurisées
-                </p>
-              </div>
-            )}
+            {/* Footer — link to full notifications page */}
+            <div className="px-4 py-3 border-t border-white/8 flex-shrink-0 flex items-center justify-between">
+              <p className="text-[10px] text-white/25">
+                Temps réel activé · Sécurisé
+              </p>
+              <Link
+                href="/profile/notifications"
+                onClick={() => setIsOpen(false)}
+                className="text-[11px] font-semibold text-violet-400 hover:text-violet-300 transition-colors"
+              >
+                Voir tout →
+              </Link>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
