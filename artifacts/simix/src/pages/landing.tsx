@@ -3,6 +3,7 @@ import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { SimixLogo } from "@/components/simix-logo";
+import { useToast } from "@/hooks/use-toast";
 import { ServiceIcon } from "@/components/service-icon";
 import phone3d from "@/assets/simix_phone_3d.png";
 import wallet3d from "@/assets/simix_wallet_3d.png";
@@ -1540,8 +1541,38 @@ function Footer() {
   );
 }
 
+const GOOGLE_ERROR_MESSAGES: Record<string, { title: string; description: string }> = {
+  google_not_configured:        { title: "Google non activé",       description: "L'authentification Google n'est pas encore configurée. Utilisez l'inscription classique." },
+  google_denied:                { title: "Connexion annulée",        description: "Vous avez annulé la connexion avec Google." },
+  google_session_expired:       { title: "Session expirée",          description: "Votre session a expiré. Veuillez réessayer la connexion Google." },
+  invalid_state:                { title: "Erreur de sécurité",       description: "Une erreur de validation s'est produite. Réessayez depuis un onglet normal." },
+  google_token_exchange_failed: { title: "Échec Google",             description: "La connexion Google a échoué. Vérifiez la configuration OAuth dans Google Console." },
+  google_no_token:              { title: "Token invalide",           description: "Impossible de vérifier votre identité Google. Réessayez." },
+  google_invalid_token:         { title: "Token invalide",           description: "Impossible de vérifier votre identité Google. Réessayez." },
+  google_no_email:              { title: "Email manquant",           description: "Google n'a pas fourni votre adresse email. Vérifiez vos paramètres Google." },
+  google_auth_failed:           { title: "Échec d'authentification", description: "La connexion avec Google a échoué. Réessayez ou utilisez l'inscription classique." },
+  account_blocked:              { title: "Compte suspendu",          description: "Votre compte a été suspendu. Contactez le support." },
+  missing_code:                 { title: "Erreur OAuth",             description: "Code d'autorisation manquant. Veuillez réessayer." },
+};
+
 /* ─── Main export ─── */
 export default function Landing() {
+  const { toast } = useToast();
+
+  /* Show toast when Google OAuth redirects back with an error */
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const errorCode = params.get("error");
+    if (errorCode) {
+      const msg = GOOGLE_ERROR_MESSAGES[errorCode] ?? {
+        title: "Erreur de connexion",
+        description: "Une erreur s'est produite. Veuillez réessayer.",
+      };
+      toast({ title: msg.title, description: msg.description, variant: "destructive" });
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+  }, []);
+
   return (
     <div className="min-h-[100dvh] bg-black text-white overflow-x-hidden">
       <Navbar />

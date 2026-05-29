@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
 import { Eye, EyeOff, ChevronLeft, Shield, User, Mail, Lock, AtSign, Search } from "lucide-react";
+import { FaGoogle } from "react-icons/fa";
 import { motion } from "framer-motion";
 import { SimixLogo } from "@/components/simix-logo";
 
@@ -53,6 +54,20 @@ function FlagImg({ code }: { code: string }) {
   );
 }
 
+const GOOGLE_ERROR_MESSAGES: Record<string, { title: string; description: string }> = {
+  google_not_configured:        { title: "Google non activé",       description: "L'authentification Google n'est pas encore configurée. Utilisez l'inscription classique." },
+  google_denied:                { title: "Connexion annulée",        description: "Vous avez annulé la connexion avec Google." },
+  google_session_expired:       { title: "Session expirée",          description: "Votre session a expiré. Veuillez réessayer la connexion Google." },
+  invalid_state:                { title: "Erreur de sécurité",       description: "Une erreur de validation s'est produite. Réessayez depuis un onglet normal." },
+  google_token_exchange_failed: { title: "Échec Google",             description: "La connexion Google a échoué. Vérifiez la configuration OAuth dans Google Console." },
+  google_no_token:              { title: "Token invalide",           description: "Impossible de vérifier votre identité Google. Réessayez." },
+  google_invalid_token:         { title: "Token invalide",           description: "Impossible de vérifier votre identité Google. Réessayez." },
+  google_no_email:              { title: "Email manquant",           description: "Google n'a pas fourni votre adresse email. Vérifiez vos paramètres Google." },
+  google_auth_failed:           { title: "Échec d'authentification", description: "La connexion avec Google a échoué. Réessayez ou utilisez l'inscription classique." },
+  account_blocked:              { title: "Compte suspendu",          description: "Votre compte a été suspendu. Contactez le support." },
+  missing_code:                 { title: "Erreur OAuth",             description: "Code d'autorisation manquant. Veuillez réessayer." },
+};
+
 export default function Register() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
@@ -73,6 +88,20 @@ export default function Register() {
         if (Array.isArray(data) && data.length > 0) setCountries(data);
       })
       .catch(() => { /* keep fallback */ });
+  }, []);
+
+  /* ── Show toast when redirected back from Google OAuth with an error ── */
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const errorCode = params.get("error");
+    if (errorCode) {
+      const msg = GOOGLE_ERROR_MESSAGES[errorCode] ?? {
+        title: "Erreur de connexion",
+        description: "Une erreur s'est produite lors de la connexion. Veuillez réessayer.",
+      };
+      toast({ title: msg.title, description: msg.description, variant: "destructive" });
+      window.history.replaceState({}, "", window.location.pathname);
+    }
   }, []);
 
   const selectedCountry = countries.find(c => c.code === selectedCountryCode) ?? countries[0];
@@ -315,6 +344,21 @@ export default function Register() {
 
           </form>
         </Form>
+
+        <div className="mt-4">
+          <div className="flex items-center gap-3 my-4">
+            <div className="flex-1 h-px bg-card-border" />
+            <span className="text-xs text-muted-foreground">ou</span>
+            <div className="flex-1 h-px bg-card-border" />
+          </div>
+          <a
+            href="/api/auth/google"
+            className="flex items-center justify-center gap-3 w-full h-12 rounded-xl border border-card-border bg-card hover:bg-card/80 text-sm font-medium text-foreground transition-colors"
+          >
+            <FaGoogle className="w-4 h-4 text-[#4285F4]" />
+            Continuer avec Google
+          </a>
+        </div>
 
         <p className="text-center text-sm text-muted-foreground mt-6">
           Déjà un compte ?{" "}

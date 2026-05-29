@@ -105481,11 +105481,11 @@ async function deleteSession(sessionId) {
   await db.delete(sessionsTable).where(eq(sessionsTable.id, sessionId));
 }
 function setSessionCookie(res, sessionId, expiresAt) {
-  const isProd2 = process.env.NODE_ENV === "production";
+  const isProd = process.env.NODE_ENV === "production";
   res.cookie(SESSION_COOKIE, sessionId, {
     httpOnly: true,
     sameSite: "lax",
-    secure: isProd2,
+    secure: isProd,
     expires: expiresAt,
     path: "/"
   });
@@ -111570,7 +111570,6 @@ init_drizzle_orm();
 init_src();
 init_logger2();
 var router4 = (0, import_express5.Router)();
-var isProd = process.env.NODE_ENV === "production";
 function getOAuthClient(redirectUri) {
   return new import_google_auth_library6.OAuth2Client(
     process.env.GOOGLE_CLIENT_ID,
@@ -111583,18 +111582,19 @@ function getRedirectUri(req) {
   const replitDomain = process.env.REPLIT_DEV_DOMAIN;
   if (replitDomain) return `https://${replitDomain}/api/auth/google/callback`;
   const host = req.headers.host ?? "localhost:8080";
-  const proto = req.protocol;
+  const proto = req.secure ? "https" : req.protocol;
   return `${proto}://${host}/api/auth/google/callback`;
 }
-function oauthStateCookieOptions() {
+function isSecureRequest(req) {
+  return req.secure || req.headers["x-forwarded-proto"] === "https";
+}
+function oauthStateCookieOptions(secure) {
   return {
     httpOnly: true,
     /* sameSite "lax" allows the cookie to be sent on top-level cross-site
      * GET redirects (which is exactly what Google's callback is).          */
     sameSite: "lax",
-    /* MUST be secure in production — browsers drop insecure cookies on
-     * HTTPS pages, which causes the state-mismatch error.                  */
-    secure: isProd,
+    secure,
     maxAge: 10 * 60 * 1e3,
     // 10 min
     path: "/"
@@ -111612,7 +111612,7 @@ router4.get("/auth/google", (req, res) => {
   logger.info({ redirectUri }, "[google-auth] Starting OAuth flow");
   const client = getOAuthClient(redirectUri);
   const state = (0, import_node_crypto4.randomBytes)(16).toString("hex");
-  res.cookie("oauth_state", state, oauthStateCookieOptions());
+  res.cookie("oauth_state", state, oauthStateCookieOptions(isSecureRequest(req)));
   const url2 = client.generateAuthUrl({
     access_type: "offline",
     scope: ["openid", "email", "profile"],
@@ -111646,7 +111646,7 @@ router4.get("/auth/google/callback", async (req, res) => {
   res.clearCookie("oauth_state", {
     httpOnly: true,
     sameSite: "lax",
-    secure: isProd,
+    secure: isSecureRequest(req),
     path: "/"
   });
   if (!code || typeof code !== "string") {

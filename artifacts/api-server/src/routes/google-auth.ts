@@ -8,8 +8,6 @@ import { logger } from "../lib/logger";
 
 const router: IRouter = Router();
 
-const isProd = process.env.NODE_ENV === "production";
-
 function getOAuthClient(redirectUri: string) {
   return new OAuth2Client(
     process.env.GOOGLE_CLIENT_ID,
@@ -18,25 +16,34 @@ function getOAuthClient(redirectUri: string) {
   );
 }
 
-function getRedirectUri(req: { headers: { host?: string }; protocol: string }): string {
+function getRedirectUri(req: { headers: { host?: string; "x-forwarded-proto"?: string }; protocol: string; secure: boolean }): string {
   if (process.env.GOOGLE_REDIRECT_URI) return process.env.GOOGLE_REDIRECT_URI;
   const replitDomain = process.env.REPLIT_DEV_DOMAIN;
   if (replitDomain) return `https://${replitDomain}/api/auth/google/callback`;
   const host = req.headers.host ?? "localhost:8080";
-  const proto = req.protocol;
+  /* Always use https when the connection is secure (trust proxy aware) */
+  const proto = req.secure ? "https" : req.protocol;
   return `${proto}://${host}/api/auth/google/callback`;
 }
 
-/* Cookie options shared between set + clear so they always match exactly */
-function oauthStateCookieOptions() {
+/* Determine if the current request is over HTTPS (trust-proxy aware).
+ * We use this to set the Secure flag on cookies so that:
+ *   - dev over plain HTTP  → secure: false (local testing without TLS)
+ *   - dev on Replit (HTTPS via proxy) → secure: true
+ *   - production → secure: true
+ * NOTE: requires `app.set("trust proxy", 1)` to be in place.             */
+function isSecureRequest(req: { secure: boolean; headers: { "x-forwarded-proto"?: string } }): boolean {
+  return req.secure || req.headers["x-forwarded-proto"] === "https";
+}
+
+/* Cookie options — secure flag is dynamic so it works in all environments */
+function oauthStateCookieOptions(secure: boolean) {
   return {
     httpOnly: true,
     /* sameSite "lax" allows the cookie to be sent on top-level cross-site
      * GET redirects (which is exactly what Google's callback is).          */
     sameSite: "lax" as const,
-    /* MUST be secure in production — browsers drop insecure cookies on
-     * HTTPS pages, which causes the state-mismatch error.                  */
-    secure: isProd,
+    secure,
     maxAge: 10 * 60 * 1000, // 10 min
     path: "/",
   };
@@ -62,7 +69,7 @@ router.get("/auth/google", (req, res): void => {
   const client = getOAuthClient(redirectUri);
   const state = randomBytes(16).toString("hex");
 
-  res.cookie("oauth_state", state, oauthStateCookieOptions());
+  res.cookie("oauth_state", state, oauthStateCookieOptions(isSecureRequest(req)));
 
   const url = client.generateAuthUrl({
     access_type: "offline",
@@ -112,7 +119,7 @@ router.get("/auth/google/callback", async (req, res): Promise<void> => {
   res.clearCookie("oauth_state", {
     httpOnly: true,
     sameSite: "lax",
-    secure: isProd,
+    secure: isSecureRequest(req),
     path: "/",
   });
 

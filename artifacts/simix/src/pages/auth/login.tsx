@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -95,12 +95,41 @@ function FlagImg({ code }: { code: string }) {
   );
 }
 
+const GOOGLE_ERROR_MESSAGES: Record<string, { title: string; description: string }> = {
+  google_not_configured:    { title: "Google non activé",        description: "L'authentification Google n'est pas encore configurée. Utilisez l'inscription classique." },
+  google_denied:            { title: "Connexion annulée",         description: "Vous avez annulé la connexion avec Google." },
+  google_session_expired:   { title: "Session expirée",           description: "Votre session a expiré. Veuillez réessayer la connexion Google." },
+  invalid_state:            { title: "Erreur de sécurité",        description: "Une erreur de validation s'est produite. Réessayez depuis un onglet normal." },
+  google_token_exchange_failed: { title: "Échec Google",         description: "La connexion Google a échoué. Vérifiez la configuration OAuth dans Google Console." },
+  google_no_token:          { title: "Token invalide",            description: "Impossible de vérifier votre identité Google. Réessayez." },
+  google_invalid_token:     { title: "Token invalide",            description: "Impossible de vérifier votre identité Google. Réessayez." },
+  google_no_email:          { title: "Email manquant",            description: "Google n'a pas fourni votre adresse email. Vérifiez vos paramètres Google." },
+  google_auth_failed:       { title: "Échec d'authentification",  description: "La connexion avec Google a échoué. Réessayez ou utilisez l'inscription classique." },
+  account_blocked:          { title: "Compte suspendu",           description: "Votre compte a été suspendu. Contactez le support pour plus d'informations." },
+  missing_code:             { title: "Erreur OAuth",              description: "Code d'autorisation manquant. Veuillez réessayer." },
+};
+
 export default function Login() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const loginMutation = useLogin();
   const [method, setMethod] = useState<"phone" | "username">("phone");
+
+  /* Read ?error= param from URL after Google OAuth redirect */
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const errorCode = params.get("error");
+    if (errorCode) {
+      const msg = GOOGLE_ERROR_MESSAGES[errorCode] ?? {
+        title: "Erreur de connexion",
+        description: "Une erreur s'est produite lors de la connexion. Veuillez réessayer.",
+      };
+      toast({ title: msg.title, description: msg.description, variant: "destructive" });
+      /* Remove ?error= from URL without reloading the page */
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+  }, []);
   const [showPassword, setShowPassword] = useState(false);
   const [selectedCountryCode, setSelectedCountryCode] = useState("ci");
   const [showCountryPicker, setShowCountryPicker] = useState(false);
