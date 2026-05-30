@@ -24,7 +24,7 @@ import {
   blockUser,
   logSecurityEvent,
 } from "../lib/fraud-detection";
-import { FiveSimClient, FiveSimError, ISO_TO_5SIM, SERVICE_TO_5SIM } from "../lib/fivesim";
+import { FiveSimClient, FiveSimError, ISO_TO_5SIM, SERVICE_TO_5SIM, type FiveSimOrder } from "../lib/fivesim";
 import { logger } from "../lib/logger";
 import { broadcastNotification } from "./notifications";
 import { notificationsTable } from "@workspace/db";
@@ -212,6 +212,12 @@ router.post("/numbers", requireAuth, async (req, res): Promise<void> => {
   }
 
   const { serviceId, countryId } = parsed.data;
+
+  /* Options étendues (non dans le schéma Zod de base) */
+  const numberType: "activation" | "hosting" =
+    req.body.numberType === "hosting" ? "hosting" : "activation";
+  const hostingDuration: "1day" | "3hours" =
+    req.body.hostingDuration === "3hours" ? "3hours" : "1day";
   const [service] = await db.select().from(servicesTable).where(eq(servicesTable.id, serviceId)).limit(1);
   const [country] = await db.select().from(countriesTable).where(eq(countriesTable.id, countryId)).limit(1);
 
@@ -299,15 +305,29 @@ router.post("/numbers", requireAuth, async (req, res): Promise<void> => {
   }
 
   let phoneNumber: string;
-  let externalOrderId: string | null = null; // will be set after successful buyNumber
+  let externalOrderId: string | null = null;
+  let actualExpiresAt = expiresAt; // may be overridden for hosting
   try {
-    const order = await fiveSimClient.buyNumber(countrySlug, "any", productSlug);
+    let order: FiveSimOrder;
+    if (numberType === "hosting") {
+      order = await fiveSimClient.buyHostingNumber(countrySlug, "any", hostingDuration);
+      /* Hosting: expiresAt comes from 5sim (order.expires), sinon fallback calculé */
+      actualExpiresAt = order.expires
+        ? new Date(order.expires)
+        : new Date(Date.now() + (hostingDuration === "1day" ? 24 : 3) * 60 * 60 * 1000);
+      logger.info(
+        { orderId: order.id, phone: order.phone, userId: user.id, countrySlug, hostingDuration },
+        "[5sim] Hosting number acquired",
+      );
+    } else {
+      order = await fiveSimClient.buyNumber(countrySlug, "any", productSlug);
+      logger.info(
+        { orderId: order.id, phone: order.phone, userId: user.id, countrySlug, productSlug },
+        "[5sim] Activation number acquired",
+      );
+    }
     phoneNumber = order.phone;
-    externalOrderId = String(order.id); // ← save 5sim order ID for poller
-    logger.info(
-      { orderId: order.id, phone: phoneNumber, userId: user.id, countrySlug, productSlug },
-      "[5sim] Real number acquired",
-    );
+    externalOrderId = String(order.id);
   } catch (e) {
     const errMsg = (e as Error).message;
     const is5SimErr = e instanceof FiveSimError;
@@ -338,8 +358,10 @@ router.post("/numbers", requireAuth, async (req, res): Promise<void> => {
     phoneNumber,
     status: "waiting",
     price,
-    expiresAt,
+    expiresAt: actualExpiresAt,
     externalOrderId,
+    numberType,
+    hostingDuration: numberType === "hosting" ? hostingDuration : null,
   }).returning();
 
   if (!vn) {

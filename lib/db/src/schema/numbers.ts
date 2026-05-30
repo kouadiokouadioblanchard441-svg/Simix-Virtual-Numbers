@@ -26,6 +26,19 @@ export const virtualNumbersTable = pgTable("virtual_numbers", {
   expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
   smsScheduledAt: timestamp("sms_scheduled_at", { withTimezone: true }),
   externalOrderId: text("external_order_id"),
+  /**
+   * Type de numéro :
+   *   "activation" — numéro one-shot (défaut), valide ~20 min
+   *   "hosting"    — numéro en location longue durée (1 jour ou 3 heures)
+   */
+  numberType: text("number_type").notNull().default("activation"),
+  /**
+   * Durée de location pour les numéros hosting.
+   *   "1day"   — 24 heures
+   *   "3hours" — 3 heures
+   *   null     — pour les numéros d'activation classiques
+   */
+  hostingDuration: text("hosting_duration"),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),

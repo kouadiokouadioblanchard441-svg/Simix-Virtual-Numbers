@@ -1,11 +1,12 @@
 /**
  * 5sim Background Poller
  *
- * Polls all active virtual numbers with a 5sim externalOrderId every 15 seconds.
- * - Fetches new SMS from 5sim API
- * - Saves new messages to sms_messages table
- * - Marks number as "received" and calls finishOrder when SMS arrives
- * - Handles TIMEOUT / CANCELLED orders (marks as expired/cancelled + auto-refund)
+ * Gère deux types de numéros :
+ *   - activation : one-shot, poll via checkOrder(), finish après le premier SMS
+ *   - hosting     : location longue durée (1day/3hours), poll via getSmsInbox(),
+ *                   reste actif jusqu'à expiration, peut recevoir plusieurs SMS
+ *
+ * Intervalle : 15s normal, 60s après erreur réseau/DB.
  */
 
 import { and, eq, gt, isNotNull, sql } from "drizzle-orm";
@@ -22,9 +23,8 @@ import { FiveSimClient, FiveSimError } from "./fivesim";
 import { logger } from "./logger";
 import { broadcastNotification } from "../routes/notifications";
 
-const POLL_INTERVAL_MS = 15_000;    // every 15 seconds (normal)
-const ERROR_BACKOFF_MS  = 60_000;   // wait 60s after DB/network error
-
+const POLL_INTERVAL_MS = 15_000;
+const ERROR_BACKOFF_MS  = 60_000;
 const MAX_CONCURRENT_POLLS = 10;
 
 let pollerTimer: ReturnType<typeof setTimeout> | null = null;
@@ -47,17 +47,15 @@ export function stopFiveSimPoller(): void {
   logger.info("[5sim-poller] Stopped");
 }
 
-/** Schedule exactly one next tick, cancelling any pending timer first. */
 function schedule(delayMs: number): void {
   if (!running) return;
   if (pollerTimer) clearTimeout(pollerTimer);
   pollerTimer = setTimeout(() => void pollAll(), delayMs);
 }
 
-/* ─── Main poll loop (no finally — explicit scheduling in every path) ── */
+/* ─── Main poll loop ─────────────────────────────────────────── */
 
 async function pollAll(): Promise<void> {
-  /* 1. Get active 5sim provider */
   let provider: (typeof apiProvidersTable.$inferSelect) | undefined;
   try {
     [provider] = await db
@@ -84,7 +82,6 @@ async function pollAll(): Promise<void> {
 
   const client = new FiveSimClient(provider.apiKey);
 
-  /* 2. Find all numbers waiting for SMS */
   let pendingNumbers: (typeof virtualNumbersTable.$inferSelect)[];
   try {
     pendingNumbers = await db
@@ -110,7 +107,6 @@ async function pollAll(): Promise<void> {
 
   logger.debug({ count: pendingNumbers.length }, "[5sim-poller] Polling active orders");
 
-  /* 3. Process in batches */
   try {
     for (let i = 0; i < pendingNumbers.length; i += MAX_CONCURRENT_POLLS) {
       const batch = pendingNumbers.slice(i, i + MAX_CONCURRENT_POLLS);
@@ -132,6 +128,22 @@ async function pollSingleOrder(
   const orderId = Number(vn.externalOrderId);
   if (!orderId || isNaN(orderId)) return;
 
+  const isHosting = vn.numberType === "hosting";
+
+  if (isHosting) {
+    await pollHostingOrder(client, vn, orderId);
+  } else {
+    await pollActivationOrder(client, vn, orderId);
+  }
+}
+
+/* ─── Activation number poll (one-shot) ────────────────────────── */
+
+async function pollActivationOrder(
+  client: FiveSimClient,
+  vn: typeof virtualNumbersTable.$inferSelect,
+  orderId: number,
+): Promise<void> {
   try {
     const order = await client.checkOrder(orderId);
 
@@ -145,28 +157,9 @@ async function pollSingleOrder(
       return;
     }
 
-    /* ── Save new SMS messages ── */
+    /* Save new SMS messages */
     if (order.sms && order.sms.length > 0) {
-      const existingMsgs = await db
-        .select({ body: smsMessagesTable.body })
-        .from(smsMessagesTable)
-        .where(eq(smsMessagesTable.numberId, vn.id));
-
-      const existingBodies = new Set(existingMsgs.map(m => m.body));
-      let newSmsCount = 0;
-
-      for (const sms of order.sms) {
-        if (!existingBodies.has(sms.text)) {
-          await db.insert(smsMessagesTable).values({
-            numberId: vn.id,
-            sender: sms.sender || "Unknown",
-            body: sms.text,
-            code: sms.code || extractCode(sms.text) || "",
-          });
-          newSmsCount++;
-          logger.info({ numberId: vn.id, orderId, sender: sms.sender }, "[5sim-poller] New SMS saved");
-        }
-      }
+      const newSmsCount = await saveNewSmsMessages(vn.id, order.sms);
 
       if (newSmsCount > 0 || order.status === "RECEIVED" || order.status === "FINISHED") {
         await db
@@ -177,34 +170,12 @@ async function pollSingleOrder(
         if (order.status === "RECEIVED") {
           try {
             await client.finishOrder(orderId);
-            logger.info({ orderId }, "[5sim-poller] Order marked as FINISHED on 5sim");
-          } catch {
-            /* Non-critical — may already be finished */
-          }
+            logger.info({ orderId }, "[5sim-poller] Activation order finished on 5sim");
+          } catch { /* non-critical */ }
         }
 
-        /* ── Push real-time SMS notification ── */
         if (newSmsCount > 0) {
-          try {
-            const latestSms = order.sms?.[order.sms.length - 1];
-            const code = latestSms ? (latestSms.code || extractCode(latestSms.text) || "") : "";
-            const notifTitle = "📩 SMS reçu";
-            const notifBody = code
-              ? `Code reçu : ${code} — Vérifiez votre numéro virtuel.`
-              : "Un SMS est arrivé sur votre numéro virtuel.";
-            const [notif] = await db.insert(notificationsTable).values({
-              userId: vn.userId,
-              title: notifTitle,
-              body: notifBody,
-              type: "sms",
-              icon: "message",
-              link: `/numbers/${vn.id}`,
-              metadata: { numberId: vn.id, code, sender: latestSms?.sender },
-            }).returning();
-            if (notif) broadcastNotification(notif);
-          } catch (e) {
-            logger.warn({ err: (e as Error).message }, "[5sim-poller] Failed to send SMS notification");
-          }
+          await pushSmsNotification(vn, order.sms);
         }
       }
     }
@@ -224,7 +195,108 @@ async function pollSingleOrder(
   }
 }
 
-/* ─── Helpers ─────────────────────────────────────────────────── */
+/* ─── Hosting number poll (long-term rental) ───────────────────── */
+/**
+ * Les numéros hosting utilisent l'endpoint /user/sms/inbox/{id}
+ * plutôt que /user/check/{id}. Ils peuvent recevoir plusieurs SMS
+ * et restent actifs jusqu'à l'expiration (gérée localement par expiresAt).
+ * On ne les marque PAS comme "received" après le premier SMS — ils
+ * continuent de recevoir jusqu'à leur expiration naturelle.
+ */
+async function pollHostingOrder(
+  client: FiveSimClient,
+  vn: typeof virtualNumbersTable.$inferSelect,
+  orderId: number,
+): Promise<void> {
+  try {
+    const inbox = await client.getSmsInbox(orderId);
+
+    if (!inbox?.Data || inbox.Data.length === 0) {
+      return; // Pas encore de SMS, continuer à attendre
+    }
+
+    const newSmsCount = await saveNewSmsMessages(vn.id, inbox.Data);
+
+    if (newSmsCount > 0) {
+      logger.info({ orderId, numberId: vn.id, newSmsCount }, "[5sim-poller] New SMS in hosting inbox");
+      await pushSmsNotification(vn, inbox.Data.slice(-newSmsCount));
+      /* Note: on ne change pas le status en "received" pour les hosting,
+         ils restent en "waiting" jusqu'à expiration ou annulation manuelle */
+    }
+  } catch (e) {
+    if (e instanceof FiveSimError) {
+      if (e.isNotFound) {
+        /* Order gone on 5sim — marquer expiré localement */
+        await handleExpiredOrder(vn);
+      } else if (e.isUnauthorized) {
+        logger.error("[5sim-poller] Unauthorised 5sim API key — stopping poller");
+        stopFiveSimPoller();
+      } else {
+        logger.warn({ err: e.message, orderId, numberId: vn.id }, "[5sim-poller] Hosting poll error");
+      }
+    } else {
+      logger.warn({ err: (e as Error).message, numberId: vn.id }, "[5sim-poller] Hosting poll error");
+    }
+  }
+}
+
+/* ─── SMS helpers ─────────────────────────────────────────────── */
+
+async function saveNewSmsMessages(
+  numberId: string,
+  smsList: Array<{ text: string; sender: string; code: string; id?: number; created_at?: string; date?: string }>,
+): Promise<number> {
+  const existingMsgs = await db
+    .select({ body: smsMessagesTable.body })
+    .from(smsMessagesTable)
+    .where(eq(smsMessagesTable.numberId, numberId));
+
+  const existingBodies = new Set(existingMsgs.map(m => m.body));
+  let newSmsCount = 0;
+
+  for (const sms of smsList) {
+    if (!existingBodies.has(sms.text)) {
+      await db.insert(smsMessagesTable).values({
+        numberId,
+        sender: sms.sender || "Unknown",
+        body: sms.text,
+        code: sms.code || extractCode(sms.text) || "",
+      });
+      newSmsCount++;
+      logger.info({ numberId, sender: sms.sender }, "[5sim-poller] New SMS saved");
+    }
+  }
+
+  return newSmsCount;
+}
+
+async function pushSmsNotification(
+  vn: typeof virtualNumbersTable.$inferSelect,
+  smsList: Array<{ text: string; sender: string; code: string }>,
+): Promise<void> {
+  try {
+    const latestSms = smsList[smsList.length - 1];
+    const code = latestSms ? (latestSms.code || extractCode(latestSms.text) || "") : "";
+    const notifBody = code
+      ? `Code reçu : ${code} — Vérifiez votre numéro virtuel.`
+      : "Un SMS est arrivé sur votre numéro virtuel.";
+
+    const [notif] = await db.insert(notificationsTable).values({
+      userId: vn.userId,
+      title: "📩 SMS reçu",
+      body: notifBody,
+      type: "sms",
+      icon: "message",
+      link: `/numbers/${vn.id}`,
+      metadata: { numberId: vn.id, code, sender: latestSms?.sender },
+    }).returning();
+    if (notif) broadcastNotification(notif);
+  } catch (e) {
+    logger.warn({ err: (e as Error).message }, "[5sim-poller] Failed to send SMS notification");
+  }
+}
+
+/* ─── Expiry / Cancellation handlers ─────────────────────────── */
 
 async function handleExpiredOrder(vn: typeof virtualNumbersTable.$inferSelect): Promise<void> {
   const [current] = await db
@@ -242,12 +314,11 @@ async function handleExpiredOrder(vn: typeof virtualNumbersTable.$inferSelect): 
 
   logger.info({ numberId: vn.id, orderId: vn.externalOrderId }, "[5sim-poller] Order expired");
 
-  /* ── Push expired notification ── */
   try {
     const [notif] = await db.insert(notificationsTable).values({
       userId: vn.userId,
       title: "⏰ Numéro expiré",
-      body: "Votre numéro virtuel a expiré sans recevoir de SMS. Si aucun SMS n'a été reçu, un remboursement sera effectué automatiquement.",
+      body: "Votre numéro virtuel a expiré sans recevoir de SMS. Un remboursement sera effectué automatiquement si aucun SMS n'a été reçu.",
       type: "expired",
       icon: "clock",
       link: `/numbers`,
@@ -293,7 +364,6 @@ async function handleCancelledOrder(vn: typeof virtualNumbersTable.$inferSelect)
 
     logger.info({ numberId: vn.id, userId: vn.userId, amount: vn.price }, "[5sim-poller] Auto-refund issued");
 
-    /* ── Push refund notification ── */
     try {
       const [notif] = await db.insert(notificationsTable).values({
         userId: vn.userId,
@@ -309,7 +379,8 @@ async function handleCancelledOrder(vn: typeof virtualNumbersTable.$inferSelect)
   }
 }
 
-/** Extract 4-8 digit verification code from SMS text */
+/* ─── Utils ───────────────────────────────────────────────────── */
+
 function extractCode(text: string): string | null {
   const match = text.match(/\b(\d{4,8})\b/);
   return match ? match[1]! : null;

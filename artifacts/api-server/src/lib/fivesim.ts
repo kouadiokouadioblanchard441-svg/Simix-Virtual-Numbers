@@ -1,9 +1,12 @@
 /**
- * 5sim.net API client — v1
+ * 5sim.net API client — v1 (complet)
  * Docs: https://5sim.net/docs
  *
- * All methods throw on non-2xx or network failure.
- * Phone numbers returned by 5sim are WITHOUT leading "+"; we normalise here.
+ * Endpoints couverts :
+ *   Utilisateur : profile, orders, payments, buy/activation, buy/hosting,
+ *                 check, finish, cancel, ban, sms/inbox
+ *   Guest       : products, prices, countries, flash
+ *   Vendor      : statistic, wallets, orders, payments, payouts, prices
  */
 
 const BASE_URL = "https://5sim.net/v1";
@@ -13,17 +16,19 @@ const DEFAULT_TIMEOUT_MS = 12_000;
 
 export interface FiveSimOrder {
   id: number;
-  phone: string;         // e.g. "79123456789" (no leading +)
+  phone: string;
   operator: string;
   product: string;
-  price: number;         // in USD
+  price: number;
   status: "PENDING" | "RECEIVED" | "CANCELED" | "TIMEOUT" | "FINISHED" | "BANNED";
-  expires: string;       // ISO date
+  expires: string;
   sms: FiveSimSms[];
   created_at: string;
   forwarding: boolean;
   forwarding_number: string;
   country: string;
+  /** Only present on hosting orders */
+  category?: "hosting" | "activation";
 }
 
 export interface FiveSimSms {
@@ -40,7 +45,7 @@ export interface FiveSimProfile {
   email: string;
   vendor: string;
   default_forwarding_number: string;
-  balance: number;       // USD float
+  balance: number;
   rating: number;
   default_country: { name: string; iso: string; prefix: string };
   default_operator: { name: string };
@@ -50,7 +55,7 @@ export interface FiveSimProfile {
 export interface FiveSimProduct {
   Category: string;
   Qty: number;
-  Price: number;   // USD
+  Price: number;
 }
 
 export interface FiveSimCountryInfo {
@@ -64,6 +69,82 @@ export interface FiveSimCountryInfo {
 export type FiveSimCountriesResponse = Record<string, FiveSimCountryInfo>;
 export type FiveSimProductsResponse = Record<string, FiveSimProduct>;
 
+export interface FiveSimPriceEntry {
+  country: string;
+  product: string;
+  operator: string;
+  cost: number;
+}
+export type FiveSimPricesResponse = Record<string, Record<string, Record<string, { cost: number; count: number }>>>;
+
+export interface FiveSimFlashNotification {
+  id: number;
+  text: string;
+  created_at: string;
+}
+
+export interface FiveSimOrdersResponse {
+  Data: FiveSimOrder[];
+  ProductName: string;
+  CategoryName: string;
+  Total: number;
+}
+
+export interface FiveSimPayment {
+  ID: number;
+  TypeName: string;
+  ProviderName: string;
+  Amount: number;
+  Balance: number;
+  CreatedAt: string;
+}
+export interface FiveSimPaymentsResponse {
+  Data: FiveSimPayment[];
+  Total: number;
+}
+
+export interface FiveSimVendorStatistic {
+  today_orders: number;
+  yesterday_orders: number;
+  total_orders: number;
+  today_revenue: number;
+  yesterday_revenue: number;
+  total_revenue: number;
+  balance: number;
+  frozen_balance: number;
+}
+
+export interface FiveSimVendorWallet {
+  currency: string;
+  amount: number;
+}
+
+export interface FiveSimVendorPriceEntry {
+  CountryName: string;
+  OperatorName: string;
+  ProductName: string;
+  Cost: number;
+  Amount: number;
+  Enabled: boolean;
+}
+export interface FiveSimVendorPricesResponse {
+  Data: FiveSimVendorPriceEntry[];
+  Total: number;
+}
+
+export interface FiveSimSmsInboxResponse {
+  Data: FiveSimSms[];
+  Total: number;
+}
+
+/* ─── Pagination params ───────────────────────────────────────────── */
+export interface PaginationParams {
+  limit?: number;
+  offset?: number;
+  order?: string;
+  reverse?: boolean;
+}
+
 /* ─── Client ─────────────────────────────────────────────────────── */
 
 export class FiveSimClient {
@@ -75,86 +156,167 @@ export class FiveSimClient {
   }
 
   /* ── Private request helper ── */
-  private async request<T>(path: string, method: "GET" | "POST" = "GET", auth = true): Promise<T> {
+  private async request<T>(
+    path: string,
+    method: "GET" | "POST" = "GET",
+    auth = true,
+    body?: unknown,
+  ): Promise<T> {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), DEFAULT_TIMEOUT_MS);
 
     const headers: Record<string, string> = { Accept: "application/json" };
     if (auth) headers["Authorization"] = `Bearer ${this.apiKey}`;
+    if (body) headers["Content-Type"] = "application/json";
 
     let res: Response;
     try {
-      res = await fetch(`${BASE_URL}${path}`, { method, headers, signal: controller.signal });
+      res = await fetch(`${BASE_URL}${path}`, {
+        method,
+        headers,
+        signal: controller.signal,
+        body: body ? JSON.stringify(body) : undefined,
+      });
     } finally {
       clearTimeout(timer);
     }
 
     if (!res.ok) {
-      const body = await res.text().catch(() => res.statusText);
-      throw new FiveSimError(res.status, body, path);
+      const responseBody = await res.text().catch(() => res.statusText);
+      throw new FiveSimError(res.status, responseBody, path);
     }
 
     return res.json() as Promise<T>;
   }
 
-  /* ── User endpoints (require API key) ── */
+  /* ══════════════════════════════════════════════════════════════
+   *  USER ENDPOINTS
+   * ══════════════════════════════════════════════════════════════ */
 
-  /** Get account balance and profile */
+  /** Profil + solde du compte */
   async getProfile(): Promise<FiveSimProfile> {
     return this.request<FiveSimProfile>("/user/profile");
   }
 
   /**
-   * Buy a virtual number.
-   * country  — 5sim country slug (e.g. "france", "ivorycoast")
-   * operator — "any" or specific operator (e.g. "virtual4")
-   * product  — service name (e.g. "whatsapp", "telegram")
+   * Historique des commandes.
+   * category = "activation" | "hosting"
    */
-  async buyNumber(country: string, operator: string, product: string): Promise<FiveSimOrder> {
+  async getUserOrders(params: PaginationParams & { category?: "activation" | "hosting" } = {}): Promise<FiveSimOrdersResponse> {
+    const qs = buildQS({
+      category: params.category ?? "activation",
+      limit: params.limit ?? 15,
+      offset: params.offset ?? 0,
+      order: params.order ?? "id",
+      reverse: params.reverse ?? true,
+    });
+    return this.request<FiveSimOrdersResponse>(`/user/orders${qs}`);
+  }
+
+  /**
+   * Historique des paiements.
+   */
+  async getUserPayments(params: PaginationParams = {}): Promise<FiveSimPaymentsResponse> {
+    const qs = buildQS({
+      limit: params.limit ?? 15,
+      offset: params.offset ?? 0,
+      order: params.order ?? "id",
+      reverse: params.reverse ?? true,
+    });
+    return this.request<FiveSimPaymentsResponse>(`/user/payments${qs}`);
+  }
+
+  /**
+   * Acheter un numéro d'activation (one-shot).
+   * operator = "any" ou un opérateur spécifique
+   * Options facultatives :
+   *   forwarding — activer le renvoi d'appel
+   *   reuse      — réutiliser un numéro déjà utilisé pour ce service
+   *   voice      — appel vocal plutôt que SMS
+   *   ref        — identifiant de parrainage
+   */
+  async buyNumber(
+    country: string,
+    operator: string,
+    product: string,
+    options: { forwarding?: boolean; reuse?: boolean; voice?: boolean; ref?: string } = {},
+  ): Promise<FiveSimOrder> {
+    const extra: Record<string, string> = {};
+    if (options.forwarding) extra.forwarding = "true";
+    if (options.reuse) extra.reuse = "true";
+    if (options.voice) extra.voice = "true";
+    if (options.ref) extra.ref = options.ref;
+    const qs = Object.keys(extra).length ? "?" + new URLSearchParams(extra).toString() : "";
     const order = await this.request<FiveSimOrder>(
-      `/user/buy/activation/${encodeURIComponent(country)}/${encodeURIComponent(operator)}/${encodeURIComponent(product)}`,
+      `/user/buy/activation/${encodeURIComponent(country)}/${encodeURIComponent(operator)}/${encodeURIComponent(product)}${qs}`,
     );
     return normaliseOrder(order);
   }
 
-  /** Check order status & get any received SMS */
+  /**
+   * Acheter un numéro en location longue durée (hosting).
+   * product = "1day" (24h) | "3hours" (3h)
+   * Ces numéros peuvent recevoir plusieurs SMS et ont une durée de vie plus longue.
+   */
+  async buyHostingNumber(
+    country: string,
+    operator: string,
+    product: "1day" | "3hours",
+  ): Promise<FiveSimOrder> {
+    const order = await this.request<FiveSimOrder>(
+      `/user/buy/hosting/${encodeURIComponent(country)}/${encodeURIComponent(operator)}/${encodeURIComponent(product)}`,
+    );
+    return normaliseOrder(order);
+  }
+
+  /** Vérifier le statut d'une commande + SMS reçus (activation) */
   async checkOrder(orderId: number): Promise<FiveSimOrder> {
     const order = await this.request<FiveSimOrder>(`/user/check/${orderId}`);
     return normaliseOrder(order);
   }
 
-  /** Mark number as successfully used — call after SMS received */
+  /** Marquer la commande comme terminée (après réception du SMS) */
   async finishOrder(orderId: number): Promise<FiveSimOrder> {
     const order = await this.request<FiveSimOrder>(`/user/finish/${orderId}`);
     return normaliseOrder(order);
   }
 
-  /** Cancel order (full refund if no SMS was received) */
+  /** Annuler une commande (remboursement si aucun SMS reçu) */
   async cancelOrder(orderId: number): Promise<FiveSimOrder> {
     const order = await this.request<FiveSimOrder>(`/user/cancel/${orderId}`);
     return normaliseOrder(order);
   }
 
   /**
-   * Ban/report number as bad (partial refund).
-   * Use when number received spam or cannot receive the code.
+   * Signaler un numéro comme inutilisable (banni par le service).
+   * Annule la commande et la marque comme bannie.
    */
   async banOrder(orderId: number): Promise<FiveSimOrder> {
     const order = await this.request<FiveSimOrder>(`/user/ban/${orderId}`);
     return normaliseOrder(order);
   }
 
-  /* ── Guest endpoints (no auth needed — pass auth=false) ── */
+  /**
+   * Boîte de réception SMS pour numéros en location (hosting uniquement).
+   * Ne fonctionne PAS pour les numéros d'activation one-shot.
+   */
+  async getSmsInbox(orderId: number): Promise<FiveSimSmsInboxResponse> {
+    return this.request<FiveSimSmsInboxResponse>(`/user/sms/inbox/${orderId}`);
+  }
 
-  /** List all available countries and their operators */
+  /* ══════════════════════════════════════════════════════════════
+   *  GUEST ENDPOINTS (pas d'authentification requise)
+   * ══════════════════════════════════════════════════════════════ */
+
+  /** Liste tous les pays disponibles et leurs opérateurs */
   async getCountries(): Promise<FiveSimCountriesResponse> {
     return this.request<FiveSimCountriesResponse>("/guest/countries", "GET", false);
   }
 
   /**
-   * Get available products (services) for a country + operator.
-   * Returns map of productName → { Category, Qty, Price }.
-   * Qty > 0 means numbers are available.
+   * Produits disponibles pour un pays + opérateur.
+   * Retourne nom → { Category, Qty, Price }.
+   * Qty > 0 = numéros disponibles.
    */
   async getProducts(country: string, operator = "any"): Promise<FiveSimProductsResponse> {
     return this.request<FiveSimProductsResponse>(
@@ -165,8 +327,28 @@ export class FiveSimClient {
   }
 
   /**
-   * Check availability and price for a specific country + product.
-   * Returns null if country/product not available.
+   * Liste des prix pour un pays et/ou produit donné.
+   * Les paramètres sont optionnels — sans paramètre retourne tous les prix.
+   */
+  async getPrices(country?: string, product?: string): Promise<FiveSimPricesResponse> {
+    const params: Record<string, string> = {};
+    if (country) params.country = country;
+    if (product) params.product = product;
+    const qs = Object.keys(params).length ? "?" + new URLSearchParams(params).toString() : "";
+    return this.request<FiveSimPricesResponse>(`/guest/prices${qs}`, "GET", false);
+  }
+
+  /**
+   * Notifications flash de la plateforme 5sim.
+   * lang = "en" | "ru"
+   */
+  async getFlash(lang: "en" | "ru" = "en"): Promise<FiveSimFlashNotification[]> {
+    return this.request<FiveSimFlashNotification[]>(`/guest/flash/${lang}`, "GET", false);
+  }
+
+  /**
+   * Vérifier disponibilité et prix pour un pays + service.
+   * Retourne null si pays/service introuvable.
    */
   async checkAvailability(country: string, product: string): Promise<{ available: boolean; qty: number; price: number } | null> {
     try {
@@ -178,6 +360,88 @@ export class FiveSimClient {
       if (e instanceof FiveSimError && (e.status === 404 || e.status === 400)) return null;
       throw e;
     }
+  }
+
+  /* ══════════════════════════════════════════════════════════════
+   *  VENDOR / PARTENAIRE ENDPOINTS
+   * ══════════════════════════════════════════════════════════════ */
+
+  /** Statistiques du compte vendeur (commandes, revenus, solde) */
+  async getVendorStatistic(): Promise<FiveSimVendorStatistic> {
+    return this.request<FiveSimVendorStatistic>("/vendor/statistic");
+  }
+
+  /** Réserves de portefeuille disponibles pour le partenaire */
+  async getVendorWallets(): Promise<FiveSimVendorWallet[]> {
+    return this.request<FiveSimVendorWallet[]>("/vendor/wallets");
+  }
+
+  /**
+   * Historique des commandes du vendeur.
+   * category = "activation" | "hosting"
+   */
+  async getVendorOrders(params: PaginationParams & { category?: "activation" | "hosting" } = {}): Promise<FiveSimOrdersResponse> {
+    const qs = buildQS({
+      category: params.category ?? "activation",
+      limit: params.limit ?? 15,
+      offset: params.offset ?? 0,
+      order: params.order ?? "id",
+      reverse: params.reverse ?? true,
+    });
+    return this.request<FiveSimOrdersResponse>(`/vendor/orders${qs}`);
+  }
+
+  /** Historique des paiements du vendeur */
+  async getVendorPayments(params: PaginationParams = {}): Promise<FiveSimPaymentsResponse> {
+    const qs = buildQS({
+      limit: params.limit ?? 15,
+      offset: params.offset ?? 0,
+      order: params.order ?? "id",
+      reverse: params.reverse ?? true,
+    });
+    return this.request<FiveSimPaymentsResponse>(`/vendor/payments${qs}`);
+  }
+
+  /**
+   * Créer un retrait (payout) pour le partenaire.
+   * Le montant est en USD.
+   */
+  async createVendorPayout(receiver: string, method: string, amount: number, currency: string): Promise<{ success: boolean }> {
+    return this.request<{ success: boolean }>("/vendor/payouts", "POST", true, {
+      receiver,
+      method,
+      amount,
+      currency,
+    });
+  }
+
+  /**
+   * Liste de prix du vendeur avec filtres.
+   */
+  async getVendorPrices(params: {
+    productName?: string;
+    countryName?: string;
+    operatorName?: string;
+    enabled?: boolean;
+    sortDir?: "asc" | "desc";
+    sortField?: string;
+    page?: number;
+    perPage?: number;
+  } = {}): Promise<FiveSimVendorPricesResponse> {
+    const filters: Record<string, string | boolean> = {};
+    if (params.productName) filters.ProductName = params.productName;
+    if (params.countryName) filters.CountryName = params.countryName;
+    if (params.operatorName) filters.OperatorName = params.operatorName;
+    if (params.enabled !== undefined) filters.Enabled = params.enabled;
+
+    const qs = buildQS({
+      _filters: JSON.stringify(filters),
+      _sortDir: params.sortDir ?? "asc",
+      _sortField: params.sortField ?? "CountryName",
+      _page: params.page ?? 1,
+      _perPage: params.perPage ?? 15,
+    });
+    return this.request<FiveSimVendorPricesResponse>(`/vendor/prices${qs}`);
   }
 }
 
@@ -201,12 +465,17 @@ export class FiveSimError extends Error {
 
 /* ─── Helpers ────────────────────────────────────────────────────── */
 
-/** Ensure phone number has leading "+" */
 function normaliseOrder(order: FiveSimOrder): FiveSimOrder {
   if (order.phone && !order.phone.startsWith("+")) {
     order.phone = `+${order.phone}`;
   }
   return order;
+}
+
+function buildQS(params: Record<string, unknown>): string {
+  const entries = Object.entries(params).filter(([, v]) => v !== undefined && v !== null);
+  if (!entries.length) return "";
+  return "?" + entries.map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`).join("&");
 }
 
 /* ─── Country slug mapping: ISO code → 5sim slug ──────────────────── */
@@ -222,7 +491,7 @@ export const ISO_TO_5SIM: Record<string, string> = {
   GA: "gabon", GM: "gambia", GE: "georgia", DE: "germany", GH: "ghana",
   GR: "greece", GT: "guatemala", GN: "guinea", GY: "guyana", HT: "haiti",
   HN: "honduras", HK: "hongkong", HU: "hungary", IN: "india", ID: "indonesia",
-  IE: "ireland", IL: "israel", IT: "italy", CI: "ivorycoast", JM: "jamaica",
+  IE: "ireland", IL: "israel", IT: "italy", CI: "ivorycoast",
   JO: "jordan", KZ: "kazakhstan", KE: "kenya", KW: "kuwait", KG: "kyrgyzstan",
   LA: "laos", LV: "latvia", LS: "lesotho", LR: "liberia", LT: "lithuania",
   LU: "luxembourg", MG: "madagascar", MW: "malawi", MY: "malaysia", MV: "maldives",
@@ -231,14 +500,21 @@ export const ISO_TO_5SIM: Record<string, string> = {
   NL: "netherlands", NI: "nicaragua", NG: "nigeria", MK: "northmacedonia",
   NO: "norway", OM: "oman", PK: "pakistan", PA: "panama", PY: "paraguay",
   PE: "peru", PH: "philippines", PL: "poland", PT: "portugal", RO: "romania",
-  RW: "rwanda", SN: "senegal", RS: "serbia", SL: "sierraleone", SK: "slovakia",
+  RW: "rwanda", SN: "senegal", RS: "serbia", SL: "sierraleone", SK: "slovakia", JM: "jamaica",
   SI: "slovenia", ZA: "southafrica", ES: "spain", LK: "srilanka", SR: "suriname",
   SZ: "swaziland", SE: "sweden", TW: "taiwan", TJ: "tajikistan", TZ: "tanzania",
-  TH: "thailand", TG: "togo", TN: "tunisia", TM: "turkmenistan", UG: "uganda",
-  UA: "ukraine", AE: "uae", US: "usa", UY: "uruguay", UZ: "uzbekistan",
-  VE: "venezuela", VN: "vietnam", ZM: "zambia",
-  // Additional African countries
+  TH: "thailand", TG: "togo", TN: "tunisia", TM: "turkmenistan", TR: "turkey",
+  UG: "uganda", UA: "ukraine", AE: "uae", US: "usa", UY: "uruguay",
+  UZ: "uzbekistan", VE: "venezuela", VN: "vietnam", ZM: "zambia",
   ML: "mali", NE: "niger", SD: "sudan", LY: "libya",
+  SA: "saudiarabia", QA: "qatar", IQ: "iraq", SY: "syria", LB: "lebanon",
+  KR: "southkorea", JP: "japan", CN: "china", MO: "macao", SG: "singapore",
+  MM: "myanmar", KP: "northkorea", TL: "easttimor", PG: "papua",
+  NZ: "newzealand", FJ: "fiji", WS: "samoa",
+  XK: "kosovo",
+  IS: "iceland", LI: "liechtenstein", MT: "malta", MC: "monaco",
+  SM: "sanmarino", VA: "vaticancity",
+  CU: "cuba", TT: "trinidadandtobago", BB: "barbados", BS: "bahamas",
 };
 
 /* ─── Service slug mapping: our slug → 5sim product name ───────────── */
@@ -272,9 +548,20 @@ export const SERVICE_TO_5SIM: Record<string, string> = {
   twitter_x: "twitter",
   x: "twitter",
   "twitter / x": "twitter",
+  signal: "signal",
+  skype: "skype",
+  spotify: "spotify",
+  coinbase: "coinbase",
+  kraken: "kraken",
+  openai: "openai",
+  deepseek: "deepseek",
+  roblox: "roblox",
+  tinder: "tinder",
+  bumble: "bumble",
+  badoo: "badoo",
 };
 
-/** Get active 5sim client from db providers (cached check) */
+/** Récupérer le client 5sim actif depuis la base de données */
 export function getActiveFiveSimClient(
   providers: Array<{ slug: string; apiKey: string; active: boolean }>,
 ): FiveSimClient | null {

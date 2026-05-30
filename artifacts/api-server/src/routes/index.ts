@@ -14,6 +14,7 @@ import adminAuthRouter from "./admin-auth";
 import adminNotificationsRouter from "./admin-notifications";
 import adminEmailsRouter from "./admin-emails";
 import adminPaymentRoutingRouter from "./admin-payment-routing";
+import adminFiveSimRouter from "./admin-fivesim";
 import configRouter from "./config";
 import currenciesRouter from "./currencies";
 import footerRouter from "./footer";
@@ -50,5 +51,6 @@ router.use(adminSupportRouter);
 router.use(adminNotificationsRouter);
 router.use(adminEmailsRouter);
 router.use(adminPaymentRoutingRouter);
+router.use(adminFiveSimRouter);
 
 export default router;

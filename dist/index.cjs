@@ -20477,27 +20477,27 @@ var require_router = __commonJS({
     var slice = Array.prototype.slice;
     var flatten = Array.prototype.flat;
     var methods = METHODS.map((method) => method.toLowerCase());
-    module2.exports = Router26;
+    module2.exports = Router27;
     module2.exports.Route = Route;
-    function Router26(options) {
-      if (!(this instanceof Router26)) {
-        return new Router26(options);
+    function Router27(options) {
+      if (!(this instanceof Router27)) {
+        return new Router27(options);
       }
       const opts = options || {};
-      function router26(req, res, next) {
-        router26.handle(req, res, next);
+      function router27(req, res, next) {
+        router27.handle(req, res, next);
       }
-      Object.setPrototypeOf(router26, this);
-      router26.caseSensitive = opts.caseSensitive;
-      router26.mergeParams = opts.mergeParams;
-      router26.params = {};
-      router26.strict = opts.strict;
-      router26.stack = [];
-      return router26;
+      Object.setPrototypeOf(router27, this);
+      router27.caseSensitive = opts.caseSensitive;
+      router27.mergeParams = opts.mergeParams;
+      router27.params = {};
+      router27.strict = opts.strict;
+      router27.stack = [];
+      return router27;
     }
-    Router26.prototype = function() {
+    Router27.prototype = function() {
     };
-    Router26.prototype.param = function param2(name2, fn) {
+    Router27.prototype.param = function param2(name2, fn) {
       if (!name2) {
         throw new TypeError("argument name is required");
       }
@@ -20517,7 +20517,7 @@ var require_router = __commonJS({
       params.push(fn);
       return this;
     };
-    Router26.prototype.handle = function handle(req, res, callback) {
+    Router27.prototype.handle = function handle(req, res, callback) {
       if (!callback) {
         throw new TypeError("argument callback is required");
       }
@@ -20644,7 +20644,7 @@ var require_router = __commonJS({
         }
       }
     };
-    Router26.prototype.use = function use(handler) {
+    Router27.prototype.use = function use(handler) {
       let offset = 0;
       let path5 = "/";
       if (typeof handler !== "function") {
@@ -20677,7 +20677,7 @@ var require_router = __commonJS({
       }
       return this;
     };
-    Router26.prototype.route = function route(path5) {
+    Router27.prototype.route = function route(path5) {
       const route2 = new Route(path5);
       const layer = new Layer(path5, {
         sensitive: this.caseSensitive,
@@ -20692,7 +20692,7 @@ var require_router = __commonJS({
       return route2;
     };
     methods.concat("all").forEach(function(method) {
-      Router26.prototype[method] = function(path5) {
+      Router27.prototype[method] = function(path5) {
         const route = this.route(path5);
         route[method].apply(route, slice.call(arguments, 1));
         return this;
@@ -20875,13 +20875,13 @@ var require_application = __commonJS({
     var compileTrust = require_utils3().compileTrust;
     var resolve = require("node:path").resolve;
     var once = require_once();
-    var Router26 = require_router();
+    var Router27 = require_router();
     var slice = Array.prototype.slice;
     var flatten = Array.prototype.flat;
     var app2 = exports2 = module2.exports = {};
     var trustProxyDefaultSymbol = "@@symbol:trust_proxy_default";
     app2.init = function init() {
-      var router26 = null;
+      var router27 = null;
       this.cache = /* @__PURE__ */ Object.create(null);
       this.engines = /* @__PURE__ */ Object.create(null);
       this.settings = /* @__PURE__ */ Object.create(null);
@@ -20890,13 +20890,13 @@ var require_application = __commonJS({
         configurable: true,
         enumerable: true,
         get: function getrouter() {
-          if (router26 === null) {
-            router26 = new Router26({
+          if (router27 === null) {
+            router27 = new Router27({
               caseSensitive: this.enabled("case sensitive routing"),
               strict: this.enabled("strict routing")
             });
           }
-          return router26;
+          return router27;
         }
       });
     };
@@ -20967,15 +20967,15 @@ var require_application = __commonJS({
       if (fns.length === 0) {
         throw new TypeError("app.use() requires a middleware function");
       }
-      var router26 = this.router;
+      var router27 = this.router;
       fns.forEach(function(fn2) {
         if (!fn2 || !fn2.handle || !fn2.set) {
-          return router26.use(path5, fn2);
+          return router27.use(path5, fn2);
         }
         debug(".use app under %s", path5);
         fn2.mountpath = path5;
         fn2.parent = this;
-        router26.use(path5, function mounted_app(req, res, next) {
+        router27.use(path5, function mounted_app(req, res, next) {
           var orig = req.app;
           fn2.handle(req, res, function(err) {
             Object.setPrototypeOf(req, orig.request);
@@ -23502,7 +23502,7 @@ var require_express = __commonJS({
     var EventEmitter2 = require("node:events").EventEmitter;
     var mixin = require_merge_descriptors();
     var proto = require_application();
-    var Router26 = require_router();
+    var Router27 = require_router();
     var req = require_request();
     var res = require_response();
     exports2 = module2.exports = createApplication;
@@ -23524,8 +23524,8 @@ var require_express = __commonJS({
     exports2.application = proto;
     exports2.request = req;
     exports2.response = res;
-    exports2.Route = Router26.Route;
-    exports2.Router = Router26;
+    exports2.Route = Router27.Route;
+    exports2.Router = Router27;
     exports2.json = bodyParser.json;
     exports2.raw = bodyParser.raw;
     exports2.static = require_serve_static();
@@ -42240,6 +42240,19 @@ var init_numbers = __esm({
       expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
       smsScheduledAt: timestamp("sms_scheduled_at", { withTimezone: true }),
       externalOrderId: text("external_order_id"),
+      /**
+       * Type de numéro :
+       *   "activation" — numéro one-shot (défaut), valide ~20 min
+       *   "hosting"    — numéro en location longue durée (1 jour ou 3 heures)
+       */
+      numberType: text("number_type").notNull().default("activation"),
+      /**
+       * Durée de location pour les numéros hosting.
+       *   "1day"   — 24 heures
+       *   "3hours" — 3 heures
+       *   null     — pour les numéros d'activation classiques
+       */
+      hostingDuration: text("hosting_duration"),
       createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
       updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => /* @__PURE__ */ new Date())
     });
@@ -84891,6 +84904,11 @@ function normaliseOrder(order) {
   }
   return order;
 }
+function buildQS(params) {
+  const entries = Object.entries(params).filter(([, v]) => v !== void 0 && v !== null);
+  if (!entries.length) return "";
+  return "?" + entries.map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`).join("&");
+}
 function getActiveFiveSimClient(providers) {
   const provider = providers.find((p) => p.slug === "5sim" && p.active && p.apiKey);
   if (!provider) return null;
@@ -84909,72 +84927,135 @@ var init_fivesim = __esm({
         this.apiKey = apiKey;
       }
       /* ── Private request helper ── */
-      async request(path5, method = "GET", auth = true) {
+      async request(path5, method = "GET", auth = true, body) {
         const controller = new AbortController();
         const timer = setTimeout(() => controller.abort(), DEFAULT_TIMEOUT_MS);
         const headers = { Accept: "application/json" };
         if (auth) headers["Authorization"] = `Bearer ${this.apiKey}`;
+        if (body) headers["Content-Type"] = "application/json";
         let res;
         try {
-          res = await fetch(`${BASE_URL}${path5}`, { method, headers, signal: controller.signal });
+          res = await fetch(`${BASE_URL}${path5}`, {
+            method,
+            headers,
+            signal: controller.signal,
+            body: body ? JSON.stringify(body) : void 0
+          });
         } finally {
           clearTimeout(timer);
         }
         if (!res.ok) {
-          const body = await res.text().catch(() => res.statusText);
-          throw new FiveSimError(res.status, body, path5);
+          const responseBody = await res.text().catch(() => res.statusText);
+          throw new FiveSimError(res.status, responseBody, path5);
         }
         return res.json();
       }
-      /* ── User endpoints (require API key) ── */
-      /** Get account balance and profile */
+      /* ══════════════════════════════════════════════════════════════
+       *  USER ENDPOINTS
+       * ══════════════════════════════════════════════════════════════ */
+      /** Profil + solde du compte */
       async getProfile() {
         return this.request("/user/profile");
       }
       /**
-       * Buy a virtual number.
-       * country  — 5sim country slug (e.g. "france", "ivorycoast")
-       * operator — "any" or specific operator (e.g. "virtual4")
-       * product  — service name (e.g. "whatsapp", "telegram")
+       * Historique des commandes.
+       * category = "activation" | "hosting"
        */
-      async buyNumber(country, operator, product) {
+      async getUserOrders(params = {}) {
+        const qs = buildQS({
+          category: params.category ?? "activation",
+          limit: params.limit ?? 15,
+          offset: params.offset ?? 0,
+          order: params.order ?? "id",
+          reverse: params.reverse ?? true
+        });
+        return this.request(`/user/orders${qs}`);
+      }
+      /**
+       * Historique des paiements.
+       */
+      async getUserPayments(params = {}) {
+        const qs = buildQS({
+          limit: params.limit ?? 15,
+          offset: params.offset ?? 0,
+          order: params.order ?? "id",
+          reverse: params.reverse ?? true
+        });
+        return this.request(`/user/payments${qs}`);
+      }
+      /**
+       * Acheter un numéro d'activation (one-shot).
+       * operator = "any" ou un opérateur spécifique
+       * Options facultatives :
+       *   forwarding — activer le renvoi d'appel
+       *   reuse      — réutiliser un numéro déjà utilisé pour ce service
+       *   voice      — appel vocal plutôt que SMS
+       *   ref        — identifiant de parrainage
+       */
+      async buyNumber(country, operator, product, options = {}) {
+        const extra = {};
+        if (options.forwarding) extra.forwarding = "true";
+        if (options.reuse) extra.reuse = "true";
+        if (options.voice) extra.voice = "true";
+        if (options.ref) extra.ref = options.ref;
+        const qs = Object.keys(extra).length ? "?" + new URLSearchParams(extra).toString() : "";
         const order = await this.request(
-          `/user/buy/activation/${encodeURIComponent(country)}/${encodeURIComponent(operator)}/${encodeURIComponent(product)}`
+          `/user/buy/activation/${encodeURIComponent(country)}/${encodeURIComponent(operator)}/${encodeURIComponent(product)}${qs}`
         );
         return normaliseOrder(order);
       }
-      /** Check order status & get any received SMS */
+      /**
+       * Acheter un numéro en location longue durée (hosting).
+       * product = "1day" (24h) | "3hours" (3h)
+       * Ces numéros peuvent recevoir plusieurs SMS et ont une durée de vie plus longue.
+       */
+      async buyHostingNumber(country, operator, product) {
+        const order = await this.request(
+          `/user/buy/hosting/${encodeURIComponent(country)}/${encodeURIComponent(operator)}/${encodeURIComponent(product)}`
+        );
+        return normaliseOrder(order);
+      }
+      /** Vérifier le statut d'une commande + SMS reçus (activation) */
       async checkOrder(orderId) {
         const order = await this.request(`/user/check/${orderId}`);
         return normaliseOrder(order);
       }
-      /** Mark number as successfully used — call after SMS received */
+      /** Marquer la commande comme terminée (après réception du SMS) */
       async finishOrder(orderId) {
         const order = await this.request(`/user/finish/${orderId}`);
         return normaliseOrder(order);
       }
-      /** Cancel order (full refund if no SMS was received) */
+      /** Annuler une commande (remboursement si aucun SMS reçu) */
       async cancelOrder(orderId) {
         const order = await this.request(`/user/cancel/${orderId}`);
         return normaliseOrder(order);
       }
       /**
-       * Ban/report number as bad (partial refund).
-       * Use when number received spam or cannot receive the code.
+       * Signaler un numéro comme inutilisable (banni par le service).
+       * Annule la commande et la marque comme bannie.
        */
       async banOrder(orderId) {
         const order = await this.request(`/user/ban/${orderId}`);
         return normaliseOrder(order);
       }
-      /* ── Guest endpoints (no auth needed — pass auth=false) ── */
-      /** List all available countries and their operators */
+      /**
+       * Boîte de réception SMS pour numéros en location (hosting uniquement).
+       * Ne fonctionne PAS pour les numéros d'activation one-shot.
+       */
+      async getSmsInbox(orderId) {
+        return this.request(`/user/sms/inbox/${orderId}`);
+      }
+      /* ══════════════════════════════════════════════════════════════
+       *  GUEST ENDPOINTS (pas d'authentification requise)
+       * ══════════════════════════════════════════════════════════════ */
+      /** Liste tous les pays disponibles et leurs opérateurs */
       async getCountries() {
         return this.request("/guest/countries", "GET", false);
       }
       /**
-       * Get available products (services) for a country + operator.
-       * Returns map of productName → { Category, Qty, Price }.
-       * Qty > 0 means numbers are available.
+       * Produits disponibles pour un pays + opérateur.
+       * Retourne nom → { Category, Qty, Price }.
+       * Qty > 0 = numéros disponibles.
        */
       async getProducts(country, operator = "any") {
         return this.request(
@@ -84984,8 +85065,26 @@ var init_fivesim = __esm({
         );
       }
       /**
-       * Check availability and price for a specific country + product.
-       * Returns null if country/product not available.
+       * Liste des prix pour un pays et/ou produit donné.
+       * Les paramètres sont optionnels — sans paramètre retourne tous les prix.
+       */
+      async getPrices(country, product) {
+        const params = {};
+        if (country) params.country = country;
+        if (product) params.product = product;
+        const qs = Object.keys(params).length ? "?" + new URLSearchParams(params).toString() : "";
+        return this.request(`/guest/prices${qs}`, "GET", false);
+      }
+      /**
+       * Notifications flash de la plateforme 5sim.
+       * lang = "en" | "ru"
+       */
+      async getFlash(lang = "en") {
+        return this.request(`/guest/flash/${lang}`, "GET", false);
+      }
+      /**
+       * Vérifier disponibilité et prix pour un pays + service.
+       * Retourne null si pays/service introuvable.
        */
       async checkAvailability(country, product) {
         try {
@@ -84997,6 +85096,71 @@ var init_fivesim = __esm({
           if (e2 instanceof FiveSimError && (e2.status === 404 || e2.status === 400)) return null;
           throw e2;
         }
+      }
+      /* ══════════════════════════════════════════════════════════════
+       *  VENDOR / PARTENAIRE ENDPOINTS
+       * ══════════════════════════════════════════════════════════════ */
+      /** Statistiques du compte vendeur (commandes, revenus, solde) */
+      async getVendorStatistic() {
+        return this.request("/vendor/statistic");
+      }
+      /** Réserves de portefeuille disponibles pour le partenaire */
+      async getVendorWallets() {
+        return this.request("/vendor/wallets");
+      }
+      /**
+       * Historique des commandes du vendeur.
+       * category = "activation" | "hosting"
+       */
+      async getVendorOrders(params = {}) {
+        const qs = buildQS({
+          category: params.category ?? "activation",
+          limit: params.limit ?? 15,
+          offset: params.offset ?? 0,
+          order: params.order ?? "id",
+          reverse: params.reverse ?? true
+        });
+        return this.request(`/vendor/orders${qs}`);
+      }
+      /** Historique des paiements du vendeur */
+      async getVendorPayments(params = {}) {
+        const qs = buildQS({
+          limit: params.limit ?? 15,
+          offset: params.offset ?? 0,
+          order: params.order ?? "id",
+          reverse: params.reverse ?? true
+        });
+        return this.request(`/vendor/payments${qs}`);
+      }
+      /**
+       * Créer un retrait (payout) pour le partenaire.
+       * Le montant est en USD.
+       */
+      async createVendorPayout(receiver, method, amount, currency) {
+        return this.request("/vendor/payouts", "POST", true, {
+          receiver,
+          method,
+          amount,
+          currency
+        });
+      }
+      /**
+       * Liste de prix du vendeur avec filtres.
+       */
+      async getVendorPrices(params = {}) {
+        const filters = {};
+        if (params.productName) filters.ProductName = params.productName;
+        if (params.countryName) filters.CountryName = params.countryName;
+        if (params.operatorName) filters.OperatorName = params.operatorName;
+        if (params.enabled !== void 0) filters.Enabled = params.enabled;
+        const qs = buildQS({
+          _filters: JSON.stringify(filters),
+          _sortDir: params.sortDir ?? "asc",
+          _sortField: params.sortField ?? "CountryName",
+          _page: params.page ?? 1,
+          _perPage: params.perPage ?? 15
+        });
+        return this.request(`/vendor/prices${qs}`);
       }
     };
     FiveSimError = class extends Error {
@@ -85080,7 +85244,6 @@ var init_fivesim = __esm({
       IL: "israel",
       IT: "italy",
       CI: "ivorycoast",
-      JM: "jamaica",
       JO: "jordan",
       KZ: "kazakhstan",
       KE: "kenya",
@@ -85125,6 +85288,7 @@ var init_fivesim = __esm({
       RS: "serbia",
       SL: "sierraleone",
       SK: "slovakia",
+      JM: "jamaica",
       SI: "slovenia",
       ZA: "southafrica",
       ES: "spain",
@@ -85139,6 +85303,7 @@ var init_fivesim = __esm({
       TG: "togo",
       TN: "tunisia",
       TM: "turkmenistan",
+      TR: "turkey",
       UG: "uganda",
       UA: "ukraine",
       AE: "uae",
@@ -85148,11 +85313,38 @@ var init_fivesim = __esm({
       VE: "venezuela",
       VN: "vietnam",
       ZM: "zambia",
-      // Additional African countries
       ML: "mali",
       NE: "niger",
       SD: "sudan",
-      LY: "libya"
+      LY: "libya",
+      SA: "saudiarabia",
+      QA: "qatar",
+      IQ: "iraq",
+      SY: "syria",
+      LB: "lebanon",
+      KR: "southkorea",
+      JP: "japan",
+      CN: "china",
+      MO: "macao",
+      SG: "singapore",
+      MM: "myanmar",
+      KP: "northkorea",
+      TL: "easttimor",
+      PG: "papua",
+      NZ: "newzealand",
+      FJ: "fiji",
+      WS: "samoa",
+      XK: "kosovo",
+      IS: "iceland",
+      LI: "liechtenstein",
+      MT: "malta",
+      MC: "monaco",
+      SM: "sanmarino",
+      VA: "vaticancity",
+      CU: "cuba",
+      TT: "trinidadandtobago",
+      BB: "barbados",
+      BS: "bahamas"
     };
     SERVICE_TO_5SIM = {
       whatsapp: "whatsapp",
@@ -85183,7 +85375,18 @@ var init_fivesim = __esm({
       ebay: "ebay",
       twitter_x: "twitter",
       x: "twitter",
-      "twitter / x": "twitter"
+      "twitter / x": "twitter",
+      signal: "signal",
+      skype: "skype",
+      spotify: "spotify",
+      coinbase: "coinbase",
+      kraken: "kraken",
+      openai: "openai",
+      deepseek: "deepseek",
+      roblox: "roblox",
+      tinder: "tinder",
+      bumble: "bumble",
+      badoo: "badoo"
     };
   }
 });
@@ -86667,7 +86870,7 @@ async function migrate(db2, config) {
 }
 
 // src/app.ts
-var import_express27 = __toESM(require_express2(), 1);
+var import_express28 = __toESM(require_express2(), 1);
 var import_cors = __toESM(require_lib3(), 1);
 var import_cookie_parser = __toESM(require_cookie_parser(), 1);
 var import_pino_http = __toESM(require_logger(), 1);
@@ -87219,7 +87422,7 @@ var import_path2 = __toESM(require("path"), 1);
 var import_fs3 = require("fs");
 
 // src/routes/index.ts
-var import_express26 = __toESM(require_express2(), 1);
+var import_express27 = __toESM(require_express2(), 1);
 
 // src/routes/health.ts
 var import_express = __toESM(require_express2(), 1);
@@ -112206,6 +112409,8 @@ router8.post("/numbers", requireAuth, async (req, res) => {
     return;
   }
   const { serviceId, countryId } = parsed.data;
+  const numberType2 = req.body.numberType === "hosting" ? "hosting" : "activation";
+  const hostingDuration = req.body.hostingDuration === "3hours" ? "3hours" : "1day";
   const [service] = await db.select().from(servicesTable).where(eq(servicesTable.id, serviceId)).limit(1);
   const [country] = await db.select().from(countriesTable).where(eq(countriesTable.id, countryId)).limit(1);
   if (!service || !country) {
@@ -112259,14 +112464,25 @@ router8.post("/numbers", requireAuth, async (req, res) => {
   }
   let phoneNumber;
   let externalOrderId = null;
+  let actualExpiresAt = expiresAt;
   try {
-    const order = await fiveSimClient.buyNumber(countrySlug, "any", productSlug);
+    let order;
+    if (numberType2 === "hosting") {
+      order = await fiveSimClient.buyHostingNumber(countrySlug, "any", hostingDuration);
+      actualExpiresAt = order.expires ? new Date(order.expires) : new Date(Date.now() + (hostingDuration === "1day" ? 24 : 3) * 60 * 60 * 1e3);
+      logger.info(
+        { orderId: order.id, phone: order.phone, userId: user.id, countrySlug, hostingDuration },
+        "[5sim] Hosting number acquired"
+      );
+    } else {
+      order = await fiveSimClient.buyNumber(countrySlug, "any", productSlug);
+      logger.info(
+        { orderId: order.id, phone: order.phone, userId: user.id, countrySlug, productSlug },
+        "[5sim] Activation number acquired"
+      );
+    }
     phoneNumber = order.phone;
     externalOrderId = String(order.id);
-    logger.info(
-      { orderId: order.id, phone: phoneNumber, userId: user.id, countrySlug, productSlug },
-      "[5sim] Real number acquired"
-    );
   } catch (e2) {
     const errMsg = e2.message;
     const is5SimErr = e2 instanceof FiveSimError;
@@ -112290,8 +112506,10 @@ router8.post("/numbers", requireAuth, async (req, res) => {
     phoneNumber,
     status: "waiting",
     price,
-    expiresAt,
-    externalOrderId
+    expiresAt: actualExpiresAt,
+    externalOrderId,
+    numberType: numberType2,
+    hostingDuration: numberType2 === "hosting" ? hostingDuration : null
   }).returning();
   if (!vn) {
     await db.update(usersTable).set({ balance: sql`${usersTable.balance} + ${price}` }).where(eq(usersTable.id, user.id));
@@ -116783,10 +117001,168 @@ router16.get("/admin/emails/stats", requireAdmin5, async (_req, res) => {
 });
 var admin_emails_default = router16;
 
-// src/routes/config.ts
+// src/routes/admin-fivesim.ts
 var import_express18 = __toESM(require_express2(), 1);
+init_drizzle_orm();
+init_src();
+init_fivesim();
+init_logger2();
 var router17 = (0, import_express18.Router)();
-router17.get("/config", async (_req, res) => {
+async function get5SimClient() {
+  const [provider] = await db.select().from(apiProvidersTable).where(and(eq(apiProvidersTable.slug, "5sim"), eq(apiProvidersTable.active, true))).limit(1);
+  if (!provider?.apiKey) return null;
+  return new FiveSimClient(provider.apiKey);
+}
+function handle5SimError(e2, res) {
+  if (e2 instanceof FiveSimError) {
+    logger.warn({ status: e2.status, path: e2.path, body: e2.body }, "[admin-5sim] API error");
+    res.status(e2.status === 401 ? 401 : 502).json({
+      error: `Erreur 5sim (${e2.status}): ${e2.body}`
+    });
+  } else {
+    logger.error({ err: e2.message }, "[admin-5sim] Unexpected error");
+    res.status(500).json({ error: "Erreur serveur inattendue" });
+  }
+}
+router17.get("/admin/fivesim/profile", requireAdminJwt, async (req, res) => {
+  const client = await get5SimClient();
+  if (!client) {
+    res.status(503).json({ error: "Fournisseur 5sim non configur\xE9 ou inactif" });
+    return;
+  }
+  try {
+    const profile = await client.getProfile();
+    res.json(profile);
+  } catch (e2) {
+    handle5SimError(e2, res);
+  }
+});
+router17.get("/admin/fivesim/statistic", requireAdminJwt, async (req, res) => {
+  const client = await get5SimClient();
+  if (!client) {
+    res.status(503).json({ error: "Fournisseur 5sim non configur\xE9 ou inactif" });
+    return;
+  }
+  try {
+    const stat2 = await client.getVendorStatistic();
+    res.json(stat2);
+  } catch (e2) {
+    handle5SimError(e2, res);
+  }
+});
+router17.get("/admin/fivesim/wallets", requireAdminJwt, async (req, res) => {
+  const client = await get5SimClient();
+  if (!client) {
+    res.status(503).json({ error: "Fournisseur 5sim non configur\xE9 ou inactif" });
+    return;
+  }
+  try {
+    const wallets = await client.getVendorWallets();
+    res.json(wallets);
+  } catch (e2) {
+    handle5SimError(e2, res);
+  }
+});
+router17.get("/admin/fivesim/orders", requireAdminJwt, async (req, res) => {
+  const client = await get5SimClient();
+  if (!client) {
+    res.status(503).json({ error: "Fournisseur 5sim non configur\xE9 ou inactif" });
+    return;
+  }
+  const category = req.query.category ?? "activation";
+  const limit = Math.min(Number(req.query.limit) || 15, 100);
+  const offset = Number(req.query.offset) || 0;
+  try {
+    const orders = await client.getVendorOrders({ category, limit, offset, reverse: true });
+    res.json(orders);
+  } catch (e2) {
+    handle5SimError(e2, res);
+  }
+});
+router17.get("/admin/fivesim/payments", requireAdminJwt, async (req, res) => {
+  const client = await get5SimClient();
+  if (!client) {
+    res.status(503).json({ error: "Fournisseur 5sim non configur\xE9 ou inactif" });
+    return;
+  }
+  const limit = Math.min(Number(req.query.limit) || 15, 100);
+  const offset = Number(req.query.offset) || 0;
+  try {
+    const payments = await client.getVendorPayments({ limit, offset, reverse: true });
+    res.json(payments);
+  } catch (e2) {
+    handle5SimError(e2, res);
+  }
+});
+router17.get("/admin/fivesim/flash", requireAdminJwt, async (req, res) => {
+  const client = await get5SimClient();
+  if (!client) {
+    res.status(503).json({ error: "Fournisseur 5sim non configur\xE9 ou inactif" });
+    return;
+  }
+  const lang = req.query.lang ?? "en";
+  try {
+    const flash = await client.getFlash(lang);
+    res.json(flash);
+  } catch (e2) {
+    handle5SimError(e2, res);
+  }
+});
+router17.get("/admin/fivesim/prices", requireAdminJwt, async (req, res) => {
+  const client = await get5SimClient();
+  if (!client) {
+    res.status(503).json({ error: "Fournisseur 5sim non configur\xE9 ou inactif" });
+    return;
+  }
+  const page = Number(req.query.page) || 1;
+  const perPage = Math.min(Number(req.query.perPage) || 15, 100);
+  const countryName = req.query.country;
+  const productName = req.query.product;
+  const operatorName = req.query.operator;
+  try {
+    const prices = await client.getVendorPrices({ page, perPage, countryName, productName, operatorName });
+    res.json(prices);
+  } catch (e2) {
+    handle5SimError(e2, res);
+  }
+});
+router17.get("/admin/fivesim/user/orders", requireAdminJwt, async (req, res) => {
+  const client = await get5SimClient();
+  if (!client) {
+    res.status(503).json({ error: "Fournisseur 5sim non configur\xE9 ou inactif" });
+    return;
+  }
+  const category = req.query.category ?? "activation";
+  const limit = Math.min(Number(req.query.limit) || 15, 100);
+  const offset = Number(req.query.offset) || 0;
+  try {
+    const orders = await client.getUserOrders({ category, limit, offset, reverse: true });
+    res.json(orders);
+  } catch (e2) {
+    handle5SimError(e2, res);
+  }
+});
+router17.get("/admin/fivesim/user/payments", requireAdminJwt, async (req, res) => {
+  const client = await get5SimClient();
+  if (!client) {
+    res.status(503).json({ error: "Fournisseur 5sim non configur\xE9 ou inactif" });
+    return;
+  }
+  const limit = Math.min(Number(req.query.limit) || 15, 100);
+  const offset = Number(req.query.offset) || 0;
+  try {
+    const payments = await client.getUserPayments({ limit, offset, reverse: true });
+    res.json(payments);
+  } catch (e2) {
+    handle5SimError(e2, res);
+  }
+});
+var admin_fivesim_default = router17;
+
+// src/routes/config.ts
+var import_express19 = __toESM(require_express2(), 1);
+var router18 = (0, import_express19.Router)();
+router18.get("/config", async (_req, res) => {
   const [
     platformName,
     supportEmail,
@@ -116853,15 +117229,15 @@ router17.get("/config", async (_req, res) => {
     }
   });
 });
-var config_default = router17;
+var config_default = router18;
 
 // src/routes/currencies.ts
-var import_express19 = __toESM(require_express2(), 1);
+var import_express20 = __toESM(require_express2(), 1);
 init_drizzle_orm();
 init_src();
 init_logger2();
-var router18 = (0, import_express19.Router)();
-router18.get("/currencies", async (_req, res) => {
+var router19 = (0, import_express20.Router)();
+router19.get("/currencies", async (_req, res) => {
   const rows = await db.select().from(currenciesTable).where(eq(currenciesTable.active, true)).orderBy(currenciesTable.countryCode);
   res.json(rows.map((r2) => ({
     id: r2.id,
@@ -116871,7 +117247,7 @@ router18.get("/currencies", async (_req, res) => {
     clientRate: Number(r2.clientRate)
   })));
 });
-router18.get("/currencies/country/:cc", async (req, res) => {
+router19.get("/currencies/country/:cc", async (req, res) => {
   const cc = req.params.cc?.toUpperCase();
   if (!cc) {
     res.status(400).json({ error: "Code pays requis" });
@@ -116898,7 +117274,7 @@ router18.get("/currencies/country/:cc", async (req, res) => {
     isXof: row.currencyCode === "XOF" || row.currencyCode === "XAF"
   });
 });
-router18.post("/payment/preview", async (req, res) => {
+router19.post("/payment/preview", async (req, res) => {
   const { country, currency: currencyCode, amount } = req.body;
   if (!country || !amount || isNaN(Number(amount)) || Number(amount) <= 0) {
     res.status(400).json({ error: "country et amount requis" });
@@ -116934,7 +117310,7 @@ router18.post("/payment/preview", async (req, res) => {
     }
   });
 });
-router18.get("/admin/currencies", requireAdminJwt, async (_req, res) => {
+router19.get("/admin/currencies", requireAdminJwt, async (_req, res) => {
   const rows = await db.select().from(currenciesTable).orderBy(currenciesTable.countryCode);
   res.json(rows.map((r2) => ({
     ...r2,
@@ -116942,7 +117318,7 @@ router18.get("/admin/currencies", requireAdminJwt, async (_req, res) => {
     clientRate: Number(r2.clientRate)
   })));
 });
-router18.post("/admin/currencies", requireAdminJwt, async (req, res) => {
+router19.post("/admin/currencies", requireAdminJwt, async (req, res) => {
   const { countryCode, currencyCode, currencyName, realRate, clientRate, active } = req.body;
   if (!countryCode || !currencyCode || !currencyName || realRate == null || clientRate == null) {
     res.status(400).json({ error: "Tous les champs sont requis" });
@@ -116959,7 +117335,7 @@ router18.post("/admin/currencies", requireAdminJwt, async (req, res) => {
   logger.info({ countryCode, currencyCode }, "[Admin] Currency created");
   res.status(201).json({ ...created, realRate: Number(created.realRate), clientRate: Number(created.clientRate) });
 });
-router18.put("/admin/currencies/:id", requireAdminJwt, async (req, res) => {
+router19.put("/admin/currencies/:id", requireAdminJwt, async (req, res) => {
   const id = Number(req.params.id);
   const { countryCode, currencyCode, currencyName, realRate, clientRate, active } = req.body;
   const updates = {};
@@ -116977,13 +117353,13 @@ router18.put("/admin/currencies/:id", requireAdminJwt, async (req, res) => {
   logger.info({ id }, "[Admin] Currency updated");
   res.json({ ...updated, realRate: Number(updated.realRate), clientRate: Number(updated.clientRate) });
 });
-router18.delete("/admin/currencies/:id", requireAdminJwt, async (req, res) => {
+router19.delete("/admin/currencies/:id", requireAdminJwt, async (req, res) => {
   const id = Number(req.params.id);
   await db.delete(currenciesTable).where(eq(currenciesTable.id, id));
   logger.info({ id }, "[Admin] Currency deleted");
   res.json({ success: true });
 });
-router18.get("/admin/fx-profits", requireAdminJwt, async (req, res) => {
+router19.get("/admin/fx-profits", requireAdminJwt, async (req, res) => {
   const limit = Math.min(Number(req.query.limit) || 50, 200);
   const offset = Number(req.query.offset) || 0;
   const rows = await db.select().from(fxProfitsTable).orderBy(desc(fxProfitsTable.createdAt)).limit(limit).offset(offset);
@@ -117000,7 +117376,7 @@ router18.get("/admin/fx-profits", requireAdminJwt, async (req, res) => {
     total
   });
 });
-router18.get("/admin/fx-profits/summary", requireAdminJwt, async (_req, res) => {
+router19.get("/admin/fx-profits/summary", requireAdminJwt, async (_req, res) => {
   const byCurrency = await db.select({
     currency: fxProfitsTable.currency,
     totalProfit: sum(fxProfitsTable.profitXof),
@@ -117028,13 +117404,13 @@ router18.get("/admin/fx-profits/summary", requireAdminJwt, async (_req, res) => 
     }))
   });
 });
-var currencies_default = router18;
+var currencies_default = router19;
 
 // src/routes/footer.ts
-var import_express20 = __toESM(require_express2(), 1);
+var import_express21 = __toESM(require_express2(), 1);
 init_drizzle_orm();
 init_src();
-var router19 = (0, import_express20.Router)();
+var router20 = (0, import_express21.Router)();
 function requireAdmin6(req, res, next) {
   if (req.adminPayload) {
     next();
@@ -117050,18 +117426,18 @@ function requireAdmin6(req, res, next) {
   }
   next();
 }
-router19.get("/footer", async (_req, res) => {
+router20.get("/footer", async (_req, res) => {
   const [socialLinks, operators] = await Promise.all([
     db.select().from(socialLinksTable).where(eq(socialLinksTable.isActive, true)).orderBy(asc(socialLinksTable.sortOrder)),
     db.select().from(paymentOperatorsTable).where(eq(paymentOperatorsTable.isActive, true)).orderBy(asc(paymentOperatorsTable.sortOrder))
   ]);
   res.json({ socialLinks, operators });
 });
-router19.get("/admin/social-links", requireAdminJwt, requireAdmin6, async (_req, res) => {
+router20.get("/admin/social-links", requireAdminJwt, requireAdmin6, async (_req, res) => {
   const links = await db.select().from(socialLinksTable).orderBy(asc(socialLinksTable.sortOrder));
   res.json({ links });
 });
-router19.post("/admin/social-links", requireAdminJwt, requireAdmin6, async (req, res) => {
+router20.post("/admin/social-links", requireAdminJwt, requireAdmin6, async (req, res) => {
   const { platform, name: name2, url: url2, color, isActive, sortOrder } = req.body;
   if (!platform || !name2 || !url2) {
     res.status(400).json({ error: "platform, name, url required" });
@@ -117077,7 +117453,7 @@ router19.post("/admin/social-links", requireAdminJwt, requireAdmin6, async (req,
   }).returning();
   res.json({ link });
 });
-router19.put("/admin/social-links/:id", requireAdminJwt, requireAdmin6, async (req, res) => {
+router20.put("/admin/social-links/:id", requireAdminJwt, requireAdmin6, async (req, res) => {
   const { id } = req.params;
   const data = req.body;
   const [link] = await db.update(socialLinksTable).set(data).where(eq(socialLinksTable.id, id)).returning();
@@ -117087,16 +117463,16 @@ router19.put("/admin/social-links/:id", requireAdminJwt, requireAdmin6, async (r
   }
   res.json({ link });
 });
-router19.delete("/admin/social-links/:id", requireAdminJwt, requireAdmin6, async (req, res) => {
+router20.delete("/admin/social-links/:id", requireAdminJwt, requireAdmin6, async (req, res) => {
   const { id } = req.params;
   await db.delete(socialLinksTable).where(eq(socialLinksTable.id, id));
   res.json({ success: true });
 });
-router19.get("/admin/payment-operators", requireAdminJwt, requireAdmin6, async (_req, res) => {
+router20.get("/admin/payment-operators", requireAdminJwt, requireAdmin6, async (_req, res) => {
   const operators = await db.select().from(paymentOperatorsTable).orderBy(asc(paymentOperatorsTable.sortOrder));
   res.json({ operators });
 });
-router19.post("/admin/payment-operators", requireAdminJwt, requireAdmin6, async (req, res) => {
+router20.post("/admin/payment-operators", requireAdminJwt, requireAdmin6, async (req, res) => {
   const { name: name2, logoUrl, logoData, websiteUrl, countries, bgColor, isActive, sortOrder } = req.body;
   if (!name2) {
     res.status(400).json({ error: "name required" });
@@ -117114,7 +117490,7 @@ router19.post("/admin/payment-operators", requireAdminJwt, requireAdmin6, async 
   }).returning();
   res.json({ operator: op });
 });
-router19.put("/admin/payment-operators/:id", requireAdminJwt, requireAdmin6, async (req, res) => {
+router20.put("/admin/payment-operators/:id", requireAdminJwt, requireAdmin6, async (req, res) => {
   const { id } = req.params;
   const data = req.body;
   const [op] = await db.update(paymentOperatorsTable).set(data).where(eq(paymentOperatorsTable.id, id)).returning();
@@ -117124,15 +117500,15 @@ router19.put("/admin/payment-operators/:id", requireAdminJwt, requireAdmin6, asy
   }
   res.json({ operator: op });
 });
-router19.delete("/admin/payment-operators/:id", requireAdminJwt, requireAdmin6, async (req, res) => {
+router20.delete("/admin/payment-operators/:id", requireAdminJwt, requireAdmin6, async (req, res) => {
   const { id } = req.params;
   await db.delete(paymentOperatorsTable).where(eq(paymentOperatorsTable.id, id));
   res.json({ success: true });
 });
-var footer_default = router19;
+var footer_default = router20;
 
 // src/routes/support.ts
-var import_express21 = __toESM(require_express2(), 1);
+var import_express22 = __toESM(require_express2(), 1);
 init_drizzle_orm();
 init_src();
 
@@ -118145,7 +118521,7 @@ var GoogleGenerativeAI = class {
 
 // src/routes/support.ts
 init_logger2();
-var router20 = (0, import_express21.Router)();
+var router21 = (0, import_express22.Router)();
 async function loadUserContext(userId) {
   const [user] = await db.select({
     fullName: usersTable.fullName,
@@ -118306,7 +118682,7 @@ ${knowledgeSection ? `
 INFORMATIONS SUPPLEMENTAIRES:
 ${knowledgeSection}` : ""}`;
 }
-router20.get("/support/history/:sessionId", async (req, res) => {
+router21.get("/support/history/:sessionId", async (req, res) => {
   const { sessionId } = req.params;
   if (!sessionId || sessionId.length < 8) {
     res.status(400).json({ error: "Session ID invalide" });
@@ -118320,7 +118696,7 @@ router20.get("/support/history/:sessionId", async (req, res) => {
   const msgs = await db.select().from(supportMessagesTable).where(eq(supportMessagesTable.conversationId, conv.id)).orderBy(asc(supportMessagesTable.createdAt)).limit(50);
   res.json({ conversationId: conv.id, messages: msgs });
 });
-router20.get("/support/config", async (req, res) => {
+router21.get("/support/config", async (req, res) => {
   const entries = await db.select().from(aiSupportConfigTable);
   const cfg = Object.fromEntries(entries.map((e2) => [e2.key, e2.value]));
   let greetingFr = cfg["ai_greeting_fr"] ?? "Bonjour ! Je suis Simia, votre conseill\xE8re Simix. Comment puis-je vous aider aujourd'hui ?";
@@ -118344,7 +118720,7 @@ router20.get("/support/config", async (req, res) => {
     enabled: cfg["ai_enabled"] !== "false"
   });
 });
-router20.post("/support/chat", async (req, res) => {
+router21.post("/support/chat", async (req, res) => {
   const { sessionId, message, imageData, language } = req.body;
   if (!sessionId || sessionId.length < 8) {
     res.status(400).json({ error: "Session ID requis" });
@@ -118700,7 +119076,7 @@ router20.post("/support/chat", async (req, res) => {
     res.end();
   }
 });
-router20.delete("/support/history/:sessionId", async (req, res) => {
+router21.delete("/support/history/:sessionId", async (req, res) => {
   const { sessionId } = req.params;
   const [conv] = await db.select().from(supportConversationsTable).where(eq(supportConversationsTable.sessionId, sessionId)).limit(1);
   if (conv) {
@@ -118708,30 +119084,30 @@ router20.delete("/support/history/:sessionId", async (req, res) => {
   }
   res.json({ success: true });
 });
-var support_default = router20;
+var support_default = router21;
 
 // src/routes/banners.ts
-var import_express22 = __toESM(require_express2(), 1);
+var import_express23 = __toESM(require_express2(), 1);
 init_drizzle_orm();
 init_src();
 init_logger2();
-var router21 = (0, import_express22.Router)();
-router21.get("/banners", async (_req, res) => {
+var router22 = (0, import_express23.Router)();
+router22.get("/banners", async (_req, res) => {
   const rows = await db.select().from(bannersTable).where(eq(bannersTable.isActive, true)).orderBy(asc(bannersTable.sortOrder));
   res.json(rows);
 });
-router21.get("/site-content", async (_req, res) => {
+router22.get("/site-content", async (_req, res) => {
   const rows = await db.select().from(systemSettingsTable).where(like(systemSettingsTable.key, "content_%"));
   const content = {};
   for (const r2 of rows) content[r2.key] = r2.value;
   res.json(content);
 });
-router21.use("/admin/banners", requireAdminJwt);
-router21.get("/admin/banners", async (_req, res) => {
+router22.use("/admin/banners", requireAdminJwt);
+router22.get("/admin/banners", async (_req, res) => {
   const rows = await db.select().from(bannersTable).orderBy(asc(bannersTable.sortOrder));
   res.json(rows);
 });
-router21.post("/admin/banners", async (req, res) => {
+router22.post("/admin/banners", async (req, res) => {
   const { title, subtitle, imageData, imageUrl, linkUrl, linkLabel, bgFrom, bgTo, textColor, isActive, sortOrder } = req.body;
   if (!title?.trim()) {
     res.status(400).json({ error: "Le titre est requis" });
@@ -118753,7 +119129,7 @@ router21.post("/admin/banners", async (req, res) => {
   logger.info({ bannerId: banner.id }, "[Banners] Created");
   res.status(201).json(banner);
 });
-router21.put("/admin/banners/:id", async (req, res) => {
+router22.put("/admin/banners/:id", async (req, res) => {
   const { id } = req.params;
   const { title, subtitle, imageData, imageUrl, linkUrl, linkLabel, bgFrom, bgTo, textColor, isActive, sortOrder } = req.body;
   if (!title?.trim()) {
@@ -118779,7 +119155,7 @@ router21.put("/admin/banners/:id", async (req, res) => {
   }
   res.json(banner);
 });
-router21.patch("/admin/banners/:id/toggle", async (req, res) => {
+router22.patch("/admin/banners/:id/toggle", async (req, res) => {
   const { id } = req.params;
   const [current] = await db.select().from(bannersTable).where(eq(bannersTable.id, id)).limit(1);
   if (!current) {
@@ -118789,7 +119165,7 @@ router21.patch("/admin/banners/:id/toggle", async (req, res) => {
   const [updated] = await db.update(bannersTable).set({ isActive: !current.isActive }).where(eq(bannersTable.id, id)).returning();
   res.json(updated);
 });
-router21.patch("/admin/banners/reorder", async (req, res) => {
+router22.patch("/admin/banners/reorder", async (req, res) => {
   const { order } = req.body;
   if (!Array.isArray(order)) {
     res.status(400).json({ error: "order doit \xEAtre un tableau" });
@@ -118800,19 +119176,19 @@ router21.patch("/admin/banners/reorder", async (req, res) => {
   }
   res.json({ success: true });
 });
-router21.delete("/admin/banners/:id", async (req, res) => {
+router22.delete("/admin/banners/:id", async (req, res) => {
   const { id } = req.params;
   await db.delete(bannersTable).where(eq(bannersTable.id, id));
   res.json({ success: true });
 });
-var banners_default = router21;
+var banners_default = router22;
 
 // src/routes/otp.ts
-var import_express23 = __toESM(require_express2(), 1);
+var import_express24 = __toESM(require_express2(), 1);
 init_drizzle_orm();
 init_src();
-var router22 = (0, import_express23.Router)();
-router22.post("/auth/otp/send", requireAuth, async (req, res) => {
+var router23 = (0, import_express24.Router)();
+router23.post("/auth/otp/send", requireAuth, async (req, res) => {
   const user = req.user;
   const ip = req.ip ?? "unknown";
   if (isRateLimited(`otp_send:${user.id}`, 5, 60 * 6e4)) {
@@ -118833,7 +119209,7 @@ router22.post("/auth/otp/send", requireAuth, async (req, res) => {
     res.status(500).json({ error: "Impossible d'envoyer l'email. V\xE9rifiez votre adresse email." });
   }
 });
-router22.post("/auth/otp/verify", requireAuth, async (req, res) => {
+router23.post("/auth/otp/verify", requireAuth, async (req, res) => {
   const user = req.user;
   const ip = req.ip ?? "unknown";
   const { code } = req.body;
@@ -118858,7 +119234,7 @@ router22.post("/auth/otp/verify", requireAuth, async (req, res) => {
   }).where(eq(usersTable.id, user.id));
   res.json({ success: true, message: "Email v\xE9rifi\xE9 avec succ\xE8s." });
 });
-router22.post("/auth/otp/resend", requireAuth, async (req, res) => {
+router23.post("/auth/otp/resend", requireAuth, async (req, res) => {
   const user = req.user;
   if (isRateLimited(`otp_resend:${user.id}`, 3, 60 * 6e4)) {
     res.status(429).json({ error: "Limite de renvoi atteinte. R\xE9essayez dans une heure." });
@@ -118878,7 +119254,7 @@ router22.post("/auth/otp/resend", requireAuth, async (req, res) => {
     res.status(500).json({ error: "Impossible d'envoyer l'email." });
   }
 });
-router22.get("/auth/otp/status", requireAuth, async (req, res) => {
+router23.get("/auth/otp/status", requireAuth, async (req, res) => {
   const user = req.user;
   const needsEmailVerification = !user.emailVerified;
   const needsInactivityCheck = user.emailVerified && isUserInactive(user.lastLoginAt ?? null);
@@ -118889,14 +119265,14 @@ router22.get("/auth/otp/status", requireAuth, async (req, res) => {
     email: user.email
   });
 });
-var otp_default = router22;
+var otp_default = router23;
 
 // src/routes/forgot-password.ts
-var import_express24 = __toESM(require_express2(), 1);
+var import_express25 = __toESM(require_express2(), 1);
 init_drizzle_orm();
 init_src();
-var router23 = (0, import_express24.Router)();
-router23.post("/auth/forgot-password", async (req, res) => {
+var router24 = (0, import_express25.Router)();
+router24.post("/auth/forgot-password", async (req, res) => {
   const ip = req.ip ?? "unknown";
   if (isRateLimited(`forgot_pwd:${ip}`, 5, 60 * 6e4)) {
     res.status(429).json({ error: "Trop de tentatives. R\xE9essayez dans une heure." });
@@ -118931,7 +119307,7 @@ router23.post("/auth/forgot-password", async (req, res) => {
   }
   res.json({ success: true, message: "Si un compte correspond, un email a \xE9t\xE9 envoy\xE9.", userId: user.id });
 });
-router23.post("/auth/forgot-password/verify", async (req, res) => {
+router24.post("/auth/forgot-password/verify", async (req, res) => {
   const ip = req.ip ?? "unknown";
   if (isRateLimited(`reset_verify:${ip}`, 10, 15 * 6e4)) {
     res.status(429).json({ error: "Trop de tentatives. R\xE9essayez dans 15 minutes." });
@@ -118949,7 +119325,7 @@ router23.post("/auth/forgot-password/verify", async (req, res) => {
   }
   res.json({ success: true, resetToken: `${userId}:${code}` });
 });
-router23.post("/auth/reset-password", async (req, res) => {
+router24.post("/auth/reset-password", async (req, res) => {
   const ip = req.ip ?? "unknown";
   if (isRateLimited(`reset_pwd:${ip}`, 5, 60 * 6e4)) {
     res.status(429).json({ error: "Trop de tentatives. R\xE9essayez dans une heure." });
@@ -118973,7 +119349,7 @@ router23.post("/auth/reset-password", async (req, res) => {
   await db.update(usersTable).set({ passwordHash, lastLoginAt: /* @__PURE__ */ new Date() }).where(eq(usersTable.id, userId));
   res.json({ success: true, message: "Mot de passe r\xE9initialis\xE9 avec succ\xE8s." });
 });
-router23.post("/auth/forgot-password/resend", async (req, res) => {
+router24.post("/auth/forgot-password/resend", async (req, res) => {
   const ip = req.ip ?? "unknown";
   if (isRateLimited(`reset_resend:${ip}`, 3, 60 * 6e4)) {
     res.status(429).json({ error: "Limite atteinte. R\xE9essayez dans une heure." });
@@ -119002,14 +119378,14 @@ router23.post("/auth/forgot-password/resend", async (req, res) => {
     res.status(500).json({ error: "Impossible d'envoyer l'email." });
   }
 });
-var forgot_password_default = router23;
+var forgot_password_default = router24;
 
 // src/routes/referral.ts
-var import_express25 = __toESM(require_express2(), 1);
+var import_express26 = __toESM(require_express2(), 1);
 init_drizzle_orm();
 init_src();
-var router24 = (0, import_express25.Router)();
-router24.get("/referral/me", requireAuth, async (req, res) => {
+var router25 = (0, import_express26.Router)();
+router25.get("/referral/me", requireAuth, async (req, res) => {
   const user = req.user;
   const commissionRate = await getReferralCommissionRate();
   const commissions = await db.select({
@@ -119036,35 +119412,36 @@ router24.get("/referral/me", requireAuth, async (req, res) => {
     }))
   });
 });
-var referral_default = router24;
+var referral_default = router25;
 
 // src/routes/index.ts
-var router25 = (0, import_express26.Router)();
-router25.use(health_default);
-router25.use(storage_default);
-router25.use(config_default);
-router25.use(auth_default);
-router25.use(google_auth_default);
-router25.use(services_default);
-router25.use(countries_default);
-router25.use(numbers_default);
-router25.use(wallet_default);
-router25.use(dashboard_default);
-router25.use(currencies_default);
-router25.use(admin_auth_default);
-router25.use(footer_default);
-router25.use(support_default);
-router25.use(notifications_default);
-router25.use(banners_default);
-router25.use(otp_default);
-router25.use(forgot_password_default);
-router25.use(referral_default);
-router25.use(admin_default);
-router25.use(admin_support_default);
-router25.use(admin_notifications_default);
-router25.use(admin_emails_default);
-router25.use(admin_payment_routing_default);
-var routes_default = router25;
+var router26 = (0, import_express27.Router)();
+router26.use(health_default);
+router26.use(storage_default);
+router26.use(config_default);
+router26.use(auth_default);
+router26.use(google_auth_default);
+router26.use(services_default);
+router26.use(countries_default);
+router26.use(numbers_default);
+router26.use(wallet_default);
+router26.use(dashboard_default);
+router26.use(currencies_default);
+router26.use(admin_auth_default);
+router26.use(footer_default);
+router26.use(support_default);
+router26.use(notifications_default);
+router26.use(banners_default);
+router26.use(otp_default);
+router26.use(forgot_password_default);
+router26.use(referral_default);
+router26.use(admin_default);
+router26.use(admin_support_default);
+router26.use(admin_notifications_default);
+router26.use(admin_emails_default);
+router26.use(admin_payment_routing_default);
+router26.use(admin_fivesim_default);
+var routes_default = router26;
 
 // src/app.ts
 init_logger2();
@@ -119245,6 +119622,14 @@ async function pollAll() {
 async function pollSingleOrder(client, vn) {
   const orderId = Number(vn.externalOrderId);
   if (!orderId || isNaN(orderId)) return;
+  const isHosting = vn.numberType === "hosting";
+  if (isHosting) {
+    await pollHostingOrder(client, vn, orderId);
+  } else {
+    await pollActivationOrder(client, vn, orderId);
+  }
+}
+async function pollActivationOrder(client, vn, orderId) {
   try {
     const order = await client.checkOrder(orderId);
     if (order.status === "TIMEOUT") {
@@ -119256,49 +119641,18 @@ async function pollSingleOrder(client, vn) {
       return;
     }
     if (order.sms && order.sms.length > 0) {
-      const existingMsgs = await db.select({ body: smsMessagesTable.body }).from(smsMessagesTable).where(eq(smsMessagesTable.numberId, vn.id));
-      const existingBodies = new Set(existingMsgs.map((m2) => m2.body));
-      let newSmsCount = 0;
-      for (const sms of order.sms) {
-        if (!existingBodies.has(sms.text)) {
-          await db.insert(smsMessagesTable).values({
-            numberId: vn.id,
-            sender: sms.sender || "Unknown",
-            body: sms.text,
-            code: sms.code || extractCode2(sms.text) || ""
-          });
-          newSmsCount++;
-          logger.info({ numberId: vn.id, orderId, sender: sms.sender }, "[5sim-poller] New SMS saved");
-        }
-      }
+      const newSmsCount = await saveNewSmsMessages(vn.id, order.sms);
       if (newSmsCount > 0 || order.status === "RECEIVED" || order.status === "FINISHED") {
         await db.update(virtualNumbersTable).set({ status: "received" }).where(eq(virtualNumbersTable.id, vn.id));
         if (order.status === "RECEIVED") {
           try {
             await client.finishOrder(orderId);
-            logger.info({ orderId }, "[5sim-poller] Order marked as FINISHED on 5sim");
+            logger.info({ orderId }, "[5sim-poller] Activation order finished on 5sim");
           } catch {
           }
         }
         if (newSmsCount > 0) {
-          try {
-            const latestSms = order.sms?.[order.sms.length - 1];
-            const code = latestSms ? latestSms.code || extractCode2(latestSms.text) || "" : "";
-            const notifTitle = "\u{1F4E9} SMS re\xE7u";
-            const notifBody = code ? `Code re\xE7u : ${code} \u2014 V\xE9rifiez votre num\xE9ro virtuel.` : "Un SMS est arriv\xE9 sur votre num\xE9ro virtuel.";
-            const [notif] = await db.insert(notificationsTable).values({
-              userId: vn.userId,
-              title: notifTitle,
-              body: notifBody,
-              type: "sms",
-              icon: "message",
-              link: `/numbers/${vn.id}`,
-              metadata: { numberId: vn.id, code, sender: latestSms?.sender }
-            }).returning();
-            if (notif) broadcastNotification(notif);
-          } catch (e2) {
-            logger.warn({ err: e2.message }, "[5sim-poller] Failed to send SMS notification");
-          }
+          await pushSmsNotification(vn, order.sms);
         }
       }
     }
@@ -119317,6 +119671,69 @@ async function pollSingleOrder(client, vn) {
     }
   }
 }
+async function pollHostingOrder(client, vn, orderId) {
+  try {
+    const inbox = await client.getSmsInbox(orderId);
+    if (!inbox?.Data || inbox.Data.length === 0) {
+      return;
+    }
+    const newSmsCount = await saveNewSmsMessages(vn.id, inbox.Data);
+    if (newSmsCount > 0) {
+      logger.info({ orderId, numberId: vn.id, newSmsCount }, "[5sim-poller] New SMS in hosting inbox");
+      await pushSmsNotification(vn, inbox.Data.slice(-newSmsCount));
+    }
+  } catch (e2) {
+    if (e2 instanceof FiveSimError) {
+      if (e2.isNotFound) {
+        await handleExpiredOrder(vn);
+      } else if (e2.isUnauthorized) {
+        logger.error("[5sim-poller] Unauthorised 5sim API key \u2014 stopping poller");
+        stopFiveSimPoller();
+      } else {
+        logger.warn({ err: e2.message, orderId, numberId: vn.id }, "[5sim-poller] Hosting poll error");
+      }
+    } else {
+      logger.warn({ err: e2.message, numberId: vn.id }, "[5sim-poller] Hosting poll error");
+    }
+  }
+}
+async function saveNewSmsMessages(numberId, smsList) {
+  const existingMsgs = await db.select({ body: smsMessagesTable.body }).from(smsMessagesTable).where(eq(smsMessagesTable.numberId, numberId));
+  const existingBodies = new Set(existingMsgs.map((m2) => m2.body));
+  let newSmsCount = 0;
+  for (const sms of smsList) {
+    if (!existingBodies.has(sms.text)) {
+      await db.insert(smsMessagesTable).values({
+        numberId,
+        sender: sms.sender || "Unknown",
+        body: sms.text,
+        code: sms.code || extractCode2(sms.text) || ""
+      });
+      newSmsCount++;
+      logger.info({ numberId, sender: sms.sender }, "[5sim-poller] New SMS saved");
+    }
+  }
+  return newSmsCount;
+}
+async function pushSmsNotification(vn, smsList) {
+  try {
+    const latestSms = smsList[smsList.length - 1];
+    const code = latestSms ? latestSms.code || extractCode2(latestSms.text) || "" : "";
+    const notifBody = code ? `Code re\xE7u : ${code} \u2014 V\xE9rifiez votre num\xE9ro virtuel.` : "Un SMS est arriv\xE9 sur votre num\xE9ro virtuel.";
+    const [notif] = await db.insert(notificationsTable).values({
+      userId: vn.userId,
+      title: "\u{1F4E9} SMS re\xE7u",
+      body: notifBody,
+      type: "sms",
+      icon: "message",
+      link: `/numbers/${vn.id}`,
+      metadata: { numberId: vn.id, code, sender: latestSms?.sender }
+    }).returning();
+    if (notif) broadcastNotification(notif);
+  } catch (e2) {
+    logger.warn({ err: e2.message }, "[5sim-poller] Failed to send SMS notification");
+  }
+}
 async function handleExpiredOrder(vn) {
   const [current] = await db.select({ status: virtualNumbersTable.status }).from(virtualNumbersTable).where(eq(virtualNumbersTable.id, vn.id)).limit(1);
   if (!current || current.status !== "waiting") return;
@@ -119326,7 +119743,7 @@ async function handleExpiredOrder(vn) {
     const [notif] = await db.insert(notificationsTable).values({
       userId: vn.userId,
       title: "\u23F0 Num\xE9ro expir\xE9",
-      body: "Votre num\xE9ro virtuel a expir\xE9 sans recevoir de SMS. Si aucun SMS n'a \xE9t\xE9 re\xE7u, un remboursement sera effectu\xE9 automatiquement.",
+      body: "Votre num\xE9ro virtuel a expir\xE9 sans recevoir de SMS. Un remboursement sera effectu\xE9 automatiquement si aucun SMS n'a \xE9t\xE9 re\xE7u.",
       type: "expired",
       icon: "clock",
       link: `/numbers`,
@@ -120241,7 +120658,7 @@ async function seedCountryPaymentConfigs() {
 }
 
 // src/app.ts
-var app = (0, import_express27.default)();
+var app = (0, import_express28.default)();
 app.set("trust proxy", 1);
 app.use(
   helmet({
@@ -120264,14 +120681,14 @@ app.use(
 );
 app.use((0, import_cors.default)({ credentials: true, origin: true }));
 app.use(
-  import_express27.default.json({
+  import_express28.default.json({
     limit: "8mb",
     verify: (req, _res, buf) => {
       req.rawBody = buf.toString("utf8");
     }
   })
 );
-app.use(import_express27.default.urlencoded({ extended: true, limit: "8mb" }));
+app.use(import_express28.default.urlencoded({ extended: true, limit: "8mb" }));
 app.use((0, import_cookie_parser.default)());
 app.use(globalRateLimit);
 app.use(checkMaintenanceMode);
@@ -120301,7 +120718,7 @@ if (process.env.NODE_ENV === "production") {
   if (currentDir) {
     const publicDir = import_path2.default.join(currentDir, "public");
     if ((0, import_fs3.existsSync)(publicDir)) {
-      app.use(import_express27.default.static(publicDir));
+      app.use(import_express28.default.static(publicDir));
       app.use((_req, res) => {
         res.sendFile(import_path2.default.join(publicDir, "index.html"));
       });
