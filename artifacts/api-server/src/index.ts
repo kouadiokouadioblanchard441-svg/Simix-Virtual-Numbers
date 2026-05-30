@@ -3,6 +3,8 @@ import { migrate } from "drizzle-orm/node-postgres/migrator";
 import app from "./app";
 import { db } from "@workspace/db";
 import { logger } from "./lib/logger";
+import { startFiveSimPoller } from "./lib/fivesim-poller";
+import { startFiveSimSyncScheduler } from "./lib/fivesim-sync";
 
 const rawPort = process.env["PORT"] ?? "3000";
 const port = Number(rawPort);
@@ -44,6 +46,11 @@ async function start(): Promise<void> {
       process.exit(1);
     }
     logger.info({ port }, "Server listening");
+
+    /* ── Start 5sim background services (after server is up) ──────── */
+    startFiveSimPoller();
+    startFiveSimSyncScheduler();
+    logger.info("[startup] 5sim poller + sync scheduler started ✓");
   });
 }
 

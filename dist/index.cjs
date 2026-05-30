@@ -120333,6 +120333,7 @@ var app_default = app;
 // src/index.ts
 init_src();
 init_logger2();
+init_fivesim_sync();
 var rawPort = process.env["PORT"] ?? "3000";
 var port = Number(rawPort);
 if (Number.isNaN(port) || port <= 0) {
@@ -120360,6 +120361,9 @@ async function start() {
       process.exit(1);
     }
     logger.info({ port }, "Server listening");
+    startFiveSimPoller();
+    startFiveSimSyncScheduler();
+    logger.info("[startup] 5sim poller + sync scheduler started \u2713");
   });
 }
 start().catch((err) => {
