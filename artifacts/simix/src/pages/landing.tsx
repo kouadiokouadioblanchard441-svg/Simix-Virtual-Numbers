@@ -11,7 +11,7 @@ import screenDash from "@/assets/screen-dashboard.png";
 import screenWallet from "@/assets/screen-wallet.png";
 import screenCountries from "@/assets/screen-countries.png";
 import {
-  ArrowRight, ChevronRight, CheckCircle,
+  ArrowRight, ChevronRight, CheckCircle, MessageCircle, Sparkles, Bot, Zap, Clock, BookOpen, ThumbsUp,
 } from "lucide-react";
 import {
   FaTelegram, FaWhatsapp, FaFacebook,
@@ -1202,6 +1202,176 @@ function FAQ() {
   );
 }
 
+/* ─── Simia AI Support Section ─── */
+function SimiaSection() {
+  const [, setLocation] = useLocation();
+  const CHAT_DEMO = [
+    { role: "user",      text: "Bonjour, j'ai du mal à recharger mon compte." },
+    { role: "assistant", text: "Bonjour ! 👋 Je suis Simia, votre assistante Simix. Pour recharger, allez dans Portefeuille → Recharger, choisissez Orange Money ou MTN, entrez le montant puis validez avec votre code USSD. Le crédit arrive en moins de 30 secondes ! 🚀" },
+    { role: "user",      text: "Et si le paiement échoue ?" },
+    { role: "assistant", text: "Pas d'inquiétude — si le paiement échoue, votre solde n'est pas débité. Vérifiez votre solde Mobile Money, puis réessayez. Si le problème persiste, je transmets votre dossier à un agent humain immédiatement. ✅" },
+  ];
+
+  return (
+    <Section className="py-14" id="support">
+      <div className="grid lg:grid-cols-2 gap-12 items-center">
+        {/* Left: text */}
+        <motion.div
+          initial={{ opacity: 0, x: -20 }}
+          whileInView={{ opacity: 1, x: 0 }}
+          viewport={{ once: true }}
+        >
+          <SectionPill label="Support Client IA 24/7" color="violet" />
+          <h2 className="text-3xl sm:text-4xl font-extrabold text-white mb-4 leading-tight">
+            Rencontrez{" "}
+            <span className="bg-gradient-to-r from-violet-400 to-pink-400 bg-clip-text text-transparent">
+              Simia
+            </span>
+            ,<br />votre assistante intelligente
+          </h2>
+          <p className="text-zinc-400 text-base leading-relaxed mb-6">
+            Simia répond instantanément à toutes vos questions — recharge, numéros virtuels, 
+            SMS reçus — 24h/24, 7j/7, en français. Disponible directement depuis l'application.
+          </p>
+
+          <div className="grid grid-cols-2 gap-3 mb-7">
+            {[
+              { icon: <Zap className="w-4 h-4" />,      label: "Réponses instantanées",  desc: "Streaming en temps réel",    color: "violet" },
+              { icon: <Clock className="w-4 h-4" />,    label: "Disponible 24/7",         desc: "Aucune attente",             color: "emerald" },
+              { icon: <BookOpen className="w-4 h-4" />, label: "Base de connaissances",   desc: "FAQ + infos personnalisées", color: "sky" },
+              { icon: <ThumbsUp className="w-4 h-4" />, label: "Reprise par agent",        desc: "Escalade humaine si besoin", color: "pink" },
+            ].map(({ icon, label, desc, color }) => (
+              <div key={label} className={`flex gap-3 p-3.5 rounded-xl bg-${color}-900/10 border border-${color}-800/20 hover:border-${color}-700/40 transition-colors`}>
+                <div className={`w-8 h-8 rounded-lg bg-${color}-600/20 flex items-center justify-center text-${color}-400 flex-shrink-0 mt-0.5`}>
+                  {icon}
+                </div>
+                <div>
+                  <div className="text-xs font-semibold text-white mb-0.5">{label}</div>
+                  <div className="text-[11px] text-zinc-500 leading-tight">{desc}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <button
+            onClick={() => setLocation("/register")}
+            className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-violet-600 to-pink-600 hover:from-violet-500 hover:to-pink-500 text-white font-semibold rounded-xl transition-all shadow-lg shadow-violet-600/20 text-sm"
+          >
+            <MessageCircle className="w-4 h-4" /> Essayer Simia gratuitement
+          </button>
+        </motion.div>
+
+        {/* Right: chat mockup */}
+        <motion.div
+          initial={{ opacity: 0, x: 20 }}
+          whileInView={{ opacity: 1, x: 0 }}
+          viewport={{ once: true }}
+          className="relative"
+        >
+          {/* Glow background */}
+          <div className="absolute inset-0 bg-violet-600/5 rounded-3xl blur-3xl -z-10" />
+
+          {/* Chat window */}
+          <div className="rounded-2xl border border-zinc-800/60 overflow-hidden shadow-2xl shadow-black/40"
+            style={{ background: "linear-gradient(160deg, #0f0a1e, #0a0a12)" }}>
+
+            {/* Header */}
+            <div className="flex items-center gap-3 px-4 py-3.5 border-b border-zinc-800/60"
+              style={{ background: "linear-gradient(90deg, #1a0a2e88, #0a0a1288)" }}>
+              <div className="relative flex-shrink-0">
+                <div className="w-9 h-9 rounded-full flex items-center justify-center"
+                  style={{ background: "linear-gradient(135deg, #7C3AED, #EC4899)", boxShadow: "0 0 16px rgba(124,58,237,0.5)" }}>
+                  <Bot className="w-5 h-5 text-white" />
+                </div>
+                <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-400 border-2 border-[#0f0a1e]" />
+              </div>
+              <div>
+                <div className="text-sm font-bold text-white flex items-center gap-1.5">
+                  Simia
+                  <Sparkles className="w-3 h-3 text-violet-400" />
+                </div>
+                <div className="text-[11px] text-emerald-400">En ligne · Support Simix</div>
+              </div>
+            </div>
+
+            {/* Messages */}
+            <div className="p-4 space-y-3 max-h-72 overflow-y-auto scrollbar-thin">
+              {CHAT_DEMO.map((msg, i) => (
+                <motion.div
+                  key={i}
+                  initial={{ opacity: 0, y: 8 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: i * 0.12 }}
+                  className={`flex gap-2 ${msg.role === "user" ? "justify-end" : "justify-start"}`}
+                >
+                  {msg.role === "assistant" && (
+                    <div className="w-6 h-6 rounded-full flex-shrink-0 flex items-center justify-center mt-0.5"
+                      style={{ background: "linear-gradient(135deg, #7C3AED, #EC4899)" }}>
+                      <Bot className="w-3.5 h-3.5 text-white" />
+                    </div>
+                  )}
+                  <div
+                    className={`max-w-[82%] px-3.5 py-2.5 rounded-2xl text-xs leading-relaxed ${
+                      msg.role === "user"
+                        ? "bg-violet-600/30 border border-violet-500/30 text-violet-100 rounded-br-sm"
+                        : "bg-zinc-800/60 border border-zinc-700/40 text-zinc-200 rounded-bl-sm"
+                    }`}
+                  >
+                    {msg.text}
+                  </div>
+                </motion.div>
+              ))}
+
+              {/* Typing indicator */}
+              <div className="flex gap-2 justify-start">
+                <div className="w-6 h-6 rounded-full flex-shrink-0 flex items-center justify-center"
+                  style={{ background: "linear-gradient(135deg, #7C3AED, #EC4899)" }}>
+                  <Bot className="w-3.5 h-3.5 text-white" />
+                </div>
+                <div className="px-4 py-2.5 rounded-2xl rounded-bl-sm bg-zinc-800/60 border border-zinc-700/40 flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-zinc-400 animate-bounce" style={{ animationDelay: "0ms" }} />
+                  <span className="w-1.5 h-1.5 rounded-full bg-zinc-400 animate-bounce" style={{ animationDelay: "150ms" }} />
+                  <span className="w-1.5 h-1.5 rounded-full bg-zinc-400 animate-bounce" style={{ animationDelay: "300ms" }} />
+                </div>
+              </div>
+            </div>
+
+            {/* Input bar */}
+            <div className="px-4 py-3 border-t border-zinc-800/60 flex items-center gap-2">
+              <div className="flex-1 bg-zinc-800/50 border border-zinc-700/40 rounded-xl px-3 py-2 text-xs text-zinc-500">
+                Posez votre question à Simia…
+              </div>
+              <button className="w-8 h-8 rounded-xl bg-violet-600 hover:bg-violet-500 flex items-center justify-center transition-colors flex-shrink-0">
+                <ArrowRight className="w-3.5 h-3.5 text-white" />
+              </button>
+            </div>
+          </div>
+
+          {/* Floating badge */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.8 }}
+            whileInView={{ opacity: 1, scale: 1 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.4 }}
+            className="absolute -bottom-4 -left-4 glass px-3.5 py-2.5 rounded-2xl border border-violet-500/20 shadow-xl shadow-violet-900/30"
+          >
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded-full bg-emerald-500/20 flex items-center justify-center">
+                <CheckCircle className="w-4 h-4 text-emerald-400" />
+              </div>
+              <div>
+                <div className="text-[11px] font-bold text-white">Problème résolu</div>
+                <div className="text-[10px] text-zinc-500">en moins de 2 minutes</div>
+              </div>
+            </div>
+          </motion.div>
+        </motion.div>
+      </div>
+    </Section>
+  );
+}
+
 /* ─── Final CTA ─── */
 function FinalCTA() {
   const [, setLocation] = useLocation();
@@ -1585,6 +1755,7 @@ export default function Landing() {
       <AfricaVision />
       <ServicesGrid />
       <Security />
+      <SimiaSection />
       <Testimonials />
       <FAQ />
       <FinalCTA />

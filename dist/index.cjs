@@ -111819,14 +111819,17 @@ router5.get("/services", async (req, res) => {
     return;
   }
   const { search, category } = parsed.data;
-  const conditions = [];
+  const conditions = [
+    eq(servicesTable.enabled, true),
+    lte(servicesTable.sortOrder, 180)
+  ];
   if (search && search.length > 0) {
     conditions.push(ilike(servicesTable.name, `%${search}%`));
   }
   if (category && category.length > 0) {
     conditions.push(eq(servicesTable.category, category));
   }
-  const rows = await db.select().from(servicesTable).where(conditions.length > 0 ? and(...conditions) : void 0).orderBy(asc(servicesTable.sortOrder));
+  const rows = await db.select().from(servicesTable).where(and(...conditions)).orderBy(asc(servicesTable.sortOrder));
   res.json(rows.map(toService));
 });
 router5.get("/services/popular", async (_req, res) => {

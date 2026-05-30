@@ -1,1 +1,2 @@
 - [Admin router global middleware trap](admin-router-middleware-trap.md) — new non-admin routes must be registered BEFORE adminRouter in routes/index.ts or they return "Admin session required".
+- [Services table filtering](services-filter.md) — 5sim sync adds 1000+ products with sort_order=200; curated 18 have sort_order 10–180. Always filter with lte(sortOrder,180).

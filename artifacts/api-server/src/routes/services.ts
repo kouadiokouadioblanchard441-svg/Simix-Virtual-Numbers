@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { and, asc, desc, eq, ilike } from "drizzle-orm";
+import { and, asc, desc, eq, ilike, lte } from "drizzle-orm";
 import { db, servicesTable } from "@workspace/db";
 import { ListServicesQueryParams } from "@workspace/api-zod";
 import { toService } from "../lib/serializers";
@@ -13,9 +13,15 @@ router.get("/services", async (req, res): Promise<void> => {
     return;
   }
   const { search, category } = parsed.data;
-  const conditions = [];
+
+  /* Only return the 18 curated main services (sort_order 10–180).
+     5sim-synced catch-all products all have sort_order=200 and are excluded. */
+  const conditions: ReturnType<typeof eq>[] = [
+    eq(servicesTable.enabled, true),
+    lte(servicesTable.sortOrder, 180),
+  ];
   if (search && search.length > 0) {
-    conditions.push(ilike(servicesTable.name, `%${search}%`));
+    conditions.push(ilike(servicesTable.name, `%${search}%`) as any);
   }
   if (category && category.length > 0) {
     conditions.push(eq(servicesTable.category, category));
@@ -24,7 +30,7 @@ router.get("/services", async (req, res): Promise<void> => {
   const rows = await db
     .select()
     .from(servicesTable)
-    .where(conditions.length > 0 ? and(...conditions) : undefined)
+    .where(and(...conditions))
     .orderBy(asc(servicesTable.sortOrder));
 
   res.json(rows.map(toService));
