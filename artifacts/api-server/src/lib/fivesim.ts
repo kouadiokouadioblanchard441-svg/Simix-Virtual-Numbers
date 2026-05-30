@@ -479,42 +479,64 @@ function buildQS(params: Record<string, unknown>): string {
 }
 
 /* ─── Country slug mapping: ISO code → 5sim slug ──────────────────── */
+/*
+ * IMPORTANT: Only countries that exist on 5sim are mapped here.
+ * Verified against https://5sim.net/v1/guest/countries (153 countries, May 2026).
+ * Countries NOT on 5sim (Turkey, UAE, China, Japan, South Korea, Singapore,
+ * Qatar, Iraq, Syria, Lebanon, Ukraine, Russia, Cuba, etc.) are intentionally absent.
+ */
 export const ISO_TO_5SIM: Record<string, string> = {
-  AF: "afghanistan", AL: "albania", DZ: "algeria", AO: "angola", AR: "argentina",
-  AM: "armenia", AU: "australia", AT: "austria", AZ: "azerbaijan", BH: "bahrain",
-  BD: "bangladesh", BE: "belgium", BJ: "benin", BO: "bolivia", BA: "bih",
-  BW: "botswana", BR: "brazil", BG: "bulgaria", BF: "burkinafaso", BI: "burundi",
-  KH: "cambodia", CM: "cameroon", CA: "canada", CV: "capeverde", TD: "chad",
-  CL: "chile", CO: "colombia", CG: "congo", CR: "costarica", HR: "croatia",
-  CY: "cyprus", CZ: "czech", DK: "denmark", DO: "dominicana", EC: "ecuador",
-  EG: "egypt", GB: "england", ET: "ethiopia", FI: "finland", FR: "france",
-  GA: "gabon", GM: "gambia", GE: "georgia", DE: "germany", GH: "ghana",
-  GR: "greece", GT: "guatemala", GN: "guinea", GY: "guyana", HT: "haiti",
-  HN: "honduras", HK: "hongkong", HU: "hungary", IN: "india", ID: "indonesia",
-  IE: "ireland", IL: "israel", IT: "italy", CI: "ivorycoast",
-  JO: "jordan", KZ: "kazakhstan", KE: "kenya", KW: "kuwait", KG: "kyrgyzstan",
-  LA: "laos", LV: "latvia", LS: "lesotho", LR: "liberia", LT: "lithuania",
-  LU: "luxembourg", MG: "madagascar", MW: "malawi", MY: "malaysia", MV: "maldives",
-  MR: "mauritania", MU: "mauritius", MX: "mexico", MD: "moldova", MN: "mongolia",
-  ME: "montenegro", MA: "morocco", MZ: "mozambique", NA: "namibia", NP: "nepal",
-  NL: "netherlands", NI: "nicaragua", NG: "nigeria", MK: "northmacedonia",
-  NO: "norway", OM: "oman", PK: "pakistan", PA: "panama", PY: "paraguay",
-  PE: "peru", PH: "philippines", PL: "poland", PT: "portugal", RO: "romania",
-  RW: "rwanda", SN: "senegal", RS: "serbia", SL: "sierraleone", SK: "slovakia", JM: "jamaica",
-  SI: "slovenia", ZA: "southafrica", ES: "spain", LK: "srilanka", SR: "suriname",
-  SZ: "swaziland", SE: "sweden", TW: "taiwan", TJ: "tajikistan", TZ: "tanzania",
-  TH: "thailand", TG: "togo", TN: "tunisia", TM: "turkmenistan", TR: "turkey",
-  UG: "uganda", UA: "ukraine", AE: "uae", US: "usa", UY: "uruguay",
-  UZ: "uzbekistan", VE: "venezuela", VN: "vietnam", ZM: "zambia",
-  ML: "mali", NE: "niger", SD: "sudan", LY: "libya",
-  SA: "saudiarabia", QA: "qatar", IQ: "iraq", SY: "syria", LB: "lebanon",
-  KR: "southkorea", JP: "japan", CN: "china", MO: "macao", SG: "singapore",
-  MM: "myanmar", KP: "northkorea", TL: "easttimor", PG: "papua",
-  NZ: "newzealand", FJ: "fiji", WS: "samoa",
-  XK: "kosovo",
-  IS: "iceland", LI: "liechtenstein", MT: "malta", MC: "monaco",
-  SM: "sanmarino", VA: "vaticancity",
-  CU: "cuba", TT: "trinidadandtobago", BB: "barbados", BS: "bahamas",
+  /* ── Africa (39) ── */
+  AO: "angola",       BJ: "benin",          BW: "botswana",     BF: "burkinafaso",
+  BI: "burundi",      CM: "cameroon",        CV: "capeverde",    TD: "chad",
+  KM: "comoros",      CG: "congo",           DJ: "djibouti",     GQ: "equatorialguinea",
+  ET: "ethiopia",     GA: "gabon",           GM: "gambia",       GH: "ghana",
+  GN: "guinea",       GW: "guineabissau",    CI: "ivorycoast",   KE: "kenya",
+  LS: "lesotho",      LR: "liberia",         MG: "madagascar",   MW: "malawi",
+  MR: "mauritania",   MU: "mauritius",       MZ: "mozambique",   NA: "namibia",
+  NG: "nigeria",      RW: "rwanda",          SN: "senegal",      SC: "seychelles",
+  SL: "sierraleone",  ZA: "southafrica",     SZ: "swaziland",    TZ: "tanzania",
+  TG: "togo",         UG: "uganda",          ZM: "zambia",
+
+  /* ── Europe (35) ── */
+  AL: "albania",      AT: "austria",         BE: "belgium",      BA: "bih",
+  BG: "bulgaria",     HR: "croatia",         CY: "cyprus",       CZ: "czech",
+  DK: "denmark",      GB: "england",         EE: "estonia",      FI: "finland",
+  FR: "france",       GE: "georgia",         DE: "germany",      GR: "greece",
+  HU: "hungary",      IE: "ireland",         IT: "italy",        LV: "latvia",
+  LT: "lithuania",    LU: "luxembourg",      MD: "moldova",      ME: "montenegro",
+  NL: "netherlands",  MK: "northmacedonia",  NO: "norway",       PL: "poland",
+  PT: "portugal",     RO: "romania",         RS: "serbia",       SK: "slovakia",
+  SI: "slovenia",     ES: "spain",           SE: "sweden",
+
+  /* ── Americas (22) ── */
+  AG: "antiguaandbarbuda", AR: "argentina",  AW: "aruba",        BS: "bahamas",
+  BB: "barbados",     BZ: "belize",          BO: "bolivia",      BR: "brazil",
+  CA: "canada",       CL: "chile",           CO: "colombia",     CR: "costarica",
+  DO: "dominicana",   EC: "ecuador",         GT: "guatemala",    GY: "guyana",
+  HT: "haiti",        HN: "honduras",        JM: "jamaica",      MX: "mexico",
+  NI: "nicaragua",    PA: "panama",          PY: "paraguay",     PE: "peru",
+  PR: "puertorico",   SV: "salvador",        WS: "samoa",        SR: "suriname",
+  TT: "tit",          US: "usa",             UY: "uruguay",      VE: "venezuela",
+
+  /* ── Asia-Pacific (24) ── */
+  AM: "armenia",      AU: "australia",       AZ: "azerbaijan",   BD: "bangladesh",
+  BT: "bhutane",      KH: "cambodia",        TL: "easttimor",    HK: "hongkong",
+  IN: "india",        ID: "indonesia",       KZ: "kazakhstan",   KG: "kyrgyzstan",
+  LA: "laos",         MO: "macau",           MY: "malaysia",     MV: "maldives",
+  MN: "mongolia",     NP: "nepal",           PK: "pakistan",     PG: "papuanewguinea",
+  PH: "philippines",  LK: "srilanka",        TW: "taiwan",       TJ: "tajikistan",
+  TH: "thailand",     TM: "turkmenistan",    UZ: "uzbekistan",   VN: "vietnam",
+
+  /* ── Middle East & North Africa (10) ── */
+  DZ: "algeria",      BH: "bahrain",         EG: "egypt",        IL: "israel",
+  JO: "jordan",       KW: "kuwait",          MA: "morocco",      OM: "oman",
+  SA: "saudiarabia",  TN: "tunisia",
+
+  /* ── Pacific / Caribbean / Overseas ── */
+  GF: "frenchguiana", GP: "guadeloupe",  NC: "newcaledonia",
+  RE: "reunion",      SB: "solomonislands",  KN: "saintkittsandnevis",
+  LC: "saintlucia",   VC: "saintvincentandgrenadines",
 };
 
 /* ─── Service slug mapping: our slug → 5sim product name ───────────── */

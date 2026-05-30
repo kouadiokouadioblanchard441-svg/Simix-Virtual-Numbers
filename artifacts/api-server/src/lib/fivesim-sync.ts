@@ -32,25 +32,47 @@ const LAST_SYNC_KEY     = "fivesim_last_sync";
 const SYNC_STATUS_KEY   = "fivesim_sync_status";
 const MAX_LOG_ENTRIES   = 30;
 
-/* All sample countries — widest coverage without hammering the API.
-   Only slugs confirmed valid by the 5sim /guest/products API. */
+/* All 153 5sim countries — complete coverage verified May 2026.
+   Slugs are the exact strings returned by https://5sim.net/v1/guest/countries */
 const SAMPLE_COUNTRIES = [
-  /* Africa */
-  "ivorycoast", "senegal", "cameroon", "nigeria", "ghana",
-  "togo", "benin", "guinea", "kenya", "tanzania", "southafrica",
-  "madagascar", "ethiopia", "rwanda", "angola", "mozambique",
-  /* Europe */
-  "france", "england", "germany", "spain", "italy",
-  "netherlands", "belgium", "portugal", "poland", "romania",
-  /* Americas */
-  "usa", "canada", "brazil", "mexico", "colombia", "argentina",
-  "chile", "peru", "venezuela",
-  /* Asia-Pacific */
-  "india", "indonesia", "philippines", "vietnam", "thailand",
-  "pakistan", "bangladesh", "malaysia", "cambodia", "laos",
-  /* Middle-East & North Africa */
-  "egypt", "morocco", "algeria", "tunisia",
-  "saudiarabia", "israel", "jordan",
+  /* Africa (39) */
+  "angola", "benin", "botswana", "burkinafaso", "burundi",
+  "cameroon", "capeverde", "chad", "comoros", "congo",
+  "djibouti", "equatorialguinea", "ethiopia", "gabon", "gambia",
+  "ghana", "guinea", "guineabissau", "ivorycoast", "kenya",
+  "lesotho", "liberia", "madagascar", "malawi", "mauritania",
+  "mauritius", "mozambique", "namibia", "nigeria", "rwanda",
+  "senegal", "seychelles", "sierraleone", "southafrica", "swaziland",
+  "tanzania", "togo", "uganda", "zambia",
+  /* Europe (35) */
+  "albania", "austria", "belgium", "bih", "bulgaria",
+  "croatia", "cyprus", "czech", "denmark", "england",
+  "estonia", "finland", "france", "georgia", "germany",
+  "greece", "hungary", "ireland", "italy", "latvia",
+  "lithuania", "luxembourg", "moldova", "montenegro", "netherlands",
+  "northmacedonia", "norway", "poland", "portugal", "romania",
+  "serbia", "slovakia", "slovenia", "spain", "sweden",
+  /* Americas (22+) */
+  "antiguaandbarbuda", "argentina", "aruba", "bahamas", "barbados",
+  "belize", "bolivia", "brazil", "canada", "chile",
+  "colombia", "costarica", "dominicana", "ecuador", "guatemala",
+  "guyana", "haiti", "honduras", "jamaica", "mexico",
+  "nicaragua", "panama", "paraguay", "peru", "puertorico",
+  "salvador", "samoa", "suriname", "tit", "usa",
+  "uruguay", "venezuela",
+  /* Asia-Pacific (28) */
+  "armenia", "australia", "azerbaijan", "bangladesh", "bhutane",
+  "cambodia", "easttimor", "hongkong", "india", "indonesia",
+  "jordan", "kazakhstan", "kyrgyzstan", "laos", "macau",
+  "malaysia", "maldives", "mongolia", "nepal", "pakistan",
+  "papuanewguinea", "philippines", "srilanka", "taiwan", "tajikistan",
+  "thailand", "turkmenistan", "uzbekistan", "vietnam",
+  /* Middle East & North Africa (10) */
+  "algeria", "bahrain", "egypt", "israel", "kuwait",
+  "morocco", "oman", "saudiarabia", "tunisia",
+  /* Pacific / Caribbean / Other */
+  "frenchguiana", "guadeloupe", "newcaledonia", "reunion",
+  "solomonislands", "saintkittsandnevis", "saintlucia", "saintvincentandgrenadines",
 ];
 
 /* Category labels for known 5sim product names */

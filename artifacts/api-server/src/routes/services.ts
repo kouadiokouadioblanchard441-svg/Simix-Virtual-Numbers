@@ -14,11 +14,11 @@ router.get("/services", async (req, res): Promise<void> => {
   }
   const { search, category } = parsed.data;
 
-  /* Only return the 18 curated main services (sort_order 10–180).
+  /* Only return curated main services (sort_order 10–199).
      5sim-synced catch-all products all have sort_order=200 and are excluded. */
   const conditions: ReturnType<typeof eq>[] = [
     eq(servicesTable.enabled, true),
-    lte(servicesTable.sortOrder, 180),
+    lte(servicesTable.sortOrder, 199),
   ];
   if (search && search.length > 0) {
     conditions.push(ilike(servicesTable.name, `%${search}%`) as any);
