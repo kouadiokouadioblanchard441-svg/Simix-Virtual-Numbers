@@ -116544,22 +116544,31 @@ router16.post("/admin/emails/send", requireAdmin5, async (req, res) => {
     res.status(400).json({ error: "Contenu requis" });
     return;
   }
+  const resend = await getResend2();
+  if (!resend) {
+    res.status(503).json({
+      error: "Cl\xE9 API Resend non configur\xE9e. Ajoutez RESEND_API_KEY dans les secrets ou dans Param\xE8tres > Int\xE9grations > Resend."
+    });
+    return;
+  }
   const finalHtml = htmlContent?.trim() || buildEmailHtml(subject, body.replace(/\n/g, "<br>"), templateType);
+  function isRealEmail(email) {
+    if (!email || !email.includes("@")) return false;
+    const trimmed = email.trim().toLowerCase();
+    if (trimmed.endsWith("@simix.app")) return false;
+    if (trimmed.endsWith("@example.com") || trimmed.endsWith("@test.com")) return false;
+    return true;
+  }
   let recipients = [];
   if (recipientsType === "all") {
-    recipients = await db.select({ id: usersTable.id, email: usersTable.email, fullName: usersTable.fullName }).from(usersTable).where(
-      and(
-        ne(usersTable.status, "Bloqu\xE9"),
-        isNotNull(usersTable.email)
-      )
-    );
-    recipients = recipients.filter((r2) => r2.email && r2.email.trim().length > 0 && r2.email.includes("@"));
+    const rows = await db.select({ id: usersTable.id, email: usersTable.email, fullName: usersTable.fullName }).from(usersTable).where(and(ne(usersTable.status, "Bloqu\xE9"), isNotNull(usersTable.email)));
+    recipients = rows.filter((r2) => isRealEmail(r2.email));
   } else if (recipientsType === "specific" && userIds?.length) {
     const allUsers = await db.select({ id: usersTable.id, email: usersTable.email, fullName: usersTable.fullName }).from(usersTable).where(isNotNull(usersTable.email));
-    recipients = allUsers.filter((r2) => r2.id && userIds.includes(r2.id) && r2.email?.includes("@"));
+    recipients = allUsers.filter((r2) => r2.id && userIds.includes(r2.id) && isRealEmail(r2.email));
   }
   if (recipients.length === 0) {
-    res.status(400).json({ error: "Aucun destinataire trouv\xE9. Assurez-vous que vos utilisateurs ont un email enregistr\xE9." });
+    res.status(400).json({ error: "Aucun destinataire avec une adresse email r\xE9elle. Les emails placeholder (@simix.app) sont exclus." });
     return;
   }
   const [campaign] = await db.insert(emailCampaignsTable).values({
@@ -116573,17 +116582,18 @@ router16.post("/admin/emails/send", requireAdmin5, async (req, res) => {
     totalRecipients: recipients.length
   }).returning();
   res.status(202).json({ campaignId: campaign.id, totalRecipients: recipients.length, message: "Envoi en cours..." });
-  const resend = await getResend2();
   let sentCount = 0;
   let failedCount = 0;
-  for (const recipient of recipients) {
-    if (!recipient.email) {
-      failedCount++;
-      continue;
-    }
-    try {
-      let messageId = null;
-      if (resend) {
+  const BATCH_SIZE = 5;
+  const BATCH_DELAY_MS = 200;
+  for (let i2 = 0; i2 < recipients.length; i2 += BATCH_SIZE) {
+    const batch = recipients.slice(i2, i2 + BATCH_SIZE);
+    await Promise.all(batch.map(async (recipient) => {
+      if (!recipient.email) {
+        failedCount++;
+        return;
+      }
+      try {
         const result = await resend.emails.send({
           from: getFromEmail2(),
           to: recipient.email,
@@ -116591,35 +116601,40 @@ router16.post("/admin/emails/send", requireAdmin5, async (req, res) => {
           html: finalHtml,
           text: body?.trim()
         });
-        messageId = result.data?.id ?? null;
+        if (result.error) {
+          throw new Error(`Resend API error: ${result.error.message ?? JSON.stringify(result.error)}`);
+        }
+        const messageId = result.data?.id ?? null;
         sentCount++;
-      } else {
-        logger.warn({ email: recipient.email }, "[emails] RESEND_API_KEY not set \u2014 simulating send");
-        sentCount++;
-        messageId = `simulated-${Date.now()}`;
+        await db.insert(emailLogsTable).values({
+          campaignId: campaign.id,
+          userId: recipient.id,
+          email: recipient.email,
+          status: "sent",
+          messageId,
+          sentAt: /* @__PURE__ */ new Date()
+        });
+        logger.debug({ email: recipient.email, messageId }, "[emails] Email sent");
+      } catch (err) {
+        failedCount++;
+        const errMsg = err instanceof Error ? err.message : String(err);
+        logger.error({ email: recipient.email, err: errMsg }, "[emails] Failed to send email");
+        await db.insert(emailLogsTable).values({
+          campaignId: campaign.id,
+          userId: recipient.id,
+          email: recipient.email,
+          status: "failed",
+          error: errMsg
+        });
       }
-      await db.insert(emailLogsTable).values({
-        campaignId: campaign.id,
-        userId: recipient.id,
-        email: recipient.email,
-        status: "sent",
-        messageId,
-        sentAt: /* @__PURE__ */ new Date()
-      });
-    } catch (err) {
-      failedCount++;
-      await db.insert(emailLogsTable).values({
-        campaignId: campaign.id,
-        userId: recipient.id,
-        email: recipient.email,
-        status: "failed",
-        error: String(err)
-      });
+    }));
+    if (i2 + BATCH_SIZE < recipients.length) {
+      await new Promise((r2) => setTimeout(r2, BATCH_DELAY_MS));
     }
-    await new Promise((r2) => setTimeout(r2, 50));
   }
-  await db.update(emailCampaignsTable).set({ status: "sent", sentCount, failedCount, sentAt: /* @__PURE__ */ new Date() }).where(eq(emailCampaignsTable.id, campaign.id));
-  logger.info({ campaignId: campaign.id, sentCount, failedCount }, "[emails] Campaign complete");
+  const finalStatus = failedCount === recipients.length ? "failed" : "sent";
+  await db.update(emailCampaignsTable).set({ status: finalStatus, sentCount, failedCount, sentAt: /* @__PURE__ */ new Date() }).where(eq(emailCampaignsTable.id, campaign.id));
+  logger.info({ campaignId: campaign.id, sentCount, failedCount, totalRecipients: recipients.length }, "[emails] Campaign complete");
 });
 router16.get("/admin/emails/campaigns", requireAdmin5, async (req, res) => {
   const limit = Math.min(Number(req.query.limit) || 20, 100);
@@ -116744,7 +116759,11 @@ router16.get("/admin/emails/recipients", requireAdmin5, async (req, res) => {
       )
     ) : and(ne(usersTable.status, "Bloqu\xE9"), isNotNull(usersTable.email))
   ).limit(limit);
-  const eligible = rows.filter((r2) => r2.email?.includes("@"));
+  const eligible = rows.filter((r2) => {
+    if (!r2.email?.includes("@")) return false;
+    const e2 = r2.email.trim().toLowerCase();
+    return !e2.endsWith("@simix.app") && !e2.endsWith("@example.com") && !e2.endsWith("@test.com");
+  });
   res.json({ recipients: eligible, total: eligible.length });
 });
 router16.get("/admin/emails/stats", requireAdmin5, async (_req, res) => {

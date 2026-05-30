@@ -122,31 +122,46 @@ router.post("/admin/emails/send", requireAdmin, async (req: Request, res: Respon
   if (!subject?.trim()) { res.status(400).json({ error: "Sujet requis" }); return; }
   if (!body?.trim() && !htmlContent?.trim()) { res.status(400).json({ error: "Contenu requis" }); return; }
 
+  /* ── Vérifier Resend AVANT de créer la campagne ─────────── */
+  const resend = await getResend();
+  if (!resend) {
+    res.status(503).json({
+      error: "Clé API Resend non configurée. Ajoutez RESEND_API_KEY dans les secrets ou dans Paramètres > Intégrations > Resend.",
+    });
+    return;
+  }
+
   const finalHtml = htmlContent?.trim() || buildEmailHtml(subject, body!.replace(/\n/g, "<br>"), templateType);
+
+  /* ── Filtre des emails réels (exclure les placeholders @simix.app) ── */
+  function isRealEmail(email: string | null | undefined): boolean {
+    if (!email || !email.includes("@")) return false;
+    const trimmed = email.trim().toLowerCase();
+    if (trimmed.endsWith("@simix.app")) return false;
+    if (trimmed.endsWith("@example.com") || trimmed.endsWith("@test.com")) return false;
+    return true;
+  }
 
   let recipients: { id: string | null; email: string; fullName: string | null }[] = [];
 
   if (recipientsType === "all") {
-    /* Include all users except blocked ones who have an email address */
-    recipients = await db
+    const rows = await db
       .select({ id: usersTable.id, email: usersTable.email, fullName: usersTable.fullName })
       .from(usersTable)
-      .where(
-        and(
-          ne(usersTable.status, "Bloqué"),
-          isNotNull(usersTable.email),
-        )
-      );
-    recipients = recipients.filter(r => r.email && r.email.trim().length > 0 && r.email.includes("@"));
+      .where(and(ne(usersTable.status, "Bloqué"), isNotNull(usersTable.email)));
+    recipients = rows.filter(r => isRealEmail(r.email));
   } else if (recipientsType === "specific" && userIds?.length) {
     const allUsers = await db
       .select({ id: usersTable.id, email: usersTable.email, fullName: usersTable.fullName })
       .from(usersTable)
       .where(isNotNull(usersTable.email));
-    recipients = allUsers.filter(r => r.id && userIds.includes(r.id) && r.email?.includes("@"));
+    recipients = allUsers.filter(r => r.id && userIds.includes(r.id) && isRealEmail(r.email));
   }
 
-  if (recipients.length === 0) { res.status(400).json({ error: "Aucun destinataire trouvé. Assurez-vous que vos utilisateurs ont un email enregistré." }); return; }
+  if (recipients.length === 0) {
+    res.status(400).json({ error: "Aucun destinataire avec une adresse email réelle. Les emails placeholder (@simix.app) sont exclus." });
+    return;
+  }
 
   const [campaign] = await db.insert(emailCampaignsTable).values({
     subject: subject.trim(),
@@ -161,15 +176,18 @@ router.post("/admin/emails/send", requireAdmin, async (req: Request, res: Respon
 
   res.status(202).json({ campaignId: campaign.id, totalRecipients: recipients.length, message: "Envoi en cours..." });
 
-  const resend = await getResend();
+  /* ── Envoi en arrière-plan avec batching (5 emails/batch, 200ms entre batches) ── */
   let sentCount = 0;
   let failedCount = 0;
+  const BATCH_SIZE = 5;
+  const BATCH_DELAY_MS = 200;
 
-  for (const recipient of recipients) {
-    if (!recipient.email) { failedCount++; continue; }
-    try {
-      let messageId: string | null = null;
-      if (resend) {
+  for (let i = 0; i < recipients.length; i += BATCH_SIZE) {
+    const batch = recipients.slice(i, i + BATCH_SIZE);
+
+    await Promise.all(batch.map(async (recipient) => {
+      if (!recipient.email) { failedCount++; return; }
+      try {
         const result = await resend.emails.send({
           from: getFromEmail(),
           to: recipient.email,
@@ -177,41 +195,47 @@ router.post("/admin/emails/send", requireAdmin, async (req: Request, res: Respon
           html: finalHtml,
           text: body?.trim(),
         });
-        messageId = result.data?.id ?? null;
+
+        if (result.error) {
+          throw new Error(`Resend API error: ${result.error.message ?? JSON.stringify(result.error)}`);
+        }
+
+        const messageId = result.data?.id ?? null;
         sentCount++;
-      } else {
-        logger.warn({ email: recipient.email }, "[emails] RESEND_API_KEY not set — simulating send");
-        sentCount++;
-        messageId = `simulated-${Date.now()}`;
+        await db.insert(emailLogsTable).values({
+          campaignId: campaign.id,
+          userId: recipient.id,
+          email: recipient.email,
+          status: "sent",
+          messageId,
+          sentAt: new Date(),
+        });
+        logger.debug({ email: recipient.email, messageId }, "[emails] Email sent");
+      } catch (err) {
+        failedCount++;
+        const errMsg = err instanceof Error ? err.message : String(err);
+        logger.error({ email: recipient.email, err: errMsg }, "[emails] Failed to send email");
+        await db.insert(emailLogsTable).values({
+          campaignId: campaign.id,
+          userId: recipient.id,
+          email: recipient.email,
+          status: "failed",
+          error: errMsg,
+        });
       }
+    }));
 
-      await db.insert(emailLogsTable).values({
-        campaignId: campaign.id,
-        userId: recipient.id,
-        email: recipient.email,
-        status: "sent",
-        messageId,
-        sentAt: new Date(),
-      });
-    } catch (err) {
-      failedCount++;
-      await db.insert(emailLogsTable).values({
-        campaignId: campaign.id,
-        userId: recipient.id,
-        email: recipient.email,
-        status: "failed",
-        error: String(err),
-      });
+    if (i + BATCH_SIZE < recipients.length) {
+      await new Promise(r => setTimeout(r, BATCH_DELAY_MS));
     }
-
-    await new Promise(r => setTimeout(r, 50));
   }
 
+  const finalStatus = failedCount === recipients.length ? "failed" : "sent";
   await db.update(emailCampaignsTable)
-    .set({ status: "sent", sentCount, failedCount, sentAt: new Date() })
+    .set({ status: finalStatus, sentCount, failedCount, sentAt: new Date() })
     .where(eq(emailCampaignsTable.id, campaign.id));
 
-  logger.info({ campaignId: campaign.id, sentCount, failedCount }, "[emails] Campaign complete");
+  logger.info({ campaignId: campaign.id, sentCount, failedCount, totalRecipients: recipients.length }, "[emails] Campaign complete");
 });
 
 /* ── GET /admin/emails/campaigns ──────────────────────────── */
@@ -374,7 +398,13 @@ router.get("/admin/emails/recipients", requireAdmin, async (req: Request, res: R
     )
     .limit(limit);
 
-  const eligible = rows.filter(r => r.email?.includes("@"));
+  /* Exclure les emails placeholder @simix.app et domaines de test */
+  const eligible = rows.filter(r => {
+    if (!r.email?.includes("@")) return false;
+    const e = r.email.trim().toLowerCase();
+    return !e.endsWith("@simix.app") && !e.endsWith("@example.com") && !e.endsWith("@test.com");
+  });
+
   res.json({ recipients: eligible, total: eligible.length });
 });
 
