@@ -30,6 +30,9 @@ export const usersTable = pgTable("users", {
   maxBalance: integer("max_balance").notNull().default(500000),
   lastLoginAt: timestamp("last_login_at", { withTimezone: true }),
   emailVerified: boolean("email_verified").notNull().default(false),
+  referralCode: text("referral_code").unique(),
+  referredBy: uuid("referred_by"),
+  referralEarnings: integer("referral_earnings").notNull().default(0),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),

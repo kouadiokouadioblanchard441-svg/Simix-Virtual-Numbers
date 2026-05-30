@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
-import { Eye, EyeOff, ChevronLeft, Shield, User, Mail, Lock, AtSign, Search } from "lucide-react";
+import { Eye, EyeOff, ChevronLeft, Shield, User, Mail, Lock, AtSign, Search, Gift } from "lucide-react";
 import { FaGoogle } from "react-icons/fa";
 import { motion } from "framer-motion";
 import { SimixLogo } from "@/components/simix-logo";
@@ -81,6 +81,7 @@ export default function Register() {
   const [selectedCountryCode, setSelectedCountryCode] = useState("ci");
   const [showCountryPicker, setShowCountryPicker] = useState(false);
   const [countrySearch, setCountrySearch] = useState("");
+  const [referralCode, setReferralCode] = useState("");
 
   /* ── Fetch enabled registration countries from API ── */
   const [countries, setCountries] = useState<RegistrationCountry[]>(FALLBACK_COUNTRIES);
@@ -91,6 +92,13 @@ export default function Register() {
         if (Array.isArray(data) && data.length > 0) setCountries(data);
       })
       .catch(() => { /* keep fallback */ });
+  }, []);
+
+  /* ── Pre-fill referral code from URL ?ref= ── */
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const ref = params.get("ref");
+    if (ref) setReferralCode(ref.toUpperCase());
   }, []);
 
   /* ── Show toast when redirected back from Google OAuth with an error ── */
@@ -131,7 +139,8 @@ export default function Register() {
           password: values.password,
           countryCode: selectedCountry?.dial ?? "+225",
           email: values.email,
-        }
+          ...(referralCode.trim() ? { referralCode: referralCode.trim() } : {}),
+        } as any
       }) as { requiresEmailVerification?: boolean };
       queryClient.invalidateQueries({ queryKey: getGetMeQueryKey() });
       if (result?.requiresEmailVerification) {
@@ -312,6 +321,29 @@ export default function Register() {
                 <FormMessage />
               </FormItem>
             )} />
+
+            {/* ── Code de parrainage (optionnel) ── */}
+            <div>
+              <label className="text-sm font-medium text-foreground flex items-center gap-1 mb-1.5">
+                Code de parrainage
+                <span className="text-muted-foreground text-xs font-normal">(optionnel)</span>
+              </label>
+              <div className="relative h-14">
+                <Gift className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-amber-500" />
+                <Input
+                  value={referralCode}
+                  onChange={e => setReferralCode(e.target.value.toUpperCase())}
+                  placeholder="SXXXXXXXY"
+                  maxLength={12}
+                  className="pl-11 bg-card border-card-border focus-visible:ring-amber-500 h-full rounded-xl font-mono uppercase tracking-wider"
+                />
+              </div>
+              {referralCode.trim().length > 0 && (
+                <p className="text-xs text-amber-500 mt-1 flex items-center gap-1">
+                  <Gift className="w-3 h-3" /> Code de parrainage appliqué
+                </p>
+              )}
+            </div>
 
             <FormField control={form.control} name="terms" render={({ field }) => (
               <FormItem>

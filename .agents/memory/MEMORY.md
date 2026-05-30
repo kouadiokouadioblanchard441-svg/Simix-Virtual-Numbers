@@ -1,0 +1,1 @@
+- [Admin router global middleware trap](admin-router-middleware-trap.md) — new non-admin routes must be registered BEFORE adminRouter in routes/index.ts or they return "Admin session required".

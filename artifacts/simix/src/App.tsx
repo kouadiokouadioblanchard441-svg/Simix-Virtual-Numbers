@@ -38,6 +38,7 @@ import ProfilePolitiqueConfidentialite from "@/pages/profile-politique-confident
 import ProfileCGU from "@/pages/profile-cgu";
 import ProfileCookies from "@/pages/profile-cookies";
 import ProfileMentionsLegales from "@/pages/profile-mentions-legales";
+import ProfileParrainage from "@/pages/profile-parrainage";
 
 // Admin pages
 import AdminDashboard from "@/pages/admin/dashboard";
@@ -189,6 +190,7 @@ function InnerRouter() {
           <Route path="/profile/cgu" component={ProfileCGU} />
           <Route path="/profile/cookies" component={ProfileCookies} />
           <Route path="/profile/mentions-legales" component={ProfileMentionsLegales} />
+          <Route path="/profile/parrainage" component={ProfileParrainage} />
           <Route component={NotFound} />
         </Switch>
       </div>

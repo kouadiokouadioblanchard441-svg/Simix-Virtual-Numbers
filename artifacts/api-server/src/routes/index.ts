@@ -22,6 +22,7 @@ import notificationsRouter from "./notifications";
 import bannersRouter from "./banners";
 import otpRouter from "./otp";
 import forgotPasswordRouter from "./forgot-password";
+import referralRouter from "./referral";
 
 const router: IRouter = Router();
 
@@ -43,6 +44,7 @@ router.use(notificationsRouter);
 router.use(bannersRouter);
 router.use(otpRouter);
 router.use(forgotPasswordRouter);
+router.use(referralRouter);
 router.use(adminRouter);
 router.use(adminSupportRouter);
 router.use(adminNotificationsRouter);

@@ -17,6 +17,23 @@ import { isRegistrationEnabled, isEmailOtpEnabled } from "../lib/settings";
 import { createOtp, isUserInactive } from "../lib/otp";
 import { sendOtpEmail } from "../lib/email";
 
+function generateReferralCode(): string {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  let code = "SX";
+  for (let i = 0; i < 8; i++) code += chars[Math.floor(Math.random() * chars.length)];
+  return code;
+}
+
+async function uniqueReferralCode(): Promise<string> {
+  for (let attempt = 0; attempt < 10; attempt++) {
+    const code = generateReferralCode();
+    const [existing] = await db.select({ id: usersTable.id }).from(usersTable)
+      .where(eq(usersTable.referralCode, code)).limit(1);
+    if (!existing) return code;
+  }
+  return "SX" + Date.now().toString(36).toUpperCase().slice(-8);
+}
+
 const router: IRouter = Router();
 
 router.post("/auth/register", async (req, res): Promise<void> => {
@@ -43,6 +60,11 @@ router.post("/auth/register", async (req, res): Promise<void> => {
   const { fullName, phone, password, countryCode, email } = parsed.data;
   const normalizedPhone = phone.replace(/\s+/g, "");
 
+  /* Optional referral code (not in Zod schema, read directly) */
+  const referralCodeInput = typeof req.body.referralCode === "string"
+    ? req.body.referralCode.trim().toUpperCase()
+    : null;
+
   const [existing] = await db
     .select()
     .from(usersTable)
@@ -54,10 +76,23 @@ router.post("/auth/register", async (req, res): Promise<void> => {
     return;
   }
 
+  /* Resolve referrer if code provided */
+  let referrerId: string | null = null;
+  if (referralCodeInput) {
+    const [referrer] = await db
+      .select({ id: usersTable.id })
+      .from(usersTable)
+      .where(eq(usersTable.referralCode, referralCodeInput))
+      .limit(1);
+    if (referrer) referrerId = referrer.id;
+  }
+
   const passwordHash = await bcrypt.hash(password, 10);
   const username = `user_${normalizedPhone.replace(/[^0-9]/g, "").slice(-6)}`;
   const safeEmail =
     email && email.trim().length > 0 ? email.trim() : `${username}@simix.app`;
+
+  const newReferralCode = await uniqueReferralCode();
 
   const [user] = await db
     .insert(usersTable)
@@ -71,6 +106,8 @@ router.post("/auth/register", async (req, res): Promise<void> => {
       balance: 0,
       verified: false,
       emailVerified: false,
+      referralCode: newReferralCode,
+      referredBy: referrerId ?? undefined,
     })
     .returning();
 

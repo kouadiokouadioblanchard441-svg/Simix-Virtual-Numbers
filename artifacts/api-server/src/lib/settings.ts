@@ -94,3 +94,6 @@ export const getFraudBlockThreshold = () => getSettingInt("fraud_block_threshold
 
 /** Is email OTP verification active (registration + login + inactivity)? Default ON. */
 export const isEmailOtpEnabled = () => getSettingBool("email_otp_enabled", true);
+
+/** Referral commission rate in percent (e.g. 10 = 10%). */
+export const getReferralCommissionRate = () => getSettingInt("referral_commission_rate", 10);

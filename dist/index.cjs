@@ -20477,27 +20477,27 @@ var require_router = __commonJS({
     var slice = Array.prototype.slice;
     var flatten = Array.prototype.flat;
     var methods = METHODS.map((method) => method.toLowerCase());
-    module2.exports = Router25;
+    module2.exports = Router26;
     module2.exports.Route = Route;
-    function Router25(options) {
-      if (!(this instanceof Router25)) {
-        return new Router25(options);
+    function Router26(options) {
+      if (!(this instanceof Router26)) {
+        return new Router26(options);
       }
       const opts = options || {};
-      function router25(req, res, next) {
-        router25.handle(req, res, next);
+      function router26(req, res, next) {
+        router26.handle(req, res, next);
       }
-      Object.setPrototypeOf(router25, this);
-      router25.caseSensitive = opts.caseSensitive;
-      router25.mergeParams = opts.mergeParams;
-      router25.params = {};
-      router25.strict = opts.strict;
-      router25.stack = [];
-      return router25;
+      Object.setPrototypeOf(router26, this);
+      router26.caseSensitive = opts.caseSensitive;
+      router26.mergeParams = opts.mergeParams;
+      router26.params = {};
+      router26.strict = opts.strict;
+      router26.stack = [];
+      return router26;
     }
-    Router25.prototype = function() {
+    Router26.prototype = function() {
     };
-    Router25.prototype.param = function param2(name2, fn) {
+    Router26.prototype.param = function param2(name2, fn) {
       if (!name2) {
         throw new TypeError("argument name is required");
       }
@@ -20517,7 +20517,7 @@ var require_router = __commonJS({
       params.push(fn);
       return this;
     };
-    Router25.prototype.handle = function handle(req, res, callback) {
+    Router26.prototype.handle = function handle(req, res, callback) {
       if (!callback) {
         throw new TypeError("argument callback is required");
       }
@@ -20644,7 +20644,7 @@ var require_router = __commonJS({
         }
       }
     };
-    Router25.prototype.use = function use(handler) {
+    Router26.prototype.use = function use(handler) {
       let offset = 0;
       let path5 = "/";
       if (typeof handler !== "function") {
@@ -20677,7 +20677,7 @@ var require_router = __commonJS({
       }
       return this;
     };
-    Router25.prototype.route = function route(path5) {
+    Router26.prototype.route = function route(path5) {
       const route2 = new Route(path5);
       const layer = new Layer(path5, {
         sensitive: this.caseSensitive,
@@ -20692,7 +20692,7 @@ var require_router = __commonJS({
       return route2;
     };
     methods.concat("all").forEach(function(method) {
-      Router25.prototype[method] = function(path5) {
+      Router26.prototype[method] = function(path5) {
         const route = this.route(path5);
         route[method].apply(route, slice.call(arguments, 1));
         return this;
@@ -20875,13 +20875,13 @@ var require_application = __commonJS({
     var compileTrust = require_utils3().compileTrust;
     var resolve = require("node:path").resolve;
     var once = require_once();
-    var Router25 = require_router();
+    var Router26 = require_router();
     var slice = Array.prototype.slice;
     var flatten = Array.prototype.flat;
     var app2 = exports2 = module2.exports = {};
     var trustProxyDefaultSymbol = "@@symbol:trust_proxy_default";
     app2.init = function init() {
-      var router25 = null;
+      var router26 = null;
       this.cache = /* @__PURE__ */ Object.create(null);
       this.engines = /* @__PURE__ */ Object.create(null);
       this.settings = /* @__PURE__ */ Object.create(null);
@@ -20890,13 +20890,13 @@ var require_application = __commonJS({
         configurable: true,
         enumerable: true,
         get: function getrouter() {
-          if (router25 === null) {
-            router25 = new Router25({
+          if (router26 === null) {
+            router26 = new Router26({
               caseSensitive: this.enabled("case sensitive routing"),
               strict: this.enabled("strict routing")
             });
           }
-          return router25;
+          return router26;
         }
       });
     };
@@ -20967,15 +20967,15 @@ var require_application = __commonJS({
       if (fns.length === 0) {
         throw new TypeError("app.use() requires a middleware function");
       }
-      var router25 = this.router;
+      var router26 = this.router;
       fns.forEach(function(fn2) {
         if (!fn2 || !fn2.handle || !fn2.set) {
-          return router25.use(path5, fn2);
+          return router26.use(path5, fn2);
         }
         debug(".use app under %s", path5);
         fn2.mountpath = path5;
         fn2.parent = this;
-        router25.use(path5, function mounted_app(req, res, next) {
+        router26.use(path5, function mounted_app(req, res, next) {
           var orig = req.app;
           fn2.handle(req, res, function(err) {
             Object.setPrototypeOf(req, orig.request);
@@ -23502,7 +23502,7 @@ var require_express = __commonJS({
     var EventEmitter2 = require("node:events").EventEmitter;
     var mixin = require_merge_descriptors();
     var proto = require_application();
-    var Router25 = require_router();
+    var Router26 = require_router();
     var req = require_request();
     var res = require_response();
     exports2 = module2.exports = createApplication;
@@ -23524,8 +23524,8 @@ var require_express = __commonJS({
     exports2.application = proto;
     exports2.request = req;
     exports2.response = res;
-    exports2.Route = Router25.Route;
-    exports2.Router = Router25;
+    exports2.Route = Router26.Route;
+    exports2.Router = Router26;
     exports2.json = bodyParser.json;
     exports2.raw = bodyParser.raw;
     exports2.static = require_serve_static();
@@ -42143,6 +42143,9 @@ var init_users = __esm({
       maxBalance: integer("max_balance").notNull().default(5e5),
       lastLoginAt: timestamp("last_login_at", { withTimezone: true }),
       emailVerified: boolean("email_verified").notNull().default(false),
+      referralCode: text("referral_code").unique(),
+      referredBy: uuid("referred_by"),
+      referralEarnings: integer("referral_earnings").notNull().default(0),
       createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
       updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => /* @__PURE__ */ new Date())
     });
@@ -42824,6 +42827,24 @@ var init_service_country_availability = __esm({
   }
 });
 
+// ../../lib/db/src/schema/referrals.ts
+var referralCommissionsTable;
+var init_referrals = __esm({
+  "../../lib/db/src/schema/referrals.ts"() {
+    "use strict";
+    init_pg_core();
+    init_users();
+    referralCommissionsTable = pgTable("referral_commissions", {
+      id: uuid("id").primaryKey().defaultRandom(),
+      referrerId: uuid("referrer_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
+      refereeId: uuid("referee_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
+      purchaseAmount: integer("purchase_amount").notNull(),
+      commissionAmount: integer("commission_amount").notNull(),
+      createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
+    });
+  }
+});
+
 // ../../lib/db/src/schema/index.ts
 var schema_exports = {};
 __export(schema_exports, {
@@ -42850,6 +42871,7 @@ __export(schema_exports, {
   paymentOperatorsTable: () => paymentOperatorsTable,
   paymentRouteLogsTable: () => paymentRouteLogsTable,
   paymentRoutesTable: () => paymentRoutesTable,
+  referralCommissionsTable: () => referralCommissionsTable,
   securityEventsTable: () => securityEventsTable,
   serviceCountryAvailabilityTable: () => serviceCountryAvailabilityTable,
   servicePricesTable: () => servicePricesTable,
@@ -42895,6 +42917,7 @@ var init_schema2 = __esm({
     init_currencies();
     init_fx_profits();
     init_service_country_availability();
+    init_referrals();
   }
 });
 
@@ -42926,6 +42949,7 @@ __export(src_exports, {
   paymentRouteLogsTable: () => paymentRouteLogsTable,
   paymentRoutesTable: () => paymentRoutesTable,
   pool: () => pool,
+  referralCommissionsTable: () => referralCommissionsTable,
   securityEventsTable: () => securityEventsTable,
   serviceCountryAvailabilityTable: () => serviceCountryAvailabilityTable,
   servicePricesTable: () => servicePricesTable,
@@ -86643,7 +86667,7 @@ async function migrate(db2, config) {
 }
 
 // src/app.ts
-var import_express26 = __toESM(require_express2(), 1);
+var import_express27 = __toESM(require_express2(), 1);
 var import_cors = __toESM(require_lib3(), 1);
 var import_cookie_parser = __toESM(require_cookie_parser(), 1);
 var import_pino_http = __toESM(require_logger(), 1);
@@ -87195,7 +87219,7 @@ var import_path2 = __toESM(require("path"), 1);
 var import_fs3 = require("fs");
 
 // src/routes/index.ts
-var import_express25 = __toESM(require_express2(), 1);
+var import_express26 = __toESM(require_express2(), 1);
 
 // src/routes/health.ts
 var import_express = __toESM(require_express2(), 1);
@@ -105530,7 +105554,9 @@ function toUser(user, totals) {
     avatar: user.avatar ?? void 0,
     createdAt: user.createdAt.toISOString(),
     totalSpent: totals?.totalSpent ?? 0,
-    transactionsCount: totals?.transactionsCount ?? 0
+    transactionsCount: totals?.transactionsCount ?? 0,
+    referralCode: user.referralCode ?? void 0,
+    referralEarnings: user.referralEarnings
   };
 }
 function toService(s2) {
@@ -105761,6 +105787,7 @@ var getMinDepositFcfa = () => getSettingInt("min_deposit_fcfa", 500);
 var getMaxBalanceFcfa = () => getSettingInt("max_balance_fcfa", 5e5);
 var getMaxOrdersPerMinute = () => getSettingInt("max_orders_per_minute", 10);
 var isEmailOtpEnabled = () => getSettingBool("email_otp_enabled", true);
+var getReferralCommissionRate = () => getSettingInt("referral_commission_rate", 10);
 
 // src/lib/otp.ts
 var import_node_crypto3 = require("node:crypto");
@@ -111336,6 +111363,20 @@ async function sendOtpEmail(to, code, purpose) {
 }
 
 // src/routes/auth.ts
+function generateReferralCode() {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  let code = "SX";
+  for (let i2 = 0; i2 < 8; i2++) code += chars[Math.floor(Math.random() * chars.length)];
+  return code;
+}
+async function uniqueReferralCode() {
+  for (let attempt = 0; attempt < 10; attempt++) {
+    const code = generateReferralCode();
+    const [existing] = await db.select({ id: usersTable.id }).from(usersTable).where(eq(usersTable.referralCode, code)).limit(1);
+    if (!existing) return code;
+  }
+  return "SX" + Date.now().toString(36).toUpperCase().slice(-8);
+}
 var router3 = (0, import_express4.Router)();
 router3.post("/auth/register", async (req, res) => {
   const ip = req.ip ?? "unknown";
@@ -111354,14 +111395,21 @@ router3.post("/auth/register", async (req, res) => {
   }
   const { fullName, phone, password, countryCode, email } = parsed.data;
   const normalizedPhone = phone.replace(/\s+/g, "");
+  const referralCodeInput = typeof req.body.referralCode === "string" ? req.body.referralCode.trim().toUpperCase() : null;
   const [existing] = await db.select().from(usersTable).where(eq(usersTable.phone, normalizedPhone)).limit(1);
   if (existing) {
     res.status(400).json({ error: "Un compte existe d\xE9j\xE0 pour ce num\xE9ro de t\xE9l\xE9phone." });
     return;
   }
+  let referrerId = null;
+  if (referralCodeInput) {
+    const [referrer] = await db.select({ id: usersTable.id }).from(usersTable).where(eq(usersTable.referralCode, referralCodeInput)).limit(1);
+    if (referrer) referrerId = referrer.id;
+  }
   const passwordHash = await bcryptjs_default.hash(password, 10);
   const username = `user_${normalizedPhone.replace(/[^0-9]/g, "").slice(-6)}`;
   const safeEmail = email && email.trim().length > 0 ? email.trim() : `${username}@simix.app`;
+  const newReferralCode = await uniqueReferralCode();
   const [user] = await db.insert(usersTable).values({
     fullName,
     phone: normalizedPhone,
@@ -111371,7 +111419,9 @@ router3.post("/auth/register", async (req, res) => {
     email: safeEmail,
     balance: 0,
     verified: false,
-    emailVerified: false
+    emailVerified: false,
+    referralCode: newReferralCode,
+    referredBy: referrerId ?? void 0
   }).returning();
   if (!user) {
     res.status(500).json({ error: "Cr\xE9ation de compte \xE9chou\xE9e" });
@@ -112253,6 +112303,34 @@ router8.post("/numbers", requireAuth, async (req, res) => {
     method: "wallet",
     description: `${service.name} \u2013 ${country.name} (5sim)`
   });
+  if (user.referredBy) {
+    try {
+      const commissionRate = await getReferralCommissionRate();
+      const commissionAmount = Math.floor(price * commissionRate / 100);
+      if (commissionAmount > 0) {
+        await db.update(usersTable).set({
+          balance: sql`${usersTable.balance} + ${commissionAmount}`,
+          referralEarnings: sql`${usersTable.referralEarnings} + ${commissionAmount}`
+        }).where(eq(usersTable.id, user.referredBy));
+        await db.insert(referralCommissionsTable).values({
+          referrerId: user.referredBy,
+          refereeId: user.id,
+          purchaseAmount: price,
+          commissionAmount
+        });
+        await db.insert(transactionsTable).values({
+          userId: user.referredBy,
+          type: "referral_commission",
+          amount: commissionAmount,
+          status: "completed",
+          method: "referral",
+          description: `Commission parrainage ${commissionRate}% \u2014 ${service.name} (${country.name})`
+        });
+      }
+    } catch (refErr) {
+      logger.warn({ err: refErr.message }, "[referral] Commission credit failed (non-critical)");
+    }
+  }
   try {
     const [notif] = await db.insert(notificationsTable).values({
       userId: user.id,
@@ -118904,32 +118982,67 @@ router23.post("/auth/forgot-password/resend", async (req, res) => {
 });
 var forgot_password_default = router23;
 
-// src/routes/index.ts
+// src/routes/referral.ts
+var import_express25 = __toESM(require_express2(), 1);
+init_drizzle_orm();
+init_src();
 var router24 = (0, import_express25.Router)();
-router24.use(health_default);
-router24.use(storage_default);
-router24.use(config_default);
-router24.use(auth_default);
-router24.use(google_auth_default);
-router24.use(services_default);
-router24.use(countries_default);
-router24.use(numbers_default);
-router24.use(wallet_default);
-router24.use(dashboard_default);
-router24.use(currencies_default);
-router24.use(admin_auth_default);
-router24.use(footer_default);
-router24.use(support_default);
-router24.use(notifications_default);
-router24.use(banners_default);
-router24.use(otp_default);
-router24.use(forgot_password_default);
-router24.use(admin_default);
-router24.use(admin_support_default);
-router24.use(admin_notifications_default);
-router24.use(admin_emails_default);
-router24.use(admin_payment_routing_default);
-var routes_default = router24;
+router24.get("/referral/me", requireAuth, async (req, res) => {
+  const user = req.user;
+  const commissionRate = await getReferralCommissionRate();
+  const commissions = await db.select({
+    id: referralCommissionsTable.id,
+    commissionAmount: referralCommissionsTable.commissionAmount,
+    purchaseAmount: referralCommissionsTable.purchaseAmount,
+    createdAt: referralCommissionsTable.createdAt,
+    refereeName: usersTable.fullName,
+    refereePhone: usersTable.phone
+  }).from(referralCommissionsTable).innerJoin(usersTable, eq(referralCommissionsTable.refereeId, usersTable.id)).where(eq(referralCommissionsTable.referrerId, user.id)).orderBy(desc(referralCommissionsTable.createdAt)).limit(100);
+  const referredCount = await db.select({ id: usersTable.id }).from(usersTable).where(eq(usersTable.referredBy, user.id));
+  res.json({
+    referralCode: user.referralCode,
+    totalEarnings: user.referralEarnings,
+    commissionRate,
+    referredCount: referredCount.length,
+    commissions: commissions.map((c) => ({
+      id: c.id,
+      commissionAmount: c.commissionAmount,
+      purchaseAmount: c.purchaseAmount,
+      createdAt: c.createdAt,
+      refereeName: c.refereeName,
+      refereePhone: c.refereePhone ? `...${c.refereePhone.slice(-4)}` : null
+    }))
+  });
+});
+var referral_default = router24;
+
+// src/routes/index.ts
+var router25 = (0, import_express26.Router)();
+router25.use(health_default);
+router25.use(storage_default);
+router25.use(config_default);
+router25.use(auth_default);
+router25.use(google_auth_default);
+router25.use(services_default);
+router25.use(countries_default);
+router25.use(numbers_default);
+router25.use(wallet_default);
+router25.use(dashboard_default);
+router25.use(currencies_default);
+router25.use(admin_auth_default);
+router25.use(footer_default);
+router25.use(support_default);
+router25.use(notifications_default);
+router25.use(banners_default);
+router25.use(otp_default);
+router25.use(forgot_password_default);
+router25.use(referral_default);
+router25.use(admin_default);
+router25.use(admin_support_default);
+router25.use(admin_notifications_default);
+router25.use(admin_emails_default);
+router25.use(admin_payment_routing_default);
+var routes_default = router25;
 
 // src/app.ts
 init_logger2();
@@ -120106,7 +120219,7 @@ async function seedCountryPaymentConfigs() {
 }
 
 // src/app.ts
-var app = (0, import_express26.default)();
+var app = (0, import_express27.default)();
 app.set("trust proxy", 1);
 app.use(
   helmet({
@@ -120129,14 +120242,14 @@ app.use(
 );
 app.use((0, import_cors.default)({ credentials: true, origin: true }));
 app.use(
-  import_express26.default.json({
+  import_express27.default.json({
     limit: "8mb",
     verify: (req, _res, buf) => {
       req.rawBody = buf.toString("utf8");
     }
   })
 );
-app.use(import_express26.default.urlencoded({ extended: true, limit: "8mb" }));
+app.use(import_express27.default.urlencoded({ extended: true, limit: "8mb" }));
 app.use((0, import_cookie_parser.default)());
 app.use(globalRateLimit);
 app.use(checkMaintenanceMode);
@@ -120166,7 +120279,7 @@ if (process.env.NODE_ENV === "production") {
   if (currentDir) {
     const publicDir = import_path2.default.join(currentDir, "public");
     if ((0, import_fs3.existsSync)(publicDir)) {
-      app.use(import_express26.default.static(publicDir));
+      app.use(import_express27.default.static(publicDir));
       app.use((_req, res) => {
         res.sendFile(import_path2.default.join(publicDir, "index.html"));
       });

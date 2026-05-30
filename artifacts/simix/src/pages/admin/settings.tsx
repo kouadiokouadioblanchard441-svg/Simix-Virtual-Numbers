@@ -45,6 +45,12 @@ const SETTINGS_SCHEMA = [
     ],
   },
   {
+    group: "Parrainage",
+    fields: [
+      { key: "referral_commission_rate", label: "Taux de commission parrainage (%)", placeholder: "10", type: "number", hint: "Pourcentage des achats des filleuls reversé automatiquement au parrain. Ex : 10 = 10%." },
+    ],
+  },
+  {
     group: "Limites & Contrôles",
     fields: [
       { key: "max_orders_per_minute", label: "Commandes max/minute par user", placeholder: "10", type: "number" },

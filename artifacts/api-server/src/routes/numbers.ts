@@ -10,6 +10,7 @@ import {
   virtualNumbersTable,
   apiProvidersTable,
   servicePricesTable,
+  referralCommissionsTable,
 } from "@workspace/db";
 import {
   GetNumberQuoteQueryParams,
@@ -32,6 +33,7 @@ import {
   getExtendMinutes,
   getExtendFee,
   getMaxOrdersPerMinute,
+  getReferralCommissionRate,
 } from "../lib/settings";
 
 const router: IRouter = Router();
@@ -356,6 +358,40 @@ router.post("/numbers", requireAuth, async (req, res): Promise<void> => {
     method: "wallet",
     description: `${service.name} – ${country.name} (5sim)`,
   });
+
+  /* ── Referral commission — credit parrain if buyer was referred ── */
+  if (user.referredBy) {
+    try {
+      const commissionRate = await getReferralCommissionRate();
+      const commissionAmount = Math.floor(price * commissionRate / 100);
+      if (commissionAmount > 0) {
+        await db.update(usersTable)
+          .set({
+            balance: sql`${usersTable.balance} + ${commissionAmount}`,
+            referralEarnings: sql`${usersTable.referralEarnings} + ${commissionAmount}`,
+          })
+          .where(eq(usersTable.id, user.referredBy));
+
+        await db.insert(referralCommissionsTable).values({
+          referrerId: user.referredBy,
+          refereeId: user.id,
+          purchaseAmount: price,
+          commissionAmount,
+        });
+
+        await db.insert(transactionsTable).values({
+          userId: user.referredBy,
+          type: "referral_commission",
+          amount: commissionAmount,
+          status: "completed",
+          method: "referral",
+          description: `Commission parrainage ${commissionRate}% — ${service.name} (${country.name})`,
+        });
+      }
+    } catch (refErr) {
+      logger.warn({ err: (refErr as Error).message }, "[referral] Commission credit failed (non-critical)");
+    }
+  }
 
   /* ── Push real-time purchase notification ── */
   try {

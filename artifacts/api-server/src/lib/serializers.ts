@@ -29,6 +29,8 @@ export function toUser(
     createdAt: user.createdAt.toISOString(),
     totalSpent: totals?.totalSpent ?? 0,
     transactionsCount: totals?.transactionsCount ?? 0,
+    referralCode: user.referralCode ?? undefined,
+    referralEarnings: user.referralEarnings,
   };
 }
 
