@@ -129,7 +129,8 @@ router.get("/numbers/quote", async (req, res): Promise<void> => {
     )
     .limit(1);
 
-  const price = priceOverride?.price ?? country.price;
+  /* Price hierarchy: service_prices override → services.price → country.price */
+  const price = priceOverride?.price ?? service.price ?? country.price;
   const validityMinutes = await getNumberValidityMinutes();
   res.json({
     service: {
@@ -250,7 +251,8 @@ router.post("/numbers", requireAuth, async (req, res): Promise<void> => {
     )
     .limit(1);
 
-  const price = purchasePriceOverride?.price ?? country.price;
+  /* Price hierarchy: service_prices override → services.price → country.price */
+  const price = purchasePriceOverride?.price ?? service.price ?? country.price;
   if (user.balance < price) {
     res.status(402).json({ error: "Solde insuffisant. Rechargez votre portefeuille." });
     return;

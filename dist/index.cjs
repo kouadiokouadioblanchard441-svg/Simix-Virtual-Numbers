@@ -112117,7 +112117,7 @@ router8.get("/numbers/quote", async (req, res) => {
       eq(servicePricesTable.enabled, true)
     )
   ).limit(1);
-  const price = priceOverride?.price ?? country.price;
+  const price = priceOverride?.price ?? service.price ?? country.price;
   const validityMinutes = await getNumberValidityMinutes();
   res.json({
     service: {
@@ -112228,7 +112228,7 @@ router8.post("/numbers", requireAuth, async (req, res) => {
       eq(servicePricesTable.enabled, true)
     )
   ).limit(1);
-  const price = purchasePriceOverride?.price ?? country.price;
+  const price = purchasePriceOverride?.price ?? service.price ?? country.price;
   if (user.balance < price) {
     res.status(402).json({ error: "Solde insuffisant. Rechargez votre portefeuille." });
     return;
