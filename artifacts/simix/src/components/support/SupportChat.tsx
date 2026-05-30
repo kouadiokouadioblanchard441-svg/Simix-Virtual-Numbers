@@ -308,8 +308,8 @@ export default function SupportChat() {
     e.target.value = "";
   };
 
-  const sendMessage = useCallback(async () => {
-    const text = input.trim();
+  const sendMessage = useCallback(async (forcedText?: string) => {
+    const text = (forcedText ?? input).trim();
     if ((!text && !imageData) || isStreaming) return;
 
     const userMsg: Message = {
@@ -510,10 +510,10 @@ export default function SupportChat() {
                 <SimiaAvatar size={40} pulse={!isStreaming} avatarUrl={config.aiAvatarUrl} name={config.aiName} />
                 <div className="flex-1 min-w-0">
                   <p className="text-white font-bold text-sm leading-tight">{config.aiName}</p>
-                  <p className="text-purple-300 text-[11px] leading-tight">{config.aiDisplayTitle}</p>
+                  <p className="text-purple-300/80 text-[11px] leading-tight">Conseillère Support Simix</p>
                   <div className="flex items-center gap-1.5 mt-0.5">
-                    <span className="w-1.5 h-1.5 rounded-full bg-green-400 shadow-[0_0_6px_#4ade80]" />
-                    <span className="text-green-400 text-[10px]">En ligne • Répond instantanément</span>
+                    <span className="w-1.5 h-1.5 rounded-full bg-green-400 shadow-[0_0_6px_#4ade80] animate-pulse" />
+                    <span className="text-green-400 text-[10px] font-medium">Disponible maintenant</span>
                   </div>
                 </div>
                 <div className="flex items-center gap-0.5" onPointerDown={e => e.stopPropagation()}>
@@ -547,12 +547,13 @@ export default function SupportChat() {
                   >
                     {/* Quick actions */}
                     {messages.length <= 1 && quickReplies.length > 0 && (
-                      <div className="px-3 py-2 flex flex-wrap gap-1.5 border-b border-white/5">
+                      <div className="px-3 py-2.5 flex flex-wrap gap-1.5 border-b border-white/5" style={{ background: "rgba(124,58,237,0.04)" }}>
+                        <p className="w-full text-[10px] text-white/30 mb-0.5 font-medium uppercase tracking-wider">Questions fréquentes</p>
                         {quickReplies.map(q => (
                           <button
                             key={q}
-                            onClick={() => { setInput(q); inputRef.current?.focus(); }}
-                            className="text-[11px] px-2.5 py-1 rounded-full border border-purple-500/40 text-purple-300 hover:bg-purple-500/20 transition-colors"
+                            onClick={() => sendMessage(q)}
+                            className="text-[11px] px-2.5 py-1.5 rounded-full border border-purple-500/30 text-purple-300/90 hover:bg-purple-500/25 hover:border-purple-400/50 hover:text-purple-200 transition-all duration-200"
                           >
                             {q}
                           </button>
