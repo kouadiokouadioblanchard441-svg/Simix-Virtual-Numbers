@@ -1,5 +1,5 @@
 import { Router, type IRouter, type Request, type Response } from "express";
-import { asc, desc, eq, sql, and } from "drizzle-orm";
+import { asc, desc, eq, sql, and, inArray } from "drizzle-orm";
 import {
   db,
   paymentMethodsTable,
@@ -1068,7 +1068,15 @@ router.get(
 
 /* ────────────────────────────────────────────────────────────────
  * GET /wallet/deposit-countries
+ * Only Sub-Saharan African countries (no Maghreb / non-Africa)
  * ──────────────────────────────────────────────────────────────── */
+const SUBSAHARAN_AFRICA_CODES = [
+  "ZA","AO","BJ","BW","BF","BI","CM","CV","TD","KM","CG","CI",
+  "DJ","SZ","ET","GA","GM","GH","GN","GQ","GW","KE","LS","LR",
+  "MG","MW","ML","MU","MZ","NA","NE","NG","UG","RW","SN","SC",
+  "SL","SO","SS","ST","CF","TZ","TG","ZM","ZW","ER","CD","BI",
+];
+
 router.get(
   "/wallet/deposit-countries",
   async (_req, res): Promise<void> => {
@@ -1089,6 +1097,7 @@ router.get(
           eq(countryPaymentConfigsTable.enabled, true),
         ),
       )
+      .where(inArray(countriesTable.code, SUBSAHARAN_AFRICA_CODES))
       .orderBy(countriesTable.code, asc(countriesTable.sortOrder));
 
     res.json(rows);

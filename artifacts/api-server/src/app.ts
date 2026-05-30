@@ -99,7 +99,8 @@ app.get("/api/public/registration-countries", async (_req, res) => {
     const { rows } = await pool.query<{
       code: string; dial_code: string; name: string; flag: string;
     }>(
-      `SELECT code, dial_code, name, flag FROM countries WHERE enabled = true ORDER BY sort_order ASC`
+      `SELECT code, dial_code, name, flag FROM countries WHERE enabled = true AND code NOT IN ('MA','DZ','TN','EG','LY','MR','SD','FR','GB','BE','US','CA','DE','NL','SE','IT','ES','PT','AU','JP','IN','BR','MX','KZ','RU','UA','CN','JP','KR','TR','SA','AE','QA','KW','IQ','IR','JO','LB','IL','SY','PK','BD','VN','TH','PH','ID','MY','LK','NP','MM','KH','LA','MN','UZ','TJ','KG','TM','AZ','AM','GE','AL','RS','MK','BA','HR','BG','RO','HU','PL','CZ','SK','SI','EE','LV','LT','FI','DK','NO','SE','AT','CH','IE','BE','LU','MC','AD','LI','SM','VA','MT','CY','GR','BY','MD','XK','ME','MO','HK','TW','SG','BN','PW','GU','MH','FM','NR','WS','TO','VU','SB','PG','FJ','CK','NU','TV','KI','NZ','NC','PF','RE')
+      ORDER BY sort_order ASC`
     );
     res.json(rows.map(r => ({
       code: r.code.toLowerCase(),

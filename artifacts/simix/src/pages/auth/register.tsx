@@ -34,8 +34,11 @@ const FALLBACK_COUNTRIES = [
   { code: "ml", dial: "+223", label: "Mali", flag: "🇲🇱" },
   { code: "bf", dial: "+226", label: "Burkina Faso", flag: "🇧🇫" },
   { code: "cm", dial: "+237", label: "Cameroun", flag: "🇨🇲" },
-  { code: "fr", dial: "+33", label: "France", flag: "🇫🇷" },
-  { code: "gb", dial: "+44", label: "Royaume-Uni", flag: "🇬🇧" },
+  { code: "ng", dial: "+234", label: "Nigéria", flag: "🇳🇬" },
+  { code: "gh", dial: "+233", label: "Ghana", flag: "🇬🇭" },
+  { code: "ke", dial: "+254", label: "Kenya", flag: "🇰🇪" },
+  { code: "tg", dial: "+228", label: "Togo", flag: "🇹🇬" },
+  { code: "bj", dial: "+229", label: "Bénin", flag: "🇧🇯" },
 ];
 
 interface RegistrationCountry { code: string; dial: string; label: string; flag?: string; }

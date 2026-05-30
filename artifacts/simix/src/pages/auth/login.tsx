@@ -35,12 +35,6 @@ const ALL_COUNTRIES = [
   { code: "tz", dial: "+255", label: "Tanzanie" },
   { code: "ug", dial: "+256", label: "Ouganda" },
   { code: "rw", dial: "+250", label: "Rwanda" },
-  { code: "ma", dial: "+212", label: "Maroc" },
-  { code: "dz", dial: "+213", label: "Algérie" },
-  { code: "tn", dial: "+216", label: "Tunisie" },
-  { code: "eg", dial: "+20", label: "Égypte" },
-  { code: "ly", dial: "+218", label: "Libye" },
-  { code: "sd", dial: "+249", label: "Soudan" },
   { code: "ss", dial: "+211", label: "Soudan du Sud" },
   { code: "et", dial: "+251", label: "Éthiopie" },
   { code: "so", dial: "+252", label: "Somalie" },
@@ -73,12 +67,6 @@ const ALL_COUNTRIES = [
   { code: "sl", dial: "+232", label: "Sierra Leone" },
   { code: "lr", dial: "+231", label: "Liberia" },
   { code: "bi", dial: "+257", label: "Burundi" },
-  { code: "mr", dial: "+222", label: "Mauritanie" },
-  { code: "fr", dial: "+33", label: "France" },
-  { code: "gb", dial: "+44", label: "Royaume-Uni" },
-  { code: "be", dial: "+32", label: "Belgique" },
-  { code: "us", dial: "+1", label: "États-Unis" },
-  { code: "ca", dial: "+1", label: "Canada" },
 ];
 
 function FlagImg({ code }: { code: string }) {
