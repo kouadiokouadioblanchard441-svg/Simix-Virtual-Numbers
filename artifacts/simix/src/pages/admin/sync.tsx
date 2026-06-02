@@ -7,7 +7,7 @@ import { formatFCFA } from "@/lib/format";
 import {
   RefreshCw, Globe, Server, ShieldCheck, CheckCircle2,
   XCircle, AlertTriangle, Clock, Zap, ChevronDown, ChevronRight,
-  Database, Tag, Activity, Lock,
+  Database, Tag, Activity, Lock, ToggleRight, DollarSign,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -363,6 +363,15 @@ export default function AdminSync() {
     onError: (e) => toast({ title: "Synchronisation des pays échouée", description: (e as Error).message, variant: "destructive" }),
   });
 
+  const applyAvail = useMutation({
+    mutationFn: adminApi.applyAvailabilityPrices,
+    onSuccess: (res) => {
+      toast({ title: "Disponibilité & prix appliqués", description: res.message });
+      void qc.invalidateQueries({ queryKey: ["admin-sync-status"] });
+    },
+    onError: (e) => toast({ title: "Erreur", description: (e as Error).message, variant: "destructive" }),
+  });
+
   const inProgress = status?.inProgress || syncFull.isPending || syncServices.isPending || syncCountries.isPending;
 
   return (
@@ -422,6 +431,62 @@ export default function AdminSync() {
               <div className="mt-4 flex items-center gap-2 text-blue-400 text-sm">
                 <RefreshCw className="w-4 h-4 animate-spin" />
                 Synchronisation en cours, veuillez patienter…
+              </div>
+            )}
+          </div>
+
+          {/* Availability + Prices Sync */}
+          <div className="bg-zinc-900/80 border border-amber-800/40 rounded-2xl p-5">
+            <div className="flex items-start gap-3 mb-3">
+              <div className="w-9 h-9 rounded-xl bg-amber-600 flex items-center justify-center shrink-0">
+                <ToggleRight className="w-4 h-4 text-white" />
+              </div>
+              <div>
+                <h2 className="text-white font-semibold text-sm">Sync disponibilité & prix réels 5sim</h2>
+                <p className="text-zinc-500 text-xs mt-0.5">
+                  Lit le cache de disponibilité 5sim et applique à <code className="text-amber-400">service_prices</code> :{" "}
+                  active/désactive chaque combinaison service × pays, puis fixe les prix des services non-sociaux entre <strong className="text-white">300–450 FCFA</strong>.
+                </p>
+              </div>
+            </div>
+
+            <div className="bg-zinc-800/60 rounded-xl p-3 mb-4 text-xs text-zinc-400 space-y-1">
+              <p className="font-medium text-zinc-300">Règles appliquées :</p>
+              <p>• <span className="text-emerald-400">Services sociaux</span> (WhatsApp, Telegram, Instagram, Google/YouTube, Facebook, TikTok, Snapchat, Binance) → disponibilité mise à jour, prix inchangé</p>
+              <p>• <span className="text-amber-400">Tous les autres services</span> → prix fixé à 300/350/400/450 FCFA selon le coût fournisseur</p>
+              <p>• <span className="text-red-400">Combos absents de 5sim</span> → désactivés dans service_prices</p>
+              <p className="text-zinc-500">⚠️ Lancez d'abord un "Sync services" pour avoir des données fraîches, puis appliquez.</p>
+            </div>
+
+            <div className="flex items-center gap-4">
+              <SyncButton
+                label="Appliquer disponibilité & prix"
+                icon={applyAvail.isPending ? RefreshCw : DollarSign}
+                onClick={() => {
+                  if (confirm("Appliquer la disponibilité 5sim et fixer les prix des services non-sociaux (300–450 FCFA) ?")) {
+                    applyAvail.mutate();
+                  }
+                }}
+                loading={applyAvail.isPending}
+                disabled={false}
+                color="emerald"
+              />
+            </div>
+
+            {applyAvail.data && (
+              <div className="mt-4 grid grid-cols-3 gap-3">
+                <div className="bg-emerald-950/40 border border-emerald-800/30 rounded-xl p-3 text-center">
+                  <div className="text-2xl font-bold text-emerald-400">{applyAvail.data.enabled}</div>
+                  <div className="text-[11px] text-zinc-500 mt-0.5">Activés</div>
+                </div>
+                <div className="bg-red-950/40 border border-red-800/30 rounded-xl p-3 text-center">
+                  <div className="text-2xl font-bold text-red-400">{applyAvail.data.disabled}</div>
+                  <div className="text-[11px] text-zinc-500 mt-0.5">Désactivés</div>
+                </div>
+                <div className="bg-amber-950/40 border border-amber-800/30 rounded-xl p-3 text-center">
+                  <div className="text-2xl font-bold text-amber-400">{applyAvail.data.priceFixed}</div>
+                  <div className="text-[11px] text-zinc-500 mt-0.5">Prix corrigés</div>
+                </div>
               </div>
             )}
           </div>

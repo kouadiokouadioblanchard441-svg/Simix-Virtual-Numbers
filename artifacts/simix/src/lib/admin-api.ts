@@ -346,6 +346,15 @@ export const adminApi = {
   }>("POST", "/admin/fivesim/trigger-refund-sweep"),
 
   getRefundStats: () => req<RefundStats>("GET", "/admin/fivesim/refund-stats"),
+
+  applyAvailabilityPrices: () => req<{
+    success: boolean;
+    message: string;
+    enabled: number;
+    disabled: number;
+    priceFixed: number;
+    total: number;
+  }>("POST", "/admin/sync/apply-availability-prices"),
 };
 
 export interface RefundStats {

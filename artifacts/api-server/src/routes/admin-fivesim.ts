@@ -13,7 +13,12 @@
 
 import { Router, type IRouter, type Request, type Response } from "express";
 import { and, eq, lt, isNotNull, sql, desc, or } from "drizzle-orm";
-import { db, apiProvidersTable, virtualNumbersTable, smsMessagesTable, usersTable, transactionsTable, servicesTable } from "@workspace/db";
+import {
+  db,
+  apiProvidersTable, virtualNumbersTable, smsMessagesTable, usersTable,
+  transactionsTable, servicesTable,
+  serviceCountryAvailabilityTable, servicePricesTable,
+} from "@workspace/db";
 import { requireAdminJwt } from "../lib/admin-jwt-middleware";
 import { FiveSimClient, FiveSimError } from "../lib/fivesim";
 import { logger } from "../lib/logger";
@@ -218,6 +223,136 @@ router.post("/admin/fivesim/trigger-refund-sweep", requireAdminJwt, async (_req,
   } catch (e) {
     logger.error({ err: (e as Error).message }, "Error in manual refund sweep");
     res.status(500).json({ error: "Erreur lors du sweep de remboursement" });
+  }
+});
+
+/* ─── Sync disponibilité 5sim → service_prices ──────────────────── */
+/**
+ * Lit toutes les lignes de service_country_availability (source de vérité 5sim)
+ * et propage vers service_prices :
+ *   - Combo présent dans SCA (available > 0) → enabled = true
+ *     · Service social  : ne touche pas au prix existant
+ *     · Autre service   : fixe le prix entre 300–450 FCFA selon le coût fournisseur
+ *   - Combo absent de SCA ou available = 0 → enabled = false dans service_prices
+ *
+ * Services sociaux (prix préservés) :
+ *   whatsapp, telegram, instagram, google, youtube, facebook, tiktok, snapchat, binance
+ */
+
+const SOCIAL_SLUGS = new Set([
+  "whatsapp", "telegram", "instagram", "google", "youtube",
+  "facebook", "tiktok", "snapchat", "binance",
+]);
+
+function calcNonSocialPrice(providerFcfa: number): number {
+  if (providerFcfa <= 0)   return 350;
+  if (providerFcfa <= 100) return 300;
+  if (providerFcfa <= 200) return 350;
+  if (providerFcfa <= 300) return 400;
+  return 450;
+}
+
+router.post("/admin/sync/apply-availability-prices", requireAdminJwt, async (_req, res): Promise<void> => {
+  try {
+    const BATCH = 150;
+
+    /* 1. Source de vérité : toutes les lignes SCA */
+    const allSCA = await db.select().from(serviceCountryAvailabilityTable);
+
+    /* 2. Ensemble des combos disponibles (slug::code en minuscules) */
+    const availableSet = new Set(
+      allSCA
+        .filter(r => r.available > 0)
+        .map(r => `${r.serviceSlug.toLowerCase()}::${r.countryCode.toLowerCase()}`),
+    );
+
+    /* 3. Lire toutes les lignes existantes de service_prices */
+    const allPrices = await db.select({
+      serviceSlug: servicePricesTable.serviceSlug,
+      countryCode: servicePricesTable.countryCode,
+    }).from(servicePricesTable);
+
+    /* 4. Désactiver les combos absents de SCA */
+    const toDisable = allPrices.filter(
+      p => !availableSet.has(`${p.serviceSlug}::${p.countryCode}`),
+    );
+    let disabled = 0;
+    for (let i = 0; i < toDisable.length; i += BATCH) {
+      for (const row of toDisable.slice(i, i + BATCH)) {
+        await db.update(servicePricesTable)
+          .set({ enabled: false, updatedAt: new Date() })
+          .where(and(
+            eq(servicePricesTable.serviceSlug, row.serviceSlug),
+            eq(servicePricesTable.countryCode, row.countryCode),
+          ));
+        disabled++;
+      }
+    }
+
+    /* 5a. Upsert services SOCIAUX (enabled=true, prix existant préservé) */
+    const socialRows = allSCA.filter(
+      r => r.available > 0 && SOCIAL_SLUGS.has(r.serviceSlug.toLowerCase()),
+    );
+    let enabledSocial = 0;
+    for (let i = 0; i < socialRows.length; i += BATCH) {
+      const batch = socialRows.slice(i, i + BATCH).map(r => ({
+        serviceSlug:  r.serviceSlug.toLowerCase(),
+        countryCode:  r.countryCode.toLowerCase(),
+        price:        Math.max(300, Math.round((r.providerPriceFcfa || 500) * 1.3)),
+        enabled:      true as const,
+      }));
+      await db.insert(servicePricesTable)
+        .values(batch)
+        .onConflictDoUpdate({
+          target: [servicePricesTable.serviceSlug, servicePricesTable.countryCode],
+          set: { enabled: true, updatedAt: new Date() },   // price untouched on conflict
+        });
+      enabledSocial += batch.length;
+    }
+
+    /* 5b. Upsert services NON-SOCIAUX (enabled=true, prix fixé 300–450 FCFA) */
+    const nonSocialRows = allSCA.filter(
+      r => r.available > 0 && !SOCIAL_SLUGS.has(r.serviceSlug.toLowerCase()),
+    );
+    let priceFixed = 0;
+    for (let i = 0; i < nonSocialRows.length; i += BATCH) {
+      const batch = nonSocialRows.slice(i, i + BATCH).map(r => ({
+        serviceSlug: r.serviceSlug.toLowerCase(),
+        countryCode: r.countryCode.toLowerCase(),
+        price:       calcNonSocialPrice(r.providerPriceFcfa),
+        enabled:     true as const,
+      }));
+      await db.insert(servicePricesTable)
+        .values(batch)
+        .onConflictDoUpdate({
+          target: [servicePricesTable.serviceSlug, servicePricesTable.countryCode],
+          set: {
+            enabled:    true,
+            price:      sql`excluded.price`,
+            updatedAt:  new Date(),
+          },
+        });
+      priceFixed   += batch.length;
+    }
+
+    const totalEnabled = enabledSocial + priceFixed;
+
+    logger.info(
+      { totalEnabled, disabled, priceFixed, total: allSCA.length },
+      "[admin] apply-availability-prices done",
+    );
+
+    res.json({
+      success:    true,
+      message:    `Sync terminée : ${totalEnabled} activé(s) (dont ${priceFixed} prix corrigés), ${disabled} désactivé(s).`,
+      enabled:    totalEnabled,
+      disabled,
+      priceFixed,
+      total:      allSCA.length,
+    });
+  } catch (err) {
+    logger.error({ err }, "[admin] Error in apply-availability-prices");
+    res.status(500).json({ error: "Erreur lors de l'application des disponibilités et prix" });
   }
 });
 

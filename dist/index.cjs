@@ -117966,6 +117966,105 @@ router17.post("/admin/fivesim/trigger-refund-sweep", requireAdminJwt, async (_re
     res.status(500).json({ error: "Erreur lors du sweep de remboursement" });
   }
 });
+var SOCIAL_SLUGS = /* @__PURE__ */ new Set([
+  "whatsapp",
+  "telegram",
+  "instagram",
+  "google",
+  "youtube",
+  "facebook",
+  "tiktok",
+  "snapchat",
+  "binance"
+]);
+function calcNonSocialPrice(providerFcfa) {
+  if (providerFcfa <= 0) return 350;
+  if (providerFcfa <= 100) return 300;
+  if (providerFcfa <= 200) return 350;
+  if (providerFcfa <= 300) return 400;
+  return 450;
+}
+router17.post("/admin/sync/apply-availability-prices", requireAdminJwt, async (_req, res) => {
+  try {
+    const BATCH = 150;
+    const allSCA = await db.select().from(serviceCountryAvailabilityTable);
+    const availableSet = new Set(
+      allSCA.filter((r2) => r2.available > 0).map((r2) => `${r2.serviceSlug.toLowerCase()}::${r2.countryCode.toLowerCase()}`)
+    );
+    const allPrices = await db.select({
+      serviceSlug: servicePricesTable.serviceSlug,
+      countryCode: servicePricesTable.countryCode
+    }).from(servicePricesTable);
+    const toDisable = allPrices.filter(
+      (p) => !availableSet.has(`${p.serviceSlug}::${p.countryCode}`)
+    );
+    let disabled = 0;
+    for (let i2 = 0; i2 < toDisable.length; i2 += BATCH) {
+      for (const row of toDisable.slice(i2, i2 + BATCH)) {
+        await db.update(servicePricesTable).set({ enabled: false, updatedAt: /* @__PURE__ */ new Date() }).where(and(
+          eq(servicePricesTable.serviceSlug, row.serviceSlug),
+          eq(servicePricesTable.countryCode, row.countryCode)
+        ));
+        disabled++;
+      }
+    }
+    const socialRows = allSCA.filter(
+      (r2) => r2.available > 0 && SOCIAL_SLUGS.has(r2.serviceSlug.toLowerCase())
+    );
+    let enabledSocial = 0;
+    for (let i2 = 0; i2 < socialRows.length; i2 += BATCH) {
+      const batch = socialRows.slice(i2, i2 + BATCH).map((r2) => ({
+        serviceSlug: r2.serviceSlug.toLowerCase(),
+        countryCode: r2.countryCode.toLowerCase(),
+        price: Math.max(300, Math.round((r2.providerPriceFcfa || 500) * 1.3)),
+        enabled: true
+      }));
+      await db.insert(servicePricesTable).values(batch).onConflictDoUpdate({
+        target: [servicePricesTable.serviceSlug, servicePricesTable.countryCode],
+        set: { enabled: true, updatedAt: /* @__PURE__ */ new Date() }
+        // price untouched on conflict
+      });
+      enabledSocial += batch.length;
+    }
+    const nonSocialRows = allSCA.filter(
+      (r2) => r2.available > 0 && !SOCIAL_SLUGS.has(r2.serviceSlug.toLowerCase())
+    );
+    let priceFixed = 0;
+    for (let i2 = 0; i2 < nonSocialRows.length; i2 += BATCH) {
+      const batch = nonSocialRows.slice(i2, i2 + BATCH).map((r2) => ({
+        serviceSlug: r2.serviceSlug.toLowerCase(),
+        countryCode: r2.countryCode.toLowerCase(),
+        price: calcNonSocialPrice(r2.providerPriceFcfa),
+        enabled: true
+      }));
+      await db.insert(servicePricesTable).values(batch).onConflictDoUpdate({
+        target: [servicePricesTable.serviceSlug, servicePricesTable.countryCode],
+        set: {
+          enabled: true,
+          price: sql`excluded.price`,
+          updatedAt: /* @__PURE__ */ new Date()
+        }
+      });
+      priceFixed += batch.length;
+    }
+    const totalEnabled = enabledSocial + priceFixed;
+    logger.info(
+      { totalEnabled, disabled, priceFixed, total: allSCA.length },
+      "[admin] apply-availability-prices done"
+    );
+    res.json({
+      success: true,
+      message: `Sync termin\xE9e : ${totalEnabled} activ\xE9(s) (dont ${priceFixed} prix corrig\xE9s), ${disabled} d\xE9sactiv\xE9(s).`,
+      enabled: totalEnabled,
+      disabled,
+      priceFixed,
+      total: allSCA.length
+    });
+  } catch (err) {
+    logger.error({ err }, "[admin] Error in apply-availability-prices");
+    res.status(500).json({ error: "Erreur lors de l'application des disponibilit\xE9s et prix" });
+  }
+});
 router17.get("/admin/fivesim/refund-stats", requireAdminJwt, async (_req, res) => {
   try {
     const [overview] = await db.select({
