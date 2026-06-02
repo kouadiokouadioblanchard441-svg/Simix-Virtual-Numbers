@@ -17,11 +17,13 @@ function getOAuthClient(redirectUri: string) {
 }
 
 function getRedirectUri(req: { headers: { host?: string; "x-forwarded-proto"?: string }; protocol: string; secure: boolean }): string {
-  if (process.env.GOOGLE_REDIRECT_URI) return process.env.GOOGLE_REDIRECT_URI;
+  /* In Replit dev environment, always use the Replit domain so the
+   * OAuth callback reaches this server (not the production domain). */
   const replitDomain = process.env.REPLIT_DEV_DOMAIN;
   if (replitDomain) return `https://${replitDomain}/api/auth/google/callback`;
-  const host = req.headers.host ?? "localhost:8080";
-  /* Always use https when the connection is secure (trust proxy aware) */
+  /* In production (no REPLIT_DEV_DOMAIN), use the configured URI. */
+  if (process.env.GOOGLE_REDIRECT_URI) return process.env.GOOGLE_REDIRECT_URI;
+  const host = req.headers.host ?? "localhost:3000";
   const proto = req.secure ? "https" : req.protocol;
   return `${proto}://${host}/api/auth/google/callback`;
 }

@@ -111930,10 +111930,10 @@ function getOAuthClient(redirectUri) {
   );
 }
 function getRedirectUri(req) {
-  if (process.env.GOOGLE_REDIRECT_URI) return process.env.GOOGLE_REDIRECT_URI;
   const replitDomain = process.env.REPLIT_DEV_DOMAIN;
   if (replitDomain) return `https://${replitDomain}/api/auth/google/callback`;
-  const host = req.headers.host ?? "localhost:8080";
+  if (process.env.GOOGLE_REDIRECT_URI) return process.env.GOOGLE_REDIRECT_URI;
+  const host = req.headers.host ?? "localhost:3000";
   const proto = req.secure ? "https" : req.protocol;
   return `${proto}://${host}/api/auth/google/callback`;
 }
