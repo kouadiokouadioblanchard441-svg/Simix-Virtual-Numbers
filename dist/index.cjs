@@ -117059,6 +117059,29 @@ router16.get("/admin/emails/campaigns", requireAdmin5, async (req, res) => {
   const [{ total }] = await db.select({ total: count() }).from(emailCampaignsTable);
   res.json({ campaigns, total: Number(total) });
 });
+router16.get("/admin/emails/campaigns/:id/progress", requireAdmin5, async (req, res) => {
+  const { id } = req.params;
+  const campaign = await db.select().from(emailCampaignsTable).where(eq(emailCampaignsTable.id, id)).limit(1);
+  if (!campaign[0]) {
+    res.status(404).json({ error: "Campagne introuvable" });
+    return;
+  }
+  const [sentRow] = await db.select({ c: count() }).from(emailLogsTable).where(and(eq(emailLogsTable.campaignId, id), eq(emailLogsTable.status, "sent")));
+  const [failedRow] = await db.select({ c: count() }).from(emailLogsTable).where(and(eq(emailLogsTable.campaignId, id), eq(emailLogsTable.status, "failed")));
+  const sentNow = Number(sentRow?.c ?? 0);
+  const failedNow = Number(failedRow?.c ?? 0);
+  const processedNow = sentNow + failedNow;
+  res.json({
+    campaignId: id,
+    status: campaign[0].status,
+    totalRecipients: campaign[0].totalRecipients,
+    sentCount: sentNow,
+    failedCount: failedNow,
+    processedCount: processedNow,
+    percentDone: campaign[0].totalRecipients > 0 ? Math.round(processedNow / campaign[0].totalRecipients * 100) : 0,
+    isDone: campaign[0].status !== "sending"
+  });
+});
 router16.get("/admin/emails/campaigns/:id/logs", requireAdmin5, async (req, res) => {
   const { id } = req.params;
   const limit = Math.min(Number(req.query.limit) || 50, 200);

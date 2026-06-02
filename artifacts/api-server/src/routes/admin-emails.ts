@@ -293,6 +293,40 @@ router.get("/admin/emails/campaigns", requireAdmin, async (req: Request, res: Re
   res.json({ campaigns, total: Number(total) });
 });
 
+/* ── GET /admin/emails/campaigns/:id/progress ─────────────── */
+router.get("/admin/emails/campaigns/:id/progress", requireAdmin, async (req: Request, res: Response): Promise<void> => {
+  const { id } = req.params;
+
+  const campaign = await db
+    .select()
+    .from(emailCampaignsTable)
+    .where(eq(emailCampaignsTable.id, id))
+    .limit(1);
+
+  if (!campaign[0]) { res.status(404).json({ error: "Campagne introuvable" }); return; }
+
+  /* Count logs in real-time directly from the DB */
+  const [sentRow]   = await db.select({ c: count() }).from(emailLogsTable).where(and(eq(emailLogsTable.campaignId, id), eq(emailLogsTable.status, "sent")));
+  const [failedRow] = await db.select({ c: count() }).from(emailLogsTable).where(and(eq(emailLogsTable.campaignId, id), eq(emailLogsTable.status, "failed")));
+
+  const sentNow   = Number(sentRow?.c  ?? 0);
+  const failedNow = Number(failedRow?.c ?? 0);
+  const processedNow = sentNow + failedNow;
+
+  res.json({
+    campaignId:      id,
+    status:          campaign[0].status,
+    totalRecipients: campaign[0].totalRecipients,
+    sentCount:       sentNow,
+    failedCount:     failedNow,
+    processedCount:  processedNow,
+    percentDone:     campaign[0].totalRecipients > 0
+      ? Math.round((processedNow / campaign[0].totalRecipients) * 100)
+      : 0,
+    isDone: campaign[0].status !== "sending",
+  });
+});
+
 /* ── GET /admin/emails/campaigns/:id/logs ─────────────────── */
 router.get("/admin/emails/campaigns/:id/logs", requireAdmin, async (req: Request, res: Response): Promise<void> => {
   const { id } = req.params;

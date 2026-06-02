@@ -242,6 +242,12 @@ export const adminApi = {
   },
   getEmailCampaignLogs: (campaignId: string) =>
     req<{ logs: unknown[] }>("GET", `/admin/emails/campaigns/${campaignId}/logs`),
+  getCampaignProgress: (campaignId: string) =>
+    req<{
+      campaignId: string; status: string; totalRecipients: number;
+      sentCount: number; failedCount: number; processedCount: number;
+      percentDone: number; isDone: boolean;
+    }>("GET", `/admin/emails/campaigns/${campaignId}/progress`),
   getEmailStats: () =>
     req<{ totalCampaigns: number; totalSent: number; totalFailed: number; resendConfigured: boolean }>("GET", "/admin/emails/stats"),
   getEmailRecipients: (params?: { search?: string; limit?: number }) => {

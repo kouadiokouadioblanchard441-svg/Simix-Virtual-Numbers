@@ -480,23 +480,90 @@ function ComposeForm() {
   );
 }
 
+/* ── Live progress bar for a campaign currently sending ──── */
+function LiveProgress({ campaignId, onDone }: { campaignId: string; onDone: () => void }) {
+  const { data } = useQuery({
+    queryKey: ["campaign-progress", campaignId],
+    queryFn:  () => adminApi.getCampaignProgress(campaignId),
+    refetchInterval: 2000,
+  });
+
+  useEffect(() => {
+    if (data?.isDone) onDone();
+  }, [data?.isDone, onDone]);
+
+  const pct       = data?.percentDone ?? 0;
+  const sent      = data?.sentCount ?? 0;
+  const failed    = data?.failedCount ?? 0;
+  const total     = data?.totalRecipients ?? 0;
+  const processed = data?.processedCount ?? 0;
+
+  /* Estimate remaining time: batch of 10 every 1.2s → ~8.3 emails/s */
+  const remaining = total - processed;
+  const etaSec    = remaining > 0 ? Math.ceil(remaining / 8.3) : 0;
+  const etaLabel  = etaSec > 60
+    ? `~${Math.ceil(etaSec / 60)} min`
+    : etaSec > 0 ? `~${etaSec}s` : "";
+
+  return (
+    <div className="mt-2 space-y-1.5">
+      {/* Animated striped progress bar */}
+      <div className="relative h-2 bg-zinc-700 rounded-full overflow-hidden">
+        <motion.div
+          className="absolute inset-y-0 left-0 rounded-full"
+          style={{
+            background: "linear-gradient(90deg,#7c3aed,#a78bfa,#7c3aed)",
+            backgroundSize: "200% 100%",
+          }}
+          animate={{ width: `${pct}%`, backgroundPosition: ["0% 0%", "200% 0%"] }}
+          transition={{ width: { duration: 0.6, ease: "easeOut" }, backgroundPosition: { repeat: Infinity, duration: 1.5, ease: "linear" } }}
+        />
+      </div>
+      <div className="flex items-center justify-between text-[10px] text-zinc-500">
+        <span className="flex items-center gap-2">
+          <Loader2 className="w-3 h-3 animate-spin text-violet-400" />
+          <span className="text-violet-300 font-semibold">{processed}/{total}</span>
+          {sent > 0 && <span className="text-green-400">{sent} envoyés</span>}
+          {failed > 0 && <span className="text-red-400">{failed} échecs</span>}
+        </span>
+        <span className="font-mono font-semibold text-violet-400">{pct}%{etaLabel && ` · ${etaLabel}`}</span>
+      </div>
+    </div>
+  );
+}
+
 /* ── Campaigns list ──────────────────────────────────────── */
 function CampaignsList() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const queryClient = useQueryClient();
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, refetch } = useQuery({
     queryKey: ["email-campaigns"],
-    queryFn: () => adminApi.getEmailCampaigns(),
+    queryFn:  () => adminApi.getEmailCampaigns(),
     refetchInterval: 15000,
   });
 
   const { data: logsData } = useQuery({
     queryKey: ["email-logs", expandedId],
-    queryFn: () => adminApi.getEmailCampaignLogs(expandedId!),
-    enabled: !!expandedId,
+    queryFn:  () => adminApi.getEmailCampaignLogs(expandedId!),
+    enabled:  !!expandedId,
   });
 
+  const handleProgressDone = (campaignId: string) => {
+    void queryClient.invalidateQueries({ queryKey: ["campaign-progress", campaignId] });
+    void refetch();
+  };
+
   if (isLoading) return <div className="flex justify-center py-8"><Loader2 className="w-5 h-5 animate-spin text-violet-400" /></div>;
+
+  const campaigns = (data?.campaigns ?? []) as Array<{
+    id: string; subject: string; templateType: string; status: string;
+    sentCount: number; failedCount: number; totalRecipients: number;
+    createdAt: string; sentAt?: string;
+  }>;
+
+  /* Auto-poll the list more frequently if any campaign is sending */
+  const hasSending = campaigns.some(c => c.status === "sending");
 
   return (
     <div className="bg-zinc-800/40 border border-zinc-700/40 rounded-2xl overflow-hidden">
@@ -504,11 +571,12 @@ function CampaignsList() {
         <h3 className="text-white font-semibold text-sm flex items-center gap-2">
           <BarChart3 className="w-4 h-4 text-violet-400" />
           Historique des campagnes
+          {hasSending && <span className="flex items-center gap-1 text-violet-400 text-xs font-normal ml-1"><Loader2 className="w-3 h-3 animate-spin" />Envoi en cours…</span>}
         </h3>
         <span className="text-xs text-zinc-500">{data?.total ?? 0} campagne(s)</span>
       </div>
 
-      {!data?.campaigns?.length ? (
+      {!campaigns.length ? (
         <div className="text-center py-10">
           <Mail className="w-8 h-8 text-zinc-600 mx-auto mb-2" />
           <p className="text-zinc-500 text-sm">Aucune campagne envoyée</p>
@@ -516,19 +584,10 @@ function CampaignsList() {
         </div>
       ) : (
         <div className="divide-y divide-zinc-700/30">
-          {(data.campaigns as Array<{
-            id: string;
-            subject: string;
-            templateType: string;
-            status: string;
-            sentCount: number;
-            failedCount: number;
-            totalRecipients: number;
-            createdAt: string;
-            sentAt?: string;
-          }>).map(c => {
-            const ti = TEMPLATE_TYPES.find(t => t.value === c.templateType) ?? TEMPLATE_TYPES[0];
+          {campaigns.map(c => {
+            const ti         = TEMPLATE_TYPES.find(t => t.value === c.templateType) ?? TEMPLATE_TYPES[0];
             const isExpanded = expandedId === c.id;
+            const isSending  = c.status === "sending";
             const successRate = c.totalRecipients > 0 ? Math.round((c.sentCount / c.totalRecipients) * 100) : 0;
 
             return (
@@ -538,7 +597,9 @@ function CampaignsList() {
                   onClick={() => setExpandedId(isExpanded ? null : c.id)}
                 >
                   <div className="w-9 h-9 rounded-xl bg-violet-500/15 flex items-center justify-center flex-shrink-0 mt-0.5">
-                    <ti.icon className={cn("w-4 h-4", ti.color)} />
+                    {isSending
+                      ? <Loader2 className="w-4 h-4 text-violet-400 animate-spin" />
+                      : <ti.icon className={cn("w-4 h-4", ti.color)} />}
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
@@ -547,10 +608,20 @@ function CampaignsList() {
                     </div>
                     <div className="flex items-center gap-3 text-[11px] text-zinc-500 flex-wrap">
                       <span className="flex items-center gap-1"><Users className="w-3 h-3" />{c.totalRecipients} destinataires</span>
-                      <span className="flex items-center gap-1 text-green-400"><CheckCircle2 className="w-3 h-3" />{c.sentCount} envoyés</span>
-                      {c.failedCount > 0 && <span className="flex items-center gap-1 text-red-400"><XCircle className="w-3 h-3" />{c.failedCount} échecs</span>}
+                      {!isSending && <span className="flex items-center gap-1 text-green-400"><CheckCircle2 className="w-3 h-3" />{c.sentCount} envoyés</span>}
+                      {!isSending && c.failedCount > 0 && <span className="flex items-center gap-1 text-red-400"><XCircle className="w-3 h-3" />{c.failedCount} échecs</span>}
                       <span>{timeAgo(c.createdAt)}</span>
                     </div>
+
+                    {/* Live progress while sending */}
+                    {isSending && (
+                      <LiveProgress
+                        campaignId={c.id}
+                        onDone={() => handleProgressDone(c.id)}
+                      />
+                    )}
+
+                    {/* Static success bar once done */}
                     {c.status === "sent" && c.totalRecipients > 0 && (
                       <div className="mt-1.5 flex items-center gap-2">
                         <div className="flex-1 h-1.5 bg-zinc-700 rounded-full overflow-hidden">
