@@ -117225,6 +117225,383 @@ init_drizzle_orm();
 init_src();
 init_fivesim();
 init_logger2();
+
+// src/lib/fivesim-poller.ts
+init_drizzle_orm();
+init_src();
+init_fivesim();
+init_logger2();
+var POLL_INTERVAL_MS = 15e3;
+var ERROR_BACKOFF_MS = 6e4;
+var MAX_CONCURRENT_POLLS = 10;
+var REFUND_TIMEOUT_MS = 30 * 60 * 1e3;
+var SWEEP_INTERVAL_MS = 5 * 60 * 1e3;
+var pollerTimer = null;
+var sweepTimer = null;
+var running = false;
+var consecutiveDbErrors = 0;
+function startFiveSimPoller() {
+  if (running) return;
+  running = true;
+  consecutiveDbErrors = 0;
+  logger.info("[5sim-poller] Started background SMS polling (interval: 15s) + auto-refund sweep (5min)");
+  schedule(POLL_INTERVAL_MS);
+  scheduleSweep(SWEEP_INTERVAL_MS);
+}
+function stopFiveSimPoller() {
+  running = false;
+  if (pollerTimer) {
+    clearTimeout(pollerTimer);
+    pollerTimer = null;
+  }
+  if (sweepTimer) {
+    clearTimeout(sweepTimer);
+    sweepTimer = null;
+  }
+  logger.info("[5sim-poller] Stopped");
+}
+function schedule(delayMs) {
+  if (!running) return;
+  if (pollerTimer) clearTimeout(pollerTimer);
+  pollerTimer = setTimeout(() => void pollAll(), delayMs);
+}
+function scheduleSweep(delayMs) {
+  if (!running) return;
+  if (sweepTimer) clearTimeout(sweepTimer);
+  sweepTimer = setTimeout(() => void runAutoRefundSweep(), delayMs);
+}
+async function pollAll() {
+  let provider;
+  try {
+    [provider] = await db.select().from(apiProvidersTable).where(and(eq(apiProvidersTable.slug, "5sim"), eq(apiProvidersTable.active, true))).limit(1);
+    consecutiveDbErrors = 0;
+  } catch (e2) {
+    consecutiveDbErrors++;
+    const backoff = consecutiveDbErrors >= 3 ? ERROR_BACKOFF_MS : POLL_INTERVAL_MS;
+    logger.error(
+      { err: e2.message, consecutiveDbErrors, nextRetryMs: backoff },
+      "[5sim-poller] DB error \u2014 backing off"
+    );
+    schedule(backoff);
+    return;
+  }
+  if (!provider?.apiKey) {
+    schedule(POLL_INTERVAL_MS);
+    return;
+  }
+  const client = new FiveSimClient(provider.apiKey);
+  let pendingNumbers;
+  try {
+    pendingNumbers = await db.select().from(virtualNumbersTable).where(
+      and(
+        eq(virtualNumbersTable.status, "waiting"),
+        isNotNull(virtualNumbersTable.externalOrderId),
+        gt(virtualNumbersTable.expiresAt, /* @__PURE__ */ new Date())
+      )
+    );
+  } catch (e2) {
+    logger.warn({ err: e2.message }, "[5sim-poller] Failed to load pending numbers");
+    schedule(POLL_INTERVAL_MS);
+    return;
+  }
+  if (pendingNumbers.length === 0) {
+    schedule(POLL_INTERVAL_MS);
+    return;
+  }
+  logger.debug({ count: pendingNumbers.length }, "[5sim-poller] Polling active orders");
+  try {
+    for (let i2 = 0; i2 < pendingNumbers.length; i2 += MAX_CONCURRENT_POLLS) {
+      const batch = pendingNumbers.slice(i2, i2 + MAX_CONCURRENT_POLLS);
+      await Promise.allSettled(batch.map((vn) => pollSingleOrder(client, vn)));
+    }
+  } catch (e2) {
+    logger.warn({ err: e2.message }, "[5sim-poller] Batch error");
+  }
+  schedule(POLL_INTERVAL_MS);
+}
+async function pollSingleOrder(client, vn) {
+  const orderId = Number(vn.externalOrderId);
+  if (!orderId || isNaN(orderId)) return;
+  const isHosting = vn.numberType === "hosting";
+  if (isHosting) {
+    await pollHostingOrder(client, vn, orderId);
+  } else {
+    await pollActivationOrder(client, vn, orderId);
+  }
+}
+async function pollActivationOrder(client, vn, orderId) {
+  try {
+    const order = await client.checkOrder(orderId);
+    if (order.status === "TIMEOUT") {
+      await handleExpiredOrder(vn);
+      return;
+    }
+    if (order.status === "CANCELED" || order.status === "BANNED") {
+      await handleCancelledOrder(vn);
+      return;
+    }
+    if (order.sms && order.sms.length > 0) {
+      const newSmsCount = await saveNewSmsMessages(vn.id, order.sms);
+      if (newSmsCount > 0 || order.status === "RECEIVED" || order.status === "FINISHED") {
+        await db.update(virtualNumbersTable).set({ status: "received" }).where(eq(virtualNumbersTable.id, vn.id));
+        if (order.status === "RECEIVED") {
+          try {
+            await client.finishOrder(orderId);
+            logger.info({ orderId }, "[5sim-poller] Activation order finished on 5sim");
+          } catch {
+          }
+        }
+        if (newSmsCount > 0) {
+          await pushSmsNotification(vn, order.sms);
+        }
+      }
+    }
+  } catch (e2) {
+    if (e2 instanceof FiveSimError) {
+      if (e2.isNotFound) {
+        await handleExpiredOrder(vn);
+      } else if (e2.isUnauthorized) {
+        logger.error("[5sim-poller] Unauthorised 5sim API key \u2014 stopping poller");
+        stopFiveSimPoller();
+      } else {
+        logger.warn({ err: e2.message, orderId, numberId: vn.id }, "[5sim-poller] Poll error");
+      }
+    } else {
+      logger.warn({ err: e2.message, numberId: vn.id }, "[5sim-poller] Poll error");
+    }
+  }
+}
+async function pollHostingOrder(client, vn, orderId) {
+  try {
+    const inbox = await client.getSmsInbox(orderId);
+    if (!inbox?.Data || inbox.Data.length === 0) {
+      return;
+    }
+    const newSmsCount = await saveNewSmsMessages(vn.id, inbox.Data);
+    if (newSmsCount > 0) {
+      logger.info({ orderId, numberId: vn.id, newSmsCount }, "[5sim-poller] New SMS in hosting inbox");
+      await pushSmsNotification(vn, inbox.Data.slice(-newSmsCount));
+    }
+  } catch (e2) {
+    if (e2 instanceof FiveSimError) {
+      if (e2.isNotFound) {
+        await handleExpiredOrder(vn);
+      } else if (e2.isUnauthorized) {
+        logger.error("[5sim-poller] Unauthorised 5sim API key \u2014 stopping poller");
+        stopFiveSimPoller();
+      } else {
+        logger.warn({ err: e2.message, orderId, numberId: vn.id }, "[5sim-poller] Hosting poll error");
+      }
+    } else {
+      logger.warn({ err: e2.message, numberId: vn.id }, "[5sim-poller] Hosting poll error");
+    }
+  }
+}
+async function saveNewSmsMessages(numberId, smsList) {
+  const existingMsgs = await db.select({ body: smsMessagesTable.body }).from(smsMessagesTable).where(eq(smsMessagesTable.numberId, numberId));
+  const existingBodies = new Set(existingMsgs.map((m2) => m2.body));
+  let newSmsCount = 0;
+  for (const sms of smsList) {
+    if (!existingBodies.has(sms.text)) {
+      await db.insert(smsMessagesTable).values({
+        numberId,
+        sender: sms.sender || "Unknown",
+        body: sms.text,
+        code: sms.code || extractCode2(sms.text) || ""
+      });
+      newSmsCount++;
+      logger.info({ numberId, sender: sms.sender }, "[5sim-poller] New SMS saved");
+    }
+  }
+  return newSmsCount;
+}
+async function pushSmsNotification(vn, smsList) {
+  try {
+    const latestSms = smsList[smsList.length - 1];
+    const code = latestSms ? latestSms.code || extractCode2(latestSms.text) || "" : "";
+    const notifBody = code ? `Code re\xE7u : ${code} \u2014 V\xE9rifiez votre num\xE9ro virtuel.` : "Un SMS est arriv\xE9 sur votre num\xE9ro virtuel.";
+    const [notif] = await db.insert(notificationsTable).values({
+      userId: vn.userId,
+      title: "\u{1F4E9} SMS re\xE7u",
+      body: notifBody,
+      type: "sms",
+      icon: "message",
+      link: `/numbers/${vn.id}`,
+      metadata: { numberId: vn.id, code, sender: latestSms?.sender }
+    }).returning();
+    if (notif) broadcastNotification(notif);
+  } catch (e2) {
+    logger.warn({ err: e2.message }, "[5sim-poller] Failed to send SMS notification");
+  }
+}
+async function handleExpiredOrder(vn) {
+  const [current] = await db.select({ status: virtualNumbersTable.status }).from(virtualNumbersTable).where(eq(virtualNumbersTable.id, vn.id)).limit(1);
+  if (!current || current.status !== "waiting") return;
+  const [msgCount] = await db.select({ c: sql`count(*)::int` }).from(smsMessagesTable).where(eq(smsMessagesTable.numberId, vn.id));
+  await db.update(virtualNumbersTable).set({ status: "expired", expiresAt: /* @__PURE__ */ new Date() }).where(eq(virtualNumbersTable.id, vn.id));
+  logger.info({ numberId: vn.id, orderId: vn.externalOrderId, smsReceived: msgCount?.c ?? 0 }, "[5sim-poller] Order expired");
+  if ((msgCount?.c ?? 0) === 0) {
+    await db.update(usersTable).set({ balance: sql`${usersTable.balance} + ${vn.price}` }).where(eq(usersTable.id, vn.userId));
+    await db.insert(transactionsTable).values({
+      userId: vn.userId,
+      type: "refund",
+      amount: vn.price,
+      status: "completed",
+      method: "wallet",
+      description: "Remboursement automatique (num\xE9ro expir\xE9 sans SMS re\xE7u)"
+    });
+    logger.info({ numberId: vn.id, userId: vn.userId, amount: vn.price }, "[5sim-poller] Auto-refund on expiry");
+    try {
+      const [notif] = await db.insert(notificationsTable).values({
+        userId: vn.userId,
+        title: "\u{1F4B8} Remboursement effectu\xE9",
+        body: `${vn.price} FCFA rembours\xE9s \u2014 num\xE9ro expir\xE9 sans r\xE9ception de SMS.`,
+        type: "refund",
+        icon: "wallet",
+        link: `/wallet`,
+        metadata: { amount: vn.price, numberId: vn.id, reason: "expired" }
+      }).returning();
+      if (notif) broadcastNotification(notif);
+    } catch {
+    }
+  } else {
+    try {
+      const [notif] = await db.insert(notificationsTable).values({
+        userId: vn.userId,
+        title: "\u23F0 Num\xE9ro expir\xE9",
+        body: "Votre num\xE9ro virtuel a expir\xE9. Vous avez re\xE7u un SMS \u2014 aucun remboursement n'est d\xFB.",
+        type: "expired",
+        icon: "clock",
+        link: `/numbers/${vn.id}`,
+        metadata: { numberId: vn.id }
+      }).returning();
+      if (notif) broadcastNotification(notif);
+    } catch {
+    }
+  }
+}
+async function handleCancelledOrder(vn) {
+  const [current] = await db.select({ status: virtualNumbersTable.status }).from(virtualNumbersTable).where(eq(virtualNumbersTable.id, vn.id)).limit(1);
+  if (!current || current.status !== "waiting") return;
+  const [msgCount] = await db.select({ c: sql`count(*)::int` }).from(smsMessagesTable).where(eq(smsMessagesTable.numberId, vn.id));
+  await db.update(virtualNumbersTable).set({ status: "cancelled", expiresAt: /* @__PURE__ */ new Date() }).where(eq(virtualNumbersTable.id, vn.id));
+  if ((msgCount?.c ?? 0) === 0) {
+    await db.update(usersTable).set({ balance: sql`${usersTable.balance} + ${vn.price}` }).where(eq(usersTable.id, vn.userId));
+    await db.insert(transactionsTable).values({
+      userId: vn.userId,
+      type: "refund",
+      amount: vn.price,
+      status: "completed",
+      method: "wallet",
+      description: "Remboursement automatique (5sim annul\xE9)"
+    });
+    logger.info({ numberId: vn.id, userId: vn.userId, amount: vn.price }, "[5sim-poller] Auto-refund issued");
+    try {
+      const [notif] = await db.insert(notificationsTable).values({
+        userId: vn.userId,
+        title: "\u{1F4B8} Remboursement effectu\xE9",
+        body: `${vn.price} FCFA ont \xE9t\xE9 rembours\xE9s sur votre solde (commande annul\xE9e).`,
+        type: "refund",
+        icon: "wallet",
+        link: `/wallet`,
+        metadata: { amount: vn.price, numberId: vn.id }
+      }).returning();
+      if (notif) broadcastNotification(notif);
+    } catch {
+    }
+  }
+}
+async function triggerAutoRefundSweep() {
+  const cutoff = new Date(Date.now() - REFUND_TIMEOUT_MS);
+  const now = /* @__PURE__ */ new Date();
+  const stuckNumbers = await db.select().from(virtualNumbersTable).where(
+    and(
+      eq(virtualNumbersTable.status, "waiting"),
+      lt(virtualNumbersTable.createdAt, cutoff),
+      isNotNull(virtualNumbersTable.externalOrderId)
+    )
+  );
+  logger.info({ count: stuckNumbers.length }, "[5sim-poller] Auto-refund sweep: found stuck numbers");
+  let processed = 0, refunded = 0, errors = 0;
+  for (const vn of stuckNumbers) {
+    try {
+      const [msgCount] = await db.select({ c: sql`count(*)::int` }).from(smsMessagesTable).where(eq(smsMessagesTable.numberId, vn.id));
+      if ((msgCount?.c ?? 0) > 0) {
+        await db.update(virtualNumbersTable).set({ status: "expired" }).where(and(eq(virtualNumbersTable.id, vn.id), eq(virtualNumbersTable.status, "waiting")));
+        processed++;
+        continue;
+      }
+      const client = await getFiveSimClient();
+      if (client && vn.externalOrderId) {
+        try {
+          await client.cancelOrder(Number(vn.externalOrderId));
+          logger.info({ orderId: vn.externalOrderId, numberId: vn.id }, "[5sim-poller] Order cancelled on 5sim (auto-refund sweep)");
+        } catch (e2) {
+          logger.warn({ err: e2.message, orderId: vn.externalOrderId }, "[5sim-poller] Could not cancel on 5sim (will still refund)");
+        }
+      }
+      const updated = await db.update(virtualNumbersTable).set({ status: "cancelled", expiresAt: now }).where(and(eq(virtualNumbersTable.id, vn.id), eq(virtualNumbersTable.status, "waiting"))).returning({ id: virtualNumbersTable.id });
+      if (updated.length === 0) {
+        processed++;
+        continue;
+      }
+      await db.update(usersTable).set({ balance: sql`${usersTable.balance} + ${vn.price}` }).where(eq(usersTable.id, vn.userId));
+      await db.insert(transactionsTable).values({
+        userId: vn.userId,
+        type: "refund",
+        amount: vn.price,
+        status: "completed",
+        method: "wallet",
+        description: `Remboursement automatique (30 min sans SMS re\xE7u)`
+      });
+      logger.info({ numberId: vn.id, userId: vn.userId, amount: vn.price }, "[5sim-poller] Auto-refund (30-min sweep)");
+      try {
+        const [notif] = await db.insert(notificationsTable).values({
+          userId: vn.userId,
+          title: "\u{1F4B8} Remboursement automatique",
+          body: `${vn.price} FCFA rembours\xE9s \u2014 aucun SMS re\xE7u en 30 minutes.`,
+          type: "refund",
+          icon: "wallet",
+          link: `/wallet`,
+          metadata: { amount: vn.price, numberId: vn.id, reason: "timeout_30min" }
+        }).returning();
+        if (notif) broadcastNotification(notif);
+      } catch {
+      }
+      processed++;
+      refunded++;
+    } catch (e2) {
+      logger.error({ err: e2.message, numberId: vn.id }, "[5sim-poller] Error in auto-refund sweep");
+      errors++;
+    }
+  }
+  logger.info({ processed, refunded, errors }, "[5sim-poller] Auto-refund sweep complete");
+  return { processed, refunded, errors };
+}
+async function runAutoRefundSweep() {
+  try {
+    await triggerAutoRefundSweep();
+  } catch (e2) {
+    logger.error({ err: e2.message }, "[5sim-poller] Auto-refund sweep failed");
+  } finally {
+    scheduleSweep(SWEEP_INTERVAL_MS);
+  }
+}
+async function getFiveSimClient() {
+  try {
+    const [provider] = await db.select().from(apiProvidersTable).where(and(eq(apiProvidersTable.slug, "5sim"), eq(apiProvidersTable.active, true))).limit(1);
+    if (!provider?.apiKey) return null;
+    return new FiveSimClient(provider.apiKey);
+  } catch {
+    return null;
+  }
+}
+function extractCode2(text2) {
+  const match = text2.match(/\b(\d{4,8})\b/);
+  return match ? match[1] : null;
+}
+
+// src/routes/admin-fivesim.ts
 var router17 = (0, import_express18.Router)();
 async function get5SimClient() {
   const [provider] = await db.select().from(apiProvidersTable).where(and(eq(apiProvidersTable.slug, "5sim"), eq(apiProvidersTable.active, true))).limit(1);
@@ -117373,6 +117750,48 @@ router17.get("/admin/fivesim/user/payments", requireAdminJwt, async (req, res) =
     res.json(payments);
   } catch (e2) {
     handle5SimError(e2, res);
+  }
+});
+router17.get("/admin/fivesim/pending-refunds", requireAdminJwt, async (_req, res) => {
+  const cutoff30 = new Date(Date.now() - 30 * 60 * 1e3);
+  try {
+    const rows = await db.select({
+      id: virtualNumbersTable.id,
+      phoneNumber: virtualNumbersTable.phoneNumber,
+      status: virtualNumbersTable.status,
+      price: virtualNumbersTable.price,
+      createdAt: virtualNumbersTable.createdAt,
+      expiresAt: virtualNumbersTable.expiresAt,
+      externalOrderId: virtualNumbersTable.externalOrderId,
+      userId: virtualNumbersTable.userId,
+      userPhone: usersTable.phone,
+      userBalance: usersTable.balance,
+      smsCount: sql`(SELECT count(*)::int FROM sms_messages sm WHERE sm.number_id = ${virtualNumbersTable.id})`
+    }).from(virtualNumbersTable).leftJoin(usersTable, eq(usersTable.id, virtualNumbersTable.userId)).where(
+      and(
+        eq(virtualNumbersTable.status, "waiting"),
+        lt(virtualNumbersTable.createdAt, cutoff30),
+        isNotNull(virtualNumbersTable.externalOrderId)
+      )
+    ).orderBy(virtualNumbersTable.createdAt);
+    res.json({ pendingRefunds: rows, count: rows.length });
+  } catch (e2) {
+    logger.error({ err: e2.message }, "Error fetching pending refunds");
+    res.status(500).json({ error: "Erreur lors de la r\xE9cup\xE9ration des remboursements en attente" });
+  }
+});
+router17.post("/admin/fivesim/trigger-refund-sweep", requireAdminJwt, async (_req, res) => {
+  try {
+    logger.info("[admin] Manual auto-refund sweep triggered");
+    const result = await triggerAutoRefundSweep();
+    res.json({
+      success: true,
+      message: `Sweep termin\xE9 : ${result.refunded} remboursement(s) effectu\xE9(s), ${result.processed} num\xE9ro(s) trait\xE9(s), ${result.errors} erreur(s).`,
+      ...result
+    });
+  } catch (e2) {
+    logger.error({ err: e2.message }, "Error in manual refund sweep");
+    res.status(500).json({ error: "Erreur lors du sweep de remboursement" });
   }
 });
 var admin_fivesim_default = router17;
@@ -119790,256 +120209,6 @@ function checkUserBlocked(req, res, next) {
     return;
   }
   next();
-}
-
-// src/lib/fivesim-poller.ts
-init_drizzle_orm();
-init_src();
-init_fivesim();
-init_logger2();
-var POLL_INTERVAL_MS = 15e3;
-var ERROR_BACKOFF_MS = 6e4;
-var MAX_CONCURRENT_POLLS = 10;
-var pollerTimer = null;
-var running = false;
-var consecutiveDbErrors = 0;
-function startFiveSimPoller() {
-  if (running) return;
-  running = true;
-  consecutiveDbErrors = 0;
-  logger.info("[5sim-poller] Started background SMS polling (interval: 15s)");
-  schedule(POLL_INTERVAL_MS);
-}
-function stopFiveSimPoller() {
-  running = false;
-  if (pollerTimer) {
-    clearTimeout(pollerTimer);
-    pollerTimer = null;
-  }
-  logger.info("[5sim-poller] Stopped");
-}
-function schedule(delayMs) {
-  if (!running) return;
-  if (pollerTimer) clearTimeout(pollerTimer);
-  pollerTimer = setTimeout(() => void pollAll(), delayMs);
-}
-async function pollAll() {
-  let provider;
-  try {
-    [provider] = await db.select().from(apiProvidersTable).where(and(eq(apiProvidersTable.slug, "5sim"), eq(apiProvidersTable.active, true))).limit(1);
-    consecutiveDbErrors = 0;
-  } catch (e2) {
-    consecutiveDbErrors++;
-    const backoff = consecutiveDbErrors >= 3 ? ERROR_BACKOFF_MS : POLL_INTERVAL_MS;
-    logger.error(
-      { err: e2.message, consecutiveDbErrors, nextRetryMs: backoff },
-      "[5sim-poller] DB error \u2014 backing off"
-    );
-    schedule(backoff);
-    return;
-  }
-  if (!provider?.apiKey) {
-    schedule(POLL_INTERVAL_MS);
-    return;
-  }
-  const client = new FiveSimClient(provider.apiKey);
-  let pendingNumbers;
-  try {
-    pendingNumbers = await db.select().from(virtualNumbersTable).where(
-      and(
-        eq(virtualNumbersTable.status, "waiting"),
-        isNotNull(virtualNumbersTable.externalOrderId),
-        gt(virtualNumbersTable.expiresAt, /* @__PURE__ */ new Date())
-      )
-    );
-  } catch (e2) {
-    logger.warn({ err: e2.message }, "[5sim-poller] Failed to load pending numbers");
-    schedule(POLL_INTERVAL_MS);
-    return;
-  }
-  if (pendingNumbers.length === 0) {
-    schedule(POLL_INTERVAL_MS);
-    return;
-  }
-  logger.debug({ count: pendingNumbers.length }, "[5sim-poller] Polling active orders");
-  try {
-    for (let i2 = 0; i2 < pendingNumbers.length; i2 += MAX_CONCURRENT_POLLS) {
-      const batch = pendingNumbers.slice(i2, i2 + MAX_CONCURRENT_POLLS);
-      await Promise.allSettled(batch.map((vn) => pollSingleOrder(client, vn)));
-    }
-  } catch (e2) {
-    logger.warn({ err: e2.message }, "[5sim-poller] Batch error");
-  }
-  schedule(POLL_INTERVAL_MS);
-}
-async function pollSingleOrder(client, vn) {
-  const orderId = Number(vn.externalOrderId);
-  if (!orderId || isNaN(orderId)) return;
-  const isHosting = vn.numberType === "hosting";
-  if (isHosting) {
-    await pollHostingOrder(client, vn, orderId);
-  } else {
-    await pollActivationOrder(client, vn, orderId);
-  }
-}
-async function pollActivationOrder(client, vn, orderId) {
-  try {
-    const order = await client.checkOrder(orderId);
-    if (order.status === "TIMEOUT") {
-      await handleExpiredOrder(vn);
-      return;
-    }
-    if (order.status === "CANCELED" || order.status === "BANNED") {
-      await handleCancelledOrder(vn);
-      return;
-    }
-    if (order.sms && order.sms.length > 0) {
-      const newSmsCount = await saveNewSmsMessages(vn.id, order.sms);
-      if (newSmsCount > 0 || order.status === "RECEIVED" || order.status === "FINISHED") {
-        await db.update(virtualNumbersTable).set({ status: "received" }).where(eq(virtualNumbersTable.id, vn.id));
-        if (order.status === "RECEIVED") {
-          try {
-            await client.finishOrder(orderId);
-            logger.info({ orderId }, "[5sim-poller] Activation order finished on 5sim");
-          } catch {
-          }
-        }
-        if (newSmsCount > 0) {
-          await pushSmsNotification(vn, order.sms);
-        }
-      }
-    }
-  } catch (e2) {
-    if (e2 instanceof FiveSimError) {
-      if (e2.isNotFound) {
-        await handleExpiredOrder(vn);
-      } else if (e2.isUnauthorized) {
-        logger.error("[5sim-poller] Unauthorised 5sim API key \u2014 stopping poller");
-        stopFiveSimPoller();
-      } else {
-        logger.warn({ err: e2.message, orderId, numberId: vn.id }, "[5sim-poller] Poll error");
-      }
-    } else {
-      logger.warn({ err: e2.message, numberId: vn.id }, "[5sim-poller] Poll error");
-    }
-  }
-}
-async function pollHostingOrder(client, vn, orderId) {
-  try {
-    const inbox = await client.getSmsInbox(orderId);
-    if (!inbox?.Data || inbox.Data.length === 0) {
-      return;
-    }
-    const newSmsCount = await saveNewSmsMessages(vn.id, inbox.Data);
-    if (newSmsCount > 0) {
-      logger.info({ orderId, numberId: vn.id, newSmsCount }, "[5sim-poller] New SMS in hosting inbox");
-      await pushSmsNotification(vn, inbox.Data.slice(-newSmsCount));
-    }
-  } catch (e2) {
-    if (e2 instanceof FiveSimError) {
-      if (e2.isNotFound) {
-        await handleExpiredOrder(vn);
-      } else if (e2.isUnauthorized) {
-        logger.error("[5sim-poller] Unauthorised 5sim API key \u2014 stopping poller");
-        stopFiveSimPoller();
-      } else {
-        logger.warn({ err: e2.message, orderId, numberId: vn.id }, "[5sim-poller] Hosting poll error");
-      }
-    } else {
-      logger.warn({ err: e2.message, numberId: vn.id }, "[5sim-poller] Hosting poll error");
-    }
-  }
-}
-async function saveNewSmsMessages(numberId, smsList) {
-  const existingMsgs = await db.select({ body: smsMessagesTable.body }).from(smsMessagesTable).where(eq(smsMessagesTable.numberId, numberId));
-  const existingBodies = new Set(existingMsgs.map((m2) => m2.body));
-  let newSmsCount = 0;
-  for (const sms of smsList) {
-    if (!existingBodies.has(sms.text)) {
-      await db.insert(smsMessagesTable).values({
-        numberId,
-        sender: sms.sender || "Unknown",
-        body: sms.text,
-        code: sms.code || extractCode2(sms.text) || ""
-      });
-      newSmsCount++;
-      logger.info({ numberId, sender: sms.sender }, "[5sim-poller] New SMS saved");
-    }
-  }
-  return newSmsCount;
-}
-async function pushSmsNotification(vn, smsList) {
-  try {
-    const latestSms = smsList[smsList.length - 1];
-    const code = latestSms ? latestSms.code || extractCode2(latestSms.text) || "" : "";
-    const notifBody = code ? `Code re\xE7u : ${code} \u2014 V\xE9rifiez votre num\xE9ro virtuel.` : "Un SMS est arriv\xE9 sur votre num\xE9ro virtuel.";
-    const [notif] = await db.insert(notificationsTable).values({
-      userId: vn.userId,
-      title: "\u{1F4E9} SMS re\xE7u",
-      body: notifBody,
-      type: "sms",
-      icon: "message",
-      link: `/numbers/${vn.id}`,
-      metadata: { numberId: vn.id, code, sender: latestSms?.sender }
-    }).returning();
-    if (notif) broadcastNotification(notif);
-  } catch (e2) {
-    logger.warn({ err: e2.message }, "[5sim-poller] Failed to send SMS notification");
-  }
-}
-async function handleExpiredOrder(vn) {
-  const [current] = await db.select({ status: virtualNumbersTable.status }).from(virtualNumbersTable).where(eq(virtualNumbersTable.id, vn.id)).limit(1);
-  if (!current || current.status !== "waiting") return;
-  await db.update(virtualNumbersTable).set({ status: "expired", expiresAt: /* @__PURE__ */ new Date() }).where(eq(virtualNumbersTable.id, vn.id));
-  logger.info({ numberId: vn.id, orderId: vn.externalOrderId }, "[5sim-poller] Order expired");
-  try {
-    const [notif] = await db.insert(notificationsTable).values({
-      userId: vn.userId,
-      title: "\u23F0 Num\xE9ro expir\xE9",
-      body: "Votre num\xE9ro virtuel a expir\xE9 sans recevoir de SMS. Un remboursement sera effectu\xE9 automatiquement si aucun SMS n'a \xE9t\xE9 re\xE7u.",
-      type: "expired",
-      icon: "clock",
-      link: `/numbers`,
-      metadata: { numberId: vn.id }
-    }).returning();
-    if (notif) broadcastNotification(notif);
-  } catch {
-  }
-}
-async function handleCancelledOrder(vn) {
-  const [current] = await db.select({ status: virtualNumbersTable.status }).from(virtualNumbersTable).where(eq(virtualNumbersTable.id, vn.id)).limit(1);
-  if (!current || current.status !== "waiting") return;
-  const [msgCount] = await db.select({ c: sql`count(*)::int` }).from(smsMessagesTable).where(eq(smsMessagesTable.numberId, vn.id));
-  await db.update(virtualNumbersTable).set({ status: "cancelled", expiresAt: /* @__PURE__ */ new Date() }).where(eq(virtualNumbersTable.id, vn.id));
-  if ((msgCount?.c ?? 0) === 0) {
-    await db.update(usersTable).set({ balance: sql`${usersTable.balance} + ${vn.price}` }).where(eq(usersTable.id, vn.userId));
-    await db.insert(transactionsTable).values({
-      userId: vn.userId,
-      type: "refund",
-      amount: vn.price,
-      status: "completed",
-      method: "wallet",
-      description: "Remboursement automatique (5sim annul\xE9)"
-    });
-    logger.info({ numberId: vn.id, userId: vn.userId, amount: vn.price }, "[5sim-poller] Auto-refund issued");
-    try {
-      const [notif] = await db.insert(notificationsTable).values({
-        userId: vn.userId,
-        title: "\u{1F4B8} Remboursement effectu\xE9",
-        body: `${vn.price} FCFA ont \xE9t\xE9 rembours\xE9s sur votre solde (commande annul\xE9e).`,
-        type: "refund",
-        icon: "wallet",
-        link: `/wallet`,
-        metadata: { amount: vn.price, numberId: vn.id }
-      }).returning();
-      if (notif) broadcastNotification(notif);
-    } catch {
-    }
-  }
-}
-function extractCode2(text2) {
-  const match = text2.match(/\b(\d{4,8})\b/);
-  return match ? match[1] : null;
 }
 
 // src/lib/seed-providers.ts

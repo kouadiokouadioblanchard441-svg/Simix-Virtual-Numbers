@@ -12,11 +12,12 @@
  */
 
 import { Router, type IRouter, type Request, type Response } from "express";
-import { and, eq } from "drizzle-orm";
-import { db, apiProvidersTable } from "@workspace/db";
+import { and, eq, lt, isNotNull, sql } from "drizzle-orm";
+import { db, apiProvidersTable, virtualNumbersTable, smsMessagesTable, usersTable } from "@workspace/db";
 import { requireAdminJwt } from "../lib/admin-jwt-middleware";
 import { FiveSimClient, FiveSimError } from "../lib/fivesim";
 import { logger } from "../lib/logger";
+import { triggerAutoRefundSweep } from "../lib/fivesim-poller";
 
 const router: IRouter = Router();
 
@@ -163,6 +164,60 @@ router.get("/admin/fivesim/user/payments", requireAdminJwt, async (req, res): Pr
     res.json(payments);
   } catch (e) {
     handle5SimError(e, res as any);
+  }
+});
+
+/* ─── Pending refunds: numéros bloqués en "waiting" ──────────── */
+
+router.get("/admin/fivesim/pending-refunds", requireAdminJwt, async (_req, res): Promise<void> => {
+  const cutoff30 = new Date(Date.now() - 30 * 60 * 1_000);
+  try {
+    const rows = await db
+      .select({
+        id:             virtualNumbersTable.id,
+        phoneNumber:    virtualNumbersTable.phoneNumber,
+        status:         virtualNumbersTable.status,
+        price:          virtualNumbersTable.price,
+        createdAt:      virtualNumbersTable.createdAt,
+        expiresAt:      virtualNumbersTable.expiresAt,
+        externalOrderId: virtualNumbersTable.externalOrderId,
+        userId:         virtualNumbersTable.userId,
+        userPhone:      usersTable.phone,
+        userBalance:    usersTable.balance,
+        smsCount:       sql<number>`(SELECT count(*)::int FROM sms_messages sm WHERE sm.number_id = ${virtualNumbersTable.id})`,
+      })
+      .from(virtualNumbersTable)
+      .leftJoin(usersTable, eq(usersTable.id, virtualNumbersTable.userId))
+      .where(
+        and(
+          eq(virtualNumbersTable.status, "waiting"),
+          lt(virtualNumbersTable.createdAt, cutoff30),
+          isNotNull(virtualNumbersTable.externalOrderId),
+        ),
+      )
+      .orderBy(virtualNumbersTable.createdAt);
+
+    res.json({ pendingRefunds: rows, count: rows.length });
+  } catch (e) {
+    logger.error({ err: (e as Error).message }, "Error fetching pending refunds");
+    res.status(500).json({ error: "Erreur lors de la récupération des remboursements en attente" });
+  }
+});
+
+/* ─── Manual trigger: déclencher le sweep de remboursement ────── */
+
+router.post("/admin/fivesim/trigger-refund-sweep", requireAdminJwt, async (_req, res): Promise<void> => {
+  try {
+    logger.info("[admin] Manual auto-refund sweep triggered");
+    const result = await triggerAutoRefundSweep();
+    res.json({
+      success: true,
+      message: `Sweep terminé : ${result.refunded} remboursement(s) effectué(s), ${result.processed} numéro(s) traité(s), ${result.errors} erreur(s).`,
+      ...result,
+    });
+  } catch (e) {
+    logger.error({ err: (e as Error).message }, "Error in manual refund sweep");
+    res.status(500).json({ error: "Erreur lors du sweep de remboursement" });
   }
 });
 

@@ -1,3 +1,4 @@
 - [Admin router global middleware trap](admin-router-middleware-trap.md) — new non-admin routes must be registered BEFORE adminRouter in routes/index.ts or they return "Admin session required".
 - [Services table filtering](services-filter.md) — 5sim sync adds 1000+ products with sort_order=200; curated 18 have sort_order 10–180. Always filter with lte(sortOrder,180).
 - [5sim API complete integration](fivesim-complete.md) — All 19 endpoints integrated; hosting numbers (1day/3hours) require different poller (sms/inbox vs check); vendor endpoints need JWT admin auth.
+- [Auto-refund bug and sweep](auto-refund-sweep.md) — handleExpiredOrder never refunded (bug fixed); 30-min sweep runs every 5 min via triggerAutoRefundSweep(); admin endpoint POST /admin/fivesim/trigger-refund-sweep for manual trigger.

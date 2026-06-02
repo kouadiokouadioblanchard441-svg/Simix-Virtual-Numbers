@@ -181,7 +181,7 @@ function NumberDetailsContent() {
           </div>
         </div>
 
-        <div className="bg-primary/10 border border-primary/30 rounded-2xl p-4 mb-8 flex items-start gap-3 relative">
+        <div className="bg-primary/10 border border-primary/30 rounded-2xl p-4 mb-3 flex items-start gap-3 relative">
           <Shield className="w-5 h-5 text-primary shrink-0 mt-0.5" />
           <div className="pr-6">
             <h4 className="text-sm font-bold text-primary mb-1">Numéro temporaire</h4>
@@ -190,6 +190,17 @@ function NumberDetailsContent() {
             </p>
           </div>
           <Info className="w-4 h-4 text-primary absolute top-4 right-4" />
+        </div>
+
+        {/* Garantie remboursement 30 min */}
+        <div className="bg-[#10B981]/10 border border-[#10B981]/30 rounded-2xl p-4 mb-8 flex items-start gap-3">
+          <div className="text-[#10B981] text-lg shrink-0 mt-0.5">💸</div>
+          <div>
+            <h4 className="text-sm font-bold text-[#10B981] mb-1">Garantie remboursement 30 min</h4>
+            <p className="text-xs text-[#10B981]/80 leading-relaxed">
+              Si vous ne recevez aucun SMS dans les 30 minutes, votre solde est automatiquement recrédité — sans démarche de votre part.
+            </p>
+          </div>
         </div>
 
         {/* Price Card */}

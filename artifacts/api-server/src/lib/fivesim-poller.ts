@@ -9,7 +9,7 @@
  * Intervalle : 15s normal, 60s après erreur réseau/DB.
  */
 
-import { and, eq, gt, isNotNull, sql } from "drizzle-orm";
+import { and, eq, gt, isNotNull, lt, lte, sql } from "drizzle-orm";
 import {
   db,
   virtualNumbersTable,
@@ -23,11 +23,15 @@ import { FiveSimClient, FiveSimError } from "./fivesim";
 import { logger } from "./logger";
 import { broadcastNotification } from "../routes/notifications";
 
-const POLL_INTERVAL_MS = 15_000;
-const ERROR_BACKOFF_MS  = 60_000;
+const POLL_INTERVAL_MS     = 15_000;
+const ERROR_BACKOFF_MS     = 60_000;
 const MAX_CONCURRENT_POLLS = 10;
+/* Auto-refund: remboursement automatique si aucun SMS reçu après 30 min */
+const REFUND_TIMEOUT_MS    = 30 * 60 * 1_000;
+const SWEEP_INTERVAL_MS    = 5 * 60 * 1_000; /* vérifie toutes les 5 minutes */
 
 let pollerTimer: ReturnType<typeof setTimeout> | null = null;
+let sweepTimer:  ReturnType<typeof setTimeout> | null = null;
 let running = false;
 let consecutiveDbErrors = 0;
 
@@ -37,13 +41,15 @@ export function startFiveSimPoller(): void {
   if (running) return;
   running = true;
   consecutiveDbErrors = 0;
-  logger.info("[5sim-poller] Started background SMS polling (interval: 15s)");
+  logger.info("[5sim-poller] Started background SMS polling (interval: 15s) + auto-refund sweep (5min)");
   schedule(POLL_INTERVAL_MS);
+  scheduleSweep(SWEEP_INTERVAL_MS);
 }
 
 export function stopFiveSimPoller(): void {
   running = false;
   if (pollerTimer) { clearTimeout(pollerTimer); pollerTimer = null; }
+  if (sweepTimer)  { clearTimeout(sweepTimer);  sweepTimer  = null; }
   logger.info("[5sim-poller] Stopped");
 }
 
@@ -51,6 +57,12 @@ function schedule(delayMs: number): void {
   if (!running) return;
   if (pollerTimer) clearTimeout(pollerTimer);
   pollerTimer = setTimeout(() => void pollAll(), delayMs);
+}
+
+function scheduleSweep(delayMs: number): void {
+  if (!running) return;
+  if (sweepTimer) clearTimeout(sweepTimer);
+  sweepTimer = setTimeout(() => void runAutoRefundSweep(), delayMs);
 }
 
 /* ─── Main poll loop ─────────────────────────────────────────── */
@@ -307,25 +319,64 @@ async function handleExpiredOrder(vn: typeof virtualNumbersTable.$inferSelect): 
 
   if (!current || current.status !== "waiting") return;
 
+  /* Check if any SMS was received */
+  const [msgCount] = await db
+    .select({ c: sql<number>`count(*)::int` })
+    .from(smsMessagesTable)
+    .where(eq(smsMessagesTable.numberId, vn.id));
+
   await db
     .update(virtualNumbersTable)
     .set({ status: "expired", expiresAt: new Date() })
     .where(eq(virtualNumbersTable.id, vn.id));
 
-  logger.info({ numberId: vn.id, orderId: vn.externalOrderId }, "[5sim-poller] Order expired");
+  logger.info({ numberId: vn.id, orderId: vn.externalOrderId, smsReceived: msgCount?.c ?? 0 }, "[5sim-poller] Order expired");
 
-  try {
-    const [notif] = await db.insert(notificationsTable).values({
+  /* BUG FIX: rembourser si aucun SMS reçu (l'ancienne version ne remboursait pas sur expiration) */
+  if ((msgCount?.c ?? 0) === 0) {
+    await db
+      .update(usersTable)
+      .set({ balance: sql`${usersTable.balance} + ${vn.price}` })
+      .where(eq(usersTable.id, vn.userId));
+
+    await db.insert(transactionsTable).values({
       userId: vn.userId,
-      title: "⏰ Numéro expiré",
-      body: "Votre numéro virtuel a expiré sans recevoir de SMS. Un remboursement sera effectué automatiquement si aucun SMS n'a été reçu.",
-      type: "expired",
-      icon: "clock",
-      link: `/numbers`,
-      metadata: { numberId: vn.id },
-    }).returning();
-    if (notif) broadcastNotification(notif);
-  } catch { /* non-critical */ }
+      type: "refund",
+      amount: vn.price,
+      status: "completed",
+      method: "wallet",
+      description: "Remboursement automatique (numéro expiré sans SMS reçu)",
+    });
+
+    logger.info({ numberId: vn.id, userId: vn.userId, amount: vn.price }, "[5sim-poller] Auto-refund on expiry");
+
+    try {
+      const [notif] = await db.insert(notificationsTable).values({
+        userId: vn.userId,
+        title: "💸 Remboursement effectué",
+        body: `${vn.price} FCFA remboursés — numéro expiré sans réception de SMS.`,
+        type: "refund",
+        icon: "wallet",
+        link: `/wallet`,
+        metadata: { amount: vn.price, numberId: vn.id, reason: "expired" },
+      }).returning();
+      if (notif) broadcastNotification(notif);
+    } catch { /* non-critical */ }
+  } else {
+    /* Received SMS but poller still marked TIMEOUT — just notify */
+    try {
+      const [notif] = await db.insert(notificationsTable).values({
+        userId: vn.userId,
+        title: "⏰ Numéro expiré",
+        body: "Votre numéro virtuel a expiré. Vous avez reçu un SMS — aucun remboursement n'est dû.",
+        type: "expired",
+        icon: "clock",
+        link: `/numbers/${vn.id}`,
+        metadata: { numberId: vn.id },
+      }).returning();
+      if (notif) broadcastNotification(notif);
+    } catch { /* non-critical */ }
+  }
 }
 
 async function handleCancelledOrder(vn: typeof virtualNumbersTable.$inferSelect): Promise<void> {
@@ -376,6 +427,145 @@ async function handleCancelledOrder(vn: typeof virtualNumbersTable.$inferSelect)
       }).returning();
       if (notif) broadcastNotification(notif);
     } catch { /* non-critical */ }
+  }
+}
+
+/* ─── Auto-refund sweep (30 min timeout) ─────────────────────── */
+
+/**
+ * Vérifie toutes les 5 min les numéros "waiting" qui :
+ *   1. ont plus de 30 min d'ancienneté OU sont passés après expiresAt
+ *   2. n'ont reçu aucun SMS
+ * → annule l'ordre sur 5sim (best-effort) → rembourse le solde.
+ *
+ * Exporte également `triggerAutoRefundSweep` pour l'endpoint admin.
+ */
+export async function triggerAutoRefundSweep(): Promise<{ processed: number; refunded: number; errors: number }> {
+  const cutoff = new Date(Date.now() - REFUND_TIMEOUT_MS);
+  const now    = new Date();
+
+  /* Numéros bloqués : en attente depuis >30 min OU expirés localement */
+  const stuckNumbers = await db
+    .select()
+    .from(virtualNumbersTable)
+    .where(
+      and(
+        eq(virtualNumbersTable.status, "waiting"),
+        lt(virtualNumbersTable.createdAt, cutoff),
+        isNotNull(virtualNumbersTable.externalOrderId),
+      ),
+    );
+
+  logger.info({ count: stuckNumbers.length }, "[5sim-poller] Auto-refund sweep: found stuck numbers");
+
+  let processed = 0, refunded = 0, errors = 0;
+
+  for (const vn of stuckNumbers) {
+    try {
+      /* Double-check: aucun SMS reçu */
+      const [msgCount] = await db
+        .select({ c: sql<number>`count(*)::int` })
+        .from(smsMessagesTable)
+        .where(eq(smsMessagesTable.numberId, vn.id));
+
+      if ((msgCount?.c ?? 0) > 0) {
+        /* SMS reçu — juste marquer expired si toujours en waiting */
+        await db
+          .update(virtualNumbersTable)
+          .set({ status: "expired" })
+          .where(and(eq(virtualNumbersTable.id, vn.id), eq(virtualNumbersTable.status, "waiting")));
+        processed++;
+        continue;
+      }
+
+      /* Tenter d'annuler sur 5sim (best-effort) */
+      const client = await getFiveSimClient();
+      if (client && vn.externalOrderId) {
+        try {
+          await client.cancelOrder(Number(vn.externalOrderId));
+          logger.info({ orderId: vn.externalOrderId, numberId: vn.id }, "[5sim-poller] Order cancelled on 5sim (auto-refund sweep)");
+        } catch (e) {
+          logger.warn({ err: (e as Error).message, orderId: vn.externalOrderId }, "[5sim-poller] Could not cancel on 5sim (will still refund)");
+        }
+      }
+
+      /* Marquer cancelled + rembourser */
+      const updated = await db
+        .update(virtualNumbersTable)
+        .set({ status: "cancelled", expiresAt: now })
+        .where(and(eq(virtualNumbersTable.id, vn.id), eq(virtualNumbersTable.status, "waiting")))
+        .returning({ id: virtualNumbersTable.id });
+
+      if (updated.length === 0) {
+        /* Un autre processus a déjà traité ce numéro */
+        processed++;
+        continue;
+      }
+
+      await db
+        .update(usersTable)
+        .set({ balance: sql`${usersTable.balance} + ${vn.price}` })
+        .where(eq(usersTable.id, vn.userId));
+
+      await db.insert(transactionsTable).values({
+        userId: vn.userId,
+        type: "refund",
+        amount: vn.price,
+        status: "completed",
+        method: "wallet",
+        description: `Remboursement automatique (30 min sans SMS reçu)`,
+      });
+
+      logger.info({ numberId: vn.id, userId: vn.userId, amount: vn.price }, "[5sim-poller] Auto-refund (30-min sweep)");
+
+      try {
+        const [notif] = await db.insert(notificationsTable).values({
+          userId: vn.userId,
+          title: "💸 Remboursement automatique",
+          body: `${vn.price} FCFA remboursés — aucun SMS reçu en 30 minutes.`,
+          type: "refund",
+          icon: "wallet",
+          link: `/wallet`,
+          metadata: { amount: vn.price, numberId: vn.id, reason: "timeout_30min" },
+        }).returning();
+        if (notif) broadcastNotification(notif);
+      } catch { /* non-critical */ }
+
+      processed++;
+      refunded++;
+    } catch (e) {
+      logger.error({ err: (e as Error).message, numberId: vn.id }, "[5sim-poller] Error in auto-refund sweep");
+      errors++;
+    }
+  }
+
+  logger.info({ processed, refunded, errors }, "[5sim-poller] Auto-refund sweep complete");
+  return { processed, refunded, errors };
+}
+
+async function runAutoRefundSweep(): Promise<void> {
+  try {
+    await triggerAutoRefundSweep();
+  } catch (e) {
+    logger.error({ err: (e as Error).message }, "[5sim-poller] Auto-refund sweep failed");
+  } finally {
+    scheduleSweep(SWEEP_INTERVAL_MS);
+  }
+}
+
+/* ─── 5sim client factory (pour le sweep) ────────────────────── */
+
+async function getFiveSimClient(): Promise<FiveSimClient | null> {
+  try {
+    const [provider] = await db
+      .select()
+      .from(apiProvidersTable)
+      .where(and(eq(apiProvidersTable.slug, "5sim"), eq(apiProvidersTable.active, true)))
+      .limit(1);
+    if (!provider?.apiKey) return null;
+    return new FiveSimClient(provider.apiKey);
+  } catch {
+    return null;
   }
 }
 

@@ -305,6 +305,31 @@ export const adminApi = {
   syncCountries: () => req<SyncCountryResult>("POST", "/admin/sync/countries"),
   syncFull: () => req<SyncFullResult>("POST", "/admin/sync/full"),
   getSyncLogs: () => req<SyncLogEntry[]>("GET", "/admin/sync/logs"),
+
+  /* ── Auto-refund management ── */
+  getPendingRefunds: () => req<{
+    count: number;
+    pendingRefunds: Array<{
+      id: string;
+      phoneNumber: string;
+      status: string;
+      price: number;
+      createdAt: string;
+      expiresAt: string;
+      externalOrderId: string | null;
+      userId: string;
+      userPhone: string | null;
+      userBalance: number | null;
+      smsCount: number;
+    }>;
+  }>("GET", "/admin/fivesim/pending-refunds"),
+  triggerRefundSweep: () => req<{
+    success: boolean;
+    message: string;
+    processed: number;
+    refunded: number;
+    errors: number;
+  }>("POST", "/admin/fivesim/trigger-refund-sweep"),
 };
 
 export interface AdminStats {

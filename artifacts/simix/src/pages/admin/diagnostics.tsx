@@ -1,11 +1,13 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { adminApi, type DiagnosticCheck } from "@/lib/admin-api";
 import { AdminGuard } from "@/components/admin-guard";
 import { AdminLayout } from "@/components/admin-layout";
 import {
   CheckCircle2, XCircle, AlertTriangle, RefreshCw, Loader2,
   Database, Shield, Zap, CreditCard, MessageSquare, Globe, Server,
+  Clock, Banknote, Phone, Play,
 } from "lucide-react";
+import { formatFCFA } from "@/lib/format";
 
 const ICON_MAP: Record<string, React.ElementType> = {
   database:     Database,
@@ -49,6 +51,99 @@ function CheckCard({ check }: { check: DiagnosticCheck }) {
       <p className="text-zinc-400 text-sm leading-relaxed">{check.detail}</p>
       {check.latencyMs !== undefined && (
         <p className="text-zinc-500 text-xs">Latence : {check.latencyMs} ms</p>
+      )}
+    </div>
+  );
+}
+
+function PendingRefundsPanel() {
+  const qc = useQueryClient();
+  const { data, isLoading, refetch } = useQuery({
+    queryKey: ["admin-pending-refunds"],
+    queryFn: adminApi.getPendingRefunds,
+    refetchInterval: 60_000,
+    staleTime: 30_000,
+  });
+  const sweep = useMutation({
+    mutationFn: adminApi.triggerRefundSweep,
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["admin-pending-refunds"] });
+    },
+  });
+
+  const count = data?.count ?? 0;
+  const rows  = data?.pendingRefunds ?? [];
+
+  return (
+    <div className="bg-zinc-900 border border-zinc-700 rounded-2xl p-5 space-y-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-white font-bold text-lg flex items-center gap-2">
+            <Banknote className="w-5 h-5 text-amber-400" />
+            Remboursements automatiques
+          </h2>
+          <p className="text-zinc-400 text-sm mt-0.5">
+            Numéros en attente depuis +30 min sans SMS reçu
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => void refetch()}
+            disabled={isLoading}
+            className="p-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-white transition-colors disabled:opacity-50"
+          >
+            <RefreshCw className={`w-4 h-4 ${isLoading ? "animate-spin" : ""}`} />
+          </button>
+          <button
+            onClick={() => void sweep.mutateAsync()}
+            disabled={sweep.isPending}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white text-sm font-semibold transition-colors disabled:opacity-50"
+          >
+            {sweep.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
+            Déclencher le sweep
+          </button>
+        </div>
+      </div>
+
+      {sweep.data && (
+        <div className={`rounded-xl px-4 py-3 text-sm font-medium ${sweep.data.success ? "bg-emerald-950/40 border border-emerald-800/40 text-emerald-300" : "bg-red-950/40 border border-red-800/40 text-red-300"}`}>
+          {sweep.data.message}
+        </div>
+      )}
+
+      {count === 0 && !isLoading ? (
+        <div className="flex items-center gap-2 text-emerald-400 text-sm">
+          <CheckCircle2 className="w-4 h-4" />
+          Aucun numéro en attente de remboursement
+        </div>
+      ) : (
+        <>
+          <div className="flex items-center gap-2">
+            <span className={`text-sm font-bold px-2.5 py-0.5 rounded-full ${count > 0 ? "bg-amber-500/20 text-amber-400" : "bg-emerald-500/20 text-emerald-400"}`}>
+              {count} numéro{count > 1 ? "s" : ""} concerné{count > 1 ? "s" : ""}
+            </span>
+          </div>
+          <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
+            {rows.map(row => {
+              const ageMin = Math.round((Date.now() - new Date(row.createdAt).getTime()) / 60_000);
+              return (
+                <div key={row.id} className="bg-zinc-800/60 border border-zinc-700 rounded-xl p-3 flex items-center justify-between gap-3 text-sm">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <Phone className="w-4 h-4 text-zinc-400 shrink-0" />
+                    <span className="text-white font-mono text-xs truncate">{row.phoneNumber}</span>
+                    <span className="text-zinc-500 text-xs shrink-0">({row.userPhone})</span>
+                  </div>
+                  <div className="flex items-center gap-3 shrink-0 text-xs">
+                    <span className="text-amber-400 flex items-center gap-1">
+                      <Clock className="w-3 h-3" />{ageMin} min
+                    </span>
+                    <span className="text-white font-semibold">{formatFCFA(row.price)}</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </>
       )}
     </div>
   );
@@ -122,6 +217,9 @@ function DiagnosticsContent() {
           ))}
         </div>
       )}
+
+      {/* Pending refunds panel */}
+      <PendingRefundsPanel />
 
       {/* Google OAuth hint */}
       {data?.checks.find(c => c.name === "google" && c.status !== "ok") && (
