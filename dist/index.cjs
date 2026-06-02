@@ -117966,6 +117966,76 @@ router17.post("/admin/fivesim/trigger-refund-sweep", requireAdminJwt, async (_re
     res.status(500).json({ error: "Erreur lors du sweep de remboursement" });
   }
 });
+router17.get("/admin/fivesim/refund-stats", requireAdminJwt, async (_req, res) => {
+  try {
+    const [overview] = await db.select({
+      totalRefunds: sql`count(*) filter (where type = 'refund')::int`,
+      totalAmount: sql`coalesce(sum(amount) filter (where type = 'refund'), 0)::int`,
+      purchaseCount: sql`count(*) filter (where type = 'purchase')::int`,
+      avgRefundAmount: sql`coalesce(avg(amount) filter (where type = 'refund'), 0)::int`,
+      last30Refunds: sql`count(*) filter (where type = 'refund' and created_at >= now() - interval '30 days')::int`,
+      last30Amount: sql`coalesce(sum(amount) filter (where type = 'refund' and created_at >= now() - interval '30 days'), 0)::int`
+    }).from(transactionsTable);
+    const successRate = (overview.purchaseCount ?? 0) > 0 ? Math.max(0, Math.round((1 - (overview.totalRefunds ?? 0) / (overview.purchaseCount ?? 1)) * 100)) : 100;
+    const byReason = await db.select({
+      description: transactionsTable.description,
+      count: sql`count(*)::int`,
+      amount: sql`coalesce(sum(amount), 0)::int`
+    }).from(transactionsTable).where(eq(transactionsTable.type, "refund")).groupBy(transactionsTable.description).orderBy(desc(sql`count(*)`));
+    const recent = await db.select({
+      id: transactionsTable.id,
+      userId: transactionsTable.userId,
+      amount: transactionsTable.amount,
+      description: transactionsTable.description,
+      createdAt: transactionsTable.createdAt,
+      userName: usersTable.fullName,
+      userPhone: usersTable.phone
+    }).from(transactionsTable).leftJoin(usersTable, eq(transactionsTable.userId, usersTable.id)).where(eq(transactionsTable.type, "refund")).orderBy(desc(transactionsTable.createdAt)).limit(50);
+    const topServices = await db.select({
+      service: servicesTable.name,
+      serviceSlug: servicesTable.slug,
+      count: sql`count(*)::int`,
+      totalAmount: sql`coalesce(sum(${virtualNumbersTable.price}), 0)::int`,
+      avgAmount: sql`coalesce(avg(${virtualNumbersTable.price}), 0)::int`
+    }).from(virtualNumbersTable).innerJoin(servicesTable, eq(virtualNumbersTable.serviceId, servicesTable.id)).where(
+      and(
+        or(
+          eq(virtualNumbersTable.status, "cancelled"),
+          eq(virtualNumbersTable.status, "expired")
+        ),
+        sql`(select count(*) from sms_messages where number_id = ${virtualNumbersTable.id}) = 0`
+      )
+    ).groupBy(servicesTable.id, servicesTable.name, servicesTable.slug).orderBy(desc(sql`count(*)`)).limit(10);
+    const dailyTrend = await db.select({
+      date: sql`date(created_at at time zone 'UTC')::text`,
+      count: sql`count(*)::int`,
+      amount: sql`coalesce(sum(amount), 0)::int`
+    }).from(transactionsTable).where(
+      and(
+        eq(transactionsTable.type, "refund"),
+        sql`created_at >= now() - interval '30 days'`
+      )
+    ).groupBy(sql`date(created_at at time zone 'UTC')`).orderBy(sql`date(created_at at time zone 'UTC')`);
+    res.json({
+      overview: {
+        totalRefunds: overview.totalRefunds ?? 0,
+        totalAmountRefunded: overview.totalAmount ?? 0,
+        purchaseCount: overview.purchaseCount ?? 0,
+        avgRefundAmount: overview.avgRefundAmount ?? 0,
+        successRate,
+        last30DaysRefunds: overview.last30Refunds ?? 0,
+        last30DaysAmount: overview.last30Amount ?? 0
+      },
+      byReason,
+      topServices,
+      recent,
+      dailyTrend
+    });
+  } catch (err) {
+    logger.error({ err }, "[admin] Error fetching refund stats");
+    res.status(500).json({ error: "Erreur lors du chargement des statistiques de remboursement" });
+  }
+});
 var admin_fivesim_default = router17;
 
 // src/routes/config.ts

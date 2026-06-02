@@ -344,7 +344,47 @@ export const adminApi = {
     refunded: number;
     errors: number;
   }>("POST", "/admin/fivesim/trigger-refund-sweep"),
+
+  getRefundStats: () => req<RefundStats>("GET", "/admin/fivesim/refund-stats"),
 };
+
+export interface RefundStats {
+  overview: {
+    totalRefunds: number;
+    totalAmountRefunded: number;
+    purchaseCount: number;
+    avgRefundAmount: number;
+    successRate: number;
+    last30DaysRefunds: number;
+    last30DaysAmount: number;
+  };
+  byReason: Array<{
+    description: string | null;
+    count: number;
+    amount: number;
+  }>;
+  topServices: Array<{
+    service: string;
+    serviceSlug: string;
+    count: number;
+    totalAmount: number;
+    avgAmount: number;
+  }>;
+  recent: Array<{
+    id: string;
+    userId: string;
+    amount: number;
+    description: string | null;
+    createdAt: string;
+    userName: string | null;
+    userPhone: string | null;
+  }>;
+  dailyTrend: Array<{
+    date: string;
+    count: number;
+    amount: number;
+  }>;
+}
 
 export interface AdminStats {
   totalUsers: number;
