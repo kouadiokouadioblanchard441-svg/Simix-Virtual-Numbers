@@ -89,11 +89,12 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/admin/footer",  label: "Footer & Vitrine", icon: Globe },
 
   /* ── Sécurité & Système ── */
-  { href: "/admin/ip-tracker", label: "IP Tracker",    icon: MapPin,  section: "Sécurité & Système" },
-  { href: "/admin/blacklist",  label: "Liste Noire",   icon: Ban },
-  { href: "/admin/security",   label: "Sécurité",      icon: Shield },
-  { href: "/admin/logs",       label: "Journaux",      icon: FileText },
-  { href: "/admin/settings",   label: "Paramètres",    icon: Settings },
+  { href: "/admin/ip-tracker",   label: "IP Tracker",    icon: MapPin,  section: "Sécurité & Système" },
+  { href: "/admin/blacklist",    label: "Liste Noire",   icon: Ban },
+  { href: "/admin/security",     label: "Sécurité",      icon: Shield },
+  { href: "/admin/logs",         label: "Journaux",      icon: FileText },
+  { href: "/admin/diagnostics",  label: "Diagnostics",   icon: Activity },
+  { href: "/admin/settings",     label: "Paramètres",    icon: Settings },
 ];
 
 function NavLink({

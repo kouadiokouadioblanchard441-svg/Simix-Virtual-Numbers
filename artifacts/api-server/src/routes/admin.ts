@@ -2225,4 +2225,99 @@ router.delete("/admin/service-prices/:id", requireAdmin, async (req, res): Promi
   res.json({ success: true });
 });
 
+/* ─────────────────────────────── DIAGNOSTICS ─────────────────────────────── */
+router.get("/admin/diagnostics", requireAdmin, async (_req, res): Promise<void> => {
+  const checks: {
+    name: string;
+    label: string;
+    status: "ok" | "warn" | "error";
+    detail: string;
+    latencyMs?: number;
+  }[] = [];
+
+  /* ── Database ── */
+  try {
+    const t0 = Date.now();
+    await db.execute(sql`SELECT 1`);
+    checks.push({ name: "database", label: "Base de données", status: "ok", detail: "Connexion PostgreSQL active", latencyMs: Date.now() - t0 });
+  } catch (e) {
+    checks.push({ name: "database", label: "Base de données", status: "error", detail: String(e) });
+  }
+
+  /* ── Google OAuth ── */
+  const gClientId = process.env.GOOGLE_CLIENT_ID;
+  const gSecret   = process.env.GOOGLE_CLIENT_SECRET;
+  const gRedirect = process.env.GOOGLE_REDIRECT_URI;
+  if (!gClientId || !gSecret) {
+    checks.push({ name: "google", label: "Google OAuth", status: "error", detail: "GOOGLE_CLIENT_ID ou GOOGLE_CLIENT_SECRET manquant" });
+  } else {
+    const detail = gRedirect
+      ? `Configuré — redirect: ${gRedirect}`
+      : `Configuré — redirect_uri dérivé du domaine (dev: REPLIT_DEV_DOMAIN)`;
+    checks.push({ name: "google", label: "Google OAuth", status: "ok", detail });
+  }
+
+  /* ── PawaPay ── */
+  try {
+    const tokenRow = await db.select().from(systemSettingsTable).where(eq(systemSettingsTable.key, "pawapay_api_token")).limit(1);
+    const envRow   = await db.select().from(systemSettingsTable).where(eq(systemSettingsTable.key, "pawapay_env")).limit(1);
+    const token = tokenRow[0]?.value ?? process.env.PAWAPAY_API_TOKEN ?? null;
+    if (!token) {
+      checks.push({ name: "pawapay", label: "PawaPay", status: "warn", detail: "Token API non configuré" });
+    } else {
+      const env = (envRow[0]?.value ?? process.env.PAWAPAY_ENV ?? "sandbox") as "sandbox" | "production";
+      const { PawaPayClient } = await import("../lib/pawapay");
+      const client = new PawaPayClient(token, env);
+      const t0 = Date.now();
+      await client.getActiveConfig();
+      checks.push({ name: "pawapay", label: "PawaPay", status: "ok", detail: `Connecté (${env})`, latencyMs: Date.now() - t0 });
+    }
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    checks.push({ name: "pawapay", label: "PawaPay", status: "error", detail: `Erreur de connexion: ${msg.slice(0, 120)}` });
+  }
+
+  /* ── 5sim ── */
+  try {
+    const providers = await db.select().from(apiProvidersTable).where(eq(apiProvidersTable.slug, "5sim")).limit(1);
+    const provider = providers[0];
+    if (!provider?.active || !provider?.apiKey) {
+      checks.push({ name: "fivesim", label: "5sim", status: "warn", detail: provider ? "Fournisseur inactif ou clé API manquante" : "Fournisseur 5sim non configuré" });
+    } else {
+      const client = new FiveSimClient(provider.apiKey);
+      const t0 = Date.now();
+      const profile = await client.getProfile();
+      checks.push({ name: "fivesim", label: "5sim", status: "ok", detail: `Connecté — solde: ${profile.balance?.toFixed(2) ?? "?"} USD`, latencyMs: Date.now() - t0 });
+    }
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    checks.push({ name: "fivesim", label: "5sim", status: "error", detail: `Erreur: ${msg.slice(0, 120)}` });
+  }
+
+  /* ── Session ── */
+  const sessionSecret = process.env.SESSION_SECRET;
+  if (!sessionSecret || sessionSecret.length < 16) {
+    checks.push({ name: "session", label: "Session", status: "warn", detail: "SESSION_SECRET absent ou trop court" });
+  } else {
+    checks.push({ name: "session", label: "Session", status: "ok", detail: `Secret configuré (${sessionSecret.length} caractères)` });
+  }
+
+  /* ── SMS Simulator ── */
+  checks.push({ name: "sms_simulator", label: "Simulateur SMS", status: "ok", detail: "Actif — SMS synthétique injecté 8-20s après commande" });
+
+  /* ── Environment ── */
+  const replitDomain = process.env.REPLIT_DEV_DOMAIN;
+  const nodeEnv      = process.env.NODE_ENV ?? "development";
+  checks.push({
+    name: "environment",
+    label: "Environnement",
+    status: "ok",
+    detail: replitDomain
+      ? `Dev Replit — ${replitDomain} (NODE_ENV: ${nodeEnv})`
+      : `Production — NODE_ENV: ${nodeEnv}`,
+  });
+
+  res.json({ ok: checks.every(c => c.status !== "error"), checks });
+});
+
 export default router;

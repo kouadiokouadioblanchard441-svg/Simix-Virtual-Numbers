@@ -169,7 +169,8 @@ export const adminApi = {
     if (params?.offset) q.set("offset", String(params.offset));
     return req<{ profits: AdminFxProfit[]; total: number }>("GET", `/admin/fx-profits?${q}`);
   },
-  getFxSummary: () => req<AdminFxSummary>("GET", "/admin/fx-profits/summary"),
+  getFxSummary:    () => req<AdminFxSummary>("GET", "/admin/fx-profits/summary"),
+  getDiagnostics:  () => req<DiagnosticsResult>("GET", "/admin/diagnostics"),
 
   getSecurityEvents: (severity?: string) => {
     const q = severity ? `?severity=${severity}` : "";
@@ -760,4 +761,17 @@ export interface AdminFxSummary {
     totalLocalVolume: number;
     transactionCount: number;
   }[];
+}
+
+export interface DiagnosticCheck {
+  name:      string;
+  label:     string;
+  status:    "ok" | "warn" | "error";
+  detail:    string;
+  latencyMs?: number;
+}
+
+export interface DiagnosticsResult {
+  ok:     boolean;
+  checks: DiagnosticCheck[];
 }
