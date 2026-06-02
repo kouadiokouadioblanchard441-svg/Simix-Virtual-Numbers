@@ -113496,6 +113496,178 @@ router9.get("/admin/payment-routing/matrix", requireAdmin, async (_req, res) => 
   })).sort((a, b) => a.name.localeCompare(b.name));
   res.json({ countries: countryList, operators, gateways, routes });
 });
+router9.post("/admin/payment-routing/pawapay-sync", requireAdmin, async (req, res) => {
+  try {
+    let providerToSlug2 = function(provider) {
+      const s2 = provider.toLowerCase();
+      for (const slug of KNOWN_SLUGS) {
+        if (s2 === slug || s2.startsWith(slug + "_") || s2.endsWith("_" + slug) || s2.includes("_" + slug + "_")) return slug;
+      }
+      return s2.split("_")[0] ?? s2;
+    };
+    var providerToSlug = providerToSlug2;
+    let token = process.env.PAWAPAY_API_TOKEN ?? null;
+    let envStr = process.env.PAWAPAY_ENV?.trim().toLowerCase() ?? null;
+    if (!token || !envStr) {
+      const [tokenRow] = await db.select().from(systemSettingsTable).where(eq(systemSettingsTable.key, "pawapay_api_token")).limit(1);
+      const [envRow] = await db.select().from(systemSettingsTable).where(eq(systemSettingsTable.key, "pawapay_env")).limit(1);
+      if (!token) token = tokenRow?.value?.trim() || null;
+      if (!envStr) envStr = envRow?.value?.trim().toLowerCase() || null;
+    }
+    if (!token) {
+      res.status(400).json({ error: "Aucun token PawaPay configur\xE9. Ajoutez la cl\xE9 'pawapay_api_token' dans les Param\xE8tres syst\xE8me." });
+      return;
+    }
+    const allGateways = await db.select().from(paymentGatewaysTable);
+    const gw = allGateways.find((g) => g.slug.toLowerCase().includes("pawapay"));
+    if (!gw) {
+      res.status(400).json({ error: "Passerelle PawaPay introuvable. Cr\xE9ez-la d'abord dans l'onglet Passerelles (slug doit contenir 'pawapay')." });
+      return;
+    }
+    const { PawaPayClient: PawaPayClient2, ISO2_TO_ISO3: ISO2_TO_ISO32 } = await Promise.resolve().then(() => (init_pawapay(), pawapay_exports));
+    const env = envStr === "production" ? "production" : "sandbox";
+    const client = new PawaPayClient2(token, env);
+    const config = await client.getActiveConfiguration();
+    const iso3ToIso2 = {};
+    for (const [iso2, iso3] of Object.entries(ISO2_TO_ISO32)) {
+      iso3ToIso2[iso3] = iso2;
+    }
+    const KNOWN_SLUGS = [
+      "mtn",
+      "orange",
+      "wave",
+      "moov",
+      "airtel",
+      "mpesa",
+      "free",
+      "expresso",
+      "tmoney",
+      "flooz",
+      "mvola",
+      "zamtel",
+      "vodacom",
+      "tigo",
+      "africell",
+      "glo",
+      "vodafone",
+      "econet",
+      "unitel",
+      "tnm",
+      "mobicash",
+      "iam"
+    ];
+    const BRAND_COLORS = {
+      orange: "#FF7A00",
+      mtn: "#FFCC00",
+      wave: "#1E90FF",
+      moov: "#00A651",
+      airtel: "#FF0000",
+      mpesa: "#00A550",
+      vodacom: "#E60000",
+      vodafone: "#E60000",
+      tigo: "#009BDE",
+      tmoney: "#00A3E0",
+      flooz: "#FF6B00",
+      mvola: "#007BC3",
+      free: "#CD0000",
+      expresso: "#5B2D8E",
+      zamtel: "#00843D",
+      econet: "#005B33",
+      unitel: "#C8102E",
+      tnm: "#0072CE",
+      africell: "#00AEEF",
+      mobicash: "#009E60",
+      iam: "#D4002C"
+    };
+    const operatorMap = /* @__PURE__ */ new Map();
+    const routePairs = [];
+    const errors = [];
+    for (const countryData of config.countries ?? []) {
+      const iso3 = countryData.country;
+      const iso2 = iso3ToIso2[iso3];
+      if (!iso2) {
+        errors.push(`ISO-3 inconnu: ${iso3}`);
+        continue;
+      }
+      for (const prov of countryData.providers ?? []) {
+        const slug = providerToSlug2(prov.provider);
+        const displayName = prov.nameDisplayedToCustomer ?? prov.provider;
+        const color = BRAND_COLORS[slug] ?? "#7C3AED";
+        if (!operatorMap.has(slug)) {
+          operatorMap.set(slug, { name: displayName, color, countryCodes: /* @__PURE__ */ new Set() });
+        }
+        operatorMap.get(slug).countryCodes.add(iso2);
+        routePairs.push({ countryCode: iso2, slug });
+      }
+    }
+    let operatorsCreated = 0;
+    let operatorsUpdated = 0;
+    const existingOps = await db.select().from(mobileOperatorsTable);
+    const existingOpMap = new Map(existingOps.map((o) => [o.slug, o]));
+    for (const [slug, entry] of operatorMap) {
+      const countryCodes = Array.from(entry.countryCodes);
+      const existing = existingOpMap.get(slug);
+      if (existing) {
+        const merged = Array.from(/* @__PURE__ */ new Set([...existing.countryCodes, ...countryCodes]));
+        await db.update(mobileOperatorsTable).set({ color: entry.color, countryCodes: merged, active: true }).where(eq(mobileOperatorsTable.slug, slug));
+        operatorsUpdated++;
+      } else {
+        await db.insert(mobileOperatorsTable).values({
+          slug,
+          name: entry.name,
+          color: entry.color,
+          active: true,
+          countryCodes
+        });
+        operatorsCreated++;
+      }
+    }
+    let routesCreated = 0;
+    let routesUpdated = 0;
+    const existingRoutes = await db.select().from(paymentRoutesTable).where(eq(paymentRoutesTable.transactionType, "deposit"));
+    const existingRouteMap = new Map(existingRoutes.map((r2) => [`${r2.countryCode}:${r2.operatorSlug}`, r2]));
+    for (const { countryCode, slug } of routePairs) {
+      const key = `${countryCode}:${slug}`;
+      const existing = existingRouteMap.get(key);
+      try {
+        if (existing) {
+          await db.update(paymentRoutesTable).set({ primaryGatewayId: gw.id, active: true, maintenanceMode: false }).where(eq(paymentRoutesTable.id, existing.id));
+          routesUpdated++;
+        } else {
+          await db.insert(paymentRoutesTable).values({
+            countryCode,
+            operatorSlug: slug,
+            transactionType: "deposit",
+            primaryGatewayId: gw.id,
+            active: true,
+            maintenanceMode: false
+          });
+          routesCreated++;
+        }
+      } catch (err) {
+        errors.push(`Route ${countryCode}/${slug}: ${err.message}`);
+      }
+    }
+    logger.info({ operatorsCreated, operatorsUpdated, routesCreated, routesUpdated, env }, "[PawaPay Sync] Sync complete");
+    res.json({
+      success: true,
+      summary: {
+        env,
+        gateway: gw.name,
+        countries: (config.countries ?? []).length,
+        providers: routePairs.length,
+        operatorsCreated,
+        operatorsUpdated,
+        routesCreated,
+        routesUpdated,
+        errors
+      }
+    });
+  } catch (err) {
+    logger.error({ err }, "[PawaPay Sync] Error");
+    res.status(500).json({ error: `Synchronisation \xE9chou\xE9e: ${err.message}` });
+  }
+});
 router9.get("/admin/payment-routing/stats", requireAdmin, async (_req, res) => {
   const [totalGateways] = await db.select({ count: count() }).from(paymentGatewaysTable);
   const [activeGateways] = await db.select({ count: count() }).from(paymentGatewaysTable).where(eq(paymentGatewaysTable.active, true));

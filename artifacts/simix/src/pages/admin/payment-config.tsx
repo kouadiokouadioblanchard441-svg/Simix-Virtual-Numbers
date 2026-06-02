@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { adminApi, type AdminPaymentMethod, type PaymentConfig } from "@/lib/admin-api";
 import { AdminGuard } from "@/components/admin-guard";
@@ -6,7 +6,7 @@ import { AdminLayout } from "@/components/admin-layout";
 import { formatFCFA } from "@/lib/format";
 import {
   Loader2, ToggleLeft, ToggleRight, Globe, Search, Plus, Pencil, Check, X,
-  Trash2, Image, Link, ExternalLink, Star, ArrowUpDown, CreditCard, MapPin, Upload,
+  Trash2, Image, Link, ExternalLink, Star, ArrowUpDown, CreditCard, MapPin, Upload, RefreshCw,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -82,29 +82,24 @@ function useImageUpload(onUploaded: (url: string) => void) {
 }
 
 function ImageUploadButton({ onUploaded, uploading }: { onUploaded: (url: string) => void; uploading: boolean }) {
-  const inputRef = useRef<HTMLInputElement>(null);
   const { upload, uploading: isUploading } = useImageUpload(onUploaded);
   const busy = uploading || isUploading;
   return (
-    <>
+    <label
+      title="Uploader une image depuis votre appareil (galerie mobile supportée)"
+      className={`flex items-center gap-1 px-2 py-1.5 text-xs bg-violet-600/20 border border-violet-500/30 text-violet-400 rounded-lg hover:bg-violet-600/30 transition-colors cursor-pointer select-none${busy ? " opacity-50 pointer-events-none" : ""}`}
+    >
       <input
-        ref={inputRef}
         type="file"
         accept="image/*"
+        capture={undefined}
         className="hidden"
+        disabled={busy}
         onChange={e => { const f = e.target.files?.[0]; if (f) upload(f); e.target.value = ""; }}
       />
-      <button
-        type="button"
-        onClick={() => inputRef.current?.click()}
-        disabled={busy}
-        title="Uploader une image depuis votre appareil"
-        className="flex items-center gap-1 px-2 py-1.5 text-xs bg-violet-600/20 border border-violet-500/30 text-violet-400 rounded-lg hover:bg-violet-600/30 transition-colors disabled:opacity-50"
-      >
-        {busy ? <Loader2 className="w-3 h-3 animate-spin" /> : <Upload className="w-3 h-3" />}
-        {busy ? "Upload…" : "Fichier"}
-      </button>
-    </>
+      {busy ? <Loader2 className="w-3 h-3 animate-spin" /> : <Upload className="w-3 h-3" />}
+      {busy ? "Upload…" : "Fichier"}
+    </label>
   );
 }
 
@@ -151,10 +146,23 @@ function MethodRow({ method, onSaved, onDeleted }: { method: AdminPaymentMethod;
   const qc = useQueryClient();
 
   const update = useMutation({
-    mutationFn: () => adminApi.updatePaymentMethod(method.id, {
-      name, description: desc, color, logoUrl: logoUrl || null, recommended, sortOrder: Number(sortOrder),
+    mutationFn: (overrides?: { logoUrl?: string }) => adminApi.updatePaymentMethod(method.id, {
+      name, description: desc, color,
+      logoUrl: (overrides?.logoUrl !== undefined ? overrides.logoUrl : logoUrl) || null,
+      recommended, sortOrder: Number(sortOrder),
     }),
-    onSuccess: () => { toast({ title: "Opérateur mis à jour" }); qc.invalidateQueries({ queryKey: ["admin-payment-methods"] }); qc.invalidateQueries({ queryKey: ["admin-payment-configs"] }); onSaved(); setEditing(false); },
+    onSuccess: (_data, vars) => {
+      if (vars?.logoUrl !== undefined) {
+        setLogoUrl(vars.logoUrl);
+        toast({ title: "Logo sauvegardé" });
+      } else {
+        toast({ title: "Opérateur mis à jour" });
+        setEditing(false);
+        onSaved();
+      }
+      qc.invalidateQueries({ queryKey: ["admin-payment-methods"] });
+      qc.invalidateQueries({ queryKey: ["admin-payment-configs"] });
+    },
     onError: (e) => toast({ title: "Opérateur non mis à jour", description: (e as Error).message, variant: "destructive" }),
   });
 
@@ -221,7 +229,7 @@ function MethodRow({ method, onSaved, onDeleted }: { method: AdminPaymentMethod;
                   placeholder="https://... ou uploader un fichier →"
                   className="flex-1 px-3 py-2 text-xs bg-zinc-900 border border-zinc-700 rounded-lg text-white placeholder:text-zinc-600 focus:outline-none focus:border-violet-500"
                 />
-                <ImageUploadButton onUploaded={url => setLogoUrl(url)} uploading={update.isPending} />
+                <ImageUploadButton onUploaded={url => update.mutate({ logoUrl: url })} uploading={update.isPending} />
               </div>
               {logoUrl && (
                 <div className="mt-2 flex items-center gap-2">
@@ -388,14 +396,74 @@ function ConfigCell({
 function OperatorsTab() {
   const [showAdd, setShowAdd] = useState(false);
   const [search, setSearch] = useState("");
+  const [syncResult, setSyncResult] = useState<null | { summary: { countries: number; providers: number; operatorsCreated: number; operatorsUpdated: number; routesCreated: number; routesUpdated: number; gateway: string; env: string; errors: string[] } }>(null);
   const { data: methods, isLoading } = useQuery({ queryKey: ["admin-payment-methods"], queryFn: adminApi.getPaymentMethods });
+  const qc = useQueryClient();
+  const { toast } = useToast();
 
   const filtered = (methods ?? []).filter(m =>
     !search || m.name.toLowerCase().includes(search.toLowerCase()) || m.slug.includes(search.toLowerCase())
   );
 
+  const pawapaySync = useMutation({
+    mutationFn: adminApi.syncPawapayCorrespondents,
+    onSuccess: (data) => {
+      setSyncResult(data);
+      toast({
+        title: `PawaPay synchronisé`,
+        description: `${data.summary.providers} opérateurs · ${data.summary.routesCreated} routes créées · ${data.summary.routesUpdated} mises à jour`,
+      });
+      qc.invalidateQueries({ queryKey: ["admin-payment-methods"] });
+    },
+    onError: (e) => toast({ title: "Sync PawaPay échoué", description: (e as Error).message, variant: "destructive" }),
+  });
+
   return (
     <div className="space-y-4">
+      {/* PawaPay Sync Banner */}
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3 p-4 bg-zinc-900/60 border border-zinc-800 rounded-xl">
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 text-sm font-medium text-white">
+            <div className="w-5 h-5 rounded flex items-center justify-center text-xs font-bold" style={{ background: "#E8B84B" }}>P</div>
+            Synchroniser avec PawaPay
+          </div>
+          <p className="text-xs text-zinc-400 mt-0.5">
+            Importe automatiquement tous les opérateurs actifs de votre compte PawaPay et configure les routes de paiement.
+          </p>
+        </div>
+        <button
+          onClick={() => { if (confirm("Lancer la synchronisation PawaPay ? Les opérateurs et routes manquants seront créés automatiquement.")) pawapaySync.mutate(); }}
+          disabled={pawapaySync.isPending}
+          className="flex items-center gap-2 px-4 py-2 text-sm font-medium bg-amber-500/10 border border-amber-500/30 text-amber-400 rounded-xl hover:bg-amber-500/20 transition-colors disabled:opacity-50 shrink-0"
+        >
+          {pawapaySync.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+          {pawapaySync.isPending ? "Synchronisation…" : "Synchroniser PawaPay"}
+        </button>
+      </div>
+
+      {/* Sync result */}
+      {syncResult && (
+        <div className="p-4 bg-emerald-950/30 border border-emerald-700/30 rounded-xl text-sm space-y-2">
+          <div className="flex items-center gap-2 text-emerald-400 font-medium">
+            <Check className="w-4 h-4" />Synchronisation réussie — {syncResult.summary.gateway} ({syncResult.summary.env})
+          </div>
+          <div className="flex flex-wrap gap-4 text-xs text-zinc-300">
+            <span><strong className="text-white">{syncResult.summary.countries}</strong> pays</span>
+            <span><strong className="text-white">{syncResult.summary.providers}</strong> correspondants</span>
+            <span><strong className="text-emerald-400">+{syncResult.summary.operatorsCreated}</strong> opérateurs créés</span>
+            <span><strong className="text-blue-400">↻ {syncResult.summary.operatorsUpdated}</strong> mis à jour</span>
+            <span><strong className="text-emerald-400">+{syncResult.summary.routesCreated}</strong> routes créées</span>
+            <span><strong className="text-blue-400">↻ {syncResult.summary.routesUpdated}</strong> routes mises à jour</span>
+          </div>
+          {syncResult.summary.errors.length > 0 && (
+            <div className="text-xs text-amber-400 mt-1">
+              {syncResult.summary.errors.length} erreur(s) : {syncResult.summary.errors.slice(0, 3).join(" · ")}
+            </div>
+          )}
+          <button onClick={() => setSyncResult(null)} className="text-xs text-zinc-500 hover:text-zinc-300">Fermer</button>
+        </div>
+      )}
+
       <div className="flex flex-col sm:flex-row sm:items-center gap-3">
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />

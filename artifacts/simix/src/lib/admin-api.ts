@@ -131,6 +131,20 @@ export const adminApi = {
     totalCount?: number;
     operators?: { name: string; country: string; currency: string }[];
   }>("POST", "/admin/pawapay/test", { token, env }),
+  syncPawapayCorrespondents: () => req<{
+    success: boolean;
+    summary: {
+      env: string;
+      gateway: string;
+      countries: number;
+      providers: number;
+      operatorsCreated: number;
+      operatorsUpdated: number;
+      routesCreated: number;
+      routesUpdated: number;
+      errors: string[];
+    };
+  }>("POST", "/admin/payment-routing/pawapay-sync"),
 
   /* ── Clapay ── */
   testClapay: (token?: string, baseUrl?: string) => req<{
