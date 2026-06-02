@@ -111930,11 +111930,11 @@ function getOAuthClient(redirectUri) {
   );
 }
 function getRedirectUri(req) {
+  if (process.env.GOOGLE_REDIRECT_URI) return process.env.GOOGLE_REDIRECT_URI;
   const replitDomain = process.env.REPLIT_DEV_DOMAIN;
   if (replitDomain) return `https://${replitDomain}/api/auth/google/callback`;
-  if (process.env.GOOGLE_REDIRECT_URI) return process.env.GOOGLE_REDIRECT_URI;
-  const host = req.headers.host ?? "localhost:3000";
-  const proto = req.secure ? "https" : req.protocol;
+  const host = req.headers["x-forwarded-host"] ?? req.headers.host ?? "localhost:3000";
+  const proto = req.secure || req.headers["x-forwarded-proto"] === "https" ? "https" : "http";
   return `${proto}://${host}/api/auth/google/callback`;
 }
 function isSecureRequest(req) {
@@ -112016,8 +112016,10 @@ router4.get("/auth/google/callback", async (req, res) => {
       tokens = result.tokens;
     } catch (tokenErr) {
       const msg = tokenErr instanceof Error ? tokenErr.message : String(tokenErr);
-      logger.error({ err: msg, ip, redirectUri }, "[google-auth] Token exchange failed \u2014 check redirect URI matches Google Console exactly");
-      res.redirect(`/?error=google_token_exchange_failed`);
+      const googleCode = tokenErr?.response ? JSON.stringify(tokenErr.response?.data ?? {}) : msg;
+      logger.error({ err: msg, googleCode, ip, redirectUri }, "[google-auth] Token exchange failed");
+      const reason = encodeURIComponent(googleCode.slice(0, 120));
+      res.redirect(`/?error=google_token_exchange_failed&reason=${reason}`);
       return;
     }
     client.setCredentials(tokens);

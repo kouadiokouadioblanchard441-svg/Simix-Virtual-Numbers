@@ -17,14 +17,16 @@ function getOAuthClient(redirectUri: string) {
 }
 
 function getRedirectUri(req: { headers: { host?: string; "x-forwarded-proto"?: string }; protocol: string; secure: boolean }): string {
-  /* In Replit dev environment, always use the Replit domain so the
-   * OAuth callback reaches this server (not the production domain). */
+  /* Explicit override always wins — set GOOGLE_REDIRECT_URI in production env only
+   * (not in shared) so dev falls through to REPLIT_DEV_DOMAIN automatically. */
+  if (process.env.GOOGLE_REDIRECT_URI) return process.env.GOOGLE_REDIRECT_URI;
+  /* Replit dev workspace: use the proxied external domain so the callback
+   * reaches this server rather than the production URL. */
   const replitDomain = process.env.REPLIT_DEV_DOMAIN;
   if (replitDomain) return `https://${replitDomain}/api/auth/google/callback`;
-  /* In production (no REPLIT_DEV_DOMAIN), use the configured URI. */
-  if (process.env.GOOGLE_REDIRECT_URI) return process.env.GOOGLE_REDIRECT_URI;
-  const host = req.headers.host ?? "localhost:3000";
-  const proto = req.secure ? "https" : req.protocol;
+  /* Fallback: derive from the incoming request (works on any plain server). */
+  const host = req.headers["x-forwarded-host"] ?? req.headers.host ?? "localhost:3000";
+  const proto = (req.secure || req.headers["x-forwarded-proto"] === "https") ? "https" : "http";
   return `${proto}://${host}/api/auth/google/callback`;
 }
 
@@ -143,8 +145,13 @@ router.get("/auth/google/callback", async (req, res): Promise<void> => {
       tokens = result.tokens;
     } catch (tokenErr: unknown) {
       const msg = tokenErr instanceof Error ? tokenErr.message : String(tokenErr);
-      logger.error({ err: msg, ip, redirectUri }, "[google-auth] Token exchange failed — check redirect URI matches Google Console exactly");
-      res.redirect(`/?error=google_token_exchange_failed`);
+      /* Extract Google's specific error code (e.g. redirect_uri_mismatch, invalid_client) */
+      const googleCode = (tokenErr as Record<string, unknown>)?.response
+        ? JSON.stringify((tokenErr as Record<string, { data?: unknown }>).response?.data ?? {})
+        : msg;
+      logger.error({ err: msg, googleCode, ip, redirectUri }, "[google-auth] Token exchange failed");
+      const reason = encodeURIComponent(googleCode.slice(0, 120));
+      res.redirect(`/?error=google_token_exchange_failed&reason=${reason}`);
       return;
     }
 
