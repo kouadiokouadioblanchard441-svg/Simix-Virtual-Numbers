@@ -176,57 +176,95 @@ router.post("/admin/emails/send", requireAdmin, async (req: Request, res: Respon
 
   res.status(202).json({ campaignId: campaign.id, totalRecipients: recipients.length, message: "Envoi en cours..." });
 
-  /* ── Envoi en arrière-plan avec batching (5 emails/batch, 200ms entre batches) ── */
+  /* ── Envoi en arrière-plan — batching respectant les limites Resend ──────────
+   * Resend free: 2 req/s · Resend paid: 10 req/s
+   * On utilise l'API batch (1 appel HTTP = N emails) + délai entre batches.
+   * Taille de batch : 10 emails max | délai : 1200 ms entre batches.
+   * En cas de 429, on attend 5 s et on réessaie jusqu'à 3 fois.           */
   let sentCount = 0;
   let failedCount = 0;
-  const BATCH_SIZE = 5;
-  const BATCH_DELAY_MS = 200;
+  const BATCH_SIZE   = 10;
+  const BATCH_DELAY  = 1200;   /* ms entre chaque batch */
+  const RETRY_DELAY  = 5000;   /* ms d'attente sur 429 */
+  const MAX_RETRIES  = 3;
+
+  const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
 
   for (let i = 0; i < recipients.length; i += BATCH_SIZE) {
-    const batch = recipients.slice(i, i + BATCH_SIZE);
+    const batch = recipients.slice(i, i + BATCH_SIZE).filter(r => !!r.email);
+    if (batch.length === 0) { failedCount += BATCH_SIZE; continue; }
 
-    await Promise.all(batch.map(async (recipient) => {
-      if (!recipient.email) { failedCount++; return; }
-      try {
-        const result = await resend.emails.send({
-          from: getFromEmail(),
-          to: recipient.email,
-          subject: subject.trim(),
-          html: finalHtml,
-          text: body?.trim(),
-        });
-
-        if (result.error) {
-          throw new Error(`Resend API error: ${result.error.message ?? JSON.stringify(result.error)}`);
-        }
-
-        const messageId = result.data?.id ?? null;
-        sentCount++;
-        await db.insert(emailLogsTable).values({
-          campaignId: campaign.id,
-          userId: recipient.id,
-          email: recipient.email,
-          status: "sent",
-          messageId,
-          sentAt: new Date(),
-        });
-        logger.debug({ email: recipient.email, messageId }, "[emails] Email sent");
-      } catch (err) {
-        failedCount++;
-        const errMsg = err instanceof Error ? err.message : String(err);
-        logger.error({ email: recipient.email, err: errMsg }, "[emails] Failed to send email");
-        await db.insert(emailLogsTable).values({
-          campaignId: campaign.id,
-          userId: recipient.id,
-          email: recipient.email,
-          status: "failed",
-          error: errMsg,
-        });
-      }
+    /* Build payload for resend.batch.send() */
+    const messages = batch.map(recipient => ({
+      from: getFromEmail(),
+      to:   recipient.email as string,
+      subject: subject.trim(),
+      html: finalHtml,
+      ...(body?.trim() ? { text: body.trim() } : {}),
     }));
 
+    let attempt = 0;
+    let batchOk  = false;
+
+    while (attempt < MAX_RETRIES && !batchOk) {
+      attempt++;
+      try {
+        /* Use batch send — one HTTP call for all emails in this slice */
+        const result = await (resend.batch as { send: (msgs: typeof messages) => Promise<{ data?: { id: string }[] | null; error?: { message?: string } | null }> }).send(messages);
+
+        if (result.error) {
+          const msg = result.error.message ?? JSON.stringify(result.error);
+          if (msg.toLowerCase().includes("too many") && attempt < MAX_RETRIES) {
+            logger.warn({ attempt, batchStart: i }, "[emails] Rate-limited, retrying after delay");
+            await sleep(RETRY_DELAY * attempt);
+            continue;
+          }
+          throw new Error(`Resend API error: ${msg}`);
+        }
+
+        /* Log each successful email */
+        const ids = result.data ?? [];
+        await Promise.all(batch.map(async (recipient, idx) => {
+          const messageId = ids[idx]?.id ?? null;
+          sentCount++;
+          await db.insert(emailLogsTable).values({
+            campaignId: campaign.id,
+            userId:     recipient.id,
+            email:      recipient.email!,
+            status:     "sent",
+            messageId,
+            sentAt:     new Date(),
+          });
+        }));
+        logger.debug({ batchStart: i, count: batch.length }, "[emails] Batch sent");
+        batchOk = true;
+      } catch (err) {
+        const errMsg = err instanceof Error ? err.message : String(err);
+        const isRateLimit = errMsg.toLowerCase().includes("too many");
+        if (isRateLimit && attempt < MAX_RETRIES) {
+          logger.warn({ attempt, batchStart: i }, "[emails] Rate-limited (catch), retrying");
+          await sleep(RETRY_DELAY * attempt);
+          continue;
+        }
+        /* Permanent failure for this batch */
+        failedCount += batch.length;
+        logger.error({ batchStart: i, err: errMsg }, "[emails] Batch failed permanently");
+        await Promise.all(batch.map(recipient =>
+          db.insert(emailLogsTable).values({
+            campaignId: campaign.id,
+            userId:     recipient.id,
+            email:      recipient.email!,
+            status:     "failed",
+            error:      errMsg.slice(0, 500),
+          })
+        ));
+        batchOk = true; /* skip retrying, move to next batch */
+      }
+    }
+
+    /* Pause between batches to respect rate limits */
     if (i + BATCH_SIZE < recipients.length) {
-      await new Promise(r => setTimeout(r, BATCH_DELAY_MS));
+      await sleep(BATCH_DELAY);
     }
   }
 
