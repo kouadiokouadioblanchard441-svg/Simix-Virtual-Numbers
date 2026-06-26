@@ -514,11 +514,6 @@ function Hero() {
       <Section className="relative z-10">
         <div className="grid lg:grid-cols-2 gap-10 items-center">
           <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7 }}>
-            <div className="inline-flex items-center gap-2 px-4 py-2 bg-violet-600/15 border border-violet-600/30 rounded-full text-violet-300 text-sm font-medium mb-5">
-              <span className="w-1.5 h-1.5 rounded-full bg-violet-400 animate-pulse" />
-              Fintech 100% Africaine · Paiements Mobile Money
-            </div>
-
             <h1 className="text-4xl sm:text-5xl xl:text-6xl font-extrabold leading-[1.1] text-white mb-5">
               Recevez vos{" "}
               <span className="bg-gradient-to-r from-violet-400 to-pink-400 bg-clip-text text-transparent">
