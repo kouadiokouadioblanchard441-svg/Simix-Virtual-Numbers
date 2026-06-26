@@ -1367,6 +1367,155 @@ function SimiaSection() {
   );
 }
 
+/* ─── Platform descriptions ─── */
+const PLATFORM_META: Record<string, { label: string; desc: string }> = {
+  telegram:  { label: "Canal Telegram",   desc: "Annonces, actualités et offres exclusives en temps réel" },
+  facebook:  { label: "Page Facebook",    desc: "Offres, promotions et actualités de la communauté" },
+  whatsapp:  { label: "Groupe WhatsApp",  desc: "Support communautaire et alertes instantanées" },
+  instagram: { label: "Instagram",        desc: "Contenu exclusif, coulisses et actus visuelles" },
+  twitter:   { label: "X / Twitter",      desc: "Dernières nouvelles et mises à jour en direct" },
+  youtube:   { label: "Chaîne YouTube",   desc: "Tutoriels vidéo et guides pour bien démarrer" },
+  tiktok:    { label: "TikTok",           desc: "Astuces courtes et contenu engageant" },
+  discord:   { label: "Serveur Discord",  desc: "Communauté active, entraide et discussions" },
+  linkedin:  { label: "LinkedIn",         desc: "Actualités professionnelles et partenariats" },
+};
+
+/* ─── Community Section ─── */
+function CommunitySection() {
+  const { data: footerData } = useQuery<{
+    socialLinks: FooterSocialLink[];
+    operators: FooterOperator[];
+  }>({
+    queryKey: ["public-footer"],
+    queryFn: async () => {
+      const res = await fetch("/api/footer");
+      if (!res.ok) throw new Error("footer unavailable");
+      return res.json();
+    },
+    staleTime: 120_000,
+  });
+
+  const links = (footerData?.socialLinks ?? []).filter(l => l.url);
+  if (!links.length) return null;
+
+  return (
+    <Section className="py-20" id="communaute">
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true }}
+        className="text-center mb-12"
+      >
+        <SectionPill label="Communauté Simix" color="violet" />
+        <h2 className="text-3xl sm:text-5xl font-extrabold text-white mt-4 mb-4 leading-tight">
+          Rejoignez notre{" "}
+          <span className="bg-gradient-to-r from-violet-400 via-blue-400 to-emerald-400 bg-clip-text text-transparent">
+            communauté
+          </span>
+        </h2>
+        <p className="text-zinc-400 text-base sm:text-lg max-w-2xl mx-auto">
+          Des milliers de membres actifs vous attendent. Rejoignez-nous pour ne rien manquer des offres, actualités et annonces exclusives.
+        </p>
+      </motion.div>
+
+      <div className={`grid gap-5 ${links.length === 1 ? "max-w-md mx-auto" : links.length === 2 ? "grid-cols-1 sm:grid-cols-2 max-w-3xl mx-auto" : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"}`}>
+        {links.map((link, i) => {
+          const entry = SOCIAL_ICONS[link.platform];
+          const Icon = entry?.Icon ?? FaTelegram;
+          const color = entry?.color ?? link.color ?? "#8B5CF6";
+          const meta = PLATFORM_META[link.platform] ?? { label: link.name, desc: "Rejoignez notre communauté et restez connecté" };
+          return (
+            <motion.a
+              key={link.id}
+              href={link.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              initial={{ opacity: 0, y: 24 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: i * 0.08 }}
+              whileHover={{ y: -6, scale: 1.02 }}
+              className="group relative flex flex-col items-center text-center rounded-3xl p-8 border transition-all duration-300 cursor-pointer overflow-hidden"
+              style={{
+                background: `linear-gradient(145deg, ${color}0f, #0a0a12 60%, #0a0a12)`,
+                borderColor: `${color}30`,
+              }}
+              onMouseEnter={e => {
+                const el = e.currentTarget;
+                el.style.borderColor = `${color}70`;
+                el.style.boxShadow = `0 0 50px ${color}25, 0 0 120px ${color}10, inset 0 0 30px ${color}08`;
+              }}
+              onMouseLeave={e => {
+                const el = e.currentTarget;
+                el.style.borderColor = `${color}30`;
+                el.style.boxShadow = "none";
+              }}
+            >
+              {/* Ambient top glow */}
+              <div
+                className="absolute top-0 left-1/2 -translate-x-1/2 w-40 h-20 blur-3xl opacity-20 pointer-events-none transition-opacity duration-300 group-hover:opacity-40"
+                style={{ background: color }}
+              />
+
+              {/* Platform icon */}
+              <div
+                className="relative flex items-center justify-center w-24 h-24 rounded-3xl mb-6 transition-all duration-300"
+                style={{ background: `${color}15`, border: `2px solid ${color}30` }}
+              >
+                <div
+                  className="absolute inset-0 rounded-3xl blur-xl opacity-0 group-hover:opacity-60 transition-opacity duration-300"
+                  style={{ background: color }}
+                />
+                <span style={{ color, filter: "drop-shadow(0 0 12px currentColor)" }} className="relative z-10">
+                  <Icon size={52} />
+                </span>
+              </div>
+
+              {/* Platform name */}
+              <p
+                className="text-base font-bold uppercase tracking-widest mb-2"
+                style={{ color }}
+              >
+                {meta.label}
+              </p>
+
+              {/* Description */}
+              <p className="text-zinc-400 text-sm leading-relaxed mb-7 max-w-xs">
+                {meta.desc}
+              </p>
+
+              {/* CTA button */}
+              <div
+                className="flex items-center gap-2.5 px-7 py-3.5 rounded-2xl font-bold text-sm transition-all duration-200 group-hover:gap-3.5"
+                style={{
+                  background: `${color}18`,
+                  border: `1.5px solid ${color}50`,
+                  color,
+                }}
+              >
+                Rejoindre
+                <ArrowRight className="w-4 h-4 transition-transform duration-200 group-hover:translate-x-1" />
+              </div>
+            </motion.a>
+          );
+        })}
+      </div>
+
+      {/* Trust line */}
+      <motion.p
+        initial={{ opacity: 0 }}
+        whileInView={{ opacity: 1 }}
+        viewport={{ once: true }}
+        transition={{ delay: 0.3 }}
+        className="text-center text-zinc-600 text-xs mt-10 flex items-center justify-center gap-2"
+      >
+        <CheckCircle className="w-3.5 h-3.5 text-emerald-500" />
+        Canaux officiels vérifiés · Mises à jour en temps réel · Gratuit
+      </motion.p>
+    </Section>
+  );
+}
+
 /* ─── Final CTA ─── */
 function FinalCTA() {
   const [, setLocation] = useLocation();
@@ -1753,6 +1902,7 @@ export default function Landing() {
       <SimiaSection />
       <Testimonials />
       <FAQ />
+      <CommunitySection />
       <FinalCTA />
       <Footer />
     </div>
