@@ -1367,17 +1367,107 @@ function SimiaSection() {
   );
 }
 
-/* ─── Platform descriptions ─── */
-const PLATFORM_META: Record<string, { label: string; desc: string }> = {
-  telegram:  { label: "Canal Telegram",   desc: "Annonces, actualités et offres exclusives en temps réel" },
-  facebook:  { label: "Page Facebook",    desc: "Offres, promotions et actualités de la communauté" },
-  whatsapp:  { label: "Groupe WhatsApp",  desc: "Support communautaire et alertes instantanées" },
-  instagram: { label: "Instagram",        desc: "Contenu exclusif, coulisses et actus visuelles" },
-  twitter:   { label: "X / Twitter",      desc: "Dernières nouvelles et mises à jour en direct" },
-  youtube:   { label: "Chaîne YouTube",   desc: "Tutoriels vidéo et guides pour bien démarrer" },
-  tiktok:    { label: "TikTok",           desc: "Astuces courtes et contenu engageant" },
-  discord:   { label: "Serveur Discord",  desc: "Communauté active, entraide et discussions" },
-  linkedin:  { label: "LinkedIn",         desc: "Actualités professionnelles et partenariats" },
+/* ─── Official platform SVG logos ─── */
+function PlatformLogo({ platform, size = 80 }: { platform: string; size?: number }) {
+  if (platform === "telegram") return (
+    <svg width={size} height={size} viewBox="0 0 240 240" fill="none">
+      <defs>
+        <linearGradient id="tg-grad" x1="120" y1="0" x2="120" y2="240" gradientUnits="userSpaceOnUse">
+          <stop stopColor="#2AABEE"/>
+          <stop offset="1" stopColor="#229ED9"/>
+        </linearGradient>
+      </defs>
+      <circle cx="120" cy="120" r="120" fill="url(#tg-grad)"/>
+      <path d="M81.229 128.772l14.237 39.406s1.78 3.687 3.686 3.687c1.905 0 30.255-29.492 30.255-29.492l31.525-60.89L81.737 118.6l-.508 10.172z" fill="#C8DAEA"/>
+      <path d="M100.106 138.878l-2.733 29.046s-1.144 8.9 7.754 0 17.415-15.763 17.415-15.763" fill="#A9C6D4"/>
+      <path d="M81.486 130.178L52.2 120.636s-3.5-1.42-2.373-4.64c.232-.664.7-1.229 2.1-2.198 6.489-4.523 120.106-45.35 120.106-45.35s3.208-1.081 5.1-.362c.917.345 1.502.7 1.997 2.05.18.496.283 1.533.27 2.556-.013.787-.096 1.515-.173 2.435-1.756 18.455-23.527 105.73-23.527 105.73s-1.362 5.358-6.24 5.54c-1.793.067-3.965-.292-6.56-2.637-9.576-8.495-42.643-30.463-50.08-35.38-.196-.128-.26-.309-.283-.505z" fill="white"/>
+    </svg>
+  );
+  if (platform === "facebook") return (
+    <svg width={size} height={size} viewBox="0 0 240 240" fill="none">
+      <circle cx="120" cy="120" r="120" fill="#1877F2"/>
+      <path d="M167 120c0-26.01-21-47-47-47s-47 20.99-47 47c0 23.44 17.17 42.88 39.62 46.39V134.5h-11.9V120h11.9v-10.32c0-11.74 7-18.22 17.7-18.22 5.12 0 10.48.91 10.48.91v11.53h-5.9c-5.82 0-7.63 3.61-7.63 7.31V120h12.98l-2.07 14.5h-10.9v31.89C149.83 162.88 167 143.44 167 120z" fill="white"/>
+    </svg>
+  );
+  if (platform === "whatsapp") return (
+    <svg width={size} height={size} viewBox="0 0 240 240" fill="none">
+      <circle cx="120" cy="120" r="120" fill="#25D366"/>
+      <path fillRule="evenodd" clipRule="evenodd" d="M120 60c-33.14 0-60 26.86-60 60 0 10.54 2.73 20.44 7.5 29.01L60 180l31.77-8.31A59.75 59.75 0 00120 180c33.14 0 60-26.86 60-60s-26.86-60-60-60zm35.6 85.4c-1.47 4.12-8.57 7.89-11.76 8.38-3 .44-6.82.63-11-.7-2.54-.82-5.8-1.92-9.96-3.75-17.5-7.55-28.9-25.4-29.77-26.56-.86-1.16-7.03-9.35-7.03-17.84 0-8.48 4.45-12.65 6.03-14.37 1.57-1.72 3.43-2.15 4.57-2.15 1.14 0 2.29.01 3.29.06 1.05.05 2.47-.4 3.87 2.95 1.44 3.44 4.89 11.93 5.31 12.8.43.86.71 1.87.14 3.01-.57 1.14-3.27 5.44-3.27 5.44s-.72.86.14 2.3c.86 1.43 6.33 9.7 13.58 13.72 3.81 2.14 9.43 4.07 9.43 4.07s1.58.54 2.44-.57c.87-1.12 3.72-4.4 4.72-5.9 1-1.5 2-1.21 3.43-.72 1.43.5 9.14 4.3 10.72 5.09 1.57.78 2.6 1.17 3 1.82.43.64.43 3.72-1.04 7.82z" fill="white"/>
+    </svg>
+  );
+  if (platform === "instagram") return (
+    <svg width={size} height={size} viewBox="0 0 240 240" fill="none">
+      <defs>
+        <radialGradient id="ig-r1" cx="30%" cy="107%" r="150%">
+          <stop offset="0%" stopColor="#ffd600"/>
+          <stop offset="50%" stopColor="#ff0069"/>
+          <stop offset="100%" stopColor="#d300c4"/>
+        </radialGradient>
+        <radialGradient id="ig-r2" cx="8%" cy="100%" r="90%">
+          <stop offset="0%" stopColor="#ff6600"/>
+          <stop offset="50%" stopColor="#ff006900" stopOpacity="0"/>
+        </radialGradient>
+      </defs>
+      <circle cx="120" cy="120" r="120" fill="url(#ig-r1)"/>
+      <circle cx="120" cy="120" r="120" fill="url(#ig-r2)"/>
+      <rect x="72" y="72" width="96" height="96" rx="28" stroke="white" strokeWidth="10" fill="none"/>
+      <circle cx="120" cy="120" r="24" stroke="white" strokeWidth="10" fill="none"/>
+      <circle cx="155" cy="86" r="8" fill="white"/>
+    </svg>
+  );
+  if (platform === "youtube") return (
+    <svg width={size} height={size} viewBox="0 0 240 240" fill="none">
+      <circle cx="120" cy="120" r="120" fill="#FF0000"/>
+      <path d="M183.9 90.6s-1.8-12.5-7.1-17.9c-6.8-7.1-14.4-7.2-17.9-7.6C134.8 64 120 64 120 64s-14.8 0-38.9 1.1c-3.5.4-11.1.5-17.9 7.6-5.4 5.4-7.1 17.9-7.1 17.9S54 105.2 54 119.8v13.6c0 14.6 2.1 29.2 2.1 29.2s1.8 12.5 7.1 17.9c6.8 7.1 15.7 6.9 19.7 7.6C96.1 189.2 120 189.4 120 189.4s14.8 0 38.9-1.2c3.5-.4 11.1-.5 17.9-7.6 5.4-5.4 7.1-17.9 7.1-17.9s2.1-14.6 2.1-29.2v-13.6c0-14.6-2.1-29.2-2.1-29.3zM105.3 145.6V93.4l48.4 26.2-48.4 26z" fill="white"/>
+    </svg>
+  );
+  if (platform === "discord") return (
+    <svg width={size} height={size} viewBox="0 0 240 240" fill="none">
+      <circle cx="120" cy="120" r="120" fill="#5865F2"/>
+      <path d="M168.5 75.5a88.6 88.6 0 00-22.2-6.9 62.3 62.3 0 00-2.7 5.6 81.7 81.7 0 00-24.6 0 62 62 0 00-2.7-5.6 88.3 88.3 0 00-22.3 6.9C77.5 102.4 72.5 128.4 75 154c9.3 6.9 18.4 11.1 27.3 13.8a67.4 67.4 0 005.8-9.5 57.8 57.8 0 01-9.2-4.4l2.2-1.7c17.8 8.3 37.1 8.3 54.8 0l2.2 1.7a57.6 57.6 0 01-9.2 4.4 67 67 0 005.8 9.5c8.9-2.7 18-6.9 27.3-13.8 2.8-29.3-4.8-55-20.5-78.5zM101.8 138.5c-5.9 0-10.7-5.4-10.7-12s4.7-12 10.7-12 10.8 5.4 10.7 12-4.7 12-10.7 12zm36.4 0c-5.9 0-10.7-5.4-10.7-12s4.7-12 10.7-12 10.8 5.4 10.7 12-4.7 12-10.7 12z" fill="white"/>
+    </svg>
+  );
+  if (platform === "tiktok") return (
+    <svg width={size} height={size} viewBox="0 0 240 240" fill="none">
+      <circle cx="120" cy="120" r="120" fill="#010101"/>
+      <path d="M164 100.7c-9.6 0-18.4-3.2-25.5-8.5v38.5c0 19.3-15.7 35-35 35s-35-15.7-35-35 15.7-35 35-35c1.9 0 3.8.2 5.6.5v19.3c-1.8-.5-3.7-.8-5.6-.8-8.8 0-16 7.2-16 16s7.2 16 16 16 16-7.2 16-16V60h19c0 22.5 18.3 40.7 40.7 40.7v19z" fill="white"/>
+      <path d="M164 100.7c-9.6 0-18.4-3.2-25.5-8.5v38.5c0 19.3-15.7 35-35 35s-35-15.7-35-35 15.7-35 35-35c1.9 0 3.8.2 5.6.5v19.3c-1.8-.5-3.7-.8-5.6-.8-8.8 0-16 7.2-16 16s7.2 16 16 16 16-7.2 16-16V60h19c0 22.5 18.3 40.7 40.7 40.7v19z" fill="#69C9D0" fillOpacity="0.6"/>
+    </svg>
+  );
+  if (platform === "linkedin") return (
+    <svg width={size} height={size} viewBox="0 0 240 240" fill="none">
+      <circle cx="120" cy="120" r="120" fill="#0A66C2"/>
+      <path d="M80 100h20v80H80zM90 92c-6.6 0-12-5.4-12-12s5.4-12 12-12 12 5.4 12 12-5.4 12-12 12zM160 180h-20v-38c0-9-7-16-16-16s-16 7-16 16v38h-20v-80h20v10c5-7 13-10 20-10 18 0 32 14 32 32v48z" fill="white"/>
+    </svg>
+  );
+  if (platform === "twitter") return (
+    <svg width={size} height={size} viewBox="0 0 240 240" fill="none">
+      <circle cx="120" cy="120" r="120" fill="#000000"/>
+      <path d="M134.7 110.4L174 65h-9.3L130.6 104.7 104 65H68l41.3 60.1L68 175h9.3l36.1-42 28.9 42H178l-43.3-64.6zM117.9 127.4l-4.2-6-33.3-47.6H99.5l27 38.6 4.2 6 34.9 49.9H151L117.9 127.4z" fill="white"/>
+    </svg>
+  );
+  // Generic fallback
+  const entry = SOCIAL_ICONS[platform];
+  const Icon = entry?.Icon ?? FaTelegram;
+  const color = entry?.color ?? "#8B5CF6";
+  return (
+    <div style={{ width: size, height: size, borderRadius: "50%", background: color, display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <Icon size={size * 0.5} color="white" />
+    </div>
+  );
+}
+
+/* ─── Platform meta (label + description) ─── */
+const PLATFORM_META: Record<string, { label: string; cta: string; desc: string; gradient: string }> = {
+  telegram:  { label: "Telegram",   cta: "Rejoindre le canal",   desc: "Annonces exclusives, offres spéciales et actualités en temps réel directement dans votre Telegram.", gradient: "linear-gradient(135deg, #1a3a5c, #0d1f35, #0a1628)" },
+  facebook:  { label: "Facebook",   cta: "Suivre la page",       desc: "Offres, promotions, témoignages clients et toute l'actualité de la communauté Simix.", gradient: "linear-gradient(135deg, #1a2a4a, #0d1830, #080f20)" },
+  whatsapp:  { label: "WhatsApp",   cta: "Rejoindre le groupe",  desc: "Support communautaire, alertes instantanées et échanges avec les membres actifs.", gradient: "linear-gradient(135deg, #0d2a1a, #071a0f, #041208)" },
+  instagram: { label: "Instagram",  cta: "Suivre le compte",     desc: "Contenus exclusifs, coulisses de Simix et actus visuelles pour la communauté.", gradient: "linear-gradient(135deg, #2a1a30, #1a0f20, #0f0815)" },
+  youtube:   { label: "YouTube",    cta: "S'abonner",            desc: "Tutoriels vidéo, guides pratiques et démos pour maîtriser Simix en quelques minutes.", gradient: "linear-gradient(135deg, #2a0a0a, #1a0505, #100303)" },
+  tiktok:    { label: "TikTok",     cta: "Nous suivre",          desc: "Astuces courtes, challenges et contenu engageant pour la communauté mobile.", gradient: "linear-gradient(135deg, #0a0a0a, #111111, #0d0d0d)" },
+  discord:   { label: "Discord",    cta: "Rejoindre le serveur", desc: "Communauté active, entraide entre membres et discussions en temps réel 24h/24.", gradient: "linear-gradient(135deg, #1a1a3a, #0f0f2a, #08081a)" },
+  linkedin:  { label: "LinkedIn",   cta: "Suivre",               desc: "Actualités professionnelles, partenariats et opportunités d'affaires avec Simix.", gradient: "linear-gradient(135deg, #0a1f35, #06142a, #040d1c)" },
+  twitter:   { label: "X / Twitter",cta: "Nous suivre",          desc: "Dernières nouvelles, mises à jour produit et échanges directs avec l'équipe Simix.", gradient: "linear-gradient(135deg, #0d0d0d, #111111, #0a0a0a)" },
 };
 
 /* ─── Community Section ─── */
@@ -1399,120 +1489,140 @@ function CommunitySection() {
   if (!links.length) return null;
 
   return (
-    <Section className="py-20" id="communaute">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true }}
-        className="text-center mb-12"
-      >
-        <SectionPill label="Communauté Simix" color="violet" />
-        <h2 className="text-3xl sm:text-5xl font-extrabold text-white mt-4 mb-4 leading-tight">
-          Rejoignez notre{" "}
-          <span className="bg-gradient-to-r from-violet-400 via-blue-400 to-emerald-400 bg-clip-text text-transparent">
-            communauté
-          </span>
-        </h2>
-        <p className="text-zinc-400 text-base sm:text-lg max-w-2xl mx-auto">
-          Des milliers de membres actifs vous attendent. Rejoignez-nous pour ne rien manquer des offres, actualités et annonces exclusives.
-        </p>
-      </motion.div>
+    <section className="py-24 relative overflow-hidden" id="communaute" style={{ background: "linear-gradient(180deg, #050508 0%, #09090f 50%, #050508 100%)" }}>
+      {/* Background grid pattern */}
+      <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: "radial-gradient(circle, #7C3AED 1px, transparent 1px)", backgroundSize: "32px 32px" }} />
+      <div className="absolute inset-0 bg-gradient-to-b from-violet-950/10 via-transparent to-violet-950/10 pointer-events-none" />
 
-      <div className={`grid gap-5 ${links.length === 1 ? "max-w-md mx-auto" : links.length === 2 ? "grid-cols-1 sm:grid-cols-2 max-w-3xl mx-auto" : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"}`}>
-        {links.map((link, i) => {
-          const entry = SOCIAL_ICONS[link.platform];
-          const Icon = entry?.Icon ?? FaTelegram;
-          const color = entry?.color ?? link.color ?? "#8B5CF6";
-          const meta = PLATFORM_META[link.platform] ?? { label: link.name, desc: "Rejoignez notre communauté et restez connecté" };
-          return (
-            <motion.a
-              key={link.id}
-              href={link.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              initial={{ opacity: 0, y: 24 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: i * 0.08 }}
-              whileHover={{ y: -6, scale: 1.02 }}
-              className="group relative flex flex-col items-center text-center rounded-3xl p-8 border transition-all duration-300 cursor-pointer overflow-hidden"
-              style={{
-                background: `linear-gradient(145deg, ${color}0f, #0a0a12 60%, #0a0a12)`,
-                borderColor: `${color}30`,
-              }}
-              onMouseEnter={e => {
-                const el = e.currentTarget;
-                el.style.borderColor = `${color}70`;
-                el.style.boxShadow = `0 0 50px ${color}25, 0 0 120px ${color}10, inset 0 0 30px ${color}08`;
-              }}
-              onMouseLeave={e => {
-                const el = e.currentTarget;
-                el.style.borderColor = `${color}30`;
-                el.style.boxShadow = "none";
-              }}
-            >
-              {/* Ambient top glow */}
-              <div
-                className="absolute top-0 left-1/2 -translate-x-1/2 w-40 h-20 blur-3xl opacity-20 pointer-events-none transition-opacity duration-300 group-hover:opacity-40"
-                style={{ background: color }}
-              />
+      <div className="relative z-10 px-4 sm:px-8 lg:px-16 xl:px-24">
+        {/* Header */}
+        <motion.div
+          initial={{ opacity: 0, y: 24 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          className="text-center mb-16"
+        >
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-violet-500/30 bg-violet-500/10 text-violet-400 text-xs font-bold uppercase tracking-widest mb-6">
+            <span className="w-1.5 h-1.5 rounded-full bg-violet-400 animate-pulse" />
+            Communauté officielle
+          </div>
+          <h2 className="text-4xl sm:text-6xl font-black text-white mb-5 leading-tight tracking-tight">
+            Rejoignez-nous sur<br />
+            <span className="bg-gradient-to-r from-violet-400 via-indigo-400 to-cyan-400 bg-clip-text text-transparent">
+              nos réseaux officiels
+            </span>
+          </h2>
+          <p className="text-zinc-400 text-lg sm:text-xl max-w-2xl mx-auto leading-relaxed">
+            Rejoignez des milliers de membres actifs. Soyez les premiers informés des offres, annonces et actualités exclusives de Simix.
+          </p>
+        </motion.div>
 
-              {/* Platform icon */}
-              <div
-                className="relative flex items-center justify-center w-24 h-24 rounded-3xl mb-6 transition-all duration-300"
-                style={{ background: `${color}15`, border: `2px solid ${color}30` }}
-              >
-                <div
-                  className="absolute inset-0 rounded-3xl blur-xl opacity-0 group-hover:opacity-60 transition-opacity duration-300"
-                  style={{ background: color }}
-                />
-                <span style={{ color, filter: "drop-shadow(0 0 12px currentColor)" }} className="relative z-10">
-                  <Icon size={52} />
-                </span>
-              </div>
+        {/* Cards grid */}
+        <div className={`grid gap-6 max-w-6xl mx-auto ${links.length === 1 ? "max-w-2xl" : links.length === 2 ? "grid-cols-1 md:grid-cols-2 max-w-4xl" : "grid-cols-1 md:grid-cols-2 lg:grid-cols-3"}`}>
+          {links.map((link, i) => {
+            const entry = SOCIAL_ICONS[link.platform];
+            const brandColor = entry?.color ?? link.color ?? "#8B5CF6";
+            const meta = PLATFORM_META[link.platform] ?? {
+              label: link.name,
+              cta: "Rejoindre",
+              desc: "Rejoignez notre communauté et restez connecté avec Simix.",
+              gradient: `linear-gradient(135deg, #1a1a2e, #0a0a1a, #050510)`,
+            };
 
-              {/* Platform name */}
-              <p
-                className="text-base font-bold uppercase tracking-widest mb-2"
-                style={{ color }}
-              >
-                {meta.label}
-              </p>
-
-              {/* Description */}
-              <p className="text-zinc-400 text-sm leading-relaxed mb-7 max-w-xs">
-                {meta.desc}
-              </p>
-
-              {/* CTA button */}
-              <div
-                className="flex items-center gap-2.5 px-7 py-3.5 rounded-2xl font-bold text-sm transition-all duration-200 group-hover:gap-3.5"
+            return (
+              <motion.a
+                key={link.id}
+                href={link.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                initial={{ opacity: 0, y: 32 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.1, duration: 0.5 }}
+                whileHover={{ y: -8 }}
+                className="group relative rounded-3xl overflow-hidden cursor-pointer block"
                 style={{
-                  background: `${color}18`,
-                  border: `1.5px solid ${color}50`,
-                  color,
+                  background: meta.gradient,
+                  border: `1.5px solid ${brandColor}20`,
+                  transition: "box-shadow 0.3s ease, border-color 0.3s ease",
+                }}
+                onMouseEnter={e => {
+                  (e.currentTarget as HTMLElement).style.boxShadow = `0 30px 80px ${brandColor}30, 0 0 0 1px ${brandColor}40`;
+                  (e.currentTarget as HTMLElement).style.borderColor = `${brandColor}50`;
+                }}
+                onMouseLeave={e => {
+                  (e.currentTarget as HTMLElement).style.boxShadow = "none";
+                  (e.currentTarget as HTMLElement).style.borderColor = `${brandColor}20`;
                 }}
               >
-                Rejoindre
-                <ArrowRight className="w-4 h-4 transition-transform duration-200 group-hover:translate-x-1" />
-              </div>
-            </motion.a>
-          );
-        })}
-      </div>
+                {/* Top color band */}
+                <div className="h-1.5 w-full" style={{ background: `linear-gradient(90deg, ${brandColor}00, ${brandColor}, ${brandColor}00)` }} />
 
-      {/* Trust line */}
-      <motion.p
-        initial={{ opacity: 0 }}
-        whileInView={{ opacity: 1 }}
-        viewport={{ once: true }}
-        transition={{ delay: 0.3 }}
-        className="text-center text-zinc-600 text-xs mt-10 flex items-center justify-center gap-2"
-      >
-        <CheckCircle className="w-3.5 h-3.5 text-emerald-500" />
-        Canaux officiels vérifiés · Mises à jour en temps réel · Gratuit
-      </motion.p>
-    </Section>
+                {/* Ambient glow */}
+                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-64 h-32 blur-3xl opacity-0 group-hover:opacity-30 transition-opacity duration-500 pointer-events-none" style={{ background: brandColor }} />
+
+                <div className="p-8 sm:p-10">
+                  {/* Logo + platform name row */}
+                  <div className="flex items-center gap-5 mb-7">
+                    <div className="relative flex-shrink-0 drop-shadow-2xl" style={{ filter: `drop-shadow(0 0 20px ${brandColor}50)` }}>
+                      <PlatformLogo platform={link.platform} size={80} />
+                    </div>
+                    <div>
+                      <p className="text-2xl font-black text-white leading-none mb-1">{meta.label}</p>
+                      <div className="flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                        <span className="text-xs text-emerald-400 font-semibold">Canal officiel</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Description */}
+                  <p className="text-zinc-400 text-sm sm:text-base leading-relaxed mb-8">
+                    {meta.desc}
+                  </p>
+
+                  {/* CTA button */}
+                  <div
+                    className="flex items-center justify-between w-full px-6 py-4 rounded-2xl font-bold text-base transition-all duration-200"
+                    style={{
+                      background: `${brandColor}18`,
+                      border: `1.5px solid ${brandColor}40`,
+                      color: "white",
+                    }}
+                  >
+                    <span style={{ color: brandColor }}>{meta.cta}</span>
+                    <div
+                      className="w-9 h-9 rounded-xl flex items-center justify-center transition-transform duration-200 group-hover:translate-x-1"
+                      style={{ background: brandColor }}
+                    >
+                      <ArrowRight className="w-4 h-4 text-white" />
+                    </div>
+                  </div>
+                </div>
+              </motion.a>
+            );
+          })}
+        </div>
+
+        {/* Bottom badge */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          whileInView={{ opacity: 1 }}
+          viewport={{ once: true }}
+          transition={{ delay: 0.4 }}
+          className="text-center mt-14"
+        >
+          <div className="inline-flex items-center gap-3 px-6 py-3 rounded-2xl border border-zinc-800 bg-zinc-900/50 text-zinc-500 text-sm">
+            <CheckCircle className="w-4 h-4 text-emerald-500" />
+            Canaux officiels et vérifiés
+            <span className="text-zinc-700">·</span>
+            <span>Mises à jour en temps réel</span>
+            <span className="text-zinc-700">·</span>
+            <span>Gratuit</span>
+          </div>
+        </motion.div>
+      </div>
+    </section>
   );
 }
 
