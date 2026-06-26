@@ -7,6 +7,7 @@ import { useLocation, Link } from "wouter";
 import { motion } from "framer-motion";
 import { formatFCFA } from "@/lib/format";
 import { User as UserIcon, Shield, Bell, CreditCard, Lock, HelpCircle, LogOut, ChevronRight, Camera, Crown, Eye, TrendingUp, ShoppingBag, Gift } from "lucide-react";
+import { useNotifications } from "@/hooks/use-notifications";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
@@ -58,6 +59,7 @@ function ProfileContent() {
   const logoutMutation = useLogout();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const { unreadCount } = useNotifications(true);
 
   const handleLogout = async () => {
     try {
@@ -99,13 +101,13 @@ function ProfileContent() {
     .toUpperCase();
 
   const settingsItems = [
-    { icon: UserIcon, label: "Informations personnelles", sub: "Nom, email, téléphone", href: "/profile/informations", color: "text-violet-500", bg: "bg-violet-500/10" },
-    { icon: Shield, label: "Sécurité", sub: "Mot de passe & 2FA", href: "/profile/securite", color: "text-blue-500", bg: "bg-blue-500/10" },
-    { icon: Bell, label: "Notifications", sub: "Historique & alertes", href: "/profile/notifications", color: "text-violet-400", bg: "bg-violet-500/10" },
-    { icon: CreditCard, label: "Méthodes de paiement", sub: "Orange Money, Wave, MTN…", href: "/profile/paiement", color: "text-emerald-500", bg: "bg-emerald-500/10" },
-    { icon: Gift, label: "Parrainage", sub: "Invitez & gagnez des commissions", href: "/profile/parrainage", color: "text-amber-500", bg: "bg-amber-500/10" },
-    { icon: Lock, label: "Confidentialité", sub: "Données & politique", href: "/profile/confidentialite", color: "text-rose-500", bg: "bg-rose-500/10" },
-    { icon: HelpCircle, label: "Aide et support", sub: "FAQ & assistance", href: "/profile/aide", color: "text-sky-500", bg: "bg-sky-500/10" },
+    { icon: UserIcon, label: "Informations personnelles", sub: "Nom, email, téléphone", href: "/profile/informations", color: "text-violet-500", bg: "bg-violet-500/10", badge: 0 },
+    { icon: Shield, label: "Sécurité", sub: "Mot de passe & 2FA", href: "/profile/securite", color: "text-blue-500", bg: "bg-blue-500/10", badge: 0 },
+    { icon: Bell, label: "Notifications", sub: "Historique & alertes", href: "/notifications", color: "text-violet-400", bg: "bg-violet-500/10", badge: unreadCount },
+    { icon: CreditCard, label: "Méthodes de paiement", sub: "Orange Money, Wave, MTN…", href: "/profile/paiement", color: "text-emerald-500", bg: "bg-emerald-500/10", badge: 0 },
+    { icon: Gift, label: "Parrainage", sub: "Invitez & gagnez des commissions", href: "/profile/parrainage", color: "text-amber-500", bg: "bg-amber-500/10", badge: 0 },
+    { icon: Lock, label: "Confidentialité", sub: "Données & politique", href: "/profile/confidentialite", color: "text-rose-500", bg: "bg-rose-500/10", badge: 0 },
+    { icon: HelpCircle, label: "Aide et support", sub: "FAQ & assistance", href: "/profile/aide", color: "text-sky-500", bg: "bg-sky-500/10", badge: 0 },
   ];
 
   return (
@@ -247,7 +249,13 @@ function ProfileContent() {
                 <p className="text-sm font-bold text-foreground truncate">{item.label}</p>
                 <p className="text-[11px] text-muted-foreground truncate">{item.sub}</p>
               </div>
-              <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+              {item.badge > 0 ? (
+                <span className="min-w-[20px] h-[20px] bg-red-500 rounded-full text-[10px] font-bold text-white flex items-center justify-center px-1.5 flex-shrink-0">
+                  {item.badge > 99 ? "99+" : item.badge}
+                </span>
+              ) : (
+                <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+              )}
             </button>
           ))}
         </div>
