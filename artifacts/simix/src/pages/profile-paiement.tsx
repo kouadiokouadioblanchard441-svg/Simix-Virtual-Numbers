@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { AppLayout } from "@/components/layout/app-layout";
 import { AuthGuard } from "@/components/auth-guard";
 import { useGetMe, getGetMeQueryKey } from "@workspace/api-client-react";
@@ -7,6 +7,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, Plus, Trash2, Star, CreditCard, CheckCircle, X, Phone } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { formatFCFA } from "@/lib/format";
+
+const METHODS_STORAGE_KEY = "simix_payment_methods";
 
 type PayMethod = {
   id: string;
@@ -43,12 +45,42 @@ function PaiementContent() {
   const { data: user } = useGetMe({ query: { queryKey: getGetMeQueryKey() } });
   const { toast } = useToast();
   const [showAdd, setShowAdd] = useState(false);
-  const [methods, setMethods] = useState<PayMethod[]>([
-    { id: "1", operator: "Orange Money", abbr: "OM", color: "#FF7A00", phone: user?.phone ?? "+225 07 01 23 45 67", name: user?.fullName ?? "Mon compte", isDefault: true, lastUsed: "Il y a 2 jours" },
-  ]);
   const [newOp, setNewOp] = useState(OPERATORS[0].name);
   const [newPhone, setNewPhone] = useState("");
   const [newName, setNewName] = useState("");
+
+  const [methods, setMethods] = useState<PayMethod[]>(() => {
+    try {
+      const saved = localStorage.getItem(METHODS_STORAGE_KEY);
+      if (saved) return JSON.parse(saved) as PayMethod[];
+    } catch {/* ignore */}
+    return [];
+  });
+
+  useEffect(() => {
+    if (user && methods.length === 0) {
+      const defaultMethod: PayMethod = {
+        id: "default",
+        operator: "Orange Money",
+        abbr: "OM",
+        color: "#FF7A00",
+        phone: user.phone ?? "+225 07 01 23 45 67",
+        name: user.fullName ?? "Mon compte",
+        isDefault: true,
+        lastUsed: "Il y a 2 jours",
+      };
+      const saved = localStorage.getItem(METHODS_STORAGE_KEY);
+      if (!saved) {
+        setMethods([defaultMethod]);
+      }
+    }
+  }, [user]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(METHODS_STORAGE_KEY, JSON.stringify(methods));
+    } catch {/* ignore */}
+  }, [methods]);
 
   const handleAdd = () => {
     if (!newPhone.trim() || newPhone.length < 8) {

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { AppLayout } from "@/components/layout/app-layout";
 import { AuthGuard } from "@/components/auth-guard";
 import { useLocation } from "wouter";
@@ -6,6 +6,8 @@ import { motion } from "framer-motion";
 import { ArrowLeft, ChevronRight, HelpCircle, BookOpen, Star, FileText, Phone, Send, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useContactSettings } from "@/hooks/use-contact-settings";
+
+const RATING_STORAGE_KEY = "simix_app_rating";
 
 function WhatsAppLogo({ size = 24 }: { size?: number }) {
   return (
@@ -76,8 +78,6 @@ function AideContent() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const [openFaq, setOpenFaq] = useState<number | null>(null);
-  const [rating, setRating] = useState(0);
-  const [hoverRating, setHoverRating] = useState(0);
   const { supportEmail, supportPhone, supportWhatsapp } = useContactSettings();
 
   const whatsappNumber = supportWhatsapp || "+2250101234567";
@@ -91,8 +91,25 @@ function AideContent() {
     window.open(`mailto:${supportEmail}?subject=Demande%20d%27assistance%20Simix`, "_blank");
   };
 
+  const [rating, setRating] = useState(0);
+  const [hoverRating, setHoverRating] = useState(0);
   const [submittingRating, setSubmittingRating] = useState(false);
   const [ratingSubmitted, setRatingSubmitted] = useState(false);
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(RATING_STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed.submitted && parsed.score >= 1 && parsed.score <= 5) {
+          setRating(parsed.score);
+          setRatingSubmitted(true);
+        }
+      }
+    } catch {
+      /* ignore */
+    }
+  }, []);
 
   const handleSubmitRating = async () => {
     if (!rating) return;
@@ -104,10 +121,14 @@ function AideContent() {
         credentials: "include",
         body: JSON.stringify({ score: rating }),
       });
-    } catch { /* ignore */ }
-    setSubmittingRating(false);
-    setRatingSubmitted(true);
-    toast({ title: "Merci pour votre avis !", description: `Vous avez noté l'app ${rating}/5 étoiles.` });
+      localStorage.setItem(RATING_STORAGE_KEY, JSON.stringify({ submitted: true, score: rating }));
+      setRatingSubmitted(true);
+      toast({ title: "Merci pour votre avis !", description: `Vous avez noté l'app ${rating}/5 étoiles.` });
+    } catch {
+      toast({ title: "Erreur", description: "Impossible d'envoyer votre note. Réessayez.", variant: "destructive" });
+    } finally {
+      setSubmittingRating(false);
+    }
   };
 
   return (

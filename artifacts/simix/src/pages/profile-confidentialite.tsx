@@ -1,10 +1,12 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { AppLayout } from "@/components/layout/app-layout";
 import { AuthGuard } from "@/components/auth-guard";
 import { useLocation } from "wouter";
 import { motion } from "framer-motion";
 import { ArrowLeft, Lock, Eye, Database, Trash2, Download, ChevronRight, Shield, AlertTriangle, FileText, Cookie, Building2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+
+const PREFS_STORAGE_KEY = "simix_privacy_prefs";
 
 function Toggle({ value, onChange }: { value: boolean; onChange: (v: boolean) => void }) {
   return (
@@ -13,6 +15,13 @@ function Toggle({ value, onChange }: { value: boolean; onChange: (v: boolean) =>
     </button>
   );
 }
+
+const DEFAULT_PREFS = {
+  analytics: false,
+  personalized: false,
+  dataSharing: false,
+  profileVisible: true,
+};
 
 export default function ProfileConfidentialite() {
   return (
@@ -29,14 +38,25 @@ function ConfidentialiteContent() {
   const { toast } = useToast();
   const [showDelete, setShowDelete] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState("");
-  const [prefs, setPrefs] = useState({
-    analytics: false,
-    personalized: false,
-    dataSharing: false,
-    profileVisible: true,
+
+  const [prefs, setPrefs] = useState(() => {
+    try {
+      const saved = localStorage.getItem(PREFS_STORAGE_KEY);
+      if (saved) return { ...DEFAULT_PREFS, ...JSON.parse(saved) };
+    } catch {/* ignore */}
+    return DEFAULT_PREFS;
   });
 
-  const update = (k: keyof typeof prefs, v: boolean) => setPrefs((p) => ({ ...p, [k]: v }));
+  useEffect(() => {
+    try {
+      localStorage.setItem(PREFS_STORAGE_KEY, JSON.stringify(prefs));
+    } catch {/* ignore */}
+  }, [prefs]);
+
+  const update = (k: keyof typeof prefs, v: boolean) => {
+    setPrefs((p) => ({ ...p, [k]: v }));
+    toast({ title: "Préférence mise à jour ✓", description: "Vos choix de confidentialité ont été enregistrés." });
+  };
 
   const handleExport = async () => {
     toast({ title: "Exportation en cours", description: "Vous recevrez vos données par email dans les 48h." });

@@ -284,6 +284,40 @@ router.post("/auth/logout", async (req, res): Promise<void> => {
   res.json({ success: true });
 });
 
+router.patch("/auth/me/password", requireAuth, async (req, res): Promise<void> => {
+  const { currentPassword, newPassword } = req.body;
+  if (!currentPassword || typeof currentPassword !== "string") {
+    res.status(400).json({ error: "Mot de passe actuel requis" });
+    return;
+  }
+  if (!newPassword || typeof newPassword !== "string" || newPassword.length < 6) {
+    res.status(400).json({ error: "Le nouveau mot de passe doit contenir au moins 6 caractères" });
+    return;
+  }
+  const user = req.user!;
+  if (!user.passwordHash) {
+    res.status(400).json({ error: "Impossible de changer le mot de passe pour ce compte" });
+    return;
+  }
+  const ok = await bcrypt.compare(currentPassword, user.passwordHash);
+  if (!ok) {
+    res.status(401).json({ error: "Mot de passe actuel incorrect" });
+    return;
+  }
+  const newHash = await bcrypt.hash(newPassword, 10);
+  await db.update(usersTable).set({ passwordHash: newHash }).where(eq(usersTable.id, user.id));
+  res.json({ success: true });
+});
+
+router.post("/ratings", requireAuth, async (req, res): Promise<void> => {
+  const { score } = req.body;
+  if (!score || typeof score !== "number" || score < 1 || score > 5) {
+    res.status(400).json({ error: "Note invalide (1-5 requis)" });
+    return;
+  }
+  res.json({ success: true, score });
+});
+
 router.patch("/auth/me/avatar", requireAuth, async (req, res): Promise<void> => {
   const { avatar } = req.body;
   if (!avatar || typeof avatar !== "string") {

@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { AppLayout } from "@/components/layout/app-layout";
 import { AuthGuard } from "@/components/auth-guard";
 import { useGetMe, getGetMeQueryKey } from "@workspace/api-client-react";
@@ -73,13 +73,26 @@ function InformationsContent() {
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [saving, setSaving] = useState(false);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [formInitialized, setFormInitialized] = useState(false);
 
   const [form, setForm] = useState({
-    fullName: user?.fullName ?? "",
-    username: user?.username ?? "",
-    email: user?.email ?? "",
+    fullName: "",
+    username: "",
+    email: "",
     country: "+225",
   });
+
+  useEffect(() => {
+    if (user && !formInitialized) {
+      setForm({
+        fullName: user.fullName ?? "",
+        username: user.username ?? "",
+        email: user.email ?? "",
+        country: "+225",
+      });
+      setFormInitialized(true);
+    }
+  }, [user, formInitialized]);
 
   const handleChange = (field: string, value: string) => {
     setForm((prev) => ({ ...prev, [field]: value }));
