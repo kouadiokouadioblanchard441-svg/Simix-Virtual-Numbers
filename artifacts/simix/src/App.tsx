@@ -39,6 +39,7 @@ import ProfileCGU from "@/pages/profile-cgu";
 import ProfileCookies from "@/pages/profile-cookies";
 import ProfileMentionsLegales from "@/pages/profile-mentions-legales";
 import ProfileParrainage from "@/pages/profile-parrainage";
+import NotificationsPage from "@/pages/notifications";
 
 // Admin pages
 import AdminDashboard from "@/pages/admin/dashboard";
@@ -185,6 +186,7 @@ function InnerRouter() {
           <Route path="/numbers/:id" component={NumberAssigned} />
           <Route path="/profile/informations" component={ProfileInformations} />
           <Route path="/profile/securite" component={ProfileSecurite} />
+          <Route path="/notifications" component={NotificationsPage} />
           <Route path="/profile/notifications" component={ProfileNotifications} />
           <Route path="/profile/paiement" component={ProfilePaiement} />
           <Route path="/profile/confidentialite" component={ProfileConfidentialite} />

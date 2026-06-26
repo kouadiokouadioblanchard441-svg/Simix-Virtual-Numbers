@@ -9,7 +9,7 @@ export function NotificationBell({ isAuthenticated = false }: { isAuthenticated?
 
   return (
     <button
-      onClick={() => setLocation("/profile/notifications")}
+      onClick={() => setLocation("/notifications")}
       className="w-10 h-10 rounded-full bg-card border border-card-border flex items-center justify-center text-foreground relative hover:bg-secondary transition-colors"
     >
       <motion.div
