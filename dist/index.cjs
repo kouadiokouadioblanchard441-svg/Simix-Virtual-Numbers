@@ -119836,7 +119836,7 @@ router21.post("/support/chat", async (req, res) => {
     const cfgRows = await db.select().from(aiSupportConfigTable);
     const cfgMap = {};
     for (const r2 of cfgRows) cfgMap[r2.key] = r2.value;
-    const aiProvider = cfgMap["ai_provider"] ?? "gemini";
+    const aiProvider = cfgMap["ai_provider"] ?? "scripted";
     const maxTokens = parseInt(cfgMap["ai_max_tokens"] ?? "1200", 10);
     if (aiProvider === "gemini") {
       const geminiApiKey = cfgMap["gemini_api_key"] ?? "";
@@ -120003,6 +120003,99 @@ router21.post("/support/chat", async (req, res) => {
           } catch {
           }
         }
+      }
+    } else if (aiProvider === "scripted") {
+      const lang = conv.language ?? "fr";
+      const msgLower = message.toLowerCase();
+      const rules = [
+        /* Prix / tarifs — must come before generic "numéro" to win on "combien coûte un numéro" */
+        {
+          test: (m2) => /prix|tarif|co[uû]t|combien (ça |ca )?co[uû]te|price|how much/.test(m2),
+          responses: [
+            "Les prix varient selon le service et le pays. En g\xE9n\xE9ral entre 100 et 2 000 FCFA. Exemples : WhatsApp ~500 FCFA, Telegram ~500 FCFA, Google ~300 FCFA, Binance ~1 500 FCFA. Les prix exacts sont affich\xE9s avant chaque achat."
+          ]
+        },
+        /* Recharge */
+        {
+          test: (m2) => /recharger|recharge|d[eé]p[oô]t|top.?up|ajouter (de l'|des |)argent/.test(m2),
+          responses: [
+            "Pour recharger votre solde, rendez-vous dans la section \xAB Recharger \xBB de votre tableau de bord. Vous pouvez payer via Orange Money, MTN Mobile Money ou Wave. Le d\xE9p\xF4t minimum est de 500 FCFA et le solde est cr\xE9dit\xE9 instantan\xE9ment.",
+            "C'est simple ! Allez dans \xAB Recharger \xBB, entrez le montant, choisissez votre op\xE9rateur Mobile Money et suivez les instructions. Le cr\xE9dit appara\xEEt imm\xE9diatement sur votre compte."
+          ]
+        },
+        /* Remboursement */
+        {
+          test: (m2) => /rembours|refund/.test(m2),
+          responses: [
+            "Les remboursements sont automatiques : si aucun SMS n'est re\xE7u dans les 20 minutes, le montant est recr\xE9dit\xE9 sur votre solde Simix. V\xE9rifiez votre historique de transactions pour confirmer."
+          ]
+        },
+        /* SMS / code */
+        {
+          test: (m2) => /sms.*re[çc]u|sms.*arriv|code.*re[çc]u|code.*arriv|v[eé]rification/.test(m2),
+          responses: [
+            "Le code SMS peut prendre quelques minutes \xE0 arriver. V\xE9rifiez la section \xAB Mes num\xE9ros \xBB dans votre tableau de bord \u2014 le code s'affiche automatiquement d\xE8s r\xE9ception. Si les 20 minutes s'\xE9coulent sans r\xE9ception, vous \xEAtes rembours\xE9 automatiquement."
+          ]
+        },
+        /* Numéro pas reçu */
+        {
+          test: (m2) => /num[eé]ro.*re[çc]u|num[eé]ro.*arriv|not received/.test(m2),
+          responses: [
+            "Si vous n'avez pas re\xE7u votre num\xE9ro, v\xE9rifiez d'abord votre tableau de bord dans la section \xAB Mes num\xE9ros \xBB. Si le statut est \xAB En attente \xBB, c'est normal \u2014 le num\xE9ro est actif. Si aucun SMS n'arrive dans les 20 minutes, il sera rembours\xE9 automatiquement."
+          ]
+        },
+        /* Solde / compte */
+        {
+          test: (m2) => /mon solde|mon compte|my balance|quel.*solde|combien.*solde|voir.*solde/.test(m2),
+          responses: [
+            userContext ? `D'apr\xE8s les informations de votre compte, ${userContext.match(/Solde actuel: ([^\n]+)/)?.[1] ? "votre solde est de " + userContext.match(/Solde actuel: ([^\n]+)/)?.[1] : "votre solde est visible dans votre tableau de bord, section \xAB Mon compte \xBB."}` : "Votre solde est visible dans votre tableau de bord, en haut de l'\xE9cran. Connectez-vous \xE0 votre compte pour y acc\xE9der."
+          ]
+        },
+        /* Paiement mobile money */
+        {
+          test: (m2) => /orange money|mtn|wave|moov|mobile money|paiement|payer/.test(m2),
+          responses: [
+            "Simix accepte Orange Money, MTN Mobile Money, Wave et Moov Money. Lors du paiement, vous recevrez une notification push ou un code USSD selon votre op\xE9rateur pour confirmer la transaction."
+          ]
+        },
+        /* Compte bloqué */
+        {
+          test: (m2) => /bloqu[eé]|suspendu|suspended|blocked/.test(m2),
+          responses: [
+            "Si votre compte est bloqu\xE9 ou suspendu, cela n\xE9cessite l'intervention de notre \xE9quipe. Contactez-nous directement \xE0 support@simix.app ou via notre Telegram https://t.me/simixafrica pour d\xE9bloquer votre situation rapidement."
+          ]
+        },
+        /* Services spécifiques */
+        {
+          test: (m2) => /whatsapp|telegram|facebook|google|instagram|twitter|tiktok|snapchat|discord|signal/.test(m2),
+          responses: [
+            "Simix supporte tous les grands services ! Pour obtenir un num\xE9ro virtuel, allez dans \xAB Services \xBB, choisissez le service d\xE9sir\xE9, s\xE9lectionnez un pays, et le num\xE9ro vous est attribu\xE9 instantan\xE9ment. Vous aurez 20 minutes pour recevoir le code SMS."
+          ]
+        },
+        /* Fonctionnement général */
+        {
+          test: (m2) => /comment [cç]a marche|how it works|fonctionnement|comment utiliser|comment [cç]a fonctionne/.test(m2),
+          responses: [
+            "C'est tr\xE8s simple en 4 \xE9tapes :\n1. Rechargez votre solde via Mobile Money\n2. Choisissez un service (WhatsApp, Google, etc.) et un pays\n3. Recevez un num\xE9ro virtuel valide 20 minutes\n4. Entrez ce num\xE9ro dans l'app \u2192 le code SMS arrive automatiquement dans votre tableau de bord. Copiez-le et c'est r\xE9gl\xE9 !"
+          ]
+        }
+      ];
+      let bestResponse = lang === "en" ? "Hello! I'm Simia, your Simix advisor. How can I help you today? You can ask me about recharging, virtual numbers, SMS codes, prices, or how the platform works." : "Bonjour ! Je suis Simia, votre conseill\xE8re Simix. Je suis l\xE0 pour vous aider ! Vous pouvez me poser des questions sur la recharge, les num\xE9ros virtuels, les codes SMS, les tarifs, ou le fonctionnement de la plateforme.";
+      for (const rule of rules) {
+        if (rule.test(msgLower)) {
+          const responses = rule.responses;
+          bestResponse = responses[Math.floor(Math.random() * responses.length)];
+          break;
+        }
+      }
+      const words = bestResponse.split(" ");
+      for (let i2 = 0; i2 < words.length; i2++) {
+        const chunk = (i2 === 0 ? "" : " ") + words[i2];
+        fullResponse += chunk;
+        res.write(`data: ${JSON.stringify({ content: chunk })}
+
+`);
+        await new Promise((r2) => setTimeout(r2, 18));
       }
     } else {
       const openaiApiKey = cfgMap["openai_api_key"] ?? process.env.OPENAI_API_KEY ?? "";
