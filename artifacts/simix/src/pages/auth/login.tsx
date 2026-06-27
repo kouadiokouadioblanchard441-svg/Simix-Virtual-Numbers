@@ -154,7 +154,7 @@ export default function Login() {
       if (result?.requiresEmailVerification || result?.requiresInactivityCheck) {
         setLocation("/verify-email");
       } else {
-        setLocation("/dashboard");
+        setLocation("/bienvenue");
       }
     } catch (error: any) {
       toast({
