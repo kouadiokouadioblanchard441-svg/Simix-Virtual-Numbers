@@ -1,0 +1,19 @@
+{
+  "name": "Simix",
+  "short_name": "Simix",
+  "description": "Numéros virtuels SMS pour l'Afrique — payez en FCFA via Mobile Money",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0A0A0F",
+  "theme_color": "#7C3AED",
+  "lang": "fr",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
