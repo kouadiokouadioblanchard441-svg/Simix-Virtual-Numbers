@@ -15,7 +15,7 @@ export async function seedDemoUser(): Promise<void> {
     if (existing) {
       await db
         .update(usersTable)
-        .set({ isAdmin: true, emailVerified: true })
+        .set({ isAdmin: true, emailVerified: true, lastLoginAt: new Date() })
         .where(eq(usersTable.id, existing.id));
       logger.info("[seed-demo] Demo user already exists — ensured admin + emailVerified");
       return;
@@ -34,6 +34,7 @@ export async function seedDemoUser(): Promise<void> {
         balance: 12_450,
         verified: true,
         emailVerified: true,
+        lastLoginAt: new Date(),
         status: "Standard",
         isAdmin: true,
       })

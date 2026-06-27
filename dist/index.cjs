@@ -122093,7 +122093,7 @@ async function seedDemoUser() {
     const phone = "+2250701234567";
     const [existing] = await db.select({ id: usersTable.id }).from(usersTable).where(eq(usersTable.phone, phone)).limit(1);
     if (existing) {
-      await db.update(usersTable).set({ isAdmin: true, emailVerified: true }).where(eq(usersTable.id, existing.id));
+      await db.update(usersTable).set({ isAdmin: true, emailVerified: true, lastLoginAt: /* @__PURE__ */ new Date() }).where(eq(usersTable.id, existing.id));
       logger.info("[seed-demo] Demo user already exists \u2014 ensured admin + emailVerified");
       return;
     }
@@ -122108,6 +122108,7 @@ async function seedDemoUser() {
       balance: 12450,
       verified: true,
       emailVerified: true,
+      lastLoginAt: /* @__PURE__ */ new Date(),
       status: "Standard",
       isAdmin: true
     }).returning();
