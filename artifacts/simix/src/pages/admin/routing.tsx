@@ -1080,7 +1080,7 @@ type SectionId = "routing" | "gateways" | "operators" | "logs";
 
 const SECTIONS: { id: SectionId; label: string; icon: React.ElementType; desc: string }[] = [
   { id: "routing",   label: "Routage",       icon: Globe,    desc: "Assigner une API à chaque opérateur par pays" },
-  { id: "gateways",  label: "Fournisseurs",  icon: Server,   desc: "PawaPay, Clapay et autres APIs" },
+  { id: "gateways",  label: "Passerelles",   icon: Server,   desc: "PawaPay, Clapay — agrégateurs de dépôts" },
   { id: "operators", label: "Opérateurs",    icon: Cpu,      desc: "MTN, Orange, Wave, Moov…" },
   { id: "logs",      label: "Journaux",      icon: FileText, desc: "Historique des changements" },
 ];

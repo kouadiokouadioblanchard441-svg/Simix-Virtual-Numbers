@@ -767,10 +767,10 @@ function SettingsContent() {
                 )}
                 <h2 className="text-sm font-semibold text-white">{group}</h2>
                 {isPawaPay && (
-                  <span className="ml-2 text-[10px] px-2 py-0.5 rounded-full bg-orange-500/15 text-orange-400 border border-orange-500/20 font-medium">Paiements Mobile Money</span>
+                  <span className="ml-2 text-[10px] px-2 py-0.5 rounded-full bg-orange-500/15 text-orange-400 border border-orange-500/20 font-medium">Agrégateur de dépôts</span>
                 )}
                 {isClapay && (
-                  <span className="ml-2 text-[10px] px-2 py-0.5 rounded-full bg-blue-500/15 text-blue-400 border border-blue-500/20 font-medium">Paiements Mobile Money</span>
+                  <span className="ml-2 text-[10px] px-2 py-0.5 rounded-full bg-blue-500/15 text-blue-400 border border-blue-500/20 font-medium">Agrégateur de dépôts</span>
                 )}
                 {isGateway && (
                   <span className="ml-2 text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/20 font-medium">Routage</span>
