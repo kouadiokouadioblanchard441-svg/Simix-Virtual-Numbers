@@ -338,8 +338,13 @@ function ConversationsTab() {
 
   return (
     <div className="flex gap-4 h-[calc(100vh-220px)] min-h-[400px]">
-      {/* List */}
-      <div className={cn("flex flex-col", selected ? "w-96 flex-shrink-0" : "flex-1")}>
+      {/* List — hidden on mobile when a conversation is open */}
+      <div className={cn(
+        "flex flex-col",
+        selected
+          ? "hidden md:flex w-96 flex-shrink-0"
+          : "flex-1"
+      )}>
         {/* Filters */}
         <div className="flex items-center gap-2 mb-3 flex-wrap">
           <div className="relative flex-1 min-w-32">
@@ -432,10 +437,10 @@ function ConversationsTab() {
         </div>
       </div>
 
-      {/* Detail */}
+      {/* Detail — full-screen on mobile, side panel on desktop */}
       <AnimatePresence>
         {selected && (
-          <div className="flex-1 min-w-0">
+          <div className="flex-1 min-w-0 w-full md:w-auto">
             <ConversationDetail conv={selected} onClose={() => setSelected(null)} />
           </div>
         )}

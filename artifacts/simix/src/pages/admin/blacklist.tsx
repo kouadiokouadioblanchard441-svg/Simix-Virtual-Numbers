@@ -205,10 +205,10 @@ function BlacklistContent() {
                 <tr className="border-b border-zinc-800 text-left">
                   <th className="py-3 px-4 text-xs text-zinc-500 font-medium">Type</th>
                   <th className="py-3 px-4 text-xs text-zinc-500 font-medium">Valeur</th>
-                  <th className="py-3 px-4 text-xs text-zinc-500 font-medium">Raison</th>
-                  <th className="py-3 px-4 text-xs text-zinc-500 font-medium">Banni par</th>
-                  <th className="py-3 px-4 text-xs text-zinc-500 font-medium">Durée</th>
-                  <th className="py-3 px-4 text-xs text-zinc-500 font-medium">Date</th>
+                  <th className="py-3 px-4 text-xs text-zinc-500 font-medium hidden md:table-cell">Raison</th>
+                  <th className="py-3 px-4 text-xs text-zinc-500 font-medium hidden lg:table-cell">Banni par</th>
+                  <th className="py-3 px-4 text-xs text-zinc-500 font-medium hidden sm:table-cell">Durée</th>
+                  <th className="py-3 px-4 text-xs text-zinc-500 font-medium hidden sm:table-cell">Date</th>
                   <th className="py-3 px-4 text-xs text-zinc-500 font-medium">Action</th>
                 </tr>
               </thead>
@@ -225,9 +225,9 @@ function BlacklistContent() {
                         </span>
                       </td>
                       <td className="py-3 px-4 font-mono text-sm text-white">{e.value}</td>
-                      <td className="py-3 px-4 text-sm text-zinc-400 max-w-xs truncate">{e.reason}</td>
-                      <td className="py-3 px-4 text-xs text-zinc-500 font-mono truncate max-w-[120px]">{e.bannedBy ?? "—"}</td>
-                      <td className="py-3 px-4">
+                      <td className="py-3 px-4 text-sm text-zinc-400 max-w-xs truncate hidden md:table-cell">{e.reason}</td>
+                      <td className="py-3 px-4 text-xs text-zinc-500 font-mono truncate max-w-[120px] hidden lg:table-cell">{e.bannedBy ?? "—"}</td>
+                      <td className="py-3 px-4 hidden sm:table-cell">
                         {e.permanent ? (
                           <span className="text-xs px-2 py-0.5 rounded-full bg-red-500/20 text-red-400 font-medium">Permanent</span>
                         ) : isExpired ? (
@@ -236,7 +236,7 @@ function BlacklistContent() {
                           <span className="text-xs text-zinc-400">{e.expiresAt ? new Date(e.expiresAt).toLocaleDateString("fr-FR") : "—"}</span>
                         )}
                       </td>
-                      <td className="py-3 px-4 text-xs text-zinc-500">{new Date(e.createdAt).toLocaleDateString("fr-FR")}</td>
+                      <td className="py-3 px-4 text-xs text-zinc-500 hidden sm:table-cell">{new Date(e.createdAt).toLocaleDateString("fr-FR")}</td>
                       <td className="py-3 px-4">
                         <button
                           onClick={() => { if (confirm("Lever ce bannissement ?")) remove.mutate(e.id); }}

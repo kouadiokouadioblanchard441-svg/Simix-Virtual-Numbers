@@ -38,9 +38,9 @@ function TxRow({ tx }: { tx: AdminTransaction }) {
           {tx.status === "completed" ? "Complété" : tx.status}
         </span>
       </td>
-      <td className="py-3 px-4 text-zinc-400 text-xs">{tx.method ?? "—"}</td>
-      <td className="py-3 px-4 text-zinc-400 text-xs max-w-xs truncate">{tx.description ?? "—"}</td>
-      <td className="py-3 px-4 text-zinc-400 text-xs">{new Date(tx.createdAt).toLocaleString("fr-FR")}</td>
+      <td className="py-3 px-4 text-zinc-400 text-xs hidden md:table-cell">{tx.method ?? "—"}</td>
+      <td className="py-3 px-4 text-zinc-400 text-xs max-w-xs truncate hidden lg:table-cell">{tx.description ?? "—"}</td>
+      <td className="py-3 px-4 text-zinc-400 text-xs hidden sm:table-cell">{new Date(tx.createdAt).toLocaleString("fr-FR")}</td>
     </tr>
   );
 }
@@ -68,9 +68,12 @@ function TransactionsContent() {
           <table className="w-full">
             <thead>
               <tr className="border-b border-zinc-800">
-                {["Utilisateur", "Type", "Montant", "Statut", "Méthode", "Description", "Date"].map(h => (
+                {["Utilisateur", "Type", "Montant", "Statut"].map(h => (
                   <th key={h} className="text-left py-3 px-4 text-xs font-semibold text-zinc-500 uppercase tracking-wide">{h}</th>
                 ))}
+                <th className="text-left py-3 px-4 text-xs font-semibold text-zinc-500 uppercase tracking-wide hidden md:table-cell">Méthode</th>
+                <th className="text-left py-3 px-4 text-xs font-semibold text-zinc-500 uppercase tracking-wide hidden lg:table-cell">Description</th>
+                <th className="text-left py-3 px-4 text-xs font-semibold text-zinc-500 uppercase tracking-wide hidden sm:table-cell">Date</th>
               </tr>
             </thead>
             <tbody>

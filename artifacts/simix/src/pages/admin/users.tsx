@@ -63,7 +63,7 @@ function UserRow({ user, onAction }: { user: AdminUser; onAction: () => void }) 
           <div className="font-medium text-white text-sm">{user.fullName}</div>
           <div className="text-zinc-500 text-xs">{user.username ? `@${user.username}` : user.email}</div>
         </td>
-        <td className="py-3 px-4 text-zinc-300 text-sm">{user.phone}</td>
+        <td className="py-3 px-4 text-zinc-300 text-sm hidden sm:table-cell">{user.phone}</td>
         <td className="py-3 px-4 text-sm font-semibold text-white">{formatFCFA(user.balance)}</td>
         <td className="py-3 px-4">
           <div className="flex flex-col gap-1">
@@ -71,8 +71,8 @@ function UserRow({ user, onAction }: { user: AdminUser; onAction: () => void }) 
             {user.isRestricted && <span className="text-[10px] px-1.5 py-0.5 rounded bg-orange-500/20 text-orange-400 font-medium w-fit flex items-center gap-0.5"><Lock className="w-2.5 h-2.5" />Limité</span>}
           </div>
         </td>
-        <td className={`py-3 px-4 text-sm font-bold ${riskColor}`}>{user.riskScore}</td>
-        <td className="py-3 px-4 text-zinc-400 text-xs">{new Date(user.createdAt).toLocaleDateString("fr-FR")}</td>
+        <td className={`py-3 px-4 text-sm font-bold hidden lg:table-cell ${riskColor}`}>{user.riskScore}</td>
+        <td className="py-3 px-4 text-zinc-400 text-xs hidden md:table-cell">{new Date(user.createdAt).toLocaleDateString("fr-FR")}</td>
         <td className="py-3 px-4">
           <div className="flex items-center gap-1">
             <a href={`/admin/users/${user.id}`} className="p-1.5 rounded hover:bg-zinc-700 text-zinc-400 hover:text-white transition-colors" title="Voir profil"><Eye className="w-3.5 h-3.5" /></a>
@@ -238,11 +238,11 @@ function UsersContent() {
             <thead>
               <tr className="border-b border-zinc-800 bg-zinc-900/80">
                 <th className="text-left py-3 px-4 text-xs font-semibold text-zinc-500 uppercase tracking-wide">Utilisateur</th>
-                <th className="text-left py-3 px-4 text-xs font-semibold text-zinc-500 uppercase tracking-wide">Téléphone</th>
+                <th className="text-left py-3 px-4 text-xs font-semibold text-zinc-500 uppercase tracking-wide hidden sm:table-cell">Téléphone</th>
                 <th className="text-left py-3 px-4 text-xs font-semibold text-zinc-500 uppercase tracking-wide">Solde</th>
                 <th className="text-left py-3 px-4 text-xs font-semibold text-zinc-500 uppercase tracking-wide">Statut</th>
-                <th className="text-left py-3 px-4 text-xs font-semibold text-zinc-500 uppercase tracking-wide">Risque</th>
-                <th className="text-left py-3 px-4 text-xs font-semibold text-zinc-500 uppercase tracking-wide">Inscrit</th>
+                <th className="text-left py-3 px-4 text-xs font-semibold text-zinc-500 uppercase tracking-wide hidden lg:table-cell">Risque</th>
+                <th className="text-left py-3 px-4 text-xs font-semibold text-zinc-500 uppercase tracking-wide hidden md:table-cell">Inscrit</th>
                 <th className="py-3 px-4 text-xs font-semibold text-zinc-500 uppercase tracking-wide text-center">Actions</th>
               </tr>
             </thead>

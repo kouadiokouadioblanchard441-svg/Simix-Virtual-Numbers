@@ -40,12 +40,12 @@ function OrderRow({ order }: { order: AdminOrder }) {
         <div className="text-white text-sm font-mono">{order.phoneNumber}</div>
         <div className="text-zinc-500 text-xs mt-0.5">{order.id.slice(0, 8)}…</div>
       </td>
-      <td className="py-3 px-4">
+      <td className="py-3 px-4 hidden sm:table-cell">
         <div className="text-zinc-300 text-sm">{order.userFullName}</div>
         <div className="text-zinc-500 text-xs">{order.userPhone}</div>
       </td>
-      <td className="py-3 px-4 text-zinc-300 text-sm">{order.serviceName}</td>
-      <td className="py-3 px-4">
+      <td className="py-3 px-4 text-zinc-300 text-sm hidden md:table-cell">{order.serviceName}</td>
+      <td className="py-3 px-4 hidden lg:table-cell">
         <span className="text-sm">{order.countryFlag}</span>
         <span className="text-zinc-300 text-sm ml-1">{order.countryName}</span>
       </td>
@@ -55,7 +55,7 @@ function OrderRow({ order }: { order: AdminOrder }) {
         </span>
       </td>
       <td className="py-3 px-4 text-white text-sm font-semibold">{formatFCFA(order.price)}</td>
-      <td className="py-3 px-4 text-zinc-400 text-xs">
+      <td className="py-3 px-4 text-zinc-400 text-xs hidden sm:table-cell">
         <div>{new Date(order.createdAt).toLocaleDateString("fr-FR")}</div>
         <div className={isExpired ? "text-red-400" : "text-zinc-500"}>{expiresAt.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}</div>
       </td>
@@ -98,9 +98,14 @@ function OrdersContent() {
           <table className="w-full">
             <thead>
               <tr className="border-b border-zinc-800">
-                {["Numéro", "Utilisateur", "Service", "Pays", "Statut", "Prix", "Date", ""].map(h => (
-                  <th key={h} className="text-left py-3 px-4 text-xs font-semibold text-zinc-500 uppercase tracking-wide">{h}</th>
-                ))}
+                <th className="text-left py-3 px-4 text-xs font-semibold text-zinc-500 uppercase tracking-wide">Numéro</th>
+                <th className="text-left py-3 px-4 text-xs font-semibold text-zinc-500 uppercase tracking-wide hidden sm:table-cell">Utilisateur</th>
+                <th className="text-left py-3 px-4 text-xs font-semibold text-zinc-500 uppercase tracking-wide hidden md:table-cell">Service</th>
+                <th className="text-left py-3 px-4 text-xs font-semibold text-zinc-500 uppercase tracking-wide hidden lg:table-cell">Pays</th>
+                <th className="text-left py-3 px-4 text-xs font-semibold text-zinc-500 uppercase tracking-wide">Statut</th>
+                <th className="text-left py-3 px-4 text-xs font-semibold text-zinc-500 uppercase tracking-wide">Prix</th>
+                <th className="text-left py-3 px-4 text-xs font-semibold text-zinc-500 uppercase tracking-wide hidden sm:table-cell">Date</th>
+                <th className="py-3 px-4"></th>
               </tr>
             </thead>
             <tbody>

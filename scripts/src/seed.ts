@@ -157,15 +157,8 @@ const API_PROVIDERS: ApiProviderSeed[] = [
     priority: 1,
     markup: 20,
   },
-  {
-    name: "PawaPay",
-    slug: "pawapay",
-    apiKey: "",
-    baseUrl: "https://api.pawapay.io",
-    active: false,
-    priority: 2,
-    markup: 0,
-  },
+  // PawaPay is a deposit-only payment aggregator and belongs in payment_gateways,
+  // NOT in api_providers (which is reserved for SMS/number providers like 5sim).
 ];
 
 const COUNTRY_PAYMENT_CONFIGS: Array<{ countryCode: string; methodSlug: string; minDeposit: number; feePercent: number }> = [
