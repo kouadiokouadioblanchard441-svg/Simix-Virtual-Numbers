@@ -12,6 +12,7 @@ import { isPWA } from "@/lib/pin/pwa-detect";
 import {
   hasPinSetup,
   isUnlockedThisSession,
+  isLocalSessionExpired,
   markUnlocked,
   clearUnlocked,
   savePinUser,
@@ -91,6 +92,15 @@ export function PinLockProvider({ children }: { children: ReactNode }) {
     };
     savePinUser(user);
     setCurrentUser(user);
+
+    // Check expiry BEFORE updating activity — updating first would reset the clock
+    if (isLocalSessionExpired()) {
+      clearUnlocked();
+      setStatus("no_session");
+      return;
+    }
+
+    // Session is valid — refresh the activity timestamp
     updateLastActive();
 
     // Already unlocked this app session (e.g. hot-reload)

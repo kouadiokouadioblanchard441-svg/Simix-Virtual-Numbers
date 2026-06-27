@@ -43,11 +43,12 @@ export function PinLockScreen({ user, onUnlock, onForgotPin }: PinLockScreenProp
   const [remaining, setRemaining] = useState(lockout.remainingMs);
   const shakeRef = useRef(0);
 
-  // Lockout countdown
+  // Lockout countdown — compute deadline from remainingMs captured at lock time
   useEffect(() => {
     if (!lockout.locked) return;
+    const deadline = Date.now() + lockout.remainingMs;
     const id = setInterval(() => {
-      const ms = lockout.lockedUntil! - Date.now();
+      const ms = deadline - Date.now();
       if (ms <= 0) {
         setLockout(getLockoutStatus(user.id));
         setState("idle");
