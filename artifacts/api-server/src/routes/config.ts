@@ -57,6 +57,7 @@ router.get("/config", async (_req, res): Promise<void> => {
     supportEmail,
     supportPhone,
     supportWhatsapp,
+    turnstileSiteKey: process.env.TURNSTILE_SITE_KEY ?? null,
     social: {
       telegram: socialTelegramUrl,
       whatsapp: socialWhatsappUrl,

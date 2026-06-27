@@ -111712,6 +111712,58 @@ async function sendOtpEmail(to, code, purpose) {
   }
 }
 
+// src/lib/turnstile.ts
+var SITEVERIFY_URL = "https://challenges.cloudflare.com/turnstile/v0/siteverify";
+async function verifyTurnstileToken(token, remoteip) {
+  const secret = process.env.TURNSTILE_SECRET_KEY;
+  if (!secret) {
+    return { success: true, errorCodes: [] };
+  }
+  if (!token || typeof token !== "string" || token.trim() === "") {
+    return { success: false, errorCodes: ["missing-input-response"] };
+  }
+  try {
+    const params = new URLSearchParams({ secret, response: token.trim() });
+    if (remoteip) params.append("remoteip", remoteip);
+    const res = await fetch(SITEVERIFY_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: params.toString(),
+      signal: AbortSignal.timeout(6e3)
+    });
+    if (!res.ok) {
+      return { success: false, errorCodes: ["network-error"] };
+    }
+    const json2 = await res.json();
+    return {
+      success: json2.success === true,
+      errorCodes: json2["error-codes"] ?? []
+    };
+  } catch {
+    return { success: false, errorCodes: ["internal-error"] };
+  }
+}
+
+// src/middlewares/turnstile.ts
+async function requireTurnstile(req, res, next) {
+  const token = req.body?.["cf-turnstile-response"] || req.headers["x-turnstile-token"] || "";
+  const ip = req.ip ?? void 0;
+  try {
+    const result = await verifyTurnstileToken(token, ip);
+    if (!result.success) {
+      res.status(403).json({
+        error: "V\xE9rification de s\xE9curit\xE9 \xE9chou\xE9e. Veuillez r\xE9essayer.",
+        code: "TURNSTILE_FAILED",
+        errorCodes: result.errorCodes
+      });
+      return;
+    }
+    next();
+  } catch {
+    next();
+  }
+}
+
 // src/routes/auth.ts
 function generateReferralCode() {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -111728,7 +111780,7 @@ async function uniqueReferralCode() {
   return "SX" + Date.now().toString(36).toUpperCase().slice(-8);
 }
 var router3 = (0, import_express4.Router)();
-router3.post("/auth/register", async (req, res) => {
+router3.post("/auth/register", requireTurnstile, async (req, res) => {
   const ip = req.ip ?? "unknown";
   if (!await isRegistrationEnabled()) {
     res.status(503).json({ error: "Les inscriptions sont temporairement d\xE9sactiv\xE9es. R\xE9essayez plus tard." });
@@ -111792,7 +111844,7 @@ router3.post("/auth/register", async (req, res) => {
   }
   res.json({ user: toUser(user), token: session.id, requiresEmailVerification: true });
 });
-router3.post("/auth/login", async (req, res) => {
+router3.post("/auth/login", requireTurnstile, async (req, res) => {
   const ip = req.ip ?? "unknown";
   const ua = req.headers["user-agent"] ?? "";
   const parsed = LoginBody.safeParse(req.body);
@@ -118361,6 +118413,7 @@ router18.get("/config", async (_req, res) => {
     supportEmail,
     supportPhone,
     supportWhatsapp,
+    turnstileSiteKey: process.env.TURNSTILE_SITE_KEY ?? null,
     social: {
       telegram: socialTelegramUrl,
       whatsapp: socialWhatsappUrl,
@@ -120552,7 +120605,7 @@ var import_express25 = __toESM(require_express2(), 1);
 init_drizzle_orm();
 init_src();
 var router24 = (0, import_express25.Router)();
-router24.post("/auth/forgot-password", async (req, res) => {
+router24.post("/auth/forgot-password", requireTurnstile, async (req, res) => {
   const ip = req.ip ?? "unknown";
   if (isRateLimited(`forgot_pwd:${ip}`, 5, 60 * 6e4)) {
     res.status(429).json({ error: "Trop de tentatives. R\xE9essayez dans une heure." });

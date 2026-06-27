@@ -5,6 +5,7 @@ import { Mail, Phone, ArrowLeft, KeyRound, CheckCircle2, AlertCircle, Loader2 } 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SimixLogo } from "@/components/simix-logo";
+import { TurnstileWidget, useTurnstileToken } from "@/components/turnstile/TurnstileWidget";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
@@ -27,6 +28,7 @@ export default function ForgotPassword() {
   const [status, setStatus] = useState<"idle" | "success" | "error">("idle");
   const [errorMsg, setErrorMsg] = useState("");
   const [userId, setUserId] = useState("");
+  const { token: turnstileToken, handleSuccess: handleTurnstileSuccess, handleExpire: handleTurnstileExpire, handleError: handleTurnstileError } = useTurnstileToken();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,7 +39,7 @@ export default function ForgotPassword() {
     setErrorMsg("");
 
     try {
-      const data = await apiPost("/api/auth/forgot-password", { identifier: identifier.trim() });
+      const data = await apiPost("/api/auth/forgot-password", { identifier: identifier.trim(), "cf-turnstile-response": turnstileToken });
       setUserId(data.userId ?? "");
       setStatus("success");
     } catch (err: unknown) {
@@ -197,6 +199,7 @@ export default function ForgotPassword() {
               )}
             </AnimatePresence>
 
+            <TurnstileWidget onSuccess={handleTurnstileSuccess} onExpire={handleTurnstileExpire} onError={handleTurnstileError} />
             <Button
               type="submit"
               disabled={!identifier.trim() || isLoading}

@@ -13,6 +13,7 @@ import { FaGoogle, FaApple, FaFacebook } from "react-icons/fa";
 import { Phone, User, Eye, EyeOff, Search, ChevronLeft, Shield } from "lucide-react";
 import { motion } from "framer-motion";
 import { SimixLogo } from "@/components/simix-logo";
+import { TurnstileWidget, useTurnstileToken } from "@/components/turnstile/TurnstileWidget";
 
 const formSchema = z.object({
   identifier: z.string().min(3, "L'identifiant est requis"),
@@ -103,6 +104,7 @@ export default function Login() {
   const queryClient = useQueryClient();
   const loginMutation = useLogin();
   const [method, setMethod] = useState<"phone" | "username">("phone");
+  const { token: turnstileToken, handleSuccess: handleTurnstileSuccess, handleExpire: handleTurnstileExpire, handleError: handleTurnstileError } = useTurnstileToken();
 
   /* Read ?error= param from URL after Google OAuth redirect */
   useEffect(() => {
@@ -145,7 +147,8 @@ export default function Login() {
           identifier: values.identifier,
           password: values.password,
           method,
-        }
+          "cf-turnstile-response": turnstileToken,
+        } as any
       }) as { requiresEmailVerification?: boolean; requiresInactivityCheck?: boolean };
       queryClient.invalidateQueries({ queryKey: getGetMeQueryKey() });
       if (result?.requiresEmailVerification || result?.requiresInactivityCheck) {
@@ -309,6 +312,7 @@ export default function Login() {
               <Link href="/forgot-password" className="text-sm text-primary font-medium hover:underline">Mot de passe oublié ?</Link>
             </div>
 
+            <TurnstileWidget onSuccess={handleTurnstileSuccess} onExpire={handleTurnstileExpire} onError={handleTurnstileError} />
             <Button type="submit" className="w-full h-14 rounded-2xl text-base font-semibold bg-gradient-to-r from-violet-600 to-indigo-600 hover:opacity-90 text-white shadow-lg shadow-primary/25" disabled={loginMutation.isPending}>
               {loginMutation.isPending ? "Connexion en cours..." : "Se connecter"}
             </Button>

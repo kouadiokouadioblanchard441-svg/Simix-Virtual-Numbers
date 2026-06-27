@@ -5,11 +5,12 @@ import { db, usersTable } from "@workspace/db";
 import { isRateLimited } from "../lib/rate-limiter";
 import { createOtp, verifyOtp, hasRecentOtp } from "../lib/otp";
 import { sendPasswordResetEmail } from "../lib/email";
+import { requireTurnstile } from "../middlewares/turnstile";
 
 const router: IRouter = Router();
 
 /* ── Step 1: Request OTP (no auth needed) ── */
-router.post("/auth/forgot-password", async (req, res): Promise<void> => {
+router.post("/auth/forgot-password", requireTurnstile, async (req, res): Promise<void> => {
   const ip = req.ip ?? "unknown";
 
   if (isRateLimited(`forgot_pwd:${ip}`, 5, 60 * 60_000)) {

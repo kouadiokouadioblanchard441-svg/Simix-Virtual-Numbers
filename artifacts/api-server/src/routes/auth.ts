@@ -17,6 +17,7 @@ import { assessLoginRisk, logSecurityEvent } from "../lib/fraud-detection";
 import { isRegistrationEnabled, isEmailOtpEnabled } from "../lib/settings";
 import { createOtp, isUserInactive } from "../lib/otp";
 import { sendOtpEmail } from "../lib/email";
+import { requireTurnstile } from "../middlewares/turnstile";
 
 function generateReferralCode(): string {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -37,7 +38,7 @@ async function uniqueReferralCode(): Promise<string> {
 
 const router: IRouter = Router();
 
-router.post("/auth/register", async (req, res): Promise<void> => {
+router.post("/auth/register", requireTurnstile, async (req, res): Promise<void> => {
   const ip = req.ip ?? "unknown";
 
   /* Check if registration is currently enabled */
@@ -137,7 +138,7 @@ router.post("/auth/register", async (req, res): Promise<void> => {
   res.json({ user: toUser(user), token: session.id, requiresEmailVerification: true });
 });
 
-router.post("/auth/login", async (req, res): Promise<void> => {
+router.post("/auth/login", requireTurnstile, async (req, res): Promise<void> => {
   const ip = req.ip ?? "unknown";
   const ua = req.headers["user-agent"] ?? "";
 

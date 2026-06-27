@@ -13,6 +13,7 @@ import { Eye, EyeOff, ChevronLeft, Shield, User, Mail, Lock, AtSign, Search, Gif
 import { FaGoogle } from "react-icons/fa";
 import { motion } from "framer-motion";
 import { SimixLogo } from "@/components/simix-logo";
+import { TurnstileWidget, useTurnstileToken } from "@/components/turnstile/TurnstileWidget";
 
 const formSchema = z.object({
   fullName: z.string().min(2, "Le nom complet est requis (min 2 caractères)"),
@@ -76,6 +77,7 @@ export default function Register() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const registerMutation = useRegister();
+  const { token: turnstileToken, handleSuccess: handleTurnstileSuccess, handleExpire: handleTurnstileExpire, handleError: handleTurnstileError } = useTurnstileToken();
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [selectedCountryCode, setSelectedCountryCode] = useState("ci");
@@ -140,6 +142,7 @@ export default function Register() {
           countryCode: selectedCountry?.dial ?? "+225",
           email: values.email,
           ...(referralCode.trim() ? { referralCode: referralCode.trim() } : {}),
+          "cf-turnstile-response": turnstileToken,
         } as any
       }) as { requiresEmailVerification?: boolean };
       queryClient.invalidateQueries({ queryKey: getGetMeQueryKey() });
@@ -367,6 +370,7 @@ export default function Register() {
               </FormItem>
             )} />
 
+            <TurnstileWidget onSuccess={handleTurnstileSuccess} onExpire={handleTurnstileExpire} onError={handleTurnstileError} />
             <Button
               type="submit"
               disabled={registerMutation.isPending}
