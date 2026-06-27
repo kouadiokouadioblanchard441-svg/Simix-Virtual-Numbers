@@ -121551,9 +121551,33 @@ app.set("trust proxy", 1);
 app.use(
   helmet({
     crossOriginResourcePolicy: { policy: "cross-origin" },
-    contentSecurityPolicy: false
+    contentSecurityPolicy: false,
+    // Allow the app to be embedded as PWA — disable X-Frame-Options restriction for same-origin
+    frameguard: false
   })
 );
+app.use((req, res, next) => {
+  const url2 = req.path;
+  if (url2 === "/sw.js" || url2 === "/sw.ts") {
+    res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+    res.setHeader("Service-Worker-Allowed", "/");
+    return next();
+  }
+  if (url2 === "/manifest.webmanifest" || url2 === "/manifest.json") {
+    res.setHeader("Cache-Control", "public, max-age=86400");
+    res.setHeader("Content-Type", "application/manifest+json");
+    return next();
+  }
+  if (url2.startsWith("/assets/")) {
+    res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+    return next();
+  }
+  if (url2.startsWith("/icons/")) {
+    res.setHeader("Cache-Control", "public, max-age=2592000");
+    return next();
+  }
+  next();
+});
 app.use(
   (0, import_pino_http.default)({
     logger,

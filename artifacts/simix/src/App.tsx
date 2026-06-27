@@ -6,6 +6,9 @@ import { ConfirmDialogProvider } from "@/components/ui/confirm-dialog";
 import { useEffect } from "react";
 import SupportChat from "@/components/support/SupportChat";
 import { NotificationToast } from "@/components/notifications/NotificationToast";
+import { PWAUpdateBanner } from "@/components/pwa/PWAUpdateBanner";
+import { PWAInstallPrompt } from "@/components/pwa/PWAInstallPrompt";
+import { OfflineIndicator } from "@/components/pwa/OfflineIndicator";
 import NotFound from "@/pages/not-found";
 import { AdminSecureGuard } from "@/components/admin-secure-guard";
 
@@ -213,6 +216,9 @@ function AppShell() {
       <Toaster />
       {!hideChat && <SupportChat />}
       <NotificationToast />
+      <OfflineIndicator />
+      <PWAUpdateBanner />
+      {!hideChat && <PWAInstallPrompt />}
     </>
   );
 }

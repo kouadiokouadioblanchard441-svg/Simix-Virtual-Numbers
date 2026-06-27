@@ -32,8 +32,43 @@ app.use(
   helmet({
     crossOriginResourcePolicy: { policy: "cross-origin" },
     contentSecurityPolicy: false,
+    // Allow the app to be embedded as PWA — disable X-Frame-Options restriction for same-origin
+    frameguard: false,
   }),
 );
+
+/* ── PWA & Static asset headers ── */
+app.use((req, res, next) => {
+  const url = req.path;
+
+  // Service Worker — no-cache so updates propagate immediately
+  if (url === "/sw.js" || url === "/sw.ts") {
+    res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+    res.setHeader("Service-Worker-Allowed", "/");
+    return next();
+  }
+
+  // Manifest — short cache
+  if (url === "/manifest.webmanifest" || url === "/manifest.json") {
+    res.setHeader("Cache-Control", "public, max-age=86400");
+    res.setHeader("Content-Type", "application/manifest+json");
+    return next();
+  }
+
+  // Immutable assets (hashed filenames)
+  if (url.startsWith("/assets/")) {
+    res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+    return next();
+  }
+
+  // Icons — long cache
+  if (url.startsWith("/icons/")) {
+    res.setHeader("Cache-Control", "public, max-age=2592000");
+    return next();
+  }
+
+  next();
+});
 
 /* ── Request Logging ── */
 app.use(

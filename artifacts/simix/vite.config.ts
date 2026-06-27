@@ -3,6 +3,7 @@ import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import path from "path";
 import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
+import { VitePWA } from "vite-plugin-pwa";
 
 const rawPort = process.env.PORT ?? "3000";
 const port = Number(rawPort);
@@ -16,6 +17,23 @@ export default defineConfig({
     react(),
     tailwindcss(),
     runtimeErrorOverlay(),
+    VitePWA({
+      registerType: "prompt",
+      injectRegister: null,
+      strategies: "injectManifest",
+      srcDir: "src",
+      filename: "sw.ts",
+      manifest: false,
+      injectManifest: {
+        injectionPoint: "self.__WB_MANIFEST",
+        globPatterns: ["**/*.{js,css,html,ico,png,svg,woff,woff2}"],
+        globIgnores: ["**/node_modules/**/*"],
+      },
+      devOptions: {
+        enabled: false,
+        type: "module",
+      },
+    }),
     ...(process.env.NODE_ENV !== "production" &&
     process.env.REPL_ID !== undefined
       ? [
@@ -43,11 +61,9 @@ export default defineConfig({
     emptyOutDir: true,
     rollupOptions: {
       output: {
-        /* Stable filenames so git tracking doesn't change on every build */
         entryFileNames: "assets/index.js",
         chunkFileNames: "assets/[name].js",
         assetFileNames: (info) => {
-          /* Keep content hash only for images/fonts — CSS and JS are stable */
           const ext = info.name?.split(".").pop() ?? "";
           if (["png", "jpg", "jpeg", "gif", "svg", "webp", "woff", "woff2", "ttf"].includes(ext)) {
             return "assets/[name]-[hash][extname]";

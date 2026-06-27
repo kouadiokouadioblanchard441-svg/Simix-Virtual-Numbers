@@ -2,47 +2,76 @@
 <html lang="fr">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 
-    <title>Simix</title>
+    <title>SIMIX — Numéros virtuels & SMS en Afrique</title>
     <meta name="description" content="Simix est la plateforme fintech africaine de numéros virtuels temporaires. Recevez vos codes SMS de vérification pour WhatsApp, Telegram, Google, Binance et +500 services — payez en FCFA via Orange Money, MTN, Wave, Moov Money." />
     <meta name="keywords" content="numéro virtuel, SMS vérification, numéro temporaire, WhatsApp vérification, Afrique, FCFA, Orange Money, MTN, Wave, Simix, fintech africaine" />
     <meta name="author" content="Simix" />
-    <meta name="theme-color" content="#7C3AED" />
-    <meta name="application-name" content="Simix" />
     <meta name="robots" content="index, follow" />
 
-    <!-- PWA Manifest -->
-    <link rel="manifest" href="/manifest.json" />
+    <!-- PWA -->
+    <meta name="theme-color" content="#5B21B6" />
+    <meta name="application-name" content="SIMIX" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="SIMIX" />
+    <meta name="msapplication-TileColor" content="#5B21B6" />
+    <meta name="msapplication-tap-highlight" content="no" />
 
-    <!-- Favicon -->
+    <!-- Manifest -->
+    <link rel="manifest" href="/manifest.webmanifest" />
+
+    <!-- Favicons & Apple icons -->
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <link rel="apple-touch-icon" href="/favicon.svg" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/icons/favicon-16x16.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png" />
+    <link rel="apple-touch-icon" sizes="152x152" href="/icons/icon-152x152.png" />
+    <link rel="apple-touch-icon" sizes="144x144" href="/icons/icon-144x144.png" />
+    <link rel="apple-touch-icon" sizes="128x128" href="/icons/icon-128x128.png" />
 
     <!-- Open Graph / Social sharing -->
     <meta property="og:type" content="website" />
-    <meta property="og:title" content="Simix" />
+    <meta property="og:title" content="SIMIX — Numéros virtuels & SMS en Afrique" />
     <meta property="og:description" content="Recevez vos codes SMS de vérification pour n'importe quel service, payez via Mobile Money en FCFA. 54 pays africains couverts." />
     <meta property="og:image" content="/opengraph.jpg" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
     <meta property="og:locale" content="fr_FR" />
-    <meta property="og:site_name" content="Simix" />
+    <meta property="og:site_name" content="SIMIX" />
 
     <!-- Twitter Card -->
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="Simix" />
+    <meta name="twitter:title" content="SIMIX — Numéros virtuels & SMS en Afrique" />
     <meta name="twitter:description" content="Recevez vos codes SMS de vérification pour n'importe quel service. Payez en FCFA via Orange Money, MTN, Wave et plus." />
     <meta name="twitter:image" content="/opengraph.jpg" />
 
     <!-- Security -->
     <meta http-equiv="X-Content-Type-Options" content="nosniff" />
     <meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin" />
+    <meta http-equiv="Permissions-Policy" content="camera=(), microphone=(), geolocation=()" />
 
-    <!-- Fonts -->
+    <!-- Performance -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="dns-prefetch" href="https://fonts.googleapis.com" />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+
+    <!-- Critical CSS: prevent flash of white, enable safe areas -->
+    <style>
+      html, body { background: #09090B; color: #ffffff; margin: 0; padding: 0; }
+      #root { min-height: 100dvh; }
+      body {
+        padding-top: env(safe-area-inset-top);
+        padding-bottom: env(safe-area-inset-bottom);
+        padding-left: env(safe-area-inset-left);
+        padding-right: env(safe-area-inset-right);
+      }
+      * { -webkit-tap-highlight-color: transparent; }
+      html { overscroll-behavior: none; }
+    </style>
     <script type="module" crossorigin src="/assets/index.js"></script>
     <link rel="stylesheet" crossorigin href="/assets/index.css">
   </head>
