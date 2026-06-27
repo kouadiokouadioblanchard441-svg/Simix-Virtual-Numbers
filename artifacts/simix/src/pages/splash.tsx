@@ -15,7 +15,7 @@ export default function Splash() {
       if (user) {
         setLocation("/dashboard");
       } else {
-        setLocation("/login");
+        setLocation("/");
       }
     }, 2000);
     return () => clearTimeout(timer);

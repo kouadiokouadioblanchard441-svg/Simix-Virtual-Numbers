@@ -1,7 +1,7 @@
 import { useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { NumericKeypad } from "@/components/pin/NumericKeypad";
-import { SimixLogo } from "@/components/simix-logo";
+import { SimixLogo, SimixIcon } from "@/components/simix-logo";
 import { savePin, type PinUser } from "@/lib/pin/pin-store";
 import { Shield, CheckCircle2 } from "lucide-react";
 
@@ -119,9 +119,7 @@ export function PinSetup({ user, onComplete, isChange = false }: PinSetupProps) 
               className="flex flex-col items-center gap-3"
             >
               <div className="w-20 h-20 rounded-full bg-gradient-to-br from-violet-600 to-indigo-600 flex items-center justify-center shadow-lg shadow-primary/30 ring-2 ring-primary/20">
-                <span className="text-2xl font-black text-white">
-                  {getInitials(user.fullName)}
-                </span>
+                <SimixIcon size={44} />
               </div>
               <div className="text-center">
                 <div className="flex items-center justify-center gap-2 mb-1">
