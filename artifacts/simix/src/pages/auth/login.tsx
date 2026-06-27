@@ -212,21 +212,21 @@ export default function Login() {
                   </FormLabel>
                   <FormControl>
                     {method === "phone" ? (
-                      <div className="flex h-14 bg-card border border-card-border rounded-full overflow-visible focus-within:ring-1 focus-within:ring-primary focus-within:border-primary transition-all relative">
+                      <div className="flex h-14 bg-zinc-900 border border-zinc-700/60 rounded-full overflow-visible focus-within:ring-2 focus-within:ring-primary/50 focus-within:border-primary/60 transition-all duration-200 relative shadow-sm">
                         <button
                           type="button"
                           onClick={() => { setShowCountryPicker(p => !p); setCountrySearch(""); }}
-                          className="flex items-center gap-1.5 px-4 bg-secondary/50 border-r border-card-border text-sm font-medium text-foreground hover:bg-secondary transition-colors shrink-0 rounded-l-full"
+                          className="flex items-center gap-2 px-4 border-r border-zinc-700/60 text-sm font-semibold text-white hover:bg-zinc-800/60 transition-colors shrink-0 rounded-l-full"
                         >
                           <FlagImg code={selectedCountry.code} />
-                          <span className="font-mono text-xs">{selectedCountry.dial}</span>
-                          <span className="text-muted-foreground text-xs">▾</span>
+                          <span className="font-mono text-xs tracking-wide">{selectedCountry.dial}</span>
+                          <span className="text-zinc-500 text-xs">▾</span>
                         </button>
                         <input
                           {...field}
                           type="tel"
                           autoComplete="tel"
-                          className="flex-1 bg-transparent border-none px-4 text-foreground focus:outline-none placeholder:text-muted-foreground rounded-r-full"
+                          className="flex-1 bg-transparent border-none px-4 text-white focus:outline-none placeholder:text-zinc-500 rounded-r-full text-sm"
                           placeholder="07 01 23 45 67"
                         />
                         {showCountryPicker && (
@@ -267,7 +267,7 @@ export default function Login() {
                       <Input
                         placeholder="Nom d'utilisateur ou adresse email"
                         autoComplete="username"
-                        className="bg-card border-card-border focus-visible:ring-primary h-14 rounded-full"
+                        className="h-14 rounded-full bg-zinc-900 border border-zinc-700/60 text-white placeholder:text-zinc-500 focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:border-primary/60 transition-all duration-200 shadow-sm px-5"
                         {...field}
                       />
                     )}
@@ -288,7 +288,7 @@ export default function Login() {
                         type={showPassword ? "text" : "password"}
                         placeholder="Votre mot de passe"
                         autoComplete="current-password"
-                        className="bg-card border-card-border focus-visible:ring-primary h-full rounded-full pr-12"
+                        className="h-full rounded-full bg-zinc-900 border border-zinc-700/60 text-white placeholder:text-zinc-500 focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:border-primary/60 transition-all duration-200 shadow-sm px-5 pr-12"
                         {...field}
                       />
                       <button
