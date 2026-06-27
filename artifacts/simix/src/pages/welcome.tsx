@@ -1,10 +1,17 @@
 import { useEffect, useState, useRef } from "react";
 import { useLocation } from "wouter";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { SimixIcon } from "@/components/simix-logo";
 import { useGetMe } from "@workspace/api-client-react";
 
-/* ── Detect if running as an installed PWA ── */
+/* ────────────────────────────────────────────────────────────
+   PWA DETECTION
+   Returns true only when the app is running as an installed PWA.
+   Returns false in any regular browser tab.
+   Covers: Chrome/Edge PWA (display-mode: standalone),
+           Safari iOS (navigator.standalone),
+           Android TWA (android-app:// referrer).
+──────────────────────────────────────────────────────────── */
 function isPWA(): boolean {
   if (typeof window === "undefined") return false;
   return (
@@ -15,7 +22,6 @@ function isPWA(): boolean {
 }
 
 const WELCOMED_KEY = "simix_welcomed_v1";
-
 function hasBeenWelcomed(): boolean {
   try { return localStorage.getItem(WELCOMED_KEY) === "true"; } catch { return false; }
 }
@@ -23,50 +29,37 @@ function markWelcomed(): void {
   try { localStorage.setItem(WELCOMED_KEY, "true"); } catch {}
 }
 
-function getFirstName(fullName?: string | null): string {
-  if (!fullName) return "";
-  return fullName.trim().split(/\s+/)[0] ?? fullName;
+function getFirstName(n?: string | null) {
+  if (!n) return "";
+  return n.trim().split(/\s+/)[0] ?? n;
 }
-
-function formatBalance(n?: number | null): string {
+function formatBalance(n?: number | null) {
   if (n == null) return "0 FCFA";
   return n.toLocaleString("fr-FR") + " FCFA";
 }
 
-/* ── Confetti particle ── */
-interface Particle { id: number; x: number; color: string; delay: number; dur: number; size: number; round: boolean; }
-
+/* ── Confetti ── */
+interface P { id: number; x: number; color: string; delay: number; dur: number; size: number; round: boolean; }
 const COLORS = ["#7C3AED","#A78BFA","#EC4899","#F472B6","#38BDF8","#34D399","#FBBF24","#FB923C","#60A5FA","#F87171"];
-
-const PARTICLES: Particle[] = Array.from({ length: 40 }, (_, i) => ({
-  id: i,
-  x: Math.random() * 100,
-  color: COLORS[Math.floor(Math.random() * COLORS.length)],
-  delay: Math.random() * 1.4,
-  dur: 2.0 + Math.random() * 1.4,
-  size: Math.random() * 8 + 5,
-  round: Math.random() > 0.5,
+const PARTICLES: P[] = Array.from({ length: 40 }, (_, i) => ({
+  id: i, x: Math.random() * 100, color: COLORS[i % COLORS.length],
+  delay: (i % 14) * 0.1, dur: 2.0 + (i % 7) * 0.2,
+  size: 5 + (i % 8), round: i % 2 === 0,
 }));
 
-/* ── Circular countdown ring ── */
+/* ── Countdown ring ── */
 function CountdownRing({ value, max }: { value: number; max: number }) {
-  const r = 22;
-  const circ = 2 * Math.PI * r;
+  const r = 22, circ = 2 * Math.PI * r;
   const progress = (value / max) * circ;
   return (
     <svg width="56" height="56" viewBox="0 0 56 56" className="rotate-[-90deg]">
       <circle cx="28" cy="28" r={r} stroke="#ffffff18" strokeWidth="3" fill="none" />
-      <circle
-        cx="28" cy="28" r={r}
-        stroke="url(#ringGrad)" strokeWidth="3" fill="none"
-        strokeDasharray={`${progress} ${circ}`}
-        strokeLinecap="round"
-        style={{ transition: "stroke-dasharray 0.9s ease" }}
-      />
+      <circle cx="28" cy="28" r={r} strokeWidth="3" fill="none"
+        stroke="url(#rg)" strokeDasharray={`${progress} ${circ}`} strokeLinecap="round"
+        style={{ transition: "stroke-dasharray 0.9s ease" }} />
       <defs>
-        <linearGradient id="ringGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-          <stop offset="0%" stopColor="#a78bfa" />
-          <stop offset="100%" stopColor="#ec4899" />
+        <linearGradient id="rg" x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" stopColor="#a78bfa" /><stop offset="100%" stopColor="#ec4899" />
         </linearGradient>
       </defs>
     </svg>
@@ -75,26 +68,48 @@ function CountdownRing({ value, max }: { value: number; max: number }) {
 
 const AUTO_REDIRECT_S = 5;
 
+/* ════════════════════════════════════════════════════════════
+   WELCOME PAGE
+   Three-gate guard:
+     Gate 1 — PWA mode   → if not standalone, silently redirect to /dashboard
+     Gate 2 — First visit → if already welcomed, silently redirect to /dashboard
+     Gate 3 — Auth        → if not logged in, redirect to /login
+
+   All three gates must pass for the screen to be shown.
+   None of the welcome content is rendered while guards are pending.
+═══════════════════════════════════════════════════════════ */
 export default function Welcome() {
   const [, setLocation] = useLocation();
-  const { data: user } = useGetMe();
-  const firstName = getFirstName(user?.fullName);
-  const redirected = useRef(false);
+  const { data: user, isLoading: loadingAuth, isError: authError } = useGetMe();
+  const skipped = useRef(false);
 
   const [ready, setReady] = useState(false);
   const [countdown, setCountdown] = useState(AUTO_REDIRECT_S);
+  const redirected = useRef(false);
 
-  /* ── Guard: only show in PWA, only on first visit ── */
+  /* Gate 1 + 2 — synchronous, runs immediately on mount */
   useEffect(() => {
     if (!isPWA() || hasBeenWelcomed()) {
+      skipped.current = true;
       setLocation("/dashboard");
-      return;
     }
-    markWelcomed();
-    setReady(true);
   }, []);
 
-  /* ── Auto-redirect countdown ── */
+  /* Gate 3 — waits for auth resolution */
+  useEffect(() => {
+    if (skipped.current) return;
+    if (loadingAuth) return;
+    if (authError || !user) {
+      skipped.current = true;
+      setLocation("/login");
+      return;
+    }
+    /* All three gates passed — show the screen */
+    markWelcomed();
+    setReady(true);
+  }, [loadingAuth, authError, user]);
+
+  /* Auto-redirect countdown */
   useEffect(() => {
     if (!ready) return;
     const t = setInterval(() => {
@@ -108,7 +123,7 @@ export default function Welcome() {
       });
     }, 1000);
     return () => clearInterval(t);
-  }, [ready, setLocation]);
+  }, [ready]);
 
   const goNow = () => {
     if (redirected.current) return;
@@ -116,8 +131,10 @@ export default function Welcome() {
     setLocation("/dashboard");
   };
 
+  /* Nothing visible until all guards pass */
   if (!ready) return null;
 
+  const firstName = getFirstName(user?.fullName);
   const balance = formatBalance(user?.balance);
 
   return (
@@ -125,60 +142,60 @@ export default function Welcome() {
 
       {/* Confetti CSS */}
       <style>{`
-        @keyframes confetti-fall {
-          0%   { transform: translateY(-10px) rotate(0deg); opacity:1; }
-          85%  { opacity: 0.9; }
-          100% { transform: translateY(110vh) rotate(540deg); opacity:0; }
+        @keyframes cf {
+          0%   { transform:translateY(-10px) rotate(0deg);   opacity:1; }
+          85%  { opacity:.9; }
+          100% { transform:translateY(110vh) rotate(540deg); opacity:0; }
         }
       `}</style>
       {PARTICLES.map(p => (
         <div key={p.id} aria-hidden style={{
-          position: "absolute", left: `${p.x}%`, top: 0,
-          width: p.size, height: p.size,
+          position:"absolute", left:`${p.x}%`, top:0,
+          width:p.size, height:p.size,
           borderRadius: p.round ? "50%" : "4px",
-          background: p.color,
-          animation: `confetti-fall ${p.dur}s ease-in ${p.delay}s both`,
-          pointerEvents: "none", zIndex: 0,
+          background:p.color,
+          animation:`cf ${p.dur}s ease-in ${p.delay}s both`,
+          pointerEvents:"none", zIndex:0,
         }} />
       ))}
 
-      {/* Background glows */}
+      {/* Ambient glows */}
       <div aria-hidden className="absolute inset-0 pointer-events-none overflow-hidden">
-        <div className="absolute top-[-60px] left-1/2 -translate-x-1/2 w-[320px] h-[320px] bg-primary/25 blur-[120px] rounded-full" />
+        <div className="absolute top-[-80px] left-1/2 -translate-x-1/2 w-[340px] h-[340px] bg-primary/25 blur-[130px] rounded-full" />
         <div className="absolute bottom-0 right-[-40px] w-[220px] h-[220px] bg-pink-500/12 blur-[90px] rounded-full" />
-        <div className="absolute bottom-40 left-[-40px] w-[180px] h-[180px] bg-violet-400/10 blur-[80px] rounded-full" />
+        <div className="absolute bottom-36 left-[-40px] w-[180px] h-[180px] bg-violet-400/10 blur-[80px] rounded-full" />
       </div>
 
-      {/* ── Top bar ── */}
+      {/* Logo */}
       <div className="w-full flex items-center justify-center pt-12 z-10">
         <motion.div
-          initial={{ opacity: 0, y: -16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, ease: "easeOut" }}
+          initial={{ opacity:0, y:-16 }}
+          animate={{ opacity:1, y:0 }}
+          transition={{ duration:0.5, ease:"easeOut" }}
         >
           <SimixIcon size={40} />
         </motion.div>
       </div>
 
-      {/* ── Hero section ── */}
+      {/* Hero */}
       <div className="flex-1 flex flex-col items-center justify-center z-10 px-6 w-full">
 
-        {/* Confetti emoji */}
+        {/* Emoji */}
         <motion.div
-          initial={{ scale: 0, opacity: 0, rotate: -20 }}
-          animate={{ scale: 1, opacity: 1, rotate: 0 }}
-          transition={{ type: "spring", stiffness: 220, damping: 16, delay: 0.1 }}
+          initial={{ scale:0, opacity:0, rotate:-20 }}
+          animate={{ scale:1, opacity:1, rotate:0 }}
+          transition={{ type:"spring", stiffness:220, damping:16, delay:0.1 }}
           className="text-[72px] leading-none mb-6 select-none"
-          style={{ filter: "drop-shadow(0 0 30px rgba(251,191,36,0.35))" }}
+          style={{ filter:"drop-shadow(0 0 28px rgba(251,191,36,.38))" }}
         >
           🎉
         </motion.div>
 
         {/* Badge */}
         <motion.div
-          initial={{ opacity: 0, scale: 0.85 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.4, delay: 0.3 }}
+          initial={{ opacity:0, scale:0.85 }}
+          animate={{ opacity:1, scale:1 }}
+          transition={{ duration:0.4, delay:0.3 }}
           className="mb-4"
         >
           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/15 border border-primary/25 text-xs font-semibold text-primary tracking-wider uppercase">
@@ -189,99 +206,87 @@ export default function Welcome() {
 
         {/* Title */}
         <motion.h1
-          initial={{ opacity: 0, y: 18 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.45, delay: 0.4 }}
+          initial={{ opacity:0, y:18 }}
+          animate={{ opacity:1, y:0 }}
+          transition={{ duration:0.45, delay:0.4 }}
           className="text-3xl font-black text-center text-foreground leading-tight mb-3"
         >
-          Bienvenue{firstName ? "," : " !"}{"\n"}
-          {firstName && (
-            <span style={{
-              background: "linear-gradient(100deg, #a78bfa 0%, #ec4899 100%)",
-              WebkitBackgroundClip: "text",
-              WebkitTextFillColor: "transparent",
-              backgroundClip: "text",
-            }}>
-              {firstName}&nbsp;!
-            </span>
-          )}
+          {firstName ? (
+            <>Bienvenue,{" "}
+              <span style={{
+                background:"linear-gradient(100deg,#a78bfa 0%,#ec4899 100%)",
+                WebkitBackgroundClip:"text", WebkitTextFillColor:"transparent", backgroundClip:"text",
+              }}>{firstName}&nbsp;!</span>
+            </>
+          ) : "Bienvenue !"}
         </motion.h1>
 
         {/* Subtitle */}
         <motion.p
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.52 }}
+          initial={{ opacity:0, y:12 }}
+          animate={{ opacity:1, y:0 }}
+          transition={{ duration:0.4, delay:0.52 }}
           className="text-sm text-muted-foreground text-center leading-relaxed max-w-[240px] mb-8"
         >
           Ton espace Simix est prêt.<br />
-          Recharge et commande ton premier numéro virtuel.
+          Recharge et commande ton premier<br />numéro virtuel.
         </motion.p>
 
         {/* Stats card */}
         <motion.div
-          initial={{ opacity: 0, y: 22 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.45, delay: 0.65 }}
+          initial={{ opacity:0, y:22 }}
+          animate={{ opacity:1, y:0 }}
+          transition={{ duration:0.45, delay:0.65 }}
           className="w-full max-w-[320px] rounded-2xl overflow-hidden mb-8"
-          style={{ background: "linear-gradient(145deg, #1a1035 0%, #130d2e 100%)", border: "1px solid rgba(167,139,250,0.15)" }}
+          style={{ background:"linear-gradient(145deg,#1a1035 0%,#130d2e 100%)", border:"1px solid rgba(167,139,250,0.15)" }}
         >
-          {/* Gradient top line */}
-          <div className="h-px w-full" style={{ background: "linear-gradient(90deg, transparent, #a78bfa60, #ec489940, transparent)" }} />
-
+          <div className="h-px w-full" style={{ background:"linear-gradient(90deg,transparent,#a78bfa60,#ec489940,transparent)" }} />
           {[
-            { emoji: "💜", label: "Solde disponible",  value: balance,  highlight: true },
-            { emoji: "📱", label: "Numéros actifs",    value: "0",      highlight: false },
-            { emoji: "🌍", label: "Pays disponibles",  value: "20+",    highlight: false },
+            { emoji:"💜", label:"Solde disponible", value:balance,   hi:true  },
+            { emoji:"📱", label:"Numéros actifs",   value:"0",       hi:false },
+            { emoji:"🌍", label:"Pays disponibles", value:"20+",     hi:false },
           ].map((row, i, arr) => (
-            <div
-              key={row.label}
-              className={`flex items-center justify-between px-5 py-4 ${i < arr.length - 1 ? "border-b" : ""}`}
-              style={{ borderColor: "rgba(167,139,250,0.1)" }}
-            >
+            <div key={row.label}
+              className={`flex items-center justify-between px-5 py-4 ${i < arr.length-1 ? "border-b" : ""}`}
+              style={{ borderColor:"rgba(167,139,250,0.1)" }}>
               <div className="flex items-center gap-3">
                 <span className="text-xl leading-none">{row.emoji}</span>
                 <span className="text-sm text-zinc-400">{row.label}</span>
               </div>
-              <span className={`text-sm font-bold ${row.highlight ? "text-violet-300" : "text-white"}`}>
-                {row.value}
-              </span>
+              <span className={`text-sm font-bold ${row.hi ? "text-violet-300" : "text-white"}`}>{row.value}</span>
             </div>
           ))}
         </motion.div>
 
-        {/* Primary CTA */}
+        {/* CTA */}
         <motion.button
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.8 }}
-          whileTap={{ scale: 0.97 }}
+          initial={{ opacity:0, y:16 }}
+          animate={{ opacity:1, y:0 }}
+          transition={{ duration:0.4, delay:0.8 }}
+          whileTap={{ scale:0.97 }}
           onClick={goNow}
           className="w-full max-w-[320px] h-14 rounded-2xl font-bold text-base text-white transition-opacity active:opacity-90 mb-4 relative overflow-hidden"
-          style={{ background: "linear-gradient(135deg, #7C3AED 0%, #a855f7 50%, #ec4899 100%)", boxShadow: "0 8px 32px rgba(124,58,237,0.35)" }}
+          style={{ background:"linear-gradient(135deg,#7C3AED 0%,#a855f7 50%,#ec4899 100%)", boxShadow:"0 8px 32px rgba(124,58,237,.35)" }}
         >
           <span className="relative z-10">Commencer l'aventure →</span>
-          {/* Shine effect */}
           <motion.div
-            animate={{ x: ["−100%", "200%"] }}
-            transition={{ duration: 2.2, repeat: Infinity, repeatDelay: 1.5, ease: "easeInOut" }}
+            animate={{ x:["-100%","200%"] }}
+            transition={{ duration:2.4, repeat:Infinity, repeatDelay:1.8, ease:"easeInOut" }}
             className="absolute inset-0 w-1/3 bg-gradient-to-r from-transparent via-white/10 to-transparent skew-x-12"
           />
         </motion.button>
 
-        {/* Countdown row */}
+        {/* Countdown */}
         <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.4, delay: 1 }}
+          initial={{ opacity:0 }}
+          animate={{ opacity:1 }}
+          transition={{ duration:0.4, delay:1 }}
           className="flex items-center gap-3 cursor-pointer group"
           onClick={goNow}
         >
           <div className="relative">
             <CountdownRing value={countdown} max={AUTO_REDIRECT_S} />
-            <span className="absolute inset-0 flex items-center justify-center text-xs font-bold text-white">
-              {countdown}
-            </span>
+            <span className="absolute inset-0 flex items-center justify-center text-xs font-bold text-white">{countdown}</span>
           </div>
           <span className="text-xs text-zinc-500 group-hover:text-zinc-300 transition-colors">
             Redirection automatique…
@@ -289,7 +294,6 @@ export default function Welcome() {
         </motion.div>
       </div>
 
-      {/* Bottom safe area spacer */}
       <div className="h-8" />
     </div>
   );
