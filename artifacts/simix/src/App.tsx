@@ -10,6 +10,7 @@ import { NotificationToast } from "@/components/notifications/NotificationToast"
 import { PWAUpdateBanner } from "@/components/pwa/PWAUpdateBanner";
 import { PWAInstallPrompt } from "@/components/pwa/PWAInstallPrompt";
 import { OfflineIndicator } from "@/components/pwa/OfflineIndicator";
+import { PinLockProvider } from "@/context/PinLockContext";
 import NotFound from "@/pages/not-found";
 import { AdminSecureGuard } from "@/components/admin-secure-guard";
 
@@ -221,7 +222,7 @@ function AppShell() {
   const [location] = useLocation();
   const hideChat = location.startsWith("/admin") || location === "/console" || location === "/admin-login";
   return (
-    <>
+    <PinLockProvider>
       <InnerRouter />
       <Toaster />
       {!hideChat && <SupportChat />}
@@ -229,7 +230,7 @@ function AppShell() {
       <OfflineIndicator />
       <PWAUpdateBanner />
       {!hideChat && <PWAInstallPrompt />}
-    </>
+    </PinLockProvider>
   );
 }
 

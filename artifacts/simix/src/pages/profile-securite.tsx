@@ -1,10 +1,30 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { AppLayout } from "@/components/layout/app-layout";
 import { AuthGuard } from "@/components/auth-guard";
 import { useLocation } from "wouter";
-import { motion } from "framer-motion";
-import { ArrowLeft, Lock, Shield, Smartphone, Eye, EyeOff, AlertTriangle, LogOut, CheckCircle } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  ArrowLeft,
+  Lock,
+  Shield,
+  Smartphone,
+  Eye,
+  EyeOff,
+  AlertTriangle,
+  LogOut,
+  CheckCircle,
+  KeyRound,
+  Fingerprint,
+  Trash2,
+  RefreshCcw,
+  ChevronRight,
+} from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { isPWA } from "@/lib/pin/pwa-detect";
+import { hasPinSetup, clearPin, getPinUser } from "@/lib/pin/pin-store";
+import { usePinLock } from "@/context/PinLockContext";
+import { PinSetup } from "@/pages/pin/PinSetup";
+import { useGetMe } from "@workspace/api-client-react";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 const TWO_FA_KEY = "simix_2fa_enabled";
@@ -27,6 +47,15 @@ function SecuriteContent() {
   const [showConfirm, setShowConfirm] = useState(false);
   const [saving, setSaving] = useState(false);
   const [pwd, setPwd] = useState({ current: "", newPwd: "", confirm: "" });
+  const [showPinSetup, setShowPinSetup] = useState(false);
+  const [pinSetupMode, setPinSetupMode] = useState<"setup" | "change">("setup");
+
+  const pwaMode = isPWA();
+  const { disablePin } = usePinLock();
+  const { data: apiUser } = useGetMe();
+  const userId = (apiUser as any)?.id ?? getPinUser()?.id ?? "";
+  const pinUser = getPinUser();
+  const pinActive = userId ? hasPinSetup(userId) : false;
 
   const [twoFa, setTwoFa] = useState(() => {
     try {
@@ -87,6 +116,31 @@ function SecuriteContent() {
     });
   };
 
+  const handleDisablePin = useCallback(() => {
+    if (!userId) return;
+    clearPin(userId);
+    disablePin();
+    toast({ title: "Code PIN supprimé", description: "Le déverrouillage par PIN a été désactivé sur cet appareil." });
+  }, [userId, disablePin, toast]);
+
+  const handlePinSetupDone = useCallback(() => {
+    setShowPinSetup(false);
+    toast({ title: "Code PIN configuré ✓", description: "Votre PIN a été enregistré. Il vous sera demandé à chaque ouverture de l'application." });
+  }, [toast]);
+
+  // Full-screen PIN setup overlay
+  if (showPinSetup && pinUser) {
+    return (
+      <div className="fixed inset-0 z-[9998] bg-background">
+        <PinSetup
+          user={pinUser}
+          onComplete={handlePinSetupDone}
+          isChange={pinSetupMode === "change"}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="flex-1 w-full bg-background overflow-y-auto pt-0 pb-28 px-5">
       {/* Header */}
@@ -108,15 +162,88 @@ function SecuriteContent() {
             <div>
               <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Score de sécurité</p>
               <p className="text-lg font-black text-foreground">
-                {twoFa ? <>Excellent <span className="text-emerald-400">100/100</span></> : <>Bon <span className="text-emerald-400">72/100</span></>}
+                {twoFa && pinActive ? <>Excellent <span className="text-emerald-400">100/100</span></> : twoFa || pinActive ? <>Bon <span className="text-emerald-400">85/100</span></> : <>Bon <span className="text-emerald-400">72/100</span></>}
               </p>
             </div>
           </div>
           <div className="w-full bg-secondary rounded-full h-2">
-            <div className="h-2 rounded-full bg-gradient-to-r from-emerald-500 to-emerald-400 transition-all" style={{ width: twoFa ? "100%" : "72%" }} />
+            <div className="h-2 rounded-full bg-gradient-to-r from-emerald-500 to-emerald-400 transition-all" style={{ width: twoFa && pinActive ? "100%" : twoFa || pinActive ? "85%" : "72%" }} />
           </div>
-          {!twoFa && <p className="text-xs text-muted-foreground mt-2">Activez la 2FA pour atteindre 100/100.</p>}
+          {(!twoFa || !pinActive) && (
+            <p className="text-xs text-muted-foreground mt-2">
+              {!twoFa && !pinActive ? "Activez la 2FA et le PIN pour atteindre 100/100." : !pinActive && pwaMode ? "Activez le code PIN pour sécuriser l'accès à l'application." : "Activez la 2FA pour atteindre 100/100."}
+            </p>
+          )}
         </div>
+
+        {/* PIN Section — PWA only */}
+        {pwaMode && (
+          <div className="bg-card border border-card-border rounded-3xl p-5">
+            <div className="flex items-center gap-2 mb-4">
+              <KeyRound className="w-4 h-4 text-primary" />
+              <h3 className="text-sm font-bold text-foreground">Code PIN — Déverrouillage rapide</h3>
+            </div>
+
+            {/* Status badge */}
+            <div className={`flex items-center gap-3 p-3 rounded-xl mb-4 ${pinActive ? "bg-emerald-500/10 border border-emerald-500/20" : "bg-secondary border border-card-border"}`}>
+              <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${pinActive ? "bg-emerald-500/20" : "bg-secondary"}`}>
+                <Fingerprint className={`w-4 h-4 ${pinActive ? "text-emerald-400" : "text-muted-foreground"}`} />
+              </div>
+              <div className="flex-1">
+                <p className={`text-sm font-semibold ${pinActive ? "text-emerald-400" : "text-foreground"}`}>
+                  {pinActive ? "PIN activé" : "PIN désactivé"}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {pinActive ? "L'application se verrouille automatiquement à la fermeture." : "Activez un PIN pour déverrouiller sans ressaisir votre mot de passe."}
+                </p>
+              </div>
+              {pinActive && <CheckCircle className="w-5 h-5 text-emerald-400 flex-shrink-0" />}
+            </div>
+
+            {/* Actions */}
+            <div className="space-y-2">
+              {!pinActive ? (
+                <button
+                  onClick={() => { setPinSetupMode("setup"); setShowPinSetup(true); }}
+                  className="w-full flex items-center justify-between px-4 py-3 bg-primary/10 border border-primary/20 rounded-xl hover:bg-primary/20 transition-colors"
+                >
+                  <div className="flex items-center gap-3">
+                    <KeyRound className="w-4 h-4 text-primary" />
+                    <span className="text-sm font-semibold text-primary">Créer un code PIN</span>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-primary" />
+                </button>
+              ) : (
+                <>
+                  <button
+                    onClick={() => { setPinSetupMode("change"); setShowPinSetup(true); }}
+                    className="w-full flex items-center justify-between px-4 py-3 bg-secondary rounded-xl hover:bg-secondary/70 transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <RefreshCcw className="w-4 h-4 text-foreground" />
+                      <span className="text-sm font-semibold text-foreground">Modifier le PIN</span>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                  </button>
+                  <button
+                    onClick={handleDisablePin}
+                    className="w-full flex items-center justify-between px-4 py-3 bg-red-500/10 border border-red-500/20 rounded-xl hover:bg-red-500/20 transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <Trash2 className="w-4 h-4 text-red-400" />
+                      <span className="text-sm font-semibold text-red-400">Désactiver le PIN</span>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-red-400" />
+                  </button>
+                </>
+              )}
+            </div>
+
+            <p className="text-[11px] text-muted-foreground/70 mt-3 text-center leading-relaxed">
+              Le PIN est stocké localement sur cet appareil uniquement. Il n'est jamais transmis à nos serveurs.
+            </p>
+          </div>
+        )}
 
         {/* Change password */}
         <div className="bg-card border border-card-border rounded-3xl p-5">
