@@ -6,7 +6,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useLocation, Link } from "wouter";
 import { motion } from "framer-motion";
 import { formatFCFA } from "@/lib/format";
-import { User as UserIcon, Shield, Bell, CreditCard, Lock, HelpCircle, LogOut, ChevronRight, Camera, Crown, Eye, TrendingUp, ShoppingBag, Gift } from "lucide-react";
+import { User as UserIcon, Shield, Bell, CreditCard, Lock, HelpCircle, LogOut, ChevronRight, Camera, Crown, Eye, TrendingUp, ShoppingBag, Gift, Code2 } from "lucide-react";
 import { useNotifications } from "@/hooks/use-notifications";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
@@ -107,6 +107,7 @@ function ProfileContent() {
     { icon: CreditCard, label: "Méthodes de paiement", sub: "Orange Money, Wave, MTN…", href: "/profile/paiement", color: "text-emerald-500", bg: "bg-emerald-500/10", badge: 0 },
     { icon: Gift, label: "Parrainage", sub: "Invitez & gagnez des commissions", href: "/profile/parrainage", color: "text-amber-500", bg: "bg-amber-500/10", badge: 0 },
     { icon: Lock, label: "Confidentialité", sub: "Données & politique", href: "/profile/confidentialite", color: "text-rose-500", bg: "bg-rose-500/10", badge: 0 },
+    { icon: Code2, label: "Documentation API", sub: "Intégration & endpoints", href: "/profile/api-docs", color: "text-violet-400", bg: "bg-violet-500/10", badge: 0 },
     { icon: HelpCircle, label: "Aide et support", sub: "FAQ & assistance", href: "/profile/aide", color: "text-sky-500", bg: "bg-sky-500/10", badge: 0 },
   ];
 

@@ -43,6 +43,7 @@ import ProfileCGU from "@/pages/profile-cgu";
 import ProfileCookies from "@/pages/profile-cookies";
 import ProfileMentionsLegales from "@/pages/profile-mentions-legales";
 import ProfileParrainage from "@/pages/profile-parrainage";
+import ProfileApiDocs from "@/pages/profile-api-docs";
 import NotificationsPage from "@/pages/notifications";
 
 // Admin pages
@@ -208,6 +209,7 @@ function InnerRouter() {
           <Route path="/profile/cookies" component={ProfileCookies} />
           <Route path="/profile/mentions-legales" component={ProfileMentionsLegales} />
           <Route path="/profile/parrainage" component={ProfileParrainage} />
+          <Route path="/profile/api-docs" component={ProfileApiDocs} />
           <Route component={NotFound} />
         </Switch>
       </div>
