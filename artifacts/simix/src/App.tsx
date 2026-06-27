@@ -2,6 +2,7 @@ import { Switch, Route, Router as WouterRouter, useLocation } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { SimixToastProvider } from "@/lib/simix-toast";
 import { ConfirmDialogProvider } from "@/components/ui/confirm-dialog";
 import { useEffect } from "react";
 import SupportChat from "@/components/support/SupportChat";
@@ -73,6 +74,9 @@ import AdminCurrencies from "@/pages/admin/currencies";
 import AdminFxProfits from "@/pages/admin/fx-profits";
 import AdminDiagnostics from "@/pages/admin/diagnostics";
 import AdminRefunds from "@/pages/admin/refunds";
+
+// Toast demo
+import ToastDemo from "@/pages/toast-demo";
 
 // Public legal pages (no auth required)
 import LegalCGU from "@/pages/legal/cgu";
@@ -157,6 +161,10 @@ function InnerRouter() {
     return <Landing />;
   }
 
+  if (location === "/toast-demo") {
+    return <ToastDemo />;
+  }
+
   if (location.startsWith("/legal")) {
     return (
       <Switch>
@@ -229,9 +237,11 @@ function App() {
       <ThemeProvider>
         <TooltipProvider>
           <ConfirmDialogProvider>
-            <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
-              <AppShell />
-            </WouterRouter>
+            <SimixToastProvider>
+              <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
+                <AppShell />
+              </WouterRouter>
+            </SimixToastProvider>
           </ConfirmDialogProvider>
         </TooltipProvider>
       </ThemeProvider>

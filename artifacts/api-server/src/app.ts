@@ -55,9 +55,16 @@ app.use((req, res, next) => {
     return next();
   }
 
-  // Immutable assets (hashed filenames)
+  // Assets — only apply immutable for content-hashed filenames
+  // (files with a dash + 8-char hex hash before the extension, e.g. vendor-A1b2c3d4.js)
   if (url.startsWith("/assets/")) {
-    res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+    const isHashed = /\-[a-f0-9]{8,}\.(js|css|woff2?|png|svg|webp)$/.test(url);
+    if (isHashed) {
+      res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+    } else {
+      // Non-hashed entry files (index.js, index.css) — short cache so updates propagate
+      res.setHeader("Cache-Control", "public, max-age=0, must-revalidate");
+    }
     return next();
   }
 

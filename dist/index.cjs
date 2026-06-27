@@ -121569,7 +121569,12 @@ app.use((req, res, next) => {
     return next();
   }
   if (url2.startsWith("/assets/")) {
-    res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+    const isHashed = /\-[a-f0-9]{8,}\.(js|css|woff2?|png|svg|webp)$/.test(url2);
+    if (isHashed) {
+      res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+    } else {
+      res.setHeader("Cache-Control", "public, max-age=0, must-revalidate");
+    }
     return next();
   }
   if (url2.startsWith("/icons/")) {
