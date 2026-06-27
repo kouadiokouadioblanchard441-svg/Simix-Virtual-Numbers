@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
 import { FaGoogle, FaApple, FaFacebook } from "react-icons/fa";
-import { Phone, User, Eye, EyeOff, Search } from "lucide-react";
+import { Phone, User, Eye, EyeOff, Search, ChevronLeft, Shield } from "lucide-react";
 import { motion } from "framer-motion";
 import { SimixLogo } from "@/components/simix-logo";
 
@@ -163,14 +163,20 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-[100dvh] bg-background flex flex-col px-6 py-12 relative overflow-hidden">
+    <div className="min-h-[100dvh] bg-background flex flex-col px-6 py-6 relative overflow-hidden">
       <div className="absolute top-0 right-0 w-64 h-64 bg-primary/10 blur-[100px] rounded-full pointer-events-none" />
 
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="flex-1 flex flex-col max-w-sm w-full mx-auto z-10 pt-4">
-        <div className="flex justify-center mb-10">
-          <SimixLogo size={40} />
+      <div className="flex items-center justify-between mb-6 z-10">
+        <Link href="/" className="w-10 h-10 rounded-xl bg-card border border-card-border flex items-center justify-center text-foreground hover:bg-secondary transition-colors">
+          <ChevronLeft className="w-5 h-5" />
+        </Link>
+        <SimixLogo size={32} />
+        <div className="w-10 h-10 rounded-xl border border-primary/30 flex items-center justify-center bg-primary/10">
+          <Shield className="w-4 h-4 text-primary" />
         </div>
+      </div>
 
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="flex-1 flex flex-col max-w-sm w-full mx-auto z-10">
         <div className="mb-8">
           <h1 className="text-2xl font-bold text-white mb-2 tracking-tight">Connexion</h1>
           <p className="text-foreground text-base font-semibold mb-1">Bienvenue de retour</p>
