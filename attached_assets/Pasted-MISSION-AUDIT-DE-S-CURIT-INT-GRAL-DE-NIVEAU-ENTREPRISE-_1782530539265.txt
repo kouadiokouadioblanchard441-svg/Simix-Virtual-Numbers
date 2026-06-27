@@ -1,0 +1,411 @@
+MISSION : AUDIT DE SÉCURITÉ INTÉGRAL DE NIVEAU ENTREPRISE
+
+Tu agis comme une équipe composée d'un Security Architect, d'un Penetration Tester, d'un Senior Backend Engineer, d'un Senior Frontend Engineer, d'un DevSecOps Engineer et d'un expert OWASP.
+
+Ton objectif n'est PAS seulement de trouver des bugs.
+
+Ton objectif est de rendre l'application aussi sécurisée que possible avant sa mise en production.
+
+Tu dois considérer que cette application manipule des comptes utilisateurs, des paiements, des numéros virtuels, des données personnelles, un espace administrateur et des API critiques.
+
+Tu dois analyser TOUT le projet.
+
+Tu ne dois faire aucune hypothèse.
+
+Tu dois inspecter absolument tous les fichiers.
+
+Tu dois analyser :
+
+• Frontend
+
+• Backend
+
+• API
+
+• Base de données
+
+• Middleware
+
+• Authentification
+
+• Autorisations
+
+• Sessions
+
+• JWT ou Cookies
+
+• Variables d'environnement
+
+• Dépendances
+
+• Uploads
+
+• Téléchargements
+
+• Webhooks
+
+• Paiements
+
+• Routes
+
+• Contrôleurs
+
+• Services
+
+• Cron Jobs
+
+• Queue Workers
+
+• Logs
+
+• Cache
+
+• Configuration du serveur
+
+• Configuration PWA
+
+• Manifest
+
+• Service Worker
+
+• Fichiers cachés
+
+• Scripts
+
+• Docker
+
+• CI/CD
+
+• Git
+
+• Build
+
+• Toutes les bibliothèques tierces.
+
+====================================================
+
+AUDIT COMPLET
+
+====================================================
+
+Identifier :
+
+Toutes les vulnérabilités.
+
+Toutes les mauvaises pratiques.
+
+Tous les secrets exposés.
+
+Toutes les permissions dangereuses.
+
+Tous les endpoints non protégés.
+
+Toutes les routes accessibles sans autorisation.
+
+Toutes les API vulnérables.
+
+Toutes les injections possibles.
+
+Toutes les attaques XSS.
+
+Toutes les attaques SQL Injection.
+
+Toutes les attaques NoSQL Injection.
+
+Toutes les attaques Command Injection.
+
+Toutes les attaques LDAP.
+
+Toutes les attaques XPath.
+
+Toutes les attaques Template Injection.
+
+Toutes les attaques Prototype Pollution.
+
+Toutes les attaques CSRF.
+
+Toutes les attaques SSRF.
+
+Toutes les attaques XXE.
+
+Toutes les attaques RCE.
+
+Toutes les attaques LFI.
+
+Toutes les attaques RFI.
+
+Toutes les attaques Path Traversal.
+
+Toutes les attaques Clickjacking.
+
+Toutes les attaques Open Redirect.
+
+Toutes les attaques Host Header Injection.
+
+Toutes les attaques HTTP Request Smuggling.
+
+Toutes les attaques Cache Poisoning.
+
+Toutes les attaques Race Condition.
+
+Toutes les attaques IDOR.
+
+Toutes les attaques Broken Access Control.
+
+Toutes les attaques Authentication Bypass.
+
+Toutes les attaques Session Fixation.
+
+Toutes les attaques Session Hijacking.
+
+Toutes les attaques Privilege Escalation.
+
+Toutes les attaques Rate Limit Bypass.
+
+Toutes les attaques Enumeration.
+
+Toutes les attaques OTP Bypass.
+
+Toutes les attaques MFA Bypass.
+
+Toutes les attaques Replay.
+
+Toutes les attaques Brute Force.
+
+Toutes les attaques Credential Stuffing.
+
+Toutes les attaques Business Logic.
+
+Toutes les attaques Upload Malveillant.
+
+Toutes les attaques de désérialisation.
+
+Toutes les fuites de mémoire.
+
+Toutes les erreurs de configuration.
+
+Toutes les dépendances vulnérables.
+
+Tous les paquets obsolètes.
+
+Toutes les bibliothèques abandonnées.
+
+====================================================
+
+AUTHENTIFICATION
+
+====================================================
+
+Vérifier :
+
+Hash des mots de passe.
+
+Gestion des sessions.
+
+Expiration.
+
+Rotation des tokens.
+
+Refresh Tokens.
+
+Cookies sécurisés.
+
+SameSite.
+
+HttpOnly.
+
+Secure.
+
+Déconnexion.
+
+Protection contre le vol de session.
+
+Protection contre les connexions simultanées frauduleuses.
+
+====================================================
+
+AUTORISATIONS
+
+====================================================
+
+Vérifier chaque endpoint.
+
+Vérifier chaque rôle.
+
+Vérifier chaque permission.
+
+Vérifier toutes les élévations de privilèges.
+
+====================================================
+
+BASE DE DONNÉES
+
+====================================================
+
+Vérifier :
+
+Index.
+
+Requêtes.
+
+Transactions.
+
+Rollback.
+
+Contraintes.
+
+Protection contre les injections.
+
+Protection des données sensibles.
+
+====================================================
+
+PAIEMENTS
+
+====================================================
+
+Auditer toute la logique financière.
+
+Empêcher :
+
+Double paiement.
+
+Double validation.
+
+Modification du montant.
+
+Réutilisation d'une transaction.
+
+Réutilisation d'un webhook.
+
+Manipulation du solde.
+
+Manipulation des commissions.
+
+Manipulation des retraits.
+
+Manipulation des dépôts.
+
+====================================================
+
+PWA
+
+====================================================
+
+Vérifier :
+
+Manifest.
+
+Service Worker.
+
+Cache.
+
+Offline.
+
+Push.
+
+Background Sync.
+
+Sécurité du Service Worker.
+
+====================================================
+
+SERVEUR
+
+====================================================
+
+Vérifier :
+
+HTTPS.
+
+HSTS.
+
+CSP.
+
+CORS.
+
+Permissions Policy.
+
+Referrer Policy.
+
+X-Frame-Options.
+
+X-Content-Type-Options.
+
+Rate Limiting.
+
+Compression.
+
+Headers.
+
+====================================================
+
+DEVSECOPS
+
+====================================================
+
+Vérifier :
+
+Secrets.
+
+Variables d'environnement.
+
+Clés API.
+
+Git.
+
+Fichiers sensibles.
+
+Sauvegardes.
+
+CI/CD.
+
+====================================================
+
+CORRECTION
+
+====================================================
+
+Pour CHAQUE vulnérabilité trouvée :
+
+1. expliquer le risque ;
+
+2. corriger automatiquement le code ;
+
+3. appliquer la meilleure pratique reconnue ;
+
+4. vérifier que la correction ne casse aucune fonctionnalité ;
+
+5. revérifier que la faille est réellement corrigée.
+
+Ne jamais supprimer une fonctionnalité pour masquer une faille.
+
+Toujours implémenter une correction robuste.
+
+====================================================
+
+VALIDATION FINALE
+
+====================================================
+
+Une fois toutes les corrections terminées :
+
+Relancer un audit complet.
+
+Continuer jusqu'à ce qu'aucune vulnérabilité critique ou élevée ne soit détectée.
+
+Produire un rapport final contenant :
+
+• les vulnérabilités trouvées ;
+
+• les fichiers concernés ;
+
+• les corrections appliquées ;
+
+• les améliorations réalisées ;
+
+• les risques résiduels éventuels ;
+
+• les recommandations de sécurité futures.
+
+Ne termine jamais l'audit tant que le projet n'a pas été entièrement analysé et durci selon les meilleures pratiques OWASP et les standards de sécurité modernes.
