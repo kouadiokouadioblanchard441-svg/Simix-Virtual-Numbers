@@ -43027,7 +43027,9 @@ __export(src_exports, {
 function parseDbUrl(url2) {
   try {
     const parsed = new URL(url2);
-    const ssl = parsed.searchParams.get("ssl") === "true" || parsed.searchParams.get("sslmode") === "require" ? { rejectUnauthorized: false } : parsed.hostname.includes("supabase") ? { rejectUnauthorized: false } : false;
+    const explicitSsl = parsed.searchParams.get("ssl") === "true" || parsed.searchParams.get("sslmode") === "require";
+    const isSupabase = parsed.hostname.includes("supabase");
+    const ssl = explicitSsl || isSupabase ? { rejectUnauthorized: false } : false;
     return {
       host: parsed.hostname,
       port: Number(parsed.port) || 5432,
@@ -122081,6 +122083,57 @@ var app_default = app;
 init_src();
 init_logger2();
 init_fivesim_sync();
+
+// src/lib/seed-demo-user.ts
+init_drizzle_orm();
+init_src();
+init_logger2();
+async function seedDemoUser() {
+  try {
+    const phone = "+2250701234567";
+    const [existing] = await db.select({ id: usersTable.id }).from(usersTable).where(eq(usersTable.phone, phone)).limit(1);
+    if (existing) {
+      await db.update(usersTable).set({ isAdmin: true, emailVerified: true }).where(eq(usersTable.id, existing.id));
+      logger.info("[seed-demo] Demo user already exists \u2014 ensured admin + emailVerified");
+      return;
+    }
+    const passwordHash = await bcryptjs_default.hash("simix2026", 10);
+    const [user] = await db.insert(usersTable).values({
+      fullName: "Kouassi David",
+      phone,
+      countryCode: "+225",
+      username: "kouassi_david",
+      email: "kouassidavid@gmail.com",
+      passwordHash,
+      balance: 12450,
+      verified: true,
+      emailVerified: true,
+      status: "Standard",
+      isAdmin: true
+    }).returning();
+    if (!user) return;
+    const seedTx = [
+      { type: "recharge", amount: 5e3, method: "Orange Money", description: "Recharge Orange Money" },
+      { type: "purchase", amount: 150, method: "wallet", description: "Num\xE9ro WhatsApp - C\xF4te d'Ivoire" },
+      { type: "recharge", amount: 1e4, method: "MTN Mobile Money", description: "Recharge MTN" }
+    ];
+    for (const t2 of seedTx) {
+      await db.insert(transactionsTable).values({
+        userId: user.id,
+        type: t2.type,
+        amount: t2.amount,
+        status: "completed",
+        method: t2.method,
+        description: t2.description
+      });
+    }
+    logger.info("[seed-demo] Demo user created \u2713");
+  } catch (err) {
+    logger.warn({ err }, "[seed-demo] Demo user seed failed (non-blocking)");
+  }
+}
+
+// src/index.ts
 var rawPort = process.env["PORT"] ?? "3000";
 var port = Number(rawPort);
 if (Number.isNaN(port) || port <= 0) {
@@ -122093,6 +122146,7 @@ async function start() {
     logger.info({ migrationsFolder }, "[startup] Running database migrations\u2026");
     await migrate(db, { migrationsFolder });
     logger.info("[startup] Database migrations applied \u2713");
+    void seedDemoUser();
   } catch (err) {
     const msg = err?.message ?? "";
     const isAlreadyExists = msg.includes("already exists") || msg.includes("duplicate");

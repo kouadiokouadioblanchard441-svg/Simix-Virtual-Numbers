@@ -5,6 +5,7 @@ import { db } from "@workspace/db";
 import { logger } from "./lib/logger";
 import { startFiveSimPoller } from "./lib/fivesim-poller";
 import { startFiveSimSyncScheduler } from "./lib/fivesim-sync";
+import { seedDemoUser } from "./lib/seed-demo-user";
 
 const rawPort = process.env["PORT"] ?? "3000";
 const port = Number(rawPort);
@@ -26,6 +27,7 @@ async function start(): Promise<void> {
     logger.info({ migrationsFolder }, "[startup] Running database migrations…");
     await migrate(db, { migrationsFolder });
     logger.info("[startup] Database migrations applied ✓");
+    void seedDemoUser();
   } catch (err) {
     /* Non-fatal: tables may already exist (e.g. after drizzle-kit push).
      * Common case: constraint/table already exists from a previous push.

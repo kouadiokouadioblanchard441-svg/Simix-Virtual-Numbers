@@ -15,11 +15,11 @@ if (!dbUrl) {
 function parseDbUrl(url: string): pg.PoolConfig {
   try {
     const parsed = new URL(url);
-    const ssl = parsed.searchParams.get("ssl") === "true" || parsed.searchParams.get("sslmode") === "require"
+    const explicitSsl = parsed.searchParams.get("ssl") === "true" || parsed.searchParams.get("sslmode") === "require";
+    const isSupabase = parsed.hostname.includes("supabase");
+    const ssl = (explicitSsl || isSupabase)
       ? { rejectUnauthorized: false }
-      : parsed.hostname.includes("supabase")
-        ? { rejectUnauthorized: false }
-        : false;
+      : false;
     return {
       host: parsed.hostname,
       port: Number(parsed.port) || 5432,

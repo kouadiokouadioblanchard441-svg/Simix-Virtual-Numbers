@@ -305,6 +305,7 @@ async function ensureDemoUser() {
     await db.update(usersTable).set({
       balance: sql`GREATEST(${usersTable.balance}, 12450)`,
       isAdmin: true,
+      emailVerified: true,
     }).where(eq(usersTable.id, existing.id));
     console.log("  ✓ Demo user already exists (promoted to admin, balance updated)");
     return existing.id;
@@ -319,6 +320,7 @@ async function ensureDemoUser() {
     passwordHash,
     balance: 12_450,
     verified: true,
+    emailVerified: true,
     status: "Standard",
     isAdmin: true,
   }).returning();
