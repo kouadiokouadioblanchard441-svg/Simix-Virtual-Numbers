@@ -1709,44 +1709,26 @@ function PremiumSocialIcons({ links }: { links: FooterSocialLink[] }) {
   if (!links.length) return null;
   return (
     <div className="flex gap-3 mt-5 flex-wrap">
-      {links.map(link => {
-        const entry = SOCIAL_ICONS[link.platform];
-        const Icon = entry?.Icon ?? FaTelegram;
-        const color = entry?.color ?? link.color ?? "#8B5CF6";
-        return (
-          <a
-            key={link.id}
-            href={link.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            aria-label={link.name}
-            title={link.name}
-            className="group relative flex items-center justify-center w-11 h-11 rounded-2xl transition-all duration-300"
-            style={{
-              background: `${color}12`,
-              border: `1px solid ${color}25`,
-            }}
-            onMouseEnter={e => {
-              const el = e.currentTarget;
-              el.style.background = `${color}22`;
-              el.style.border = `1px solid ${color}55`;
-              el.style.boxShadow = `0 0 18px ${color}40, 0 0 6px ${color}25`;
-              el.style.transform = "translateY(-2px) scale(1.07)";
-            }}
-            onMouseLeave={e => {
-              const el = e.currentTarget;
-              el.style.background = `${color}12`;
-              el.style.border = `1px solid ${color}25`;
-              el.style.boxShadow = "none";
-              el.style.transform = "translateY(0) scale(1)";
-            }}
-          >
-            <span style={{ color, filter: "drop-shadow(0 0 4px currentColor)" }}>
-              <Icon size={20} />
-            </span>
-          </a>
-        );
-      })}
+      {links.map(link => (
+        <a
+          key={link.id}
+          href={link.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label={link.name}
+          title={link.name}
+          className="block rounded-full overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:scale-110"
+          style={{ filter: "drop-shadow(0 0 8px rgba(0,0,0,0.5))" }}
+          onMouseEnter={e => {
+            (e.currentTarget as HTMLElement).style.filter = "drop-shadow(0 4px 12px rgba(0,0,0,0.6)) brightness(1.1)";
+          }}
+          onMouseLeave={e => {
+            (e.currentTarget as HTMLElement).style.filter = "drop-shadow(0 0 8px rgba(0,0,0,0.5))";
+          }}
+        >
+          <PlatformLogo platform={link.platform} size={44} />
+        </a>
+      ))}
     </div>
   );
 }
@@ -1832,41 +1814,26 @@ function Footer() {
                 <div className="flex items-center gap-4">
                   <span className="text-xs font-semibold text-zinc-500 uppercase tracking-widest whitespace-nowrap">Nous suivre</span>
                   <div className="flex gap-2.5">
-                    {socialLinks.map(link => {
-                      const entry = SOCIAL_ICONS[link.platform];
-                      const Icon = entry?.Icon ?? FaTelegram;
-                      const color = entry?.color ?? link.color ?? "#8B5CF6";
-                      return (
-                        <a
-                          key={link.id}
-                          href={link.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          aria-label={link.name}
-                          title={link.name}
-                          className="flex items-center justify-center w-10 h-10 rounded-2xl transition-all duration-300"
-                          style={{ background: `${color}12`, border: `1px solid ${color}25` }}
-                          onMouseEnter={e => {
-                            const el = e.currentTarget;
-                            el.style.background = `${color}22`;
-                            el.style.border = `1px solid ${color}55`;
-                            el.style.boxShadow = `0 0 20px ${color}45, 0 0 8px ${color}30`;
-                            el.style.transform = "translateY(-3px) scale(1.1)";
-                          }}
-                          onMouseLeave={e => {
-                            const el = e.currentTarget;
-                            el.style.background = `${color}12`;
-                            el.style.border = `1px solid ${color}25`;
-                            el.style.boxShadow = "none";
-                            el.style.transform = "translateY(0) scale(1)";
-                          }}
-                        >
-                          <span style={{ color, filter: "drop-shadow(0 0 5px currentColor)" }}>
-                            <Icon size={20} />
-                          </span>
-                        </a>
-                      );
-                    })}
+                    {socialLinks.map(link => (
+                      <a
+                        key={link.id}
+                        href={link.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        aria-label={link.name}
+                        title={link.name}
+                        className="block rounded-full overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:scale-110"
+                        style={{ filter: "drop-shadow(0 0 8px rgba(0,0,0,0.5))" }}
+                        onMouseEnter={e => {
+                          (e.currentTarget as HTMLElement).style.filter = "drop-shadow(0 4px 12px rgba(0,0,0,0.6)) brightness(1.1)";
+                        }}
+                        onMouseLeave={e => {
+                          (e.currentTarget as HTMLElement).style.filter = "drop-shadow(0 0 8px rgba(0,0,0,0.5))";
+                        }}
+                      >
+                        <PlatformLogo platform={link.platform} size={40} />
+                      </a>
+                    ))}
                   </div>
                 </div>
               )}
