@@ -197,18 +197,18 @@ var require_common = __commonJS({
           if (typeof args[0] !== "string") {
             args.unshift("%O");
           }
-          let index = 0;
+          let index2 = 0;
           args[0] = args[0].replace(/%([a-zA-Z%])/g, (match, format) => {
             if (match === "%%") {
               return "%";
             }
-            index++;
+            index2++;
             const formatter = createDebug.formatters[format];
             if (typeof formatter === "function") {
-              const val = args[index];
+              const val = args[index2];
               match = formatter.call(self2, val);
-              args.splice(index, 1);
-              index--;
+              args.splice(index2, 1);
+              index2--;
             }
             return match;
           });
@@ -443,15 +443,15 @@ var require_browser = __commonJS({
       }
       const c = "color: " + this.color;
       args.splice(1, 0, c, "color: inherit");
-      let index = 0;
+      let index2 = 0;
       let lastC = 0;
       args[0].replace(/%[a-zA-Z%]/g, (match) => {
         if (match === "%%") {
           return;
         }
-        index++;
+        index2++;
         if (match === "%c") {
-          lastC = index;
+          lastC = index2;
         }
       });
       args.splice(lastC, 0, c);
@@ -5674,22 +5674,22 @@ var require_content_type = __commonJS({
       if (typeof header !== "string") {
         throw new TypeError("argument string is required to be a string");
       }
-      var index = header.indexOf(";");
-      var type = index !== -1 ? header.slice(0, index).trim() : header.trim();
+      var index2 = header.indexOf(";");
+      var type = index2 !== -1 ? header.slice(0, index2).trim() : header.trim();
       if (!TYPE_REGEXP.test(type)) {
         throw new TypeError("invalid media type");
       }
       var obj = new ContentType(type.toLowerCase());
-      if (index !== -1) {
+      if (index2 !== -1) {
         var key;
         var match;
         var value;
-        PARAM_REGEXP.lastIndex = index;
+        PARAM_REGEXP.lastIndex = index2;
         while (match = PARAM_REGEXP.exec(header)) {
-          if (match.index !== index) {
+          if (match.index !== index2) {
             throw new TypeError("invalid parameter format");
           }
-          index += match[0].length;
+          index2 += match[0].length;
           key = match[1].toLowerCase();
           value = match[2];
           if (value.charCodeAt(0) === 34) {
@@ -5700,7 +5700,7 @@ var require_content_type = __commonJS({
           }
           obj.parameters[key] = value;
         }
-        if (index !== header.length) {
+        if (index2 !== header.length) {
           throw new TypeError("invalid parameter format");
         }
       }
@@ -15295,10 +15295,10 @@ var require_media_typer = __commonJS({
       var type = match[1];
       var subtype = match[2];
       var suffix;
-      var index = subtype.lastIndexOf("+");
-      if (index !== -1) {
-        suffix = subtype.substr(index + 1);
-        subtype = subtype.substr(0, index);
+      var index2 = subtype.lastIndexOf("+");
+      if (index2 !== -1) {
+        suffix = subtype.substr(index2 + 1);
+        subtype = subtype.substr(0, index2);
       }
       return new MediaType(type, subtype, suffix);
     }
@@ -15659,10 +15659,10 @@ var require_json = __commonJS({
       };
     }
     function createStrictSyntaxError(str, char2) {
-      var index = str.indexOf(char2);
+      var index2 = str.indexOf(char2);
       var partial = "";
-      if (index !== -1) {
-        partial = str.substring(0, index) + JSON_SYNTAX_CHAR.repeat(str.length - index);
+      if (index2 !== -1) {
+        partial = str.substring(0, index2) + JSON_SYNTAX_CHAR.repeat(str.length - index2);
       }
       try {
         JSON.parse(partial);
@@ -15670,7 +15670,7 @@ var require_json = __commonJS({
       } catch (e2) {
         return normalizeJsonSyntaxError(e2, {
           message: e2.message.replace(JSON_SYNTAX_REGEXP, function(placeholder2) {
-            return str.substring(index, index + placeholder2.length);
+            return str.substring(index2, index2 + placeholder2.length);
           }),
           stack: e2.stack
         });
@@ -18088,18 +18088,18 @@ var require_parse = __commonJS({
           obj = options.plainObjects ? { __proto__: null } : {};
           var cleanRoot = root.charAt(0) === "[" && root.charAt(root.length - 1) === "]" ? root.slice(1, -1) : root;
           var decodedRoot = options.decodeDotInKeys ? cleanRoot.replace(/%2E/g, ".") : cleanRoot;
-          var index = parseInt(decodedRoot, 10);
-          var isValidArrayIndex = !isNaN(index) && root !== decodedRoot && String(index) === decodedRoot && index >= 0 && options.parseArrays;
+          var index2 = parseInt(decodedRoot, 10);
+          var isValidArrayIndex = !isNaN(index2) && root !== decodedRoot && String(index2) === decodedRoot && index2 >= 0 && options.parseArrays;
           if (!options.parseArrays && decodedRoot === "") {
             obj = { 0: leaf };
-          } else if (isValidArrayIndex && index < options.arrayLimit) {
+          } else if (isValidArrayIndex && index2 < options.arrayLimit) {
             obj = [];
-            obj[index] = leaf;
+            obj[index2] = leaf;
           } else if (isValidArrayIndex && options.throwOnLimitExceeded) {
             throw new RangeError("Array limit exceeded. Only " + options.arrayLimit + " element" + (options.arrayLimit === 1 ? "" : "s") + " allowed in an array.");
           } else if (isValidArrayIndex) {
-            obj[index] = leaf;
-            utils.markOverflow(obj, index);
+            obj[index2] = leaf;
+            utils.markOverflow(obj, index2);
           } else if (decodedRoot !== "__proto__") {
             obj[decodedRoot] = leaf;
           }
@@ -18324,12 +18324,12 @@ var require_urlencoded = __commonJS({
     }
     function parameterCount(body, limit) {
       let count2 = 0;
-      let index = -1;
+      let index2 = -1;
       do {
         count2++;
         if (count2 > limit) return void 0;
-        index = body.indexOf("&", index + 1);
-      } while (index !== -1);
+        index2 = body.indexOf("&", index2 + 1);
+      } while (index2 !== -1);
       return count2;
     }
   }
@@ -18418,10 +18418,10 @@ var require_escape_html = __commonJS({
       }
       var escape2;
       var html = "";
-      var index = 0;
+      var index2 = 0;
       var lastIndex = 0;
-      for (index = match.index; index < str.length; index++) {
-        switch (str.charCodeAt(index)) {
+      for (index2 = match.index; index2 < str.length; index2++) {
+        switch (str.charCodeAt(index2)) {
           case 34:
             escape2 = "&quot;";
             break;
@@ -18440,13 +18440,13 @@ var require_escape_html = __commonJS({
           default:
             continue;
         }
-        if (lastIndex !== index) {
-          html += str.substring(lastIndex, index);
+        if (lastIndex !== index2) {
+          html += str.substring(lastIndex, index2);
         }
-        lastIndex = index + 1;
+        lastIndex = index2 + 1;
         html += escape2;
       }
-      return lastIndex !== index ? html + str.substring(lastIndex, index) : html;
+      return lastIndex !== index2 ? html + str.substring(lastIndex, index2) : html;
     }
   }
 });
@@ -19650,25 +19650,25 @@ var require_utils3 = __commonJS({
     function acceptParams(str) {
       var length = str.length;
       var colonIndex = str.indexOf(";");
-      var index = colonIndex === -1 ? length : colonIndex;
-      var ret = { value: str.slice(0, index).trim(), quality: 1, params: {} };
-      while (index < length) {
-        var splitIndex = str.indexOf("=", index);
+      var index2 = colonIndex === -1 ? length : colonIndex;
+      var ret = { value: str.slice(0, index2).trim(), quality: 1, params: {} };
+      while (index2 < length) {
+        var splitIndex = str.indexOf("=", index2);
         if (splitIndex === -1) break;
-        var colonIndex = str.indexOf(";", index);
+        var colonIndex = str.indexOf(";", index2);
         var endIndex = colonIndex === -1 ? length : colonIndex;
         if (splitIndex > endIndex) {
-          index = str.lastIndexOf(";", splitIndex - 1) + 1;
+          index2 = str.lastIndexOf(";", splitIndex - 1) + 1;
           continue;
         }
-        var key = str.slice(index, splitIndex).trim();
+        var key = str.slice(index2, splitIndex).trim();
         var value = str.slice(splitIndex + 1, endIndex).trim();
         if (key === "q") {
           ret.quality = parseFloat(value);
         } else {
           ret.params[key] = value;
         }
-        index = endIndex + 1;
+        index2 = endIndex + 1;
       }
       return ret;
     }
@@ -19894,51 +19894,51 @@ var require_dist = __commonJS({
       const { encodePath = NOOP_VALUE } = options;
       const chars = [...str];
       const tokens = [];
-      let index = 0;
+      let index2 = 0;
       let pos = 0;
       function name2() {
         let value = "";
-        if (ID_START.test(chars[index])) {
+        if (ID_START.test(chars[index2])) {
           do {
-            value += chars[index++];
-          } while (ID_CONTINUE.test(chars[index]));
-        } else if (chars[index] === '"') {
-          let quoteStart = index;
-          while (index++ < chars.length) {
-            if (chars[index] === '"') {
-              index++;
+            value += chars[index2++];
+          } while (ID_CONTINUE.test(chars[index2]));
+        } else if (chars[index2] === '"') {
+          let quoteStart = index2;
+          while (index2++ < chars.length) {
+            if (chars[index2] === '"') {
+              index2++;
               quoteStart = 0;
               break;
             }
-            if (chars[index] === "\\")
-              index++;
-            value += chars[index];
+            if (chars[index2] === "\\")
+              index2++;
+            value += chars[index2];
           }
           if (quoteStart) {
             throw new PathError(`Unterminated quote at index ${quoteStart}`, str);
           }
         }
         if (!value) {
-          throw new PathError(`Missing parameter name at index ${index}`, str);
+          throw new PathError(`Missing parameter name at index ${index2}`, str);
         }
         return value;
       }
-      while (index < chars.length) {
-        const value = chars[index];
+      while (index2 < chars.length) {
+        const value = chars[index2];
         const type = SIMPLE_TOKENS[value];
         if (type) {
-          tokens.push({ type, index: index++, value });
+          tokens.push({ type, index: index2++, value });
         } else if (value === "\\") {
-          tokens.push({ type: "escape", index: index++, value: chars[index++] });
+          tokens.push({ type: "escape", index: index2++, value: chars[index2++] });
         } else if (value === ":") {
-          tokens.push({ type: "param", index: index++, value: name2() });
+          tokens.push({ type: "param", index: index2++, value: name2() });
         } else if (value === "*") {
-          tokens.push({ type: "wildcard", index: index++, value: name2() });
+          tokens.push({ type: "wildcard", index: index2++, value: name2() });
         } else {
-          tokens.push({ type: "char", index: index++, value });
+          tokens.push({ type: "char", index: index2++, value });
         }
       }
-      tokens.push({ type: "end", index, value: "" });
+      tokens.push({ type: "end", index: index2, value: "" });
       function consumeUntil(endType) {
         const output = [];
         while (true) {
@@ -20024,9 +20024,9 @@ var require_dist = __commonJS({
             throw new TypeError(`Expected "${token.name}" to be a non-empty array`);
           }
           return [
-            value.map((value2, index) => {
+            value.map((value2, index2) => {
               if (typeof value2 !== "string") {
-                throw new TypeError(`Expected "${token.name}/${index}" to be a string`);
+                throw new TypeError(`Expected "${token.name}/${index2}" to be a string`);
               }
               return encodeValue(value2);
             }).join(delimiter)
@@ -20096,19 +20096,19 @@ var require_dist = __commonJS({
       }
       return init;
     }
-    function* flatten(tokens, index, init) {
-      if (index === tokens.length) {
+    function* flatten(tokens, index2, init) {
+      if (index2 === tokens.length) {
         return yield init;
       }
-      const token = tokens[index];
+      const token = tokens[index2];
       if (token.type === "group") {
         for (const seq of flatten(token.tokens, 0, init.slice())) {
-          yield* flatten(tokens, index + 1, seq);
+          yield* flatten(tokens, index2 + 1, seq);
         }
       } else {
         init.push(token);
       }
-      yield* flatten(tokens, index + 1, init);
+      yield* flatten(tokens, index2 + 1, init);
     }
     function toRegExpSource(tokens, delimiter, keys, originalPath) {
       let result = "";
@@ -21161,17 +21161,17 @@ var require_charset = __commonJS({
         i: i2
       };
     }
-    function getCharsetPriority(charset, accepted, index) {
+    function getCharsetPriority(charset, accepted, index2) {
       var priority = { o: -1, q: 0, s: 0 };
       for (var i2 = 0; i2 < accepted.length; i2++) {
-        var spec = specify(charset, accepted[i2], index);
+        var spec = specify(charset, accepted[i2], index2);
         if (spec && (priority.s - spec.s || priority.q - spec.q || priority.o - spec.o) < 0) {
           priority = spec;
         }
       }
       return priority;
     }
-    function specify(charset, spec, index) {
+    function specify(charset, spec, index2) {
       var s2 = 0;
       if (spec.charset.toLowerCase() === charset.toLowerCase()) {
         s2 |= 1;
@@ -21179,7 +21179,7 @@ var require_charset = __commonJS({
         return null;
       }
       return {
-        i: index,
+        i: index2,
         o: spec.i,
         q: spec.q,
         s: s2
@@ -21190,8 +21190,8 @@ var require_charset = __commonJS({
       if (!provided) {
         return accepts.filter(isQuality).sort(compareSpecs).map(getFullCharset);
       }
-      var priorities = provided.map(function getPriority(type, index) {
-        return getCharsetPriority(type, accepts, index);
+      var priorities = provided.map(function getPriority(type, index2) {
+        return getCharsetPriority(type, accepts, index2);
       });
       return priorities.filter(isQuality).sort(compareSpecs).map(function getCharset(priority) {
         return provided[priorities.indexOf(priority)];
@@ -21259,17 +21259,17 @@ var require_encoding = __commonJS({
         i: i2
       };
     }
-    function getEncodingPriority(encoding, accepted, index) {
+    function getEncodingPriority(encoding, accepted, index2) {
       var priority = { encoding, o: -1, q: 0, s: 0 };
       for (var i2 = 0; i2 < accepted.length; i2++) {
-        var spec = specify(encoding, accepted[i2], index);
+        var spec = specify(encoding, accepted[i2], index2);
         if (spec && (priority.s - spec.s || priority.q - spec.q || priority.o - spec.o) < 0) {
           priority = spec;
         }
       }
       return priority;
     }
-    function specify(encoding, spec, index) {
+    function specify(encoding, spec, index2) {
       var s2 = 0;
       if (spec.encoding.toLowerCase() === encoding.toLowerCase()) {
         s2 |= 1;
@@ -21278,7 +21278,7 @@ var require_encoding = __commonJS({
       }
       return {
         encoding,
-        i: index,
+        i: index2,
         o: spec.i,
         q: spec.q,
         s: s2
@@ -21303,8 +21303,8 @@ var require_encoding = __commonJS({
       if (!provided) {
         return accepts.filter(isQuality).sort(comparator).map(getFullEncoding);
       }
-      var priorities = provided.map(function getPriority(type, index) {
-        return getEncodingPriority(type, accepts, index);
+      var priorities = provided.map(function getPriority(type, index2) {
+        return getEncodingPriority(type, accepts, index2);
       });
       return priorities.filter(isQuality).sort(comparator).map(function getEncoding(priority) {
         return provided[priorities.indexOf(priority)];
@@ -21363,17 +21363,17 @@ var require_language = __commonJS({
         full
       };
     }
-    function getLanguagePriority(language, accepted, index) {
+    function getLanguagePriority(language, accepted, index2) {
       var priority = { o: -1, q: 0, s: 0 };
       for (var i2 = 0; i2 < accepted.length; i2++) {
-        var spec = specify(language, accepted[i2], index);
+        var spec = specify(language, accepted[i2], index2);
         if (spec && (priority.s - spec.s || priority.q - spec.q || priority.o - spec.o) < 0) {
           priority = spec;
         }
       }
       return priority;
     }
-    function specify(language, spec, index) {
+    function specify(language, spec, index2) {
       var p = parseLanguage(language);
       if (!p) return null;
       var s2 = 0;
@@ -21387,7 +21387,7 @@ var require_language = __commonJS({
         return null;
       }
       return {
-        i: index,
+        i: index2,
         o: spec.i,
         q: spec.q,
         s: s2
@@ -21398,8 +21398,8 @@ var require_language = __commonJS({
       if (!provided) {
         return accepts.filter(isQuality).sort(compareSpecs).map(getFullLanguage);
       }
-      var priorities = provided.map(function getPriority(type, index) {
-        return getLanguagePriority(type, accepts, index);
+      var priorities = provided.map(function getPriority(type, index2) {
+        return getLanguagePriority(type, accepts, index2);
       });
       return priorities.filter(isQuality).sort(compareSpecs).map(function getLanguage(priority) {
         return provided[priorities.indexOf(priority)];
@@ -21464,17 +21464,17 @@ var require_mediaType = __commonJS({
         i: i2
       };
     }
-    function getMediaTypePriority(type, accepted, index) {
+    function getMediaTypePriority(type, accepted, index2) {
       var priority = { o: -1, q: 0, s: 0 };
       for (var i2 = 0; i2 < accepted.length; i2++) {
-        var spec = specify(type, accepted[i2], index);
+        var spec = specify(type, accepted[i2], index2);
         if (spec && (priority.s - spec.s || priority.q - spec.q || priority.o - spec.o) < 0) {
           priority = spec;
         }
       }
       return priority;
     }
-    function specify(type, spec, index) {
+    function specify(type, spec, index2) {
       var p = parseMediaType(type);
       var s2 = 0;
       if (!p) {
@@ -21501,7 +21501,7 @@ var require_mediaType = __commonJS({
         }
       }
       return {
-        i: index,
+        i: index2,
         o: spec.i,
         q: spec.q,
         s: s2
@@ -21512,8 +21512,8 @@ var require_mediaType = __commonJS({
       if (!provided) {
         return accepts.filter(isQuality).sort(compareSpecs).map(getFullType);
       }
-      var priorities = provided.map(function getPriority(type, index) {
-        return getMediaTypePriority(type, accepts, index);
+      var priorities = provided.map(function getPriority(type, index2) {
+        return getMediaTypePriority(type, accepts, index2);
       });
       return priorities.filter(isQuality).sort(compareSpecs).map(function getType(priority) {
         return provided[priorities.indexOf(priority)];
@@ -21530,22 +21530,22 @@ var require_mediaType = __commonJS({
     }
     function quoteCount(string) {
       var count2 = 0;
-      var index = 0;
-      while ((index = string.indexOf('"', index)) !== -1) {
+      var index2 = 0;
+      while ((index2 = string.indexOf('"', index2)) !== -1) {
         count2++;
-        index++;
+        index2++;
       }
       return count2;
     }
     function splitKeyValuePair(str) {
-      var index = str.indexOf("=");
+      var index2 = str.indexOf("=");
       var key;
       var val;
-      if (index === -1) {
+      if (index2 === -1) {
         key = str;
       } else {
-        key = str.slice(0, index);
-        val = str.slice(index + 1);
+        key = str.slice(0, index2);
+        val = str.slice(index2 + 1);
       }
       return [key, val];
     }
@@ -21797,13 +21797,13 @@ var require_range_parser = __commonJS({
       if (typeof str !== "string") {
         throw new TypeError("argument str must be a string");
       }
-      var index = str.indexOf("=");
-      if (index === -1) {
+      var index2 = str.indexOf("=");
+      if (index2 === -1) {
         return -2;
       }
-      var arr = str.slice(index + 1).split(",");
+      var arr = str.slice(index2 + 1).split(",");
       var ranges = [];
-      ranges.type = str.slice(0, index);
+      ranges.type = str.slice(0, index2);
       for (var i2 = 0; i2 < arr.length; i2++) {
         var range = arr[i2].split("-");
         var start2 = parseInt(range[0], 10);
@@ -21847,11 +21847,11 @@ var require_range_parser = __commonJS({
       combined.type = ranges.type;
       return combined;
     }
-    function mapWithIndex(range, index) {
+    function mapWithIndex(range, index2) {
       return {
         start: range.start,
         end: range.end,
-        index
+        index: index2
       };
     }
     function mapWithoutIndex(range) {
@@ -21944,8 +21944,8 @@ var require_request = __commonJS({
         return proto;
       }
       var header = this.get("X-Forwarded-Proto") || proto;
-      var index = header.indexOf(",");
-      return index !== -1 ? header.substring(0, index).trim() : header.trim();
+      var index2 = header.indexOf(",");
+      return index2 !== -1 ? header.substring(0, index2).trim() : header.trim();
     });
     defineGetter(req, "secure", function secure() {
       return this.protocol === "https";
@@ -21984,8 +21984,8 @@ var require_request = __commonJS({
       var host = this.host;
       if (!host) return;
       var offset = host[0] === "[" ? host.indexOf("]") + 1 : 0;
-      var index = host.indexOf(":", offset);
-      return index !== -1 ? host.substring(0, index) : host;
+      var index2 = host.indexOf(":", offset);
+      return index2 !== -1 ? host.substring(0, index2) : host;
     });
     defineGetter(req, "fresh", function() {
       var method = this.method;
@@ -22121,18 +22121,18 @@ var require_content_disposition = __commonJS({
       if (!match) {
         throw new TypeError("invalid type format");
       }
-      var index = match[0].length;
+      var index2 = match[0].length;
       var type = match[1].toLowerCase();
       var key;
       var names = [];
       var params = {};
       var value;
-      index = PARAM_REGEXP.lastIndex = match[0].slice(-1) === ";" ? index - 1 : index;
+      index2 = PARAM_REGEXP.lastIndex = match[0].slice(-1) === ";" ? index2 - 1 : index2;
       while (match = PARAM_REGEXP.exec(string)) {
-        if (match.index !== index) {
+        if (match.index !== index2) {
           throw new TypeError("invalid parameter format");
         }
-        index += match[0].length;
+        index2 += match[0].length;
         key = match[1].toLowerCase();
         value = match[2];
         if (names.indexOf(key) !== -1) {
@@ -22153,7 +22153,7 @@ var require_content_disposition = __commonJS({
         }
         params[key] = value;
       }
-      if (index !== -1 && index !== string.length) {
+      if (index2 !== -1 && index2 !== string.length) {
         throw new TypeError("invalid parameter format");
       }
       return new ContentDisposition(type, params);
@@ -22218,20 +22218,20 @@ var require_cookie = __commonJS({
       var len = str.length;
       if (len < 2) return obj;
       var dec = opt && opt.decode || decode2;
-      var index = 0;
+      var index2 = 0;
       var eqIdx = 0;
       var endIdx = 0;
       do {
-        eqIdx = str.indexOf("=", index);
+        eqIdx = str.indexOf("=", index2);
         if (eqIdx === -1) break;
-        endIdx = str.indexOf(";", index);
+        endIdx = str.indexOf(";", index2);
         if (endIdx === -1) {
           endIdx = len;
         } else if (eqIdx > endIdx) {
-          index = str.lastIndexOf(";", eqIdx - 1) + 1;
+          index2 = str.lastIndexOf(";", eqIdx - 1) + 1;
           continue;
         }
-        var keyStartIdx = startIndex(str, index, eqIdx);
+        var keyStartIdx = startIndex(str, index2, eqIdx);
         var keyEndIdx = endIndex(str, eqIdx, keyStartIdx);
         var key = str.slice(keyStartIdx, keyEndIdx);
         if (!__hasOwnProperty.call(obj, key)) {
@@ -22244,21 +22244,21 @@ var require_cookie = __commonJS({
           var val = str.slice(valStartIdx, valEndIdx);
           obj[key] = tryDecode(val, dec);
         }
-        index = endIdx + 1;
-      } while (index < len);
+        index2 = endIdx + 1;
+      } while (index2 < len);
       return obj;
     }
-    function startIndex(str, index, max2) {
+    function startIndex(str, index2, max2) {
       do {
-        var code = str.charCodeAt(index);
-        if (code !== 32 && code !== 9) return index;
-      } while (++index < max2);
+        var code = str.charCodeAt(index2);
+        if (code !== 32 && code !== 9) return index2;
+      } while (++index2 < max2);
       return max2;
     }
-    function endIndex(str, index, min2) {
-      while (index > min2) {
-        var code = str.charCodeAt(--index);
-        if (code !== 32 && code !== 9) return index + 1;
+    function endIndex(str, index2, min2) {
+      while (index2 > min2) {
+        var code = str.charCodeAt(--index2);
+        if (code !== 32 && code !== 9) return index2 + 1;
       }
       return min2;
     }
@@ -24863,8 +24863,8 @@ var require_redaction = __commonJS({
         if (o[ns] === null) {
           return o;
         }
-        const { index } = next;
-        const nextPath = `${str.substr(index, str.length - 1)}`;
+        const { index: index2 } = next;
+        const nextPath = `${str.substr(index2, str.length - 1)}`;
         o[ns] = o[ns] || [];
         if (ns !== wildcardFirstSym && o[ns].length === 0) {
           o[ns].push(...o[wildcardFirstSym] || []);
@@ -24970,8 +24970,8 @@ var require_quick_format_unescaped = __commonJS({
         if (len === 1) return f3;
         var objects = new Array(len);
         objects[0] = ss(f3);
-        for (var index = 1; index < len; index++) {
-          objects[index] = ss(args[index]);
+        for (var index2 = 1; index2 < len; index2++) {
+          objects[index2] = ss(args[index2]);
         }
         return objects.join(" ");
       }
@@ -25742,8 +25742,8 @@ var require_on_exit_leak_free = __commonJS({
     }
     function clear(ref) {
       for (const event of ["exit", "beforeExit"]) {
-        const index = refs[event].indexOf(ref);
-        refs[event].splice(index, index + 1);
+        const index2 = refs[event].indexOf(ref);
+        refs[event].splice(index2, index2 + 1);
         uninstall(event);
       }
     }
@@ -25853,9 +25853,9 @@ var require_wait = __commonJS({
   "../../node_modules/.pnpm/thread-stream@3.1.0/node_modules/thread-stream/lib/wait.js"(exports2, module2) {
     "use strict";
     var MAX_TIMEOUT = 1e3;
-    function wait(state, index, expected, timeout, done) {
+    function wait(state, index2, expected, timeout, done) {
       const max2 = Date.now() + timeout;
-      let current = Atomics.load(state, index);
+      let current = Atomics.load(state, index2);
       if (current === expected) {
         done(null, "ok");
         return;
@@ -25867,7 +25867,7 @@ var require_wait = __commonJS({
         } else {
           setTimeout(() => {
             prior = current;
-            current = Atomics.load(state, index);
+            current = Atomics.load(state, index2);
             if (current === prior) {
               check(backoff >= MAX_TIMEOUT ? MAX_TIMEOUT : backoff * 2);
             } else {
@@ -25879,9 +25879,9 @@ var require_wait = __commonJS({
       };
       check(1);
     }
-    function waitDiff(state, index, expected, timeout, done) {
+    function waitDiff(state, index2, expected, timeout, done) {
       const max2 = Date.now() + timeout;
-      let current = Atomics.load(state, index);
+      let current = Atomics.load(state, index2);
       if (current !== expected) {
         done(null, "ok");
         return;
@@ -25891,7 +25891,7 @@ var require_wait = __commonJS({
           done(null, "timed-out");
         } else {
           setTimeout(() => {
-            current = Atomics.load(state, index);
+            current = Atomics.load(state, index2);
             if (current !== expected) {
               done(null, "ok");
             } else {
@@ -27975,9 +27975,9 @@ var require_multistream = __commonJS({
       }
       function remove(id) {
         const { streams } = this;
-        const index = streams.findIndex((s2) => s2.id === id);
-        if (index >= 0) {
-          streams.splice(index, 1);
+        const index2 = streams.findIndex((s2) => s2.id === id);
+        if (index2 >= 0) {
+          streams.splice(index2, 1);
           streams.sort(compareByLevel);
           this.minLevel = streams.length > 0 ? streams[0].level : -1;
         }
@@ -29761,46 +29761,46 @@ var require_cert_signatures = __commonJS({
     function x509Error(msg, cert) {
       return new Error("SASL channel binding: " + msg + " when parsing public certificate " + cert.toString("base64"));
     }
-    function readASN1Length(data, index) {
-      let length = data[index++];
-      if (length < 128) return { length, index };
+    function readASN1Length(data, index2) {
+      let length = data[index2++];
+      if (length < 128) return { length, index: index2 };
       const lengthBytes = length & 127;
       if (lengthBytes > 4) throw x509Error("bad length", data);
       length = 0;
       for (let i2 = 0; i2 < lengthBytes; i2++) {
-        length = length << 8 | data[index++];
+        length = length << 8 | data[index2++];
       }
-      return { length, index };
+      return { length, index: index2 };
     }
-    function readASN1OID(data, index) {
-      if (data[index++] !== 6) throw x509Error("non-OID data", data);
-      const { length: OIDLength, index: indexAfterOIDLength } = readASN1Length(data, index);
-      index = indexAfterOIDLength;
-      const lastIndex = index + OIDLength;
-      const byte1 = data[index++];
+    function readASN1OID(data, index2) {
+      if (data[index2++] !== 6) throw x509Error("non-OID data", data);
+      const { length: OIDLength, index: indexAfterOIDLength } = readASN1Length(data, index2);
+      index2 = indexAfterOIDLength;
+      const lastIndex = index2 + OIDLength;
+      const byte1 = data[index2++];
       let oid = (byte1 / 40 >> 0) + "." + byte1 % 40;
-      while (index < lastIndex) {
+      while (index2 < lastIndex) {
         let value = 0;
-        while (index < lastIndex) {
-          const nextByte = data[index++];
+        while (index2 < lastIndex) {
+          const nextByte = data[index2++];
           value = value << 7 | nextByte & 127;
           if (nextByte < 128) break;
         }
         oid += "." + value;
       }
-      return { oid, index };
+      return { oid, index: index2 };
     }
-    function expectASN1Seq(data, index) {
-      if (data[index++] !== 48) throw x509Error("non-sequence data", data);
-      return readASN1Length(data, index);
+    function expectASN1Seq(data, index2) {
+      if (data[index2++] !== 48) throw x509Error("non-sequence data", data);
+      return readASN1Length(data, index2);
     }
-    function signatureAlgorithmHashFromCertificate(data, index) {
-      if (index === void 0) index = 0;
-      index = expectASN1Seq(data, index).index;
-      const { length: certInfoLength, index: indexAfterCertInfoLength } = expectASN1Seq(data, index);
-      index = indexAfterCertInfoLength + certInfoLength;
-      index = expectASN1Seq(data, index).index;
-      const { oid, index: indexAfterOID } = readASN1OID(data, index);
+    function signatureAlgorithmHashFromCertificate(data, index2) {
+      if (index2 === void 0) index2 = 0;
+      index2 = expectASN1Seq(data, index2).index;
+      const { length: certInfoLength, index: indexAfterCertInfoLength } = expectASN1Seq(data, index2);
+      index2 = indexAfterCertInfoLength + certInfoLength;
+      index2 = expectASN1Seq(data, index2).index;
+      const { oid, index: indexAfterOID } = readASN1OID(data, index2);
       switch (oid) {
         // RSA
         case "1.2.840.113549.1.1.4":
@@ -29832,12 +29832,12 @@ var require_cert_signatures = __commonJS({
           return "SHA-512";
         // RSASSA-PSS: hash is indicated separately
         case "1.2.840.113549.1.1.10": {
-          index = indexAfterOID;
-          index = expectASN1Seq(data, index).index;
-          if (data[index++] !== 160) throw x509Error("non-tag data", data);
-          index = readASN1Length(data, index).index;
-          index = expectASN1Seq(data, index).index;
-          const { oid: hashOID } = readASN1OID(data, index);
+          index2 = indexAfterOID;
+          index2 = expectASN1Seq(data, index2).index;
+          if (data[index2++] !== 160) throw x509Error("non-tag data", data);
+          index2 = readASN1Length(data, index2).index;
+          index2 = expectASN1Seq(data, index2).index;
+          const { oid: hashOID } = readASN1OID(data, index2);
           switch (hashOID) {
             // standalone hash OIDs
             case "1.2.840.113549.2.5":
@@ -32632,9 +32632,9 @@ var require_client = __commonJS({
             queryCallback(error);
             query.callback = () => {
             };
-            const index = this._queryQueue.indexOf(query);
-            if (index > -1) {
-              this._queryQueue.splice(index, 1);
+            const index2 = this._queryQueue.indexOf(query);
+            if (index2 > -1) {
+              this._queryQueue.splice(index2, 1);
             }
             this._pulseQueryQueue();
           }, readTimeout);
@@ -33424,9 +33424,9 @@ var require_client2 = __commonJS({
           queryCallback(error);
           query.callback = () => {
           };
-          const index = this._queryQueue.indexOf(query);
-          if (index > -1) {
-            this._queryQueue.splice(index, 1);
+          const index2 = this._queryQueue.indexOf(query);
+          if (index2 > -1) {
+            this._queryQueue.splice(index2, 1);
           }
           this._pulseQueryQueue();
         }, readTimeout);
@@ -35225,8 +35225,8 @@ function haveSameKeys(left, right) {
   if (leftKeys.length !== rightKeys.length) {
     return false;
   }
-  for (const [index, key] of leftKeys.entries()) {
-    if (key !== rightKeys[index]) {
+  for (const [index2, key] of leftKeys.entries()) {
+    if (key !== rightKeys[index2]) {
       return false;
     }
   }
@@ -37117,6 +37117,9 @@ var init_columns = __esm({
 });
 
 // ../../node_modules/.pnpm/drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0/node_modules/drizzle-orm/pg-core/indexes.js
+function index(name2) {
+  return new IndexBuilderOn(false, name2);
+}
 var IndexBuilderOn, IndexBuilder, Index;
 var init_indexes = __esm({
   "../../node_modules/.pnpm/drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0/node_modules/drizzle-orm/pg-core/indexes.js"() {
@@ -38143,8 +38146,8 @@ var init_dialect = __esm({
           return void 0;
         }
         const joinsArray = [];
-        for (const [index, joinMeta] of joins.entries()) {
-          if (index === 0) {
+        for (const [index2, joinMeta] of joins.entries()) {
+          if (index2 === 0) {
             joinsArray.push(sql` `);
           }
           const table = joinMeta.table;
@@ -38171,7 +38174,7 @@ var init_dialect = __esm({
               sql`${sql.raw(joinMeta.joinType)} join${lateralSql} ${table}${onSql}`
             );
           }
-          if (index < joins.length - 1) {
+          if (index2 < joins.length - 1) {
             joinsArray.push(sql` `);
           }
         }
@@ -42229,33 +42232,46 @@ var init_numbers = __esm({
     init_users();
     init_services();
     init_countries();
-    virtualNumbersTable = pgTable("virtual_numbers", {
-      id: uuid("id").primaryKey().defaultRandom(),
-      userId: uuid("user_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
-      serviceId: uuid("service_id").notNull().references(() => servicesTable.id),
-      countryId: uuid("country_id").notNull().references(() => countriesTable.id),
-      phoneNumber: text("phone_number").notNull(),
-      status: text("status").notNull().default("waiting"),
-      price: integer("price").notNull(),
-      expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
-      smsScheduledAt: timestamp("sms_scheduled_at", { withTimezone: true }),
-      externalOrderId: text("external_order_id"),
-      /**
-       * Type de numéro :
-       *   "activation" — numéro one-shot (défaut), valide ~20 min
-       *   "hosting"    — numéro en location longue durée (1 jour ou 3 heures)
-       */
-      numberType: text("number_type").notNull().default("activation"),
-      /**
-       * Durée de location pour les numéros hosting.
-       *   "1day"   — 24 heures
-       *   "3hours" — 3 heures
-       *   null     — pour les numéros d'activation classiques
-       */
-      hostingDuration: text("hosting_duration"),
-      createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-      updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => /* @__PURE__ */ new Date())
-    });
+    virtualNumbersTable = pgTable(
+      "virtual_numbers",
+      {
+        id: uuid("id").primaryKey().defaultRandom(),
+        userId: uuid("user_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
+        serviceId: uuid("service_id").notNull().references(() => servicesTable.id),
+        countryId: uuid("country_id").notNull().references(() => countriesTable.id),
+        phoneNumber: text("phone_number").notNull(),
+        status: text("status").notNull().default("waiting"),
+        price: integer("price").notNull(),
+        expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+        smsScheduledAt: timestamp("sms_scheduled_at", { withTimezone: true }),
+        externalOrderId: text("external_order_id"),
+        /**
+         * Type de numéro :
+         *   "activation" — numéro one-shot (défaut), valide ~20 min
+         *   "hosting"    — numéro en location longue durée (1 jour ou 3 heures)
+         */
+        numberType: text("number_type").notNull().default("activation"),
+        /**
+         * Durée de location pour les numéros hosting.
+         *   "1day"   — 24 heures
+         *   "3hours" — 3 heures
+         *   null     — pour les numéros d'activation classiques
+         */
+        hostingDuration: text("hosting_duration"),
+        createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+        updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => /* @__PURE__ */ new Date())
+      },
+      (t2) => [
+        /* Support for "list active numbers for a user" (very frequent query) */
+        index("idx_virtual_numbers_user_id").on(t2.userId),
+        /* Support for expiry sweeper — finds waiting numbers past expiresAt */
+        index("idx_virtual_numbers_expires_at").on(t2.expiresAt),
+        /* Support for filtering by status (waiting / received / cancelled / expired) */
+        index("idx_virtual_numbers_status").on(t2.status),
+        /* Support for 5sim poller lookup by externalOrderId */
+        index("idx_virtual_numbers_external_order_id").on(t2.externalOrderId)
+      ]
+    );
   }
 });
 
@@ -42266,14 +42282,21 @@ var init_sms_messages = __esm({
     "use strict";
     init_pg_core();
     init_numbers();
-    smsMessagesTable = pgTable("sms_messages", {
-      id: uuid("id").primaryKey().defaultRandom(),
-      numberId: uuid("number_id").notNull().references(() => virtualNumbersTable.id, { onDelete: "cascade" }),
-      sender: text("sender").notNull(),
-      body: text("body").notNull(),
-      code: text("code").notNull().default(""),
-      receivedAt: timestamp("received_at", { withTimezone: true }).notNull().defaultNow()
-    });
+    smsMessagesTable = pgTable(
+      "sms_messages",
+      {
+        id: uuid("id").primaryKey().defaultRandom(),
+        numberId: uuid("number_id").notNull().references(() => virtualNumbersTable.id, { onDelete: "cascade" }),
+        sender: text("sender").notNull(),
+        body: text("body").notNull(),
+        code: text("code").notNull().default(""),
+        receivedAt: timestamp("received_at", { withTimezone: true }).notNull().defaultNow()
+      },
+      (t2) => [
+        /* Support for "list all SMS for a given virtual number" (very frequent, N+1 in active list) */
+        index("idx_sms_messages_number_id").on(t2.numberId)
+      ]
+    );
   }
 });
 
@@ -42284,23 +42307,36 @@ var init_transactions = __esm({
     "use strict";
     init_pg_core();
     init_users();
-    transactionsTable = pgTable("transactions", {
-      id: uuid("id").primaryKey().defaultRandom(),
-      userId: uuid("user_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
-      type: text("type").notNull(),
-      amount: integer("amount").notNull(),
-      status: text("status").notNull().default("completed"),
-      method: text("method"),
-      description: text("description"),
-      externalDepositId: text("external_deposit_id"),
-      /**
-       * Gateway-specific metadata stored as JSON string.
-       * For Clapay: { clapaySignature, clapayCurrency, clapayCountry }
-       * For PawaPay: { provider, currency }
-       */
-      gatewayMeta: text("gateway_meta"),
-      createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
-    });
+    transactionsTable = pgTable(
+      "transactions",
+      {
+        id: uuid("id").primaryKey().defaultRandom(),
+        userId: uuid("user_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
+        type: text("type").notNull(),
+        amount: integer("amount").notNull(),
+        status: text("status").notNull().default("completed"),
+        method: text("method"),
+        description: text("description"),
+        externalDepositId: text("external_deposit_id"),
+        /**
+         * Gateway-specific metadata stored as JSON string.
+         * For Clapay: { clapaySignature, clapayCurrency, clapayCountry }
+         * For PawaPay: { provider, currency }
+         */
+        gatewayMeta: text("gateway_meta"),
+        createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
+      },
+      (t2) => [
+        /* Support for "list transactions for a user" (wallet history, very frequent) */
+        index("idx_transactions_user_id").on(t2.userId),
+        /* Support for filtering by status (pending / completed / failed) */
+        index("idx_transactions_status").on(t2.status),
+        /* Deduplication check — prevent double-crediting same external deposit */
+        index("idx_transactions_external_deposit_id").on(t2.externalDepositId),
+        /* Support for admin / reconciliation queries ordered by date */
+        index("idx_transactions_created_at").on(t2.createdAt)
+      ]
+    );
   }
 });
 
@@ -42311,12 +42347,21 @@ var init_sessions = __esm({
     "use strict";
     init_pg_core();
     init_users();
-    sessionsTable = pgTable("sessions", {
-      id: text("id").primaryKey(),
-      userId: uuid("user_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
-      expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
-      createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
-    });
+    sessionsTable = pgTable(
+      "sessions",
+      {
+        id: text("id").primaryKey(),
+        userId: uuid("user_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
+        expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+        createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
+      },
+      (t2) => [
+        /* Support for "delete all sessions for a user" (logout-all-devices) */
+        index("idx_sessions_user_id").on(t2.userId),
+        /* Support for session cleanup job — find expired sessions to purge */
+        index("idx_sessions_expires_at").on(t2.expiresAt)
+      ]
+    );
   }
 });
 
@@ -45573,18 +45618,18 @@ var require_lib7 = __commonJS({
           throw new TypeError("Value of `this` is not a HeadersIterator");
         }
         var _INTERNAL = this[INTERNAL];
-        const target = _INTERNAL.target, kind = _INTERNAL.kind, index = _INTERNAL.index;
+        const target = _INTERNAL.target, kind = _INTERNAL.kind, index2 = _INTERNAL.index;
         const values = getHeaders2(target, kind);
         const len = values.length;
-        if (index >= len) {
+        if (index2 >= len) {
           return {
             value: void 0,
             done: true
           };
         }
-        this[INTERNAL].index = index + 1;
+        this[INTERNAL].index = index2 + 1;
         return {
-          value: values[index],
+          value: values[index2],
           done: false
         };
       }
@@ -47008,9 +47053,9 @@ var require_dist3 = __commonJS({
           return;
         }
         const sockets = this.sockets[name2];
-        const index = sockets.indexOf(socket);
-        if (index !== -1) {
-          sockets.splice(index, 1);
+        const index2 = sockets.indexOf(socket);
+        if (index2 !== -1) {
+          sockets.splice(index2, 1);
           this.totalSocketCount--;
           if (sockets.length === 0) {
             delete this.sockets[name2];
@@ -60048,9 +60093,9 @@ var require_stream_readable = __commonJS({
         });
         return this;
       }
-      var index = indexOf(state.pipes, dest);
-      if (index === -1) return this;
-      state.pipes.splice(index, 1);
+      var index2 = indexOf(state.pipes, dest);
+      if (index2 === -1) return this;
+      state.pipes.splice(index2, 1);
       state.pipesCount -= 1;
       if (state.pipesCount === 1) state.pipes = state.pipes[0];
       dest.emit("unpipe", this, unpipeInfo);
@@ -76156,7 +76201,7 @@ var init_multipart_parser = __esm({
         let i2 = 0;
         const length_ = data.length;
         let previousIndex = this.index;
-        let { lookbehind, boundary, boundaryChars, index, state, flags } = this;
+        let { lookbehind, boundary, boundaryChars, index: index2, state, flags } = this;
         const boundaryLength = this.boundary.length;
         const boundaryEnd = boundaryLength - 1;
         const bufferLength = data.length;
@@ -76190,20 +76235,20 @@ var init_multipart_parser = __esm({
           c = data[i2];
           switch (state) {
             case S.START_BOUNDARY:
-              if (index === boundary.length - 2) {
+              if (index2 === boundary.length - 2) {
                 if (c === HYPHEN) {
                   flags |= F.LAST_BOUNDARY;
                 } else if (c !== CR) {
                   return;
                 }
-                index++;
+                index2++;
                 break;
-              } else if (index - 1 === boundary.length - 2) {
+              } else if (index2 - 1 === boundary.length - 2) {
                 if (flags & F.LAST_BOUNDARY && c === HYPHEN) {
                   state = S.END;
                   flags = 0;
                 } else if (!(flags & F.LAST_BOUNDARY) && c === LF) {
-                  index = 0;
+                  index2 = 0;
                   callback("onPartBegin");
                   state = S.HEADER_FIELD_START;
                 } else {
@@ -76211,17 +76256,17 @@ var init_multipart_parser = __esm({
                 }
                 break;
               }
-              if (c !== boundary[index + 2]) {
-                index = -2;
+              if (c !== boundary[index2 + 2]) {
+                index2 = -2;
               }
-              if (c === boundary[index + 2]) {
-                index++;
+              if (c === boundary[index2 + 2]) {
+                index2++;
               }
               break;
             case S.HEADER_FIELD_START:
               state = S.HEADER_FIELD;
               mark("onHeaderField");
-              index = 0;
+              index2 = 0;
             // falls through
             case S.HEADER_FIELD:
               if (c === CR) {
@@ -76229,12 +76274,12 @@ var init_multipart_parser = __esm({
                 state = S.HEADERS_ALMOST_DONE;
                 break;
               }
-              index++;
+              index2++;
               if (c === HYPHEN) {
                 break;
               }
               if (c === COLON) {
-                if (index === 1) {
+                if (index2 === 1) {
                   return;
                 }
                 dataCallback("onHeaderField", true);
@@ -76278,8 +76323,8 @@ var init_multipart_parser = __esm({
               mark("onPartData");
             // falls through
             case S.PART_DATA:
-              previousIndex = index;
-              if (index === 0) {
+              previousIndex = index2;
+              if (index2 === 0) {
                 i2 += boundaryEnd;
                 while (i2 < bufferLength && !(data[i2] in boundaryChars)) {
                   i2 += boundaryLength;
@@ -76287,27 +76332,27 @@ var init_multipart_parser = __esm({
                 i2 -= boundaryEnd;
                 c = data[i2];
               }
-              if (index < boundary.length) {
-                if (boundary[index] === c) {
-                  if (index === 0) {
+              if (index2 < boundary.length) {
+                if (boundary[index2] === c) {
+                  if (index2 === 0) {
                     dataCallback("onPartData", true);
                   }
-                  index++;
+                  index2++;
                 } else {
-                  index = 0;
+                  index2 = 0;
                 }
-              } else if (index === boundary.length) {
-                index++;
+              } else if (index2 === boundary.length) {
+                index2++;
                 if (c === CR) {
                   flags |= F.PART_BOUNDARY;
                 } else if (c === HYPHEN) {
                   flags |= F.LAST_BOUNDARY;
                 } else {
-                  index = 0;
+                  index2 = 0;
                 }
-              } else if (index - 1 === boundary.length) {
+              } else if (index2 - 1 === boundary.length) {
                 if (flags & F.PART_BOUNDARY) {
-                  index = 0;
+                  index2 = 0;
                   if (c === LF) {
                     flags &= ~F.PART_BOUNDARY;
                     callback("onPartEnd");
@@ -76321,14 +76366,14 @@ var init_multipart_parser = __esm({
                     state = S.END;
                     flags = 0;
                   } else {
-                    index = 0;
+                    index2 = 0;
                   }
                 } else {
-                  index = 0;
+                  index2 = 0;
                 }
               }
-              if (index > 0) {
-                lookbehind[index - 1] = c;
+              if (index2 > 0) {
+                lookbehind[index2 - 1] = c;
               } else if (previousIndex > 0) {
                 const _lookbehind = new Uint8Array(lookbehind.buffer, lookbehind.byteOffset, lookbehind.byteLength);
                 callback("onPartData", 0, previousIndex, _lookbehind);
@@ -76346,7 +76391,7 @@ var init_multipart_parser = __esm({
         dataCallback("onHeaderField");
         dataCallback("onHeaderValue");
         dataCallback("onPartData");
-        this.index = index;
+        this.index = index2;
         this.state = state;
         this.flags = flags;
       }
@@ -76622,9 +76667,9 @@ var init_body = __esm({
 // ../../node_modules/.pnpm/node-fetch@3.3.2/node_modules/node-fetch/src/headers.js
 function fromRawHeaders(headers = []) {
   return new Headers2(
-    headers.reduce((result, value, index, array) => {
-      if (index % 2 === 0) {
-        result.push(array.slice(index, index + 2));
+    headers.reduce((result, value, index2, array) => {
+      if (index2 % 2 === 0) {
+        result.push(array.slice(index2, index2 + 2));
       }
       return result;
     }, []).filter(([name2, value]) => {
@@ -82508,12 +82553,12 @@ var require_certificatesubjecttokensupplier = __commonJS({
         try {
           const chainPems = await fs6.promises.readFile(this.trustChainPath, "utf8");
           const pemBlocks = chainPems.match(/-----BEGIN CERTIFICATE-----[^-]+-----END CERTIFICATE-----/g) ?? [];
-          const chainCerts = pemBlocks.map((pem, index) => {
+          const chainCerts = pemBlocks.map((pem, index2) => {
             try {
               return new crypto_1.X509Certificate(pem);
             } catch (err) {
               const message = err instanceof Error ? err.message : String(err);
-              throw new InvalidConfigurationError(`Failed to parse certificate at index ${index} in trust chain file ${this.trustChainPath}: ${message}`);
+              throw new InvalidConfigurationError(`Failed to parse certificate at index ${index2} in trust chain file ${this.trustChainPath}: ${message}`);
             }
           });
           const leafIndex = chainCerts.findIndex((chainCert) => leafCert.raw.equals(chainCert.raw));
@@ -90131,10 +90176,10 @@ var ZodObject = class _ZodObject extends ZodType {
   //   }) as any;
   //   return merged;
   // }
-  catchall(index) {
+  catchall(index2) {
     return new _ZodObject({
       ...this._def,
-      catchall: index
+      catchall: index2
     });
   }
   pick(mask) {
@@ -90452,9 +90497,9 @@ function mergeValues(a, b) {
       return { valid: false };
     }
     const newArray = [];
-    for (let index = 0; index < a.length; index++) {
-      const itemA = a[index];
-      const itemB = b[index];
+    for (let index2 = 0; index2 < a.length; index2++) {
+      const itemA = a[index2];
+      const itemB = b[index2];
       const sharedValue = mergeValues(itemA, itemB);
       if (!sharedValue.valid) {
         return { valid: false };
@@ -90660,10 +90705,10 @@ var ZodMap = class extends ZodType {
     }
     const keyType = this._def.keyType;
     const valueType = this._def.valueType;
-    const pairs = [...ctx.data.entries()].map(([key, value], index) => {
+    const pairs = [...ctx.data.entries()].map(([key, value], index2) => {
       return {
-        key: keyType._parse(new ParseInputLazyPath(ctx, key, ctx.path, [index, "key"])),
-        value: valueType._parse(new ParseInputLazyPath(ctx, value, ctx.path, [index, "value"]))
+        key: keyType._parse(new ParseInputLazyPath(ctx, key, ctx.path, [index2, "key"])),
+        value: valueType._parse(new ParseInputLazyPath(ctx, value, ctx.path, [index2, "value"]))
       };
     });
     if (ctx.common.async) {
@@ -105783,7 +105828,7 @@ init_src();
 init_drizzle_orm();
 var import_node_crypto2 = require("node:crypto");
 init_src();
-var SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1e3;
+var SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1e3;
 var SESSION_COOKIE = "simix_session";
 function generateSessionId() {
   return (0, import_node_crypto2.randomBytes)(32).toString("hex");
@@ -112574,7 +112619,7 @@ router8.post("/numbers", requireAuth, async (req, res) => {
     res.status(402).json({ error: "Solde insuffisant. Rechargez votre portefeuille." });
     return;
   }
-  const [updatedUser] = await db.update(usersTable).set({ balance: user.balance - price }).where(and(eq(usersTable.id, user.id), gt(usersTable.balance, price - 1))).returning();
+  const [updatedUser] = await db.update(usersTable).set({ balance: sql`${usersTable.balance} - ${price}` }).where(and(eq(usersTable.id, user.id), gt(usersTable.balance, price - 1))).returning();
   if (!updatedUser) {
     res.status(402).json({ error: "Solde insuffisant. Veuillez r\xE9essayer." });
     return;
@@ -112632,31 +112677,39 @@ router8.post("/numbers", requireAuth, async (req, res) => {
     }
     return;
   }
-  const [vn] = await db.insert(virtualNumbersTable).values({
-    userId: user.id,
-    serviceId: service.id,
-    countryId: country.id,
-    phoneNumber,
-    status: "waiting",
-    price,
-    expiresAt: actualExpiresAt,
-    externalOrderId,
-    numberType: numberType2,
-    hostingDuration: numberType2 === "hosting" ? hostingDuration : null
-  }).returning();
-  if (!vn) {
+  let vn;
+  try {
+    const result = await db.transaction(async (tx) => {
+      const [insertedVn] = await tx.insert(virtualNumbersTable).values({
+        userId: user.id,
+        serviceId: service.id,
+        countryId: country.id,
+        phoneNumber,
+        status: "waiting",
+        price,
+        expiresAt: actualExpiresAt,
+        externalOrderId,
+        numberType: numberType2,
+        hostingDuration: numberType2 === "hosting" ? hostingDuration : null
+      }).returning();
+      if (!insertedVn) throw new Error("virtualNumbersTable insert returned empty");
+      await tx.insert(transactionsTable).values({
+        userId: user.id,
+        type: "purchase",
+        amount: price,
+        status: "completed",
+        method: "wallet",
+        description: `${service.name} \u2013 ${country.name} (5sim)`
+      });
+      return insertedVn;
+    });
+    vn = result;
+  } catch (persistErr) {
+    logger.error({ err: persistErr.message, userId: user.id, phoneNumber }, "[buy] DB persist failed \u2014 refunding");
     await db.update(usersTable).set({ balance: sql`${usersTable.balance} + ${price}` }).where(eq(usersTable.id, user.id));
-    res.status(500).json({ error: "Erreur lors de la cr\xE9ation du num\xE9ro" });
+    res.status(500).json({ error: "Erreur lors de la cr\xE9ation du num\xE9ro. Votre solde a \xE9t\xE9 rembours\xE9." });
     return;
   }
-  await db.insert(transactionsTable).values({
-    userId: user.id,
-    type: "purchase",
-    amount: price,
-    status: "completed",
-    method: "wallet",
-    description: `${service.name} \u2013 ${country.name} (5sim)`
-  });
   if (user.referredBy) {
     try {
       const commissionRate = await getReferralCommissionRate();
@@ -112740,6 +112793,10 @@ router8.get("/numbers/:numberId", requireAuth, async (req, res) => {
 router8.post("/numbers/:numberId/poll", requireAuth, async (req, res) => {
   const numberId = String(req.params.numberId);
   const user = req.user;
+  if (isRateLimited(`poll:${user.id}`, 12, 6e4)) {
+    res.status(429).json({ error: "Trop de v\xE9rifications. Attendez quelques secondes." });
+    return;
+  }
   const [row] = await db.select({ n: virtualNumbersTable, s: servicesTable, c: countriesTable }).from(virtualNumbersTable).innerJoin(servicesTable, eq(virtualNumbersTable.serviceId, servicesTable.id)).innerJoin(countriesTable, eq(virtualNumbersTable.countryId, countriesTable.id)).where(and(eq(virtualNumbersTable.id, numberId), eq(virtualNumbersTable.userId, user.id))).limit(1);
   if (!row) {
     res.status(404).json({ error: "Num\xE9ro introuvable" });
@@ -120584,6 +120641,8 @@ var routes_default = router26;
 // src/app.ts
 init_logger2();
 init_src();
+init_src();
+init_drizzle_orm();
 
 // src/middlewares/security.ts
 init_drizzle_orm();
@@ -121548,14 +121607,85 @@ async function seedCountryPaymentConfigs() {
 // src/app.ts
 var app = (0, import_express28.default)();
 app.set("trust proxy", 1);
+var buildAllowedOrigins = () => {
+  const origins = /* @__PURE__ */ new Set();
+  if (process.env.APP_URL) origins.add(process.env.APP_URL.replace(/\/$/, ""));
+  if (process.env.REPLIT_DEV_DOMAIN) origins.add(`https://${process.env.REPLIT_DEV_DOMAIN}`);
+  if (process.env.REPLIT_DOMAINS) {
+    for (const d of process.env.REPLIT_DOMAINS.split(",")) {
+      const domain = d.trim();
+      if (domain) origins.add(`https://${domain}`);
+    }
+  }
+  if (process.env.NODE_ENV !== "production") {
+    origins.add("http://localhost:5000");
+    origins.add("http://localhost:3000");
+    origins.add("http://localhost:5173");
+  }
+  return origins;
+};
+var _allowedOrigins = null;
+function getAllowedOrigins() {
+  if (!_allowedOrigins) _allowedOrigins = buildAllowedOrigins();
+  return _allowedOrigins;
+}
 app.use(
-  helmet({
-    crossOriginResourcePolicy: { policy: "cross-origin" },
-    contentSecurityPolicy: false,
-    // Allow the app to be embedded as PWA — disable X-Frame-Options restriction for same-origin
-    frameguard: false
+  (0, import_cors.default)({
+    credentials: true,
+    origin: (origin, callback) => {
+      if (!origin) return callback(null, true);
+      if (getAllowedOrigins().has(origin)) return callback(null, true);
+      logger.warn({ origin }, "[cors] Rejected cross-origin request");
+      callback(new Error("CORS: origin not allowed"));
+    }
   })
 );
+app.use(
+  helmet({
+    /* CORP: cross-origin to allow PWA assets fetched from the same server */
+    crossOriginResourcePolicy: { policy: "cross-origin" },
+    /* CSP: block XSS. 'unsafe-inline' for styles is required by Tailwind v4.
+     * Script nonces would be ideal but require SSR integration — this is a
+     * SPA so all scripts are hashed by Vite at build time from /assets/.    */
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'", "'unsafe-inline'"],
+        styleSrc: ["'self'", "'unsafe-inline'"],
+        imgSrc: ["'self'", "data:", "blob:", "https:"],
+        connectSrc: ["'self'", "wss:", "ws:", "https:"],
+        fontSrc: ["'self'", "data:"],
+        mediaSrc: ["'self'", "blob:"],
+        workerSrc: ["'self'", "blob:"],
+        childSrc: ["'self'", "blob:"],
+        frameSrc: ["'self'"],
+        frameAncestors: ["'self'"],
+        objectSrc: ["'none'"],
+        baseUri: ["'self'"],
+        formAction: ["'self'"]
+      }
+    },
+    /* Clickjacking: allow same-origin frames only (PWA works fine) */
+    frameguard: { action: "sameorigin" },
+    /* HSTS: force HTTPS for 1 year, include subdomains */
+    hsts: {
+      maxAge: 31536e3,
+      includeSubDomains: true,
+      preload: true
+    },
+    /* Block MIME sniffing */
+    noSniff: true,
+    /* Referrer policy */
+    referrerPolicy: { policy: "strict-origin-when-cross-origin" }
+  })
+);
+app.use((_req, res, next) => {
+  res.setHeader(
+    "Permissions-Policy",
+    "camera=(), microphone=(), geolocation=(), payment=(), usb=(), interest-cohort=()"
+  );
+  next();
+});
 app.use((req, res, next) => {
   const url2 = req.path;
   if (url2 === "/sw.js" || url2 === "/sw.ts") {
@@ -121596,37 +121726,178 @@ app.use(
     }
   })
 );
-app.use((0, import_cors.default)({ credentials: true, origin: true }));
-app.use(
-  import_express28.default.json({
-    limit: "8mb",
-    verify: (req, _res, buf) => {
-      req.rawBody = buf.toString("utf8");
-    }
-  })
-);
-app.use(import_express28.default.urlencoded({ extended: true, limit: "8mb" }));
+var WEBHOOK_PATHS_SET = /* @__PURE__ */ new Set([
+  "/api/wallet/pawapay/webhook",
+  "/api/wallet/pawapay/refund-webhook",
+  "/api/wallet/clapay/webhook"
+]);
+var rawBodyCapture = (req, _res, buf) => {
+  req.rawBody = buf.toString("utf8");
+};
+app.use((req, res, next) => {
+  if (WEBHOOK_PATHS_SET.has(req.path)) {
+    import_express28.default.json({ limit: "1mb", verify: rawBodyCapture })(req, res, next);
+  } else {
+    next();
+  }
+});
+app.use((req, res, next) => {
+  if (!WEBHOOK_PATHS_SET.has(req.path)) {
+    import_express28.default.json({ limit: "256kb", verify: rawBodyCapture })(req, res, next);
+  } else {
+    next();
+  }
+});
+app.use(import_express28.default.urlencoded({ extended: true, limit: "64kb" }));
 app.use((0, import_cookie_parser.default)());
 app.use(globalRateLimit);
 app.use(checkMaintenanceMode);
 app.use(checkIpBlacklist);
 app.use(attachUser);
 app.use(checkUserBlocked);
+var EXCLUDED_REGISTRATION_COUNTRIES = [
+  "MA",
+  "DZ",
+  "TN",
+  "EG",
+  "LY",
+  "MR",
+  "SD",
+  "FR",
+  "GB",
+  "BE",
+  "US",
+  "CA",
+  "DE",
+  "NL",
+  "SE",
+  "IT",
+  "ES",
+  "PT",
+  "AU",
+  "JP",
+  "IN",
+  "BR",
+  "MX",
+  "KZ",
+  "RU",
+  "UA",
+  "CN",
+  "KR",
+  "TR",
+  "SA",
+  "AE",
+  "QA",
+  "KW",
+  "IQ",
+  "IR",
+  "JO",
+  "LB",
+  "IL",
+  "SY",
+  "PK",
+  "BD",
+  "VN",
+  "TH",
+  "PH",
+  "ID",
+  "MY",
+  "LK",
+  "NP",
+  "MM",
+  "KH",
+  "LA",
+  "MN",
+  "UZ",
+  "TJ",
+  "KG",
+  "TM",
+  "AZ",
+  "AM",
+  "GE",
+  "AL",
+  "RS",
+  "MK",
+  "BA",
+  "HR",
+  "BG",
+  "RO",
+  "HU",
+  "PL",
+  "CZ",
+  "SK",
+  "SI",
+  "EE",
+  "LV",
+  "LT",
+  "FI",
+  "DK",
+  "NO",
+  "AT",
+  "CH",
+  "IE",
+  "LU",
+  "MC",
+  "AD",
+  "LI",
+  "SM",
+  "VA",
+  "MT",
+  "CY",
+  "GR",
+  "BY",
+  "MD",
+  "XK",
+  "ME",
+  "MO",
+  "HK",
+  "TW",
+  "SG",
+  "BN",
+  "PW",
+  "GU",
+  "MH",
+  "FM",
+  "NR",
+  "WS",
+  "TO",
+  "VU",
+  "SB",
+  "PG",
+  "FJ",
+  "CK",
+  "NU",
+  "TV",
+  "KI",
+  "NZ",
+  "NC",
+  "PF",
+  "RE"
+];
 app.get("/api/public/registration-countries", async (_req, res) => {
   try {
-    const { rows } = await pool.query(
-      `SELECT code, dial_code, name, flag FROM countries WHERE enabled = true AND code NOT IN ('MA','DZ','TN','EG','LY','MR','SD','FR','GB','BE','US','CA','DE','NL','SE','IT','ES','PT','AU','JP','IN','BR','MX','KZ','RU','UA','CN','JP','KR','TR','SA','AE','QA','KW','IQ','IR','JO','LB','IL','SY','PK','BD','VN','TH','PH','ID','MY','LK','NP','MM','KH','LA','MN','UZ','TJ','KG','TM','AZ','AM','GE','AL','RS','MK','BA','HR','BG','RO','HU','PL','CZ','SK','SI','EE','LV','LT','FI','DK','NO','SE','AT','CH','IE','BE','LU','MC','AD','LI','SM','VA','MT','CY','GR','BY','MD','XK','ME','MO','HK','TW','SG','BN','PW','GU','MH','FM','NR','WS','TO','VU','SB','PG','FJ','CK','NU','TV','KI','NZ','NC','PF','RE')
-      ORDER BY sort_order ASC`
+    const rows = await db.select({
+      code: countriesTable.code,
+      dialCode: countriesTable.dialCode,
+      name: countriesTable.name,
+      flag: countriesTable.flag
+    }).from(countriesTable).where(
+      and(
+        eq(countriesTable.enabled, true),
+        notInArray(countriesTable.code, EXCLUDED_REGISTRATION_COUNTRIES)
+      )
+    ).orderBy(countriesTable.sortOrder);
+    res.json(
+      rows.map((r2) => ({
+        code: r2.code.toLowerCase(),
+        dial: r2.dialCode,
+        label: r2.name,
+        flag: r2.flag
+      }))
     );
-    res.json(rows.map((r2) => ({
-      code: r2.code.toLowerCase(),
-      dial: r2.dial_code,
-      label: r2.name,
-      flag: r2.flag
-    })));
   } catch (err) {
     logger.error({ err }, "[public] registration-countries query failed");
-    res.status(500).json({ error: "Impossible de charger les pays.", detail: String(err) });
+    res.status(500).json({ error: "Impossible de charger les pays." });
   }
 });
 app.use("/api", routes_default);

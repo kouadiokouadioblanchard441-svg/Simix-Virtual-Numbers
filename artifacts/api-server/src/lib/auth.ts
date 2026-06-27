@@ -4,7 +4,9 @@ import { db, sessionsTable, usersTable } from "@workspace/db";
 import type { Request, Response, NextFunction } from "express";
 import type { User } from "@workspace/db";
 
-const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
+/* 7 days — shorter TTL reduces the window for session hijacking on a
+ * financial application. 30 days was excessive for this threat model.   */
+const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 export const SESSION_COOKIE = "simix_session";
 
 declare global {

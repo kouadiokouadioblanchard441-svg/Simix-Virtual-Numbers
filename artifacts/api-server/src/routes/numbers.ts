@@ -264,10 +264,15 @@ router.post("/numbers", requireAuth, async (req, res): Promise<void> => {
     return;
   }
 
-  /* Deduct balance atomically */
+  /* Deduct balance atomically using SQL arithmetic — NEVER use JS stale value.
+   * Using `user.balance - price` (JS subtraction) creates a race condition:
+   * two concurrent requests could both read the same balance, both pass the
+   * balance check, and both deduct, resulting in a double-spend.
+   * The SQL expression `balance - price` is evaluated atomically by Postgres
+   * with the WHERE clause acting as an optimistic lock.                     */
   const [updatedUser] = await db
     .update(usersTable)
-    .set({ balance: user.balance - price })
+    .set({ balance: sql`${usersTable.balance} - ${price}` })
     .where(and(eq(usersTable.id, user.id), gt(usersTable.balance, price - 1)))
     .returning();
 
@@ -350,38 +355,49 @@ router.post("/numbers", requireAuth, async (req, res): Promise<void> => {
     return;
   }
 
-  /* ── Persist virtual number ── */
-  const [vn] = await db.insert(virtualNumbersTable).values({
-    userId: user.id,
-    serviceId: service.id,
-    countryId: country.id,
-    phoneNumber,
-    status: "waiting",
-    price,
-    expiresAt: actualExpiresAt,
-    externalOrderId,
-    numberType,
-    hostingDuration: numberType === "hosting" ? hostingDuration : null,
-  }).returning();
+  /* ── Persist virtual number + transaction atomically ─────────────────────
+   * Both inserts are wrapped in a DB transaction so that if either fails,
+   * neither is committed. Without this, a crash between the two inserts
+   * could leave the user charged with no record of what they purchased.   */
+  let vn: typeof virtualNumbersTable.$inferSelect;
+  try {
+    const result = await db.transaction(async (tx) => {
+      const [insertedVn] = await tx.insert(virtualNumbersTable).values({
+        userId: user.id,
+        serviceId: service.id,
+        countryId: country.id,
+        phoneNumber,
+        status: "waiting",
+        price,
+        expiresAt: actualExpiresAt,
+        externalOrderId,
+        numberType,
+        hostingDuration: numberType === "hosting" ? hostingDuration : null,
+      }).returning();
 
-  if (!vn) {
-    /* Roll back balance */
+      if (!insertedVn) throw new Error("virtualNumbersTable insert returned empty");
+
+      await tx.insert(transactionsTable).values({
+        userId: user.id,
+        type: "purchase",
+        amount: price,
+        status: "completed",
+        method: "wallet",
+        description: `${service.name} – ${country.name} (5sim)`,
+      });
+
+      return insertedVn;
+    });
+    vn = result;
+  } catch (persistErr) {
+    logger.error({ err: (persistErr as Error).message, userId: user.id, phoneNumber }, "[buy] DB persist failed — refunding");
+    /* Refund balance if the DB persist fails after 5sim order succeeded */
     await db.update(usersTable)
       .set({ balance: sql`${usersTable.balance} + ${price}` })
       .where(eq(usersTable.id, user.id));
-    res.status(500).json({ error: "Erreur lors de la création du numéro" });
+    res.status(500).json({ error: "Erreur lors de la création du numéro. Votre solde a été remboursé." });
     return;
   }
-
-  /* ── Log transaction ── */
-  await db.insert(transactionsTable).values({
-    userId: user.id,
-    type: "purchase",
-    amount: price,
-    status: "completed",
-    method: "wallet",
-    description: `${service.name} – ${country.name} (5sim)`,
-  });
 
   /* ── Referral commission — credit parrain if buyer was referred ── */
   if (user.referredBy) {
@@ -520,6 +536,13 @@ router.get("/numbers/:numberId", requireAuth, async (req, res): Promise<void> =>
 router.post("/numbers/:numberId/poll", requireAuth, async (req, res): Promise<void> => {
   const numberId = String(req.params.numberId);
   const user = req.user!;
+
+  /* Rate limit: max 12 polls/min per user (one every 5 s) to prevent
+   * spamming the 5sim API and potential account suspension.             */
+  if (isRateLimited(`poll:${user.id}`, 12, 60_000)) {
+    res.status(429).json({ error: "Trop de vérifications. Attendez quelques secondes." });
+    return;
+  }
 
   const [row] = await db
     .select({ n: virtualNumbersTable, s: servicesTable, c: countriesTable })
