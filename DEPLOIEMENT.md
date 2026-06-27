@@ -23,37 +23,79 @@ Replit → ./deploy.sh "message"  →  GitHub  →  Plesk : Deploy Now  →  ✅
 
 > ⚠️ **Ne pas activer "Run npm install" ou "Build"** dans Plesk — tout est déjà buildé dans `dist/`.
 
+---
+
 ### 2. Variables d'environnement Plesk
 
-Définir dans **Plesk → Node.js → Environment Variables** :
+Définir dans **Plesk → Node.js → Environment Variables**.
+
+#### Obligatoires
 
 ```
 NODE_ENV=production
 PORT=3000
-DATABASE_URL=postgresql://...votre-url-supabase...
-SESSION_SECRET=...clé-aléatoire-64-chars...
-ADMIN_ACCESS_TOKEN=...token-admin...
-ADMIN_JWT_SECRET=...clé-jwt-admin...
-FIVESIM_API_KEY=...votre-clé-5sim...
-PAWAPAY_API_TOKEN=...votre-token-pawapay...
-PAWAPAY_ENV=production
-RESEND_API_KEY=...votre-clé-resend...
+DATABASE_URL=postgresql://user:password@host:5432/simix
+SESSION_SECRET=<64 octets aléatoires en base64>
+ADMIN_ACCESS_TOKEN=<48 octets hex — clé d'accès à l'URL admin>
+ADMIN_JWT_SECRET=<64 octets hex — signature des sessions admin>
 ```
 
-**Optionnels :**
+#### Fournisseur de numéros
+
 ```
-GOOGLE_CLIENT_ID=
-GOOGLE_CLIENT_SECRET=
-GOOGLE_REDIRECT_URI=https://votre-domaine.com/api/auth/google/callback
+FIVESIM_API_KEY=<votre clé API 5sim.net>
+```
+
+#### Paiements mobile money
+
+```
+PAWAPAY_API_TOKEN=<votre token PawaPay>
+PAWAPAY_ENV=production
+MOBILE_MONEY_GATEWAY=pawapay
+```
+
+> Les identifiants Clapay (si utilisé) se configurent depuis **Admin → Routage des paiements → Passerelles**.
+
+#### Emails transactionnels
+
+```
+RESEND_API_KEY=<votre clé Resend>
+EMAIL_FROM=noreply@votredomaine.com
+```
+
+#### Application
+
+```
+APP_URL=https://votredomaine.com
 LOG_LEVEL=info
 ```
 
-> Les clés des passerelles de paiement (Fapshi, PayDunya, etc.) se configurent
-> directement depuis le panel admin → **Routage API** → Fournisseurs.
->
-> Les clés IA (Gemini, OpenAI) se configurent depuis le panel admin → **Support IA → Configuration IA**.
->
-> Pas besoin de les mettre ici si elles sont déjà dans le panel admin.
+#### Optionnels (Google OAuth)
+
+```
+GOOGLE_CLIENT_ID=<votre client ID Google>
+GOOGLE_CLIENT_SECRET=<votre client secret Google>
+GOOGLE_REDIRECT_URI=https://votredomaine.com/api/auth/google/callback
+```
+
+---
+
+#### Générer les secrets sécurisés
+
+```bash
+# SESSION_SECRET (64 octets base64)
+node -e "console.log(require('crypto').randomBytes(64).toString('base64'))"
+
+# ADMIN_ACCESS_TOKEN (48 octets hex)
+node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"
+
+# ADMIN_JWT_SECRET (64 octets hex)
+node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"
+```
+
+> **Note :** Les clés des passerelles de paiement supplémentaires (Clapay, etc.) et les clés IA (OpenAI, Gemini) se configurent directement depuis le **panel admin** → Fournisseurs / Support IA. Pas besoin de les mettre dans les variables d'environnement.
+
+---
 
 ### 3. Git déploiement dans Plesk
 
@@ -105,33 +147,63 @@ Puis dans Plesk : **Deploy Now**.
 
 ```
 dist/
-├── index.cjs                 ← Serveur Express + toute l'API (bundle auto-contenu, aucune dépendance)
-├── pino-worker.cjs           ← Worker de logs
-├── pino-pretty.cjs           ← Formateur de logs
-├── pino-file.cjs
-├── thread-stream-worker.cjs
-├── migrations/               ← Migrations SQL (appliquées au démarrage automatiquement)
-│   ├── 0000_panoramic_ares.sql
-│   ├── 0001_payment_routing.sql
-│   └── meta/
-└── public/                   ← Frontend React buildé (servi par Express en production)
+├── index.cjs                          ← Serveur Express + toute l'API (bundle auto-contenu)
+├── pino-worker.cjs                    ← Worker de logs asynchrones
+├── pino-pretty.cjs                    ← Formateur de logs lisibles
+├── pino-file.cjs                      ← Logs vers fichier
+├── thread-stream-worker.cjs           ← Worker de threads pour Pino
+├── migrations/                        ← Migrations SQL (appliquées au démarrage)
+│   ├── 0000_panoramic_ares.sql        ← Schéma initial (toutes les tables de base)
+│   ├── 0001_payment_routing.sql       ← Routage des paiements
+│   ├── 0002_services_logo_url.sql     ← Logo URL des services
+│   ├── 0003_missing_tables.sql        ← Tables manquantes (notifications, etc.)
+│   ├── 0004_missing_tables_2.sql      ← Tables manquantes (bannières, campagnes)
+│   ├── 0005_users_missing_columns.sql ← Colonnes manquantes sur users
+│   ├── 0006_service_country_availability.sql ← Disponibilité service/pays
+│   ├── 0007_country_enabled_flags.sql ← Flags d'activation des pays
+│   ├── 0008_referral_columns.sql      ← Système de parrainage
+│   ├── 0009_transactions_gateway_meta.sql ← Métadonnées des transactions
+│   └── meta/                          ← Métadonnées Drizzle (ne pas modifier)
+└── public/                            ← Frontend React buildé
     ├── index.html
-    ├── assets/               ← JS, CSS, images compilées
-    ├── 3d/
-    └── logos/
+    ├── assets/                        ← JS, CSS, images compilées (hachés)
+    ├── icons/                         ← Icônes PWA
+    └── logos/                         ← Logos des services
 ```
 
 ---
 
 ## Ce qui se passe au démarrage du serveur
 
-Au lancement de `node dist/index.cjs`, automatiquement :
-1. Connexion à la base de données via `DATABASE_URL`
-2. Migrations SQL appliquées (nouvelles tables uniquement)
-3. Serveur HTTP lancé sur `PORT`
-4. Frontend React servi depuis `dist/public/`
+Au lancement de `node dist/index.cjs`, automatiquement et dans cet ordre :
 
-Aucune étape manuelle.
+1. Connexion à la base de données via `DATABASE_URL`
+2. Migrations SQL appliquées (nouvelles tables uniquement, idempotent)
+3. Serveur HTTP lancé sur `PORT` (défaut : `3000`)
+4. Seeding des méthodes de paiement (Orange Money, MTN, Wave…)
+5. Seeding du routage de paiement
+6. Synchronisation des pays 5sim (si clé configurée)
+7. Démarrage du poller SMS 5sim (intervalle : 15s)
+8. Démarrage de la réconciliation PawaPay (intervalle : 30s)
+9. Démarrage de la réconciliation Clapay (intervalle : 5min)
+10. Frontend React servi depuis `dist/public/`
+
+**Aucune étape manuelle nécessaire.**
+
+---
+
+## Accès au panel d'administration
+
+```
+https://votredomaine.com/admin
+```
+
+L'accès admin requiert **deux étapes** de sécurité :
+1. Saisie du `ADMIN_ACCESS_TOKEN` (clé URL secrète)
+2. Connexion avec identifiants admin (email + mot de passe)
+3. Une session JWT valide 24h est alors créée
+
+> Le compte admin par défaut est créé via : `pnpm --filter @workspace/scripts run seed`
 
 ---
 
@@ -140,7 +212,10 @@ Aucune étape manuelle.
 | Commande | Usage |
 |---|---|
 | `./deploy.sh "msg"` | Build + commit + push en une commande |
-| `pnpm run build` | Build seul (API + frontend) |
+| `pnpm run build` | Build complet (API + frontend) |
+| `pnpm --filter @workspace/db run push` | Appliquer les changements de schéma DB |
+| `pnpm --filter @workspace/scripts run seed` | Remettre les données de démonstration |
+| `pnpm --filter @workspace/api-spec run codegen` | Regénérer les hooks API après modification de openapi.yaml |
 | `node dist/index.cjs` | Démarrer le serveur (production) |
 | `npm start` | Identique à `node dist/index.cjs` |
 
@@ -148,14 +223,14 @@ Aucune étape manuelle.
 
 ## Dépannage
 
-**Page blanche ?**
-→ Vérifier que `NODE_ENV=production` est défini dans Plesk.
-
-**Erreur base de données ?**
-→ Vérifier `DATABASE_URL` dans les variables Plesk.
-
-**Port déjà utilisé ?**
-→ Changer `PORT=3001` et mettre à jour le reverse proxy Plesk.
-
-**Logs du serveur ?**
-→ Plesk → Node.js → Logs
+| Symptôme | Cause probable | Solution |
+|---|---|---|
+| Page blanche | `NODE_ENV` non défini ou frontend non buildé | Vérifier `NODE_ENV=production` + que `dist/public/index.html` existe |
+| Erreur base de données | `DATABASE_URL` incorrect | Vérifier la chaîne de connexion PostgreSQL |
+| Port déjà utilisé | Un autre processus utilise le port | Changer `PORT=3001` et mettre à jour le reverse proxy |
+| `Admin JWT signing failed` | `ADMIN_JWT_SECRET` non défini | Ajouter `ADMIN_JWT_SECRET` dans les variables Plesk |
+| Impossible d'accéder à /admin | `ADMIN_ACCESS_TOKEN` non défini | Ajouter `ADMIN_ACCESS_TOKEN` dans les variables Plesk |
+| Pas de numéros disponibles | Clé 5sim non configurée ou solde insuffisant | Vérifier `FIVESIM_API_KEY` + solde sur 5sim.net |
+| Paiements ne fonctionnent pas | Token PawaPay manquant ou invalide | Vérifier `PAWAPAY_API_TOKEN` et `PAWAPAY_ENV` |
+| Emails OTP non reçus | Clé Resend manquante | Vérifier `RESEND_API_KEY` et `EMAIL_FROM` |
+| Logs du serveur | Accès aux logs | Plesk → Node.js → Logs |
