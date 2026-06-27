@@ -43,9 +43,10 @@ const buildAllowedOrigins = (): Set<string> => {
       if (domain) origins.add(`https://${domain}`);
     }
   }
-  /* Fallback for local dev */
+  /* Always allow same-server origin (frontend served from same process) */
+  origins.add("http://localhost:5000");
+  /* Additional local dev origins */
   if (process.env.NODE_ENV !== "production") {
-    origins.add("http://localhost:5000");
     origins.add("http://localhost:3000");
     origins.add("http://localhost:5173");
   }
@@ -84,23 +85,24 @@ app.use(
       directives: {
         defaultSrc: ["'self'"],
         scriptSrc: ["'self'", "'unsafe-inline'"],
-        styleSrc: ["'self'", "'unsafe-inline'"],
+        styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
         imgSrc: ["'self'", "data:", "blob:", "https:"],
         connectSrc: ["'self'", "wss:", "ws:", "https:"],
-        fontSrc: ["'self'", "data:"],
+        fontSrc: ["'self'", "data:", "https://fonts.gstatic.com"],
         mediaSrc: ["'self'", "blob:"],
         workerSrc: ["'self'", "blob:"],
         childSrc: ["'self'", "blob:"],
         frameSrc: ["'self'"],
-        frameAncestors: ["'self'"],
+        frameAncestors: ["'self'", "https://*.replit.dev", "https://*.repl.co", "https://*.replit.app", "https://*.kirk.replit.dev"],
         objectSrc: ["'none'"],
         baseUri: ["'self'"],
         formAction: ["'self'"],
       },
     },
 
-    /* Clickjacking: allow same-origin frames only (PWA works fine) */
-    frameguard: { action: "sameorigin" },
+    /* Clickjacking: disabled so Replit preview iframe can embed the app.
+     * Protection is handled by the CSP frame-ancestors directive above.  */
+    frameguard: false,
 
     /* HSTS: force HTTPS for 1 year, include subdomains */
     hsts: {
