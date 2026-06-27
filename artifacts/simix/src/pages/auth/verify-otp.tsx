@@ -135,7 +135,7 @@ export default function VerifyOtp() {
       await apiPost("/api/auth/otp/verify", { code });
       setStatus("success");
       queryClient.invalidateQueries({ queryKey: getGetMeQueryKey() });
-      setTimeout(() => setLocation("/dashboard"), 1200);
+      setTimeout(() => setLocation(purpose === "register" ? "/bienvenue" : "/dashboard"), 1200);
     } catch (err: unknown) {
       setStatus("error");
       const msg = err instanceof Error ? err.message : "Code incorrect";

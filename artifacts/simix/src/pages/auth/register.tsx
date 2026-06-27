@@ -149,7 +149,7 @@ export default function Register() {
       if (result?.requiresEmailVerification) {
         setLocation("/verify-email");
       } else {
-        setLocation("/dashboard");
+        setLocation("/bienvenue");
       }
     } catch (error: unknown) {
       const msg = error instanceof Error ? error.message : "Une erreur est survenue";

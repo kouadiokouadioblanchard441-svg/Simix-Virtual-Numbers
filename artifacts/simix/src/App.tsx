@@ -16,6 +16,7 @@ import { AdminSecureGuard } from "@/components/admin-secure-guard";
 
 // Landing
 import Landing from "@/pages/landing";
+import Welcome from "@/pages/welcome";
 
 // User pages
 import Splash from "@/pages/splash";
@@ -183,6 +184,7 @@ function InnerRouter() {
     <div className="flex justify-center min-h-[100dvh] bg-black">
       <div className="w-full max-w-md bg-background relative shadow-2xl sm:border-x sm:border-border overflow-hidden">
         <Switch>
+          <Route path="/bienvenue" component={Welcome} />
           <Route path="/splash" component={Splash} />
           <Route path="/login" component={Login} />
           <Route path="/register" component={Register} />
