@@ -7,7 +7,7 @@ import { formatFCFA } from "@/lib/format";
 import {
   Loader2, Search, UserX, UserCheck, ShieldCheck, Coins, Trash2,
   ChevronLeft, ChevronRight, Eye, KeyRound, LogOut, Gauge, Copy,
-  CheckCircle2, AlertTriangle, Lock
+  CheckCircle2, AlertTriangle, Lock, Download, Filter, X
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -18,6 +18,24 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 type Panel = "block" | "balance" | "limits" | "reset" | null;
+
+function exportToCsv(filename: string, rows: Record<string, unknown>[]) {
+  if (!rows.length) return;
+  const keys = Object.keys(rows[0]);
+  const csv = [
+    keys.join(";"),
+    ...rows.map(r => keys.map(k => {
+      const v = r[k] ?? "";
+      const s = String(v).replace(/"/g, '""');
+      return s.includes(";") || s.includes('"') || s.includes("\n") ? `"${s}"` : s;
+    }).join(";")),
+  ].join("\n");
+  const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = filename; a.click();
+  URL.revokeObjectURL(url);
+}
 
 function UserRow({ user, onAction }: { user: AdminUser; onAction: () => void }) {
   const [panel, setPanel] = useState<Panel>(null);
@@ -97,8 +115,6 @@ function UserRow({ user, onAction }: { user: AdminUser; onAction: () => void }) 
         <tr className="bg-zinc-950/60 border-b border-zinc-800">
           <td colSpan={7} className="px-4 py-4">
             <div className="max-w-3xl space-y-4">
-
-              {/* Block Panel */}
               {panel === "block" && (
                 <div className="bg-red-950/30 border border-red-900/40 rounded-xl p-4 space-y-3">
                   <div className="flex items-center gap-2 text-red-400 font-semibold text-sm"><AlertTriangle className="w-4 h-4" />Bloquer l'utilisateur</div>
@@ -111,8 +127,6 @@ function UserRow({ user, onAction }: { user: AdminUser; onAction: () => void }) 
                   </div>
                 </div>
               )}
-
-              {/* Balance Panel */}
               {panel === "balance" && (
                 <div className="bg-violet-950/30 border border-violet-900/40 rounded-xl p-4 space-y-3">
                   <div className="flex items-center gap-2 text-violet-400 font-semibold text-sm"><Coins className="w-4 h-4" />Ajuster le solde</div>
@@ -128,8 +142,6 @@ function UserRow({ user, onAction }: { user: AdminUser; onAction: () => void }) 
                   </div>
                 </div>
               )}
-
-              {/* Limits Panel */}
               {panel === "limits" && (
                 <div className="bg-emerald-950/20 border border-emerald-900/30 rounded-xl p-4 space-y-3">
                   <div className="flex items-center gap-2 text-emerald-400 font-semibold text-sm"><Gauge className="w-4 h-4" />Limites du compte</div>
@@ -157,8 +169,6 @@ function UserRow({ user, onAction }: { user: AdminUser; onAction: () => void }) 
                   </div>
                 </div>
               )}
-
-              {/* Reset Password Panel */}
               {panel === "reset" && !newPwd && (
                 <div className="bg-blue-950/20 border border-blue-900/30 rounded-xl p-4 space-y-3">
                   <div className="flex items-center gap-2 text-blue-400 font-semibold text-sm"><KeyRound className="w-4 h-4" />Réinitialiser le mot de passe</div>
@@ -171,8 +181,6 @@ function UserRow({ user, onAction }: { user: AdminUser; onAction: () => void }) 
                   </div>
                 </div>
               )}
-
-              {/* New Password Display */}
               {newPwd && (
                 <div className="bg-emerald-950/30 border border-emerald-900/40 rounded-xl p-4 space-y-3">
                   <div className="flex items-center gap-2 text-emerald-400 font-semibold text-sm"><CheckCircle2 className="w-4 h-4" />Nouveau mot de passe généré</div>
@@ -197,19 +205,73 @@ function UserRow({ user, onAction }: { user: AdminUser; onAction: () => void }) 
 function UsersContent() {
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("Tous");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+  const [showFilters, setShowFilters] = useState(false);
   const [page, setPage] = useState(0);
+  const [exporting, setExporting] = useState(false);
   const PER_PAGE = 20;
   const qc = useQueryClient();
+  const { toast } = useToast();
 
   const { data, isLoading } = useQuery({
-    queryKey: ["admin-users", debouncedSearch, page],
-    queryFn: () => adminApi.getUsers({ limit: PER_PAGE, offset: page * PER_PAGE, search: debouncedSearch || undefined }),
+    queryKey: ["admin-users", debouncedSearch, page, statusFilter, dateFrom, dateTo],
+    queryFn: () => adminApi.getUsers({
+      limit: PER_PAGE,
+      offset: page * PER_PAGE,
+      search: debouncedSearch || undefined,
+      status: statusFilter !== "Tous" ? statusFilter : undefined,
+      dateFrom: dateFrom || undefined,
+      dateTo: dateTo || undefined,
+    }),
   });
 
   const handleSearch = (val: string) => {
     setSearch(val);
     clearTimeout((window as unknown as Record<string, ReturnType<typeof setTimeout>>)._searchTimer);
     (window as unknown as Record<string, ReturnType<typeof setTimeout>>)._searchTimer = setTimeout(() => { setDebouncedSearch(val); setPage(0); }, 300);
+  };
+
+  const hasFilters = statusFilter !== "Tous" || dateFrom || dateTo;
+
+  const clearFilters = () => {
+    setStatusFilter("Tous");
+    setDateFrom("");
+    setDateTo("");
+    setPage(0);
+  };
+
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      const all = await adminApi.getUsers({
+        export: true,
+        search: debouncedSearch || undefined,
+        status: statusFilter !== "Tous" ? statusFilter : undefined,
+        dateFrom: dateFrom || undefined,
+        dateTo: dateTo || undefined,
+      });
+      exportToCsv(`utilisateurs_${new Date().toISOString().slice(0, 10)}.csv`, all.users.map(u => ({
+        Nom: u.fullName,
+        Username: u.username ?? "",
+        Téléphone: u.phone,
+        Email: u.email,
+        Pays: u.country ?? "",
+        "Solde FCFA": u.balance,
+        Statut: u.status,
+        "Score Risque": u.riskScore,
+        Admin: u.isAdmin ? "Oui" : "Non",
+        Vérifié: u.verified ? "Oui" : "Non",
+        Restreint: u.isRestricted ? "Oui" : "Non",
+        "Inscrit le": new Date(u.createdAt).toLocaleDateString("fr-FR"),
+      })));
+      toast({ title: `${all.users.length} utilisateurs exportés` });
+    } catch (e) {
+      toast({ title: "Erreur export", description: (e as Error).message, variant: "destructive" });
+    } finally {
+      setExporting(false);
+    }
   };
 
   const totalPages = Math.ceil((data?.total ?? 0) / PER_PAGE);
@@ -219,18 +281,81 @@ function UsersContent() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-white">Gestion des utilisateurs</h1>
-          <p className="text-zinc-400 text-sm mt-1">{data?.total ?? 0} utilisateurs enregistrés</p>
+          <p className="text-zinc-400 text-sm mt-1">{data?.total ?? 0} utilisateurs{hasFilters ? " (filtré)" : ""}</p>
         </div>
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
-          <input
-            value={search}
-            onChange={e => handleSearch(e.target.value)}
-            placeholder="Nom, email, téléphone, @username..."
-            className="pl-9 pr-4 py-2 text-sm bg-zinc-900 border border-zinc-700 rounded-lg text-white placeholder:text-zinc-500 focus:outline-none focus:border-violet-500 w-full sm:w-80"
-          />
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+            <input
+              value={search}
+              onChange={e => handleSearch(e.target.value)}
+              placeholder="Nom, email, téléphone…"
+              className="pl-9 pr-4 py-2 text-sm bg-zinc-900 border border-zinc-700 rounded-lg text-white placeholder:text-zinc-500 focus:outline-none focus:border-violet-500 w-full sm:w-64"
+            />
+          </div>
+          <button
+            onClick={() => setShowFilters(v => !v)}
+            className={`flex items-center gap-1.5 px-3 py-2 text-sm rounded-lg border transition-colors ${showFilters || hasFilters ? "bg-violet-600/20 border-violet-600/50 text-violet-400" : "bg-zinc-900 border-zinc-700 text-zinc-400 hover:text-white"}`}
+          >
+            <Filter className="w-4 h-4" />
+            Filtres
+            {hasFilters && <span className="w-1.5 h-1.5 bg-violet-400 rounded-full" />}
+          </button>
+          <button
+            onClick={handleExport}
+            disabled={exporting}
+            className="flex items-center gap-1.5 px-3 py-2 text-sm bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-zinc-400 hover:text-white rounded-lg transition-colors disabled:opacity-50"
+            title="Exporter en CSV"
+          >
+            {exporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+            CSV
+          </button>
         </div>
       </div>
+
+      {showFilters && (
+        <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
+          <div className="flex flex-wrap gap-4 items-end">
+            <div>
+              <label className="text-xs text-zinc-500 font-medium block mb-1.5">Statut</label>
+              <select
+                value={statusFilter}
+                onChange={e => { setStatusFilter(e.target.value); setPage(0); }}
+                className="px-3 py-2 text-sm bg-zinc-800 border border-zinc-700 rounded-lg text-white focus:outline-none focus:border-violet-500"
+              >
+                <option value="Tous">Tous les statuts</option>
+                <option value="Standard">Standard</option>
+                <option value="Premium">Premium</option>
+                <option value="Bloqué">Bloqué</option>
+                <option value="Restreint">Restreint</option>
+              </select>
+            </div>
+            <div>
+              <label className="text-xs text-zinc-500 font-medium block mb-1.5">Inscrit depuis</label>
+              <input
+                type="date"
+                value={dateFrom}
+                onChange={e => { setDateFrom(e.target.value); setPage(0); }}
+                className="px-3 py-2 text-sm bg-zinc-800 border border-zinc-700 rounded-lg text-white focus:outline-none focus:border-violet-500"
+              />
+            </div>
+            <div>
+              <label className="text-xs text-zinc-500 font-medium block mb-1.5">Jusqu'au</label>
+              <input
+                type="date"
+                value={dateTo}
+                onChange={e => { setDateTo(e.target.value); setPage(0); }}
+                className="px-3 py-2 text-sm bg-zinc-800 border border-zinc-700 rounded-lg text-white focus:outline-none focus:border-violet-500"
+              />
+            </div>
+            {hasFilters && (
+              <button onClick={clearFilters} className="flex items-center gap-1.5 px-3 py-2 text-sm text-zinc-400 hover:text-white transition-colors">
+                <X className="w-4 h-4" /> Effacer
+              </button>
+            )}
+          </div>
+        </div>
+      )}
 
       <div className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden">
         <div className="overflow-x-auto">

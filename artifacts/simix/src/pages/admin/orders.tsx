@@ -4,7 +4,7 @@ import { adminApi, type AdminOrder } from "@/lib/admin-api";
 import { AdminGuard } from "@/components/admin-guard";
 import { AdminLayout } from "@/components/admin-layout";
 import { formatFCFA } from "@/lib/format";
-import { Loader2, XCircle, ChevronLeft, ChevronRight } from "lucide-react";
+import { Loader2, XCircle, ChevronLeft, ChevronRight, Download } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 const STATUS_COLORS: Record<string, string> = {
@@ -20,6 +20,24 @@ const STATUS_LABELS: Record<string, string> = {
   expired: "Expiré",
   cancelled: "Annulé",
 };
+
+function exportToCsv(filename: string, rows: Record<string, unknown>[]) {
+  if (!rows.length) return;
+  const keys = Object.keys(rows[0]);
+  const csv = [
+    keys.join(";"),
+    ...rows.map(r => keys.map(k => {
+      const v = r[k] ?? "";
+      const s = String(v).replace(/"/g, '""');
+      return s.includes(";") || s.includes('"') || s.includes("\n") ? `"${s}"` : s;
+    }).join(";")),
+  ].join("\n");
+  const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = filename; a.click();
+  URL.revokeObjectURL(url);
+}
 
 function OrderRow({ order }: { order: AdminOrder }) {
   const { toast } = useToast();
@@ -77,20 +95,78 @@ function OrderRow({ order }: { order: AdminOrder }) {
 
 function OrdersContent() {
   const [page, setPage] = useState(0);
+  const [statusFilter, setStatusFilter] = useState("Tous");
+  const [exporting, setExporting] = useState(false);
   const PER_PAGE = 30;
+  const { toast } = useToast();
 
   const { data, isLoading } = useQuery({
-    queryKey: ["admin-orders", page],
-    queryFn: () => adminApi.getOrders({ limit: PER_PAGE, offset: page * PER_PAGE }),
+    queryKey: ["admin-orders", page, statusFilter],
+    queryFn: () => adminApi.getOrders({
+      limit: PER_PAGE,
+      offset: page * PER_PAGE,
+      status: statusFilter !== "Tous" ? statusFilter : undefined,
+    }),
   });
 
   const totalPages = Math.ceil((data?.total ?? 0) / PER_PAGE);
 
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      const all = await adminApi.getOrders({
+        export: true,
+        status: statusFilter !== "Tous" ? statusFilter : undefined,
+      });
+      exportToCsv(`commandes_${new Date().toISOString().slice(0, 10)}.csv`, all.orders.map(o => ({
+        ID: o.id,
+        Numéro: o.phoneNumber,
+        Utilisateur: o.userFullName,
+        Téléphone: o.userPhone,
+        Service: o.serviceName,
+        Pays: `${o.countryFlag} ${o.countryName}`,
+        Statut: STATUS_LABELS[o.status] ?? o.status,
+        "Prix FCFA": o.price,
+        "Créé le": new Date(o.createdAt).toLocaleString("fr-FR"),
+        "Expire le": new Date(o.expiresAt).toLocaleString("fr-FR"),
+      })));
+      toast({ title: `${all.orders.length} commandes exportées` });
+    } catch (e) {
+      toast({ title: "Erreur export", description: (e as Error).message, variant: "destructive" });
+    } finally {
+      setExporting(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-white">Commandes</h1>
-        <p className="text-zinc-400 text-sm mt-1">{data?.total ?? 0} commandes au total</p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-white">Commandes</h1>
+          <p className="text-zinc-400 text-sm mt-1">{data?.total ?? 0} commandes{statusFilter !== "Tous" ? ` · ${STATUS_LABELS[statusFilter] ?? statusFilter}` : ""}</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <select
+            value={statusFilter}
+            onChange={e => { setStatusFilter(e.target.value); setPage(0); }}
+            className="px-3 py-2 text-sm bg-zinc-800 border border-zinc-700 rounded-lg text-white focus:outline-none focus:border-violet-500"
+          >
+            <option value="Tous">Tous les statuts</option>
+            <option value="waiting">En attente</option>
+            <option value="received">Reçu</option>
+            <option value="expired">Expiré</option>
+            <option value="cancelled">Annulé</option>
+          </select>
+          <button
+            onClick={handleExport}
+            disabled={exporting}
+            className="flex items-center gap-1.5 px-3 py-2 text-sm bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-zinc-400 hover:text-white rounded-lg transition-colors disabled:opacity-50"
+            title="Exporter en CSV"
+          >
+            {exporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+            CSV
+          </button>
+        </div>
       </div>
 
       <div className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden">
@@ -122,7 +198,7 @@ function OrdersContent() {
 
         {totalPages > 1 && (
           <div className="flex items-center justify-between px-4 py-3 border-t border-zinc-800">
-            <span className="text-xs text-zinc-500">Page {page + 1} sur {totalPages}</span>
+            <span className="text-xs text-zinc-500">Page {page + 1} sur {totalPages} — {data?.total} commandes</span>
             <div className="flex gap-2">
               <button disabled={page === 0} onClick={() => setPage(p => p - 1)} className="p-1.5 rounded hover:bg-zinc-800 disabled:opacity-30 transition-colors"><ChevronLeft className="w-4 h-4 text-zinc-400" /></button>
               <button disabled={page >= totalPages - 1} onClick={() => setPage(p => p + 1)} className="p-1.5 rounded hover:bg-zinc-800 disabled:opacity-30 transition-colors"><ChevronRight className="w-4 h-4 text-zinc-400" /></button>

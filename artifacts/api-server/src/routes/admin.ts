@@ -3,7 +3,7 @@
  * Accessible at /api/admin/*
  */
 import { Router, type IRouter, type Request, type Response, type NextFunction } from "express";
-import { desc, eq, count, sql, and, gte, like, or, inArray } from "drizzle-orm";
+import { desc, eq, count, sql, and, gte, lte, like, or, inArray } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 import {
   db,
@@ -121,9 +121,36 @@ router.get("/admin/stats", requireAdmin, async (req, res): Promise<void> => {
 
 /* ─────────────────── USER MANAGEMENT ─────────────────── */
 router.get("/admin/users", requireAdmin, async (req, res): Promise<void> => {
-  const limit = Math.min(Number(req.query.limit) || 50, 200);
-  const offset = Number(req.query.offset) || 0;
+  const exportAll = req.query.export === "true";
+  const limit = exportAll ? 5000 : Math.min(Number(req.query.limit) || 50, 200);
+  const offset = exportAll ? 0 : Number(req.query.offset) || 0;
   const search = req.query.search as string | undefined;
+  const statusFilter = req.query.status as string | undefined;
+  const dateFrom = req.query.dateFrom as string | undefined;
+  const dateTo = req.query.dateTo as string | undefined;
+
+  const conditions: ReturnType<typeof eq>[] = [];
+  if (search) {
+    conditions.push(or(
+      like(usersTable.fullName, `%${search}%`),
+      like(usersTable.phone, `%${search}%`),
+      like(usersTable.email, `%${search}%`),
+      like(usersTable.username, `%${search}%`),
+    ) as ReturnType<typeof eq>);
+  }
+  if (statusFilter === "Restreint") {
+    conditions.push(eq(usersTable.isRestricted, true));
+  } else if (statusFilter && statusFilter !== "Tous") {
+    conditions.push(eq(usersTable.status, statusFilter));
+  }
+  if (dateFrom) conditions.push(gte(usersTable.createdAt, new Date(dateFrom)));
+  if (dateTo) {
+    const end = new Date(dateTo);
+    end.setHours(23, 59, 59, 999);
+    conditions.push(lte(usersTable.createdAt, end));
+  }
+
+  const where = conditions.length > 0 ? and(...conditions) : undefined;
 
   const rows = await db
     .select({
@@ -144,26 +171,12 @@ router.get("/admin/users", requireAdmin, async (req, res): Promise<void> => {
       createdAt: usersTable.createdAt,
     })
     .from(usersTable)
-    .where(search
-      ? or(
-          like(usersTable.fullName, `%${search}%`),
-          like(usersTable.phone, `%${search}%`),
-          like(usersTable.email, `%${search}%`),
-          like(usersTable.username, `%${search}%`),
-        )
-      : undefined)
+    .where(where)
     .orderBy(desc(usersTable.createdAt))
     .limit(limit)
     .offset(offset);
 
-  const [totalRow] = await db.select({ c: count() }).from(usersTable)
-    .where(search
-      ? or(
-          like(usersTable.fullName, `%${search}%`),
-          like(usersTable.phone, `%${search}%`),
-          like(usersTable.email, `%${search}%`),
-        )
-      : undefined);
+  const [totalRow] = await db.select({ c: count() }).from(usersTable).where(where);
 
   res.json({ users: rows, total: totalRow?.c ?? 0 });
 });
@@ -941,8 +954,12 @@ router.post("/admin/payment-configs/add-country", requireAdmin, async (req, res)
 
 /* ─────────────────── ORDERS MANAGEMENT ─────────────────── */
 router.get("/admin/orders", requireAdmin, async (req, res): Promise<void> => {
-  const limit = Math.min(Number(req.query.limit) || 50, 200);
-  const offset = Number(req.query.offset) || 0;
+  const exportAll = req.query.export === "true";
+  const limit = exportAll ? 5000 : Math.min(Number(req.query.limit) || 50, 200);
+  const offset = exportAll ? 0 : Number(req.query.offset) || 0;
+  const statusFilter = req.query.status as string | undefined;
+
+  const where = statusFilter && statusFilter !== "Tous" ? eq(virtualNumbersTable.status, statusFilter) : undefined;
 
   const rows = await db
     .select({
@@ -963,11 +980,12 @@ router.get("/admin/orders", requireAdmin, async (req, res): Promise<void> => {
     .leftJoin(usersTable, eq(virtualNumbersTable.userId, usersTable.id))
     .leftJoin(servicesTable, eq(virtualNumbersTable.serviceId, servicesTable.id))
     .leftJoin(countriesTable, eq(virtualNumbersTable.countryId, countriesTable.id))
+    .where(where)
     .orderBy(desc(virtualNumbersTable.createdAt))
     .limit(limit)
     .offset(offset);
 
-  const [totalRow] = await db.select({ c: count() }).from(virtualNumbersTable);
+  const [totalRow] = await db.select({ c: count() }).from(virtualNumbersTable).where(where);
   res.json({ orders: rows, total: totalRow?.c ?? 0 });
 });
 
@@ -1655,8 +1673,12 @@ router.get("/admin/logs", requireAdmin, async (req, res): Promise<void> => {
 
 /* ─────────────────── TRANSACTIONS ─────────────────── */
 router.get("/admin/transactions", requireAdmin, async (req, res): Promise<void> => {
-  const limit = Math.min(Number(req.query.limit) || 50, 200);
-  const offset = Number(req.query.offset) || 0;
+  const exportAll = req.query.export === "true";
+  const limit = exportAll ? 5000 : Math.min(Number(req.query.limit) || 50, 200);
+  const offset = exportAll ? 0 : Number(req.query.offset) || 0;
+  const typeFilter = req.query.type as string | undefined;
+
+  const where = typeFilter && typeFilter !== "Tous" ? eq(transactionsTable.type, typeFilter) : undefined;
 
   const rows = await db
     .select({
@@ -1672,11 +1694,12 @@ router.get("/admin/transactions", requireAdmin, async (req, res): Promise<void> 
     })
     .from(transactionsTable)
     .leftJoin(usersTable, eq(transactionsTable.userId, usersTable.id))
+    .where(where)
     .orderBy(desc(transactionsTable.createdAt))
     .limit(limit)
     .offset(offset);
 
-  const [totalRow] = await db.select({ c: count() }).from(transactionsTable);
+  const [totalRow] = await db.select({ c: count() }).from(transactionsTable).where(where);
   res.json({ transactions: rows, total: totalRow?.c ?? 0 });
 });
 

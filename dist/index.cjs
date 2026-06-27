@@ -114928,9 +114928,34 @@ router12.get("/admin/stats", requireAdmin2, async (req, res) => {
   });
 });
 router12.get("/admin/users", requireAdmin2, async (req, res) => {
-  const limit = Math.min(Number(req.query.limit) || 50, 200);
-  const offset = Number(req.query.offset) || 0;
+  const exportAll = req.query.export === "true";
+  const limit = exportAll ? 5e3 : Math.min(Number(req.query.limit) || 50, 200);
+  const offset = exportAll ? 0 : Number(req.query.offset) || 0;
   const search = req.query.search;
+  const statusFilter = req.query.status;
+  const dateFrom = req.query.dateFrom;
+  const dateTo = req.query.dateTo;
+  const conditions = [];
+  if (search) {
+    conditions.push(or(
+      like(usersTable.fullName, `%${search}%`),
+      like(usersTable.phone, `%${search}%`),
+      like(usersTable.email, `%${search}%`),
+      like(usersTable.username, `%${search}%`)
+    ));
+  }
+  if (statusFilter === "Restreint") {
+    conditions.push(eq(usersTable.isRestricted, true));
+  } else if (statusFilter && statusFilter !== "Tous") {
+    conditions.push(eq(usersTable.status, statusFilter));
+  }
+  if (dateFrom) conditions.push(gte(usersTable.createdAt, new Date(dateFrom)));
+  if (dateTo) {
+    const end = new Date(dateTo);
+    end.setHours(23, 59, 59, 999);
+    conditions.push(lte(usersTable.createdAt, end));
+  }
+  const where = conditions.length > 0 ? and(...conditions) : void 0;
   const rows = await db.select({
     id: usersTable.id,
     fullName: usersTable.fullName,
@@ -114947,17 +114972,8 @@ router12.get("/admin/users", requireAdmin2, async (req, res) => {
     maxPurchasesPerMin: usersTable.maxPurchasesPerMin,
     maxBalance: usersTable.maxBalance,
     createdAt: usersTable.createdAt
-  }).from(usersTable).where(search ? or(
-    like(usersTable.fullName, `%${search}%`),
-    like(usersTable.phone, `%${search}%`),
-    like(usersTable.email, `%${search}%`),
-    like(usersTable.username, `%${search}%`)
-  ) : void 0).orderBy(desc(usersTable.createdAt)).limit(limit).offset(offset);
-  const [totalRow] = await db.select({ c: count() }).from(usersTable).where(search ? or(
-    like(usersTable.fullName, `%${search}%`),
-    like(usersTable.phone, `%${search}%`),
-    like(usersTable.email, `%${search}%`)
-  ) : void 0);
+  }).from(usersTable).where(where).orderBy(desc(usersTable.createdAt)).limit(limit).offset(offset);
+  const [totalRow] = await db.select({ c: count() }).from(usersTable).where(where);
   res.json({ users: rows, total: totalRow?.c ?? 0 });
 });
 router12.get("/admin/users/:userId", requireAdmin2, async (req, res) => {
@@ -115712,8 +115728,11 @@ router12.post("/admin/payment-configs/add-country", requireAdmin2, async (req, r
   res.json({ success: true, country: country[0], inserted, total: methods.length });
 });
 router12.get("/admin/orders", requireAdmin2, async (req, res) => {
-  const limit = Math.min(Number(req.query.limit) || 50, 200);
-  const offset = Number(req.query.offset) || 0;
+  const exportAll = req.query.export === "true";
+  const limit = exportAll ? 5e3 : Math.min(Number(req.query.limit) || 50, 200);
+  const offset = exportAll ? 0 : Number(req.query.offset) || 0;
+  const statusFilter = req.query.status;
+  const where = statusFilter && statusFilter !== "Tous" ? eq(virtualNumbersTable.status, statusFilter) : void 0;
   const rows = await db.select({
     id: virtualNumbersTable.id,
     phoneNumber: virtualNumbersTable.phoneNumber,
@@ -115727,8 +115746,8 @@ router12.get("/admin/orders", requireAdmin2, async (req, res) => {
     serviceName: servicesTable.name,
     countryName: countriesTable.name,
     countryFlag: countriesTable.flag
-  }).from(virtualNumbersTable).leftJoin(usersTable, eq(virtualNumbersTable.userId, usersTable.id)).leftJoin(servicesTable, eq(virtualNumbersTable.serviceId, servicesTable.id)).leftJoin(countriesTable, eq(virtualNumbersTable.countryId, countriesTable.id)).orderBy(desc(virtualNumbersTable.createdAt)).limit(limit).offset(offset);
-  const [totalRow] = await db.select({ c: count() }).from(virtualNumbersTable);
+  }).from(virtualNumbersTable).leftJoin(usersTable, eq(virtualNumbersTable.userId, usersTable.id)).leftJoin(servicesTable, eq(virtualNumbersTable.serviceId, servicesTable.id)).leftJoin(countriesTable, eq(virtualNumbersTable.countryId, countriesTable.id)).where(where).orderBy(desc(virtualNumbersTable.createdAt)).limit(limit).offset(offset);
+  const [totalRow] = await db.select({ c: count() }).from(virtualNumbersTable).where(where);
   res.json({ orders: rows, total: totalRow?.c ?? 0 });
 });
 router12.post("/admin/orders/:orderId/cancel", requireAdmin2, async (req, res) => {
@@ -116269,8 +116288,11 @@ router12.get("/admin/logs", requireAdmin2, async (req, res) => {
   res.json(rows);
 });
 router12.get("/admin/transactions", requireAdmin2, async (req, res) => {
-  const limit = Math.min(Number(req.query.limit) || 50, 200);
-  const offset = Number(req.query.offset) || 0;
+  const exportAll = req.query.export === "true";
+  const limit = exportAll ? 5e3 : Math.min(Number(req.query.limit) || 50, 200);
+  const offset = exportAll ? 0 : Number(req.query.offset) || 0;
+  const typeFilter = req.query.type;
+  const where = typeFilter && typeFilter !== "Tous" ? eq(transactionsTable.type, typeFilter) : void 0;
   const rows = await db.select({
     id: transactionsTable.id,
     type: transactionsTable.type,
@@ -116281,8 +116303,8 @@ router12.get("/admin/transactions", requireAdmin2, async (req, res) => {
     createdAt: transactionsTable.createdAt,
     userFullName: usersTable.fullName,
     userPhone: usersTable.phone
-  }).from(transactionsTable).leftJoin(usersTable, eq(transactionsTable.userId, usersTable.id)).orderBy(desc(transactionsTable.createdAt)).limit(limit).offset(offset);
-  const [totalRow] = await db.select({ c: count() }).from(transactionsTable);
+  }).from(transactionsTable).leftJoin(usersTable, eq(transactionsTable.userId, usersTable.id)).where(where).orderBy(desc(transactionsTable.createdAt)).limit(limit).offset(offset);
+  const [totalRow] = await db.select({ c: count() }).from(transactionsTable).where(where);
   res.json({ transactions: rows, total: totalRow?.c ?? 0 });
 });
 router12.get("/admin/realtime", requireAdmin2, async (req, res) => {

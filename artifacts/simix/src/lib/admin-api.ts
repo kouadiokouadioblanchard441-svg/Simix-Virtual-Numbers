@@ -35,11 +35,15 @@ export const adminApi = {
   getStats: () => req<AdminStats>("GET", "/admin/stats"),
   getAnalytics: (days = 30) => req<AdminAnalytics>("GET", `/admin/analytics?days=${days}`),
 
-  getUsers: (params?: { limit?: number; offset?: number; search?: string }) => {
+  getUsers: (params?: { limit?: number; offset?: number; search?: string; status?: string; dateFrom?: string; dateTo?: string; export?: boolean }) => {
     const q = new URLSearchParams();
     if (params?.limit) q.set("limit", String(params.limit));
     if (params?.offset) q.set("offset", String(params.offset));
     if (params?.search) q.set("search", params.search);
+    if (params?.status) q.set("status", params.status);
+    if (params?.dateFrom) q.set("dateFrom", params.dateFrom);
+    if (params?.dateTo) q.set("dateTo", params.dateTo);
+    if (params?.export) q.set("export", "true");
     return req<{ users: AdminUser[]; total: number }>("GET", `/admin/users?${q}`);
   },
   getUser: (id: string) => req<AdminUserDetail>("GET", `/admin/users/${id}`),
@@ -54,18 +58,22 @@ export const adminApi = {
   promoteUser: (id: string) => req("POST", `/admin/users/${id}/promote`),
   demoteUser: (id: string) => req("POST", `/admin/users/${id}/demote`),
 
-  getOrders: (params?: { limit?: number; offset?: number }) => {
+  getOrders: (params?: { limit?: number; offset?: number; status?: string; export?: boolean }) => {
     const q = new URLSearchParams();
     if (params?.limit) q.set("limit", String(params.limit));
     if (params?.offset) q.set("offset", String(params.offset));
+    if (params?.status) q.set("status", params.status);
+    if (params?.export) q.set("export", "true");
     return req<{ orders: AdminOrder[]; total: number }>("GET", `/admin/orders?${q}`);
   },
   cancelOrder: (id: string) => req("POST", `/admin/orders/${id}/cancel`),
 
-  getTransactions: (params?: { limit?: number; offset?: number }) => {
+  getTransactions: (params?: { limit?: number; offset?: number; type?: string; export?: boolean }) => {
     const q = new URLSearchParams();
     if (params?.limit) q.set("limit", String(params.limit));
     if (params?.offset) q.set("offset", String(params.offset));
+    if (params?.type) q.set("type", params.type);
+    if (params?.export) q.set("export", "true");
     return req<{ transactions: AdminTransaction[]; total: number }>("GET", `/admin/transactions?${q}`);
   },
 

@@ -4,7 +4,7 @@ import { adminApi, type AdminAnalytics } from "@/lib/admin-api";
 import { AdminGuard } from "@/components/admin-guard";
 import { AdminLayout } from "@/components/admin-layout";
 import { formatFCFA } from "@/lib/format";
-import { Loader2, TrendingUp, ShoppingBag, BarChart3, Users } from "lucide-react";
+import { Loader2, TrendingUp, ShoppingBag, BarChart3, Users, DollarSign } from "lucide-react";
 
 function MiniBar({ value, max, color = "bg-violet-500" }: { value: number; max: number; color?: string }) {
   const pct = max > 0 ? Math.round((value / max) * 100) : 0;
@@ -53,29 +53,64 @@ function RevenueChart({ data }: { data: AdminAnalytics["dailyRevenue"] }) {
   );
 }
 
-function ServiceDonut({ data }: { data: AdminAnalytics["topServices"] }) {
-  const total = data.reduce((s, d) => s + d.count, 0);
+function ServiceStats({ data }: { data: AdminAnalytics["topServices"] }) {
+  const [view, setView] = useState<"count" | "revenue">("count");
+  const totalCount = data.reduce((s, d) => s + d.count, 0);
+  const totalRevenue = data.reduce((s, d) => s + d.revenue, 0);
   const COLORS = ["bg-violet-500", "bg-blue-500", "bg-emerald-500", "bg-orange-500", "bg-pink-500", "bg-cyan-500"];
+
+  const sorted = view === "count"
+    ? [...data].sort((a, b) => b.count - a.count)
+    : [...data].sort((a, b) => b.revenue - a.revenue);
+
+  const maxVal = view === "count"
+    ? Math.max(...sorted.map(d => d.count), 1)
+    : Math.max(...sorted.map(d => d.revenue), 1);
 
   return (
     <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5">
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h2 className="text-sm font-semibold text-white">Top services</h2>
-          <p className="text-zinc-500 text-xs mt-0.5">{total} commandes</p>
+          <h2 className="text-sm font-semibold text-white">Stats par service</h2>
+          <p className="text-zinc-500 text-xs mt-0.5">
+            {view === "count" ? `${totalCount} commandes` : formatFCFA(totalRevenue) + " générés"}
+          </p>
         </div>
-        <ShoppingBag className="w-4 h-4 text-blue-400" />
+        <div className="flex items-center gap-1 bg-zinc-800 rounded-lg p-1">
+          <button
+            onClick={() => setView("count")}
+            className={`flex items-center gap-1 px-2 py-1 rounded text-xs font-medium transition-colors ${view === "count" ? "bg-violet-600 text-white" : "text-zinc-400 hover:text-white"}`}
+          >
+            <ShoppingBag className="w-3 h-3" /> Commandes
+          </button>
+          <button
+            onClick={() => setView("revenue")}
+            className={`flex items-center gap-1 px-2 py-1 rounded text-xs font-medium transition-colors ${view === "revenue" ? "bg-emerald-600 text-white" : "text-zinc-400 hover:text-white"}`}
+          >
+            <DollarSign className="w-3 h-3" /> Revenus
+          </button>
+        </div>
       </div>
       <div className="space-y-3">
-        {data.slice(0, 6).map((svc, i) => {
-          const pct = total > 0 ? Math.round((svc.count / total) * 100) : 0;
+        {sorted.slice(0, 6).map((svc, i) => {
+          const val = view === "count" ? svc.count : svc.revenue;
+          const total = view === "count" ? totalCount : totalRevenue;
+          const pct = total > 0 ? Math.round((val / total) * 100) : 0;
           return (
             <div key={i} className="space-y-1">
               <div className="flex items-center justify-between text-xs">
                 <span className="text-zinc-300 font-medium">{svc.name}</span>
-                <span className="text-zinc-500">{svc.count} · {pct}%</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-zinc-500 text-[10px]">{pct}%</span>
+                  <span className="text-zinc-400 font-medium">
+                    {view === "count" ? `${svc.count} cmd` : formatFCFA(svc.revenue)}
+                  </span>
+                </div>
               </div>
-              <MiniBar value={svc.count} max={total} color={COLORS[i % COLORS.length]} />
+              <MiniBar value={val} max={maxVal} color={COLORS[i % COLORS.length]} />
+              {view === "revenue" && (
+                <div className="text-[10px] text-zinc-600">{svc.count} commande{svc.count !== 1 ? "s" : ""} · moy. {svc.count > 0 ? formatFCFA(Math.round(svc.revenue / svc.count)) : "—"}</div>
+              )}
             </div>
           );
         })}
@@ -239,7 +274,7 @@ function AnalyticsContent() {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <ServiceDonut data={analytics.topServices} />
+            <ServiceStats data={analytics.topServices} />
             <CountryBars data={analytics.topCountries} />
             <TxBreakdown data={analytics.txBreakdown} />
           </div>

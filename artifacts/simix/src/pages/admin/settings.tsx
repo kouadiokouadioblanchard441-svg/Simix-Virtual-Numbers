@@ -63,8 +63,14 @@ const SETTINGS_SCHEMA = [
     group: "Fonctionnalités",
     fields: [
       { key: "registration_enabled", label: "Inscription activée", placeholder: "true", type: "text" },
-      { key: "maintenance_mode", label: "Mode maintenance", placeholder: "false", type: "text" },
+      { key: "maintenance_mode", label: "Mode maintenance", placeholder: "false", type: "text", hint: "Gérable aussi directement depuis le tableau de bord" },
       { key: "sms_simulation", label: "Simulation SMS (développement)", placeholder: "true", type: "text" },
+    ],
+  },
+  {
+    group: "Alertes Fournisseur 5sim",
+    fields: [
+      { key: "fivesim_balance_alert_threshold", label: "Seuil d'alerte solde 5sim (USD)", placeholder: "5", type: "number", hint: "Une alerte rouge s'affiche sur le tableau de bord si le solde 5sim descend sous ce montant. Ex : 5 = alerte si solde < 5 USD" },
     ],
   },
   {
