@@ -95,10 +95,21 @@ export function updateLastActive(): void {
   } catch { /* ignore */ }
 }
 
+/**
+ * Clear the last-active timestamp so that isLocalSessionExpired() returns false
+ * on the next check. Call this when the session expires so that after a fresh
+ * login the user is taken to the PIN screen instead of looping back to /login.
+ */
+export function clearLastActive(): void {
+  try {
+    localStorage.removeItem(K.lastActive());
+  } catch { /* ignore */ }
+}
+
 export function isLocalSessionExpired(): boolean {
   try {
     const ts = localStorage.getItem(K.lastActive());
-    if (!ts) return false;
+    if (!ts) return false; // no timestamp → treated as fresh session
     return Date.now() - parseInt(ts, 10) > SESSION_EXPIRY_MS;
   } catch {
     return false;

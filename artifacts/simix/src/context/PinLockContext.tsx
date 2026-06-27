@@ -15,6 +15,7 @@ import {
   isLocalSessionExpired,
   markUnlocked,
   clearUnlocked,
+  clearLastActive,
   savePinUser,
   getPinUser,
   updateLastActive,
@@ -93,8 +94,12 @@ export function PinLockProvider({ children }: { children: ReactNode }) {
     savePinUser(user);
     setCurrentUser(user);
 
-    // Check expiry BEFORE updating activity — updating first would reset the clock
+    // Check expiry BEFORE updating activity — updating first would reset the clock.
+    // We clear lastActive so that after re-login isLocalSessionExpired() returns
+    // false (no timestamp = not expired) and the user reaches the PIN screen
+    // instead of looping back to /login indefinitely.
     if (isLocalSessionExpired()) {
+      clearLastActive();
       clearUnlocked();
       setStatus("no_session");
       return;
