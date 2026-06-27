@@ -6,9 +6,9 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, Code2, Copy, Check, ChevronDown, ChevronRight,
   Search, X, Zap, Globe, Phone, MessageSquare, Wallet,
-  Webhook, AlertTriangle, Clock, BookOpen, Terminal,
-  Shield, Key, Play, ExternalLink, Hash, FileCode,
-  Package, Layers, Activity,
+  Webhook, AlertTriangle, Terminal,
+  Shield, Key, Play,
+  Package,
 } from "lucide-react";
 
 /* ─── Types ─────────────────────────────────────────────────────────── */
@@ -79,26 +79,38 @@ const ENDPOINTS: Endpoint[] = [
     method: "POST",
     path: "/auth/register",
     title: "Créer un compte",
-    description: "Crée un nouveau compte utilisateur sur la plateforme Simix.",
+    description: "Crée un nouveau compte utilisateur. Le cookie de session est défini automatiquement à la création. Limité à 5 inscriptions par heure par IP.",
     auth: false,
     bodyParams: [
       { name: "fullName", type: "string", required: true, description: "Nom complet de l'utilisateur", example: "Jean Dupont" },
       { name: "phone", type: "string", required: true, description: "Numéro de téléphone avec indicatif (+225...)", example: "+2250701234567" },
       { name: "password", type: "string", required: true, description: "Mot de passe (min 8 caractères)", example: "motdepasse123" },
       { name: "countryCode", type: "string", required: true, description: "Code pays ISO 2 lettres", example: "ci" },
+      { name: "email", type: "string", required: false, description: "Adresse e-mail (optionnelle, générée automatiquement si absente)", example: "jean@example.com" },
+      { name: "referralCode", type: "string", required: false, description: "Code de parrainage d'un autre utilisateur", example: "JEAN123" },
     ],
     response: `{
-  "id": "uuid-utilisateur",
-  "fullName": "Jean Dupont",
-  "phone": "+2250701234567",
-  "balance": 0,
-  "verified": false,
-  "createdAt": "2026-01-01T00:00:00.000Z"
+  "user": {
+    "id": "uuid-utilisateur",
+    "fullName": "Jean Dupont",
+    "username": "user_234567",
+    "phone": "+2250701234567",
+    "email": "jean@example.com",
+    "balance": 0,
+    "verified": false,
+    "emailVerified": false,
+    "status": "Actif",
+    "referralCode": "JEAN56",
+    "createdAt": "2026-01-01T00:00:00.000Z"
+  },
+  "token": "sess_xxxxxxxxxxxxxxxx",
+  "requiresEmailVerification": true
 }`,
     codes: [
-      { code: 201, label: "Created", desc: "Compte créé avec succès" },
-      { code: 400, label: "Bad Request", desc: "Données invalides ou manquantes" },
-      { code: 409, label: "Conflict", desc: "Numéro de téléphone déjà utilisé" },
+      { code: 200, label: "OK", desc: "Compte créé — cookie simix_session défini" },
+      { code: 400, label: "Bad Request", desc: "Données invalides ou numéro déjà utilisé" },
+      { code: 429, label: "Too Many Requests", desc: "5 inscriptions/heure dépassées" },
+      { code: 503, label: "Service Unavailable", desc: "Inscriptions temporairement désactivées par l'admin" },
     ],
     examples: {
       curl: `curl -X POST ${BASE_URL}/auth/register \\
@@ -121,11 +133,13 @@ const ENDPOINTS: Endpoint[] = [
     countryCode: 'ci',
   }),
 });
-const data = await res.json();
-console.log(data);`,
-      python: `import requests, json
+const { user, token, requiresEmailVerification } = await res.json();
+// Si requiresEmailVerification === true, demander la vérification OTP
+console.log('Compte créé :', user.id);`,
+      python: `import requests
 
-resp = requests.post(
+session = requests.Session()
+resp = session.post(
     '${BASE_URL}/auth/register',
     json={
         'fullName': 'Jean Dupont',
@@ -134,7 +148,9 @@ resp = requests.post(
         'countryCode': 'ci',
     },
 )
-print(resp.json())`,
+data = resp.json()
+# data['user'], data['token'], data.get('requiresEmailVerification')
+print(data['user']['id'])`,
       php: `<?php
 $ch = curl_init('${BASE_URL}/auth/register');
 curl_setopt_array($ch, [
@@ -146,11 +162,12 @@ curl_setopt_array($ch, [
         'password'    => 'motdepasse123',
         'countryCode' => 'ci',
     ]),
-    CURLOPT_HTTPHEADER     => ['Content-Type: application/json'],
-    CURLOPT_COOKIEFILE     => 'cookies.txt',
-    CURLOPT_COOKIEJAR      => 'cookies.txt',
+    CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
+    CURLOPT_COOKIEFILE => 'cookies.txt',
+    CURLOPT_COOKIEJAR  => 'cookies.txt',
 ]);
-$result = json_decode(curl_exec($ch), true);`,
+$result = json_decode(curl_exec($ch), true);
+// $result['user'], $result['token']`,
       go: `package main
 
 import (
@@ -173,7 +190,9 @@ func main() {
         bytes.NewBuffer(body),
     )
     defer resp.Body.Close()
-    fmt.Println(resp.Status)
+    var data map[string]interface{}
+    json.NewDecoder(resp.Body).Decode(&data)
+    fmt.Println(data["token"])
 }`,
     },
   },
@@ -182,79 +201,121 @@ func main() {
     method: "POST",
     path: "/auth/login",
     title: "Se connecter",
-    description: "Authentifie un utilisateur et crée une session sécurisée via cookie httpOnly.",
+    description: "Authentifie un utilisateur et crée une session sécurisée via cookie httpOnly. Le champ `identifier` accepte indifféremment le numéro de téléphone ou le username. Protection anti-brute-force automatique (blocage 15 min).",
     auth: false,
     bodyParams: [
-      { name: "phone", type: "string", required: true, description: "Numéro de téléphone", example: "+2250701234567" },
+      { name: "identifier", type: "string", required: true, description: "Numéro de téléphone (+225...) OU username", example: "+2250701234567" },
       { name: "password", type: "string", required: true, description: "Mot de passe", example: "motdepasse123" },
     ],
     response: `{
-  "id": "uuid-utilisateur",
-  "fullName": "Jean Dupont",
-  "phone": "+2250701234567",
-  "balance": 12450,
-  "verified": true,
-  "status": "Actif"
+  "user": {
+    "id": "uuid-utilisateur",
+    "fullName": "Jean Dupont",
+    "username": "user_234567",
+    "phone": "+2250701234567",
+    "balance": 12450,
+    "emailVerified": true,
+    "status": "Actif"
+  },
+  "token": "sess_xxxxxxxxxxxxxxxx",
+  "requiresEmailVerification": false
 }`,
     codes: [
       { code: 200, label: "OK", desc: "Connexion réussie — cookie simix_session défini" },
       { code: 401, label: "Unauthorized", desc: "Identifiants incorrects" },
-      { code: 429, label: "Too Many Requests", desc: "Trop de tentatives de connexion" },
+      { code: 403, label: "Forbidden", desc: "Compte suspendu (status Bloqué)" },
+      { code: 429, label: "Too Many Requests", desc: "Trop de tentatives — compte bloqué 15 min" },
     ],
     examples: {
       curl: `curl -X POST ${BASE_URL}/auth/login \\
   -H "Content-Type: application/json" \\
   -c cookies.txt \\
   -d '{
-    "phone": "+2250701234567",
+    "identifier": "+2250701234567",
     "password": "motdepasse123"
   }'`,
       javascript: `const res = await fetch('${BASE_URL}/auth/login', {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
-  credentials: 'include', // important : envoie le cookie de session
+  credentials: 'include',
   body: JSON.stringify({
-    phone: '+2250701234567',
+    identifier: '+2250701234567',
     password: 'motdepasse123',
   }),
 });
-const user = await res.json();`,
+const { user, token } = await res.json();
+console.log('Connecté :', user.fullName, '— Solde :', user.balance, 'FCFA');`,
       python: `import requests
 
 session = requests.Session()
 resp = session.post(
     '${BASE_URL}/auth/login',
-    json={'phone': '+2250701234567', 'password': 'motdepasse123'},
+    json={'identifier': '+2250701234567', 'password': 'motdepasse123'},
 )
-# Le cookie de session est automatiquement sauvegardé dans session
-print(resp.json())`,
+# Le cookie de session est automatiquement géré par session
+data = resp.json()
+print(f"Connecté : {data['user']['fullName']}")`,
       php: `<?php
 $ch = curl_init('${BASE_URL}/auth/login');
 curl_setopt_array($ch, [
     CURLOPT_RETURNTRANSFER => true,
     CURLOPT_POST           => true,
     CURLOPT_POSTFIELDS     => json_encode([
-        'phone'    => '+2250701234567',
-        'password' => 'motdepasse123',
+        'identifier' => '+2250701234567',
+        'password'   => 'motdepasse123',
     ]),
     CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
     CURLOPT_COOKIEFILE => 'cookies.txt',
     CURLOPT_COOKIEJAR  => 'cookies.txt',
 ]);
-$result = json_decode(curl_exec($ch), true);`,
-      go: `// Utiliser un http.Client avec gestion des cookies
-jar, _ := cookiejar.New(nil)
+$result = json_decode(curl_exec($ch), true);
+echo $result['user']['fullName'];`,
+      go: `jar, _ := cookiejar.New(nil)
 client := &http.Client{Jar: jar}
 
 body, _ := json.Marshal(map[string]string{
-    "phone":    "+2250701234567",
-    "password": "motdepasse123",
+    "identifier": "+2250701234567",
+    "password":   "motdepasse123",
 })
 resp, _ := client.Post(
     "${BASE_URL}/auth/login",
     "application/json",
     bytes.NewBuffer(body),
-)`,
+)
+var data map[string]interface{}
+json.NewDecoder(resp.Body).Decode(&data)`,
+    },
+  },
+  {
+    id: "logout",
+    method: "POST",
+    path: "/auth/logout",
+    title: "Se déconnecter",
+    description: "Détruit la session serveur et efface le cookie simix_session. Toujours retourne 200, même si aucune session n'était active.",
+    auth: false,
+    response: `{ "ok": true }`,
+    codes: [
+      { code: 200, label: "OK", desc: "Session détruite et cookie effacé" },
+    ],
+    examples: {
+      curl: `curl -X POST ${BASE_URL}/auth/logout \\
+  -b cookies.txt -c cookies.txt`,
+      javascript: `await fetch('${BASE_URL}/auth/logout', {
+  method: 'POST',
+  credentials: 'include',
+});
+// Le cookie simix_session est maintenant effacé`,
+      python: `session.post('${BASE_URL}/auth/logout')
+# La session requests perd le cookie`,
+      php: `$ch = curl_init('${BASE_URL}/auth/logout');
+curl_setopt_array($ch, [
+    CURLOPT_RETURNTRANSFER => true,
+    CURLOPT_POST           => true,
+    CURLOPT_COOKIEFILE     => 'cookies.txt',
+    CURLOPT_COOKIEJAR      => 'cookies.txt',
+]);
+curl_exec($ch);`,
+      go: `client.Post("${BASE_URL}/auth/logout", "", nil)`,
     },
   },
   {
@@ -262,20 +323,22 @@ resp, _ := client.Post(
     method: "GET",
     path: "/auth/me",
     title: "Profil utilisateur",
-    description: "Récupère les informations du compte connecté.",
+    description: "Récupère les informations complètes du compte connecté incluant solde, statut et code de parrainage.",
     auth: true,
     response: `{
   "id": "uuid-utilisateur",
   "fullName": "Jean Dupont",
-  "username": "jeandupont",
+  "username": "user_234567",
   "phone": "+2250701234567",
   "email": "jean@example.com",
   "balance": 12450,
   "verified": true,
+  "emailVerified": true,
   "status": "Actif",
   "isAdmin": false,
   "countryCode": "ci",
-  "referralCode": "JEAN123",
+  "referralCode": "JEAN56",
+  "lastLoginAt": "2026-06-27T08:00:00.000Z",
   "createdAt": "2026-01-01T00:00:00.000Z"
 }`,
     codes: [
@@ -283,15 +346,12 @@ resp, _ := client.Post(
       { code: 401, label: "Unauthorized", desc: "Session expirée ou absente" },
     ],
     examples: {
-      curl: `curl ${BASE_URL}/auth/me \\
-  -b cookies.txt`,
-      javascript: `const res = await fetch('${BASE_URL}/auth/me', {
+      curl: `curl ${BASE_URL}/auth/me -b cookies.txt`,
+      javascript: `const user = await fetch('${BASE_URL}/auth/me', {
   credentials: 'include',
-});
-const user = await res.json();
+}).then(r => r.json());
 console.log('Solde :', user.balance, 'FCFA');`,
-      python: `resp = session.get('${BASE_URL}/auth/me')
-user = resp.json()
+      python: `user = session.get('${BASE_URL}/auth/me').json()
 print(f"Solde : {user['balance']} FCFA")`,
       php: `$ch = curl_init('${BASE_URL}/auth/me');
 curl_setopt_array($ch, [
@@ -299,11 +359,72 @@ curl_setopt_array($ch, [
     CURLOPT_COOKIEFILE     => 'cookies.txt',
 ]);
 $user = json_decode(curl_exec($ch), true);
-echo "Solde : " . $user['balance'] . " FCFA";`,
+echo $user['balance'] . ' FCFA';`,
       go: `resp, _ := client.Get("${BASE_URL}/auth/me")
 defer resp.Body.Close()
 var user map[string]interface{}
 json.NewDecoder(resp.Body).Decode(&user)`,
+    },
+  },
+  {
+    id: "change-password",
+    method: "PATCH",
+    path: "/auth/me/password",
+    title: "Changer le mot de passe",
+    description: "Modifie le mot de passe du compte connecté. L'ancien mot de passe doit être fourni pour confirmation.",
+    auth: true,
+    bodyParams: [
+      { name: "currentPassword", type: "string", required: true, description: "Mot de passe actuel", example: "ancienMotDePasse" },
+      { name: "newPassword", type: "string", required: true, description: "Nouveau mot de passe (min 8 caractères)", example: "nouveauMotDePasse123" },
+    ],
+    response: `{ "ok": true }`,
+    codes: [
+      { code: 200, label: "OK", desc: "Mot de passe modifié avec succès" },
+      { code: 400, label: "Bad Request", desc: "Nouveau mot de passe trop court ou invalide" },
+      { code: 401, label: "Unauthorized", desc: "Ancien mot de passe incorrect ou session absente" },
+    ],
+    examples: {
+      curl: `curl -X PATCH ${BASE_URL}/auth/me/password \\
+  -H "Content-Type: application/json" \\
+  -b cookies.txt \\
+  -d '{
+    "currentPassword": "ancienMdp",
+    "newPassword": "nouveauMdp123"
+  }'`,
+      javascript: `const res = await fetch('${BASE_URL}/auth/me/password', {
+  method: 'PATCH',
+  headers: { 'Content-Type': 'application/json' },
+  credentials: 'include',
+  body: JSON.stringify({
+    currentPassword: 'ancienMdp',
+    newPassword: 'nouveauMdp123',
+  }),
+});
+const { ok } = await res.json();`,
+      python: `resp = session.patch(
+    '${BASE_URL}/auth/me/password',
+    json={'currentPassword': 'ancien', 'newPassword': 'nouveau123'},
+)
+print(resp.json())`,
+      php: `$ch = curl_init('${BASE_URL}/auth/me/password');
+curl_setopt_array($ch, [
+    CURLOPT_RETURNTRANSFER => true,
+    CURLOPT_CUSTOMREQUEST  => 'PATCH',
+    CURLOPT_POSTFIELDS     => json_encode([
+        'currentPassword' => 'ancien',
+        'newPassword'     => 'nouveau123',
+    ]),
+    CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
+    CURLOPT_COOKIEFILE => 'cookies.txt',
+]);
+$result = json_decode(curl_exec($ch), true);`,
+      go: `body, _ := json.Marshal(map[string]string{
+    "currentPassword": "ancien",
+    "newPassword":     "nouveau123",
+})
+req, _ := http.NewRequest("PATCH", "${BASE_URL}/auth/me/password", bytes.NewBuffer(body))
+req.Header.Set("Content-Type", "application/json")
+resp, _ := client.Do(req)`,
     },
   },
   /* ── Countries ── */
@@ -344,18 +465,15 @@ json.NewDecoder(resp.Body).Decode(&user)`,
     ],
     examples: {
       curl: `curl ${BASE_URL}/countries -b cookies.txt`,
-      javascript: `const res = await fetch('${BASE_URL}/countries', {
+      javascript: `const countries = await fetch('${BASE_URL}/countries', {
   credentials: 'include',
-});
-const countries = await res.json();
-// Filtrer les pays disponibles
+}).then(r => r.json());
 const available = countries.filter(c => c.available > 0);`,
       python: `countries = session.get('${BASE_URL}/countries').json()
 available = [c for c in countries if c['available'] > 0]`,
-      php: `$countries = json_decode(
-    file_get_contents('${BASE_URL}/countries'),
-    true
-);`,
+      php: `$ch = curl_init('${BASE_URL}/countries');
+curl_setopt_array($ch, [CURLOPT_RETURNTRANSFER => true, CURLOPT_COOKIEFILE => 'cookies.txt']);
+$countries = json_decode(curl_exec($ch), true);`,
       go: `resp, _ := client.Get("${BASE_URL}/countries")
 var countries []map[string]interface{}
 json.NewDecoder(resp.Body).Decode(&countries)`,
@@ -402,15 +520,13 @@ json.NewDecoder(resp.Body).Decode(&countries)`,
       javascript: `const services = await fetch('${BASE_URL}/services', {
   credentials: 'include',
 }).then(r => r.json());
-
 const whatsapp = services.find(s => s.slug === 'whatsapp');
 console.log('Prix WhatsApp :', whatsapp.price, 'FCFA');`,
       python: `services = session.get('${BASE_URL}/services').json()
 whatsapp = next(s for s in services if s['slug'] == 'whatsapp')`,
-      php: `$services = json_decode(
-    file_get_contents('${BASE_URL}/services'),
-    true
-);`,
+      php: `$ch = curl_init('${BASE_URL}/services');
+curl_setopt_array($ch, [CURLOPT_RETURNTRANSFER => true, CURLOPT_COOKIEFILE => 'cookies.txt']);
+$services = json_decode(curl_exec($ch), true);`,
       go: `resp, _ := client.Get("${BASE_URL}/services")
 var services []map[string]interface{}
 json.NewDecoder(resp.Body).Decode(&services)`,
@@ -422,8 +538,8 @@ json.NewDecoder(resp.Body).Decode(&services)`,
     method: "GET",
     path: "/numbers/quote",
     title: "Obtenir un devis",
-    description: "Retourne le prix et la disponibilité en temps réel pour un service et un pays donnés.",
-    auth: true,
+    description: "Retourne le prix et la disponibilité en temps réel pour un service et un pays donnés. Ne nécessite pas d'authentification.",
+    auth: false,
     queryParams: [
       { name: "serviceId", type: "string (UUID)", required: true, description: "ID du service", example: "uuid-service" },
       { name: "countryId", type: "string (UUID)", required: true, description: "ID du pays", example: "uuid-pays" },
@@ -452,19 +568,15 @@ json.NewDecoder(resp.Body).Decode(&services)`,
       { code: 404, label: "Not Found", desc: "Service ou pays introuvable" },
     ],
     examples: {
-      curl: `curl "${BASE_URL}/numbers/quote?serviceId=UUID_SERVICE&countryId=UUID_PAYS" \\
-  -b cookies.txt`,
+      curl: `curl "${BASE_URL}/numbers/quote?serviceId=UUID_SERVICE&countryId=UUID_PAYS"`,
       javascript: `const params = new URLSearchParams({
   serviceId: 'UUID_SERVICE',
   countryId: 'UUID_PAYS',
 });
-const quote = await fetch(\`${BASE_URL}/numbers/quote?\${params}\`, {
-  credentials: 'include',
-}).then(r => r.json());
-
-console.log(\`Prix : \${quote.price} FCFA\`);
-console.log(\`Disponible : \${quote.available} numéros\`);`,
-      python: `quote = session.get(
+const quote = await fetch(\`${BASE_URL}/numbers/quote?\${params}\`)
+  .then(r => r.json());
+console.log(\`Prix : \${quote.price} FCFA – Disponible : \${quote.available}\`);`,
+      python: `quote = requests.get(
     '${BASE_URL}/numbers/quote',
     params={'serviceId': 'UUID_SERVICE', 'countryId': 'UUID_PAYS'},
 ).json()`,
@@ -472,7 +584,7 @@ console.log(\`Disponible : \${quote.available} numéros\`);`,
     '${BASE_URL}/numbers/quote?serviceId=UUID_SERVICE&countryId=UUID_PAYS'
 ), true);`,
       go: `url := "${BASE_URL}/numbers/quote?serviceId=UUID&countryId=UUID"
-resp, _ := client.Get(url)`,
+resp, _ := http.Get(url)`,
     },
   },
   {
@@ -480,18 +592,20 @@ resp, _ := client.Get(url)`,
     method: "POST",
     path: "/numbers",
     title: "Acheter un numéro",
-    description: "Achète et réserve un numéro virtuel. Le prix est déduit instantanément du solde wallet.",
+    description: "Achète et réserve un numéro virtuel. Le prix est déduit instantanément du solde wallet. Le numéro passe à l'état `waiting` jusqu'à réception d'un SMS.",
     auth: true,
     bodyParams: [
       { name: "serviceId", type: "string (UUID)", required: true, description: "ID du service à utiliser", example: "uuid-service" },
       { name: "countryId", type: "string (UUID)", required: true, description: "ID du pays du numéro", example: "uuid-pays" },
-      { name: "numberType", type: "string", required: false, description: '"activation" (défaut) ou "hosting"', example: "activation" },
+      { name: "numberType", type: "string", required: false, description: '"activation" (défaut, ~20 min) ou "hosting" (1 jour ou 3h)', example: "activation" },
     ],
     response: `{
   "id": "uuid-numero",
   "phoneNumber": "+12025551234",
   "service": "WhatsApp",
+  "serviceSlug": "whatsapp",
   "country": "Côte d'Ivoire",
+  "countryCode": "ci",
   "status": "waiting",
   "price": 350,
   "expiresAt": "2026-01-01T00:20:00.000Z",
@@ -508,27 +622,23 @@ resp, _ := client.Get(url)`,
       curl: `curl -X POST ${BASE_URL}/numbers \\
   -H "Content-Type: application/json" \\
   -b cookies.txt \\
-  -d '{
-    "serviceId": "UUID_SERVICE",
-    "countryId": "UUID_PAYS"
-  }'`,
+  -d '{"serviceId":"UUID_SERVICE","countryId":"UUID_PAYS"}'`,
       javascript: `const number = await fetch('${BASE_URL}/numbers', {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
   credentials: 'include',
-  body: JSON.stringify({
-    serviceId: 'UUID_SERVICE',
-    countryId: 'UUID_PAYS',
-  }),
+  body: JSON.stringify({ serviceId: 'UUID_SERVICE', countryId: 'UUID_PAYS' }),
 }).then(r => r.json());
 
 console.log('Numéro :', number.phoneNumber);
-// Attendre le SMS...
+// Commencer à poller toutes les 5s
 const interval = setInterval(async () => {
-  const res = await pollNumber(number.id);
-  if (res.messages.length > 0) {
+  const res = await fetch(\`${BASE_URL}/numbers/\${number.id}/poll\`, {
+    method: 'POST', credentials: 'include',
+  }).then(r => r.json());
+  if (res.messages?.length > 0) {
     clearInterval(interval);
-    console.log('SMS reçu :', res.messages[0].code);
+    console.log('Code SMS :', res.messages[0].code);
   }
 }, 5000);`,
       python: `import time
@@ -537,16 +647,12 @@ number = session.post(
     '${BASE_URL}/numbers',
     json={'serviceId': 'UUID_SERVICE', 'countryId': 'UUID_PAYS'},
 ).json()
-
 print(f"Numéro : {number['phoneNumber']}")
 
-# Attendre le SMS
 while True:
     time.sleep(5)
-    res = session.post(
-        f"${BASE_URL}/numbers/{number['id']}/poll"
-    ).json()
-    if res['messages']:
+    res = session.post(f"${BASE_URL}/numbers/{number['id']}/poll").json()
+    if res.get('messages'):
         print(f"Code : {res['messages'][0]['code']}")
         break`,
       php: `$ch = curl_init('${BASE_URL}/numbers');
@@ -565,19 +671,100 @@ $number = json_decode(curl_exec($ch), true);`,
     "serviceId": "UUID_SERVICE",
     "countryId": "UUID_PAYS",
 })
-resp, _ := client.Post(
-    "${BASE_URL}/numbers",
-    "application/json",
-    bytes.NewBuffer(body),
-)`,
+resp, _ := client.Post("${BASE_URL}/numbers", "application/json", bytes.NewBuffer(body))`,
+    },
+  },
+  {
+    id: "active-numbers",
+    method: "GET",
+    path: "/numbers/active",
+    title: "Numéros actifs",
+    description: "Retourne tous les numéros actuellement actifs (status `waiting` ou `received`) de l'utilisateur.",
+    auth: true,
+    response: `[
+  {
+    "id": "uuid-numero",
+    "phoneNumber": "+12025551234",
+    "service": "WhatsApp",
+    "country": "Côte d'Ivoire",
+    "status": "waiting",
+    "price": 350,
+    "expiresAt": "2026-01-01T00:20:00.000Z",
+    "messages": []
+  }
+]`,
+    codes: [
+      { code: 200, label: "OK", desc: "Liste des numéros actifs" },
+      { code: 401, label: "Unauthorized", desc: "Authentification requise" },
+    ],
+    examples: {
+      curl: `curl ${BASE_URL}/numbers/active -b cookies.txt`,
+      javascript: `const actives = await fetch('${BASE_URL}/numbers/active', {
+  credentials: 'include',
+}).then(r => r.json());
+console.log(\`\${actives.length} numéro(s) actif(s)\`);`,
+      python: `actives = session.get('${BASE_URL}/numbers/active').json()`,
+      php: `$ch = curl_init('${BASE_URL}/numbers/active');
+curl_setopt_array($ch, [CURLOPT_RETURNTRANSFER => true, CURLOPT_COOKIEFILE => 'cookies.txt']);
+$actives = json_decode(curl_exec($ch), true);`,
+      go: `resp, _ := client.Get("${BASE_URL}/numbers/active")
+var actives []map[string]interface{}
+json.NewDecoder(resp.Body).Decode(&actives)`,
+    },
+  },
+  {
+    id: "number-history",
+    method: "GET",
+    path: "/numbers/history",
+    title: "Historique des numéros",
+    description: "Retourne l'historique paginé des numéros de l'utilisateur (tous statuts confondus).",
+    auth: true,
+    response: `[
+  {
+    "id": "uuid-numero",
+    "phoneNumber": "+12025551234",
+    "service": "WhatsApp",
+    "country": "Côte d'Ivoire",
+    "status": "received",
+    "price": 350,
+    "expiresAt": "2026-01-01T00:20:00.000Z",
+    "createdAt": "2026-01-01T00:00:00.000Z",
+    "messages": [
+      {
+        "id": "uuid-sms",
+        "sender": "Whatsapp",
+        "body": "Your WhatsApp code is 847291",
+        "code": "847291",
+        "receivedAt": "2026-01-01T00:05:32.000Z"
+      }
+    ]
+  }
+]`,
+    codes: [
+      { code: 200, label: "OK", desc: "Historique retourné" },
+      { code: 401, label: "Unauthorized", desc: "Authentification requise" },
+    ],
+    examples: {
+      curl: `curl ${BASE_URL}/numbers/history -b cookies.txt`,
+      javascript: `const history = await fetch('${BASE_URL}/numbers/history', {
+  credentials: 'include',
+}).then(r => r.json());
+const received = history.filter(n => n.status === 'received');`,
+      python: `history = session.get('${BASE_URL}/numbers/history').json()`,
+      php: `$ch = curl_init('${BASE_URL}/numbers/history');
+curl_setopt_array($ch, [CURLOPT_RETURNTRANSFER => true, CURLOPT_COOKIEFILE => 'cookies.txt']);
+$history = json_decode(curl_exec($ch), true);`,
+      go: `resp, _ := client.Get("${BASE_URL}/numbers/history")
+var history []map[string]interface{}
+json.NewDecoder(resp.Body).Decode(&history)`,
     },
   },
   {
     id: "poll-number",
     method: "POST",
     path: "/numbers/:id/poll",
-    title: "Vérifier les SMS",
-    description: "Force une vérification en temps réel auprès du fournisseur pour récupérer les SMS entrants.",
+    title: "Vérifier les SMS (poll)",
+    description: "Force une vérification en temps réel auprès du fournisseur 5sim. Limité à 12 polls/minute par utilisateur. À appeler toutes les 5 secondes jusqu'à réception du SMS.",
     auth: true,
     response: `{
   "id": "uuid-numero",
@@ -594,26 +781,20 @@ resp, _ := client.Post(
   ]
 }`,
     codes: [
-      { code: 200, label: "OK", desc: "Statut et SMS retournés" },
+      { code: 200, label: "OK", desc: "Statut et messages retournés (messages: [] si aucun SMS)" },
       { code: 404, label: "Not Found", desc: "Numéro introuvable ou n'appartient pas à l'utilisateur" },
       { code: 429, label: "Too Many Requests", desc: "Max 12 polls/minute par utilisateur" },
     ],
     examples: {
       curl: `curl -X POST ${BASE_URL}/numbers/UUID_NUMERO/poll \\
   -b cookies.txt`,
-      javascript: `async function pollNumber(numberId) {
-  const res = await fetch(\`${BASE_URL}/numbers/\${numberId}/poll\`, {
-    method: 'POST',
-    credentials: 'include',
-  });
-  return res.json();
-}
-
-// Polling toutes les 5 secondes, max 4 minutes
+      javascript: `// Attente SMS avec timeout 4 minutes
 async function waitForSMS(numberId) {
   for (let i = 0; i < 48; i++) {
     await new Promise(r => setTimeout(r, 5000));
-    const data = await pollNumber(numberId);
+    const data = await fetch(\`${BASE_URL}/numbers/\${numberId}/poll\`, {
+      method: 'POST', credentials: 'include',
+    }).then(r => r.json());
     if (data.messages?.length > 0) return data.messages[0].code;
   }
   throw new Error('Timeout — aucun SMS reçu');
@@ -637,9 +818,53 @@ async function waitForSMS(numberId) {
     return json_decode(curl_exec($ch), true);
 }`,
       go: `resp, _ := client.Post(
-    "${BASE_URL}/numbers/UUID/poll",
-    "application/json",
-    nil,
+    "${BASE_URL}/numbers/UUID/poll", "", nil,
+)`,
+    },
+  },
+  {
+    id: "extend-number",
+    method: "POST",
+    path: "/numbers/:id/extend",
+    title: "Prolonger un numéro",
+    description: "Prolonge la durée de validité d'un numéro actif. Des FCFA sont déduits du solde (frais configurés par l'admin). Si le numéro est expiré, il repasse à `waiting`. Impossible si un SMS a déjà été reçu.",
+    auth: true,
+    response: `{
+  "id": "uuid-numero",
+  "phoneNumber": "+12025551234",
+  "service": "WhatsApp",
+  "status": "waiting",
+  "price": 350,
+  "expiresAt": "2026-01-01T00:40:00.000Z",
+  "messages": []
+}`,
+    codes: [
+      { code: 200, label: "OK", desc: "Numéro prolongé — nouvel expiresAt retourné" },
+      { code: 400, label: "Bad Request", desc: "Le numéro a déjà reçu un SMS (non prolongeable)" },
+      { code: 402, label: "Payment Required", desc: "Solde insuffisant pour les frais de prolongation" },
+      { code: 404, label: "Not Found", desc: "Numéro introuvable" },
+    ],
+    examples: {
+      curl: `curl -X POST ${BASE_URL}/numbers/UUID_NUMERO/extend \\
+  -b cookies.txt`,
+      javascript: `const updated = await fetch(\`${BASE_URL}/numbers/\${numberId}/extend\`, {
+  method: 'POST',
+  credentials: 'include',
+}).then(r => r.json());
+console.log('Expire à :', updated.expiresAt);`,
+      python: `updated = session.post(
+    f'${BASE_URL}/numbers/{number_id}/extend'
+).json()
+print(updated['expiresAt'])`,
+      php: `$ch = curl_init("${BASE_URL}/numbers/$numberId/extend");
+curl_setopt_array($ch, [
+    CURLOPT_RETURNTRANSFER => true,
+    CURLOPT_POST           => true,
+    CURLOPT_COOKIEFILE     => 'cookies.txt',
+]);
+$updated = json_decode(curl_exec($ch), true);`,
+      go: `resp, _ := client.Post(
+    "${BASE_URL}/numbers/UUID/extend", "", nil,
 )`,
     },
   },
@@ -648,42 +873,45 @@ async function waitForSMS(numberId) {
     method: "POST",
     path: "/numbers/:id/cancel",
     title: "Annuler un numéro",
-    description: "Annule un numéro en attente et rembourse automatiquement le solde.",
+    description: "Annule un numéro et rembourse automatiquement le prix si aucun SMS n'a été reçu. Si le numéro est lié à 5sim et qu'aucun SMS n'est arrivé, l'ordre est aussi annulé chez le fournisseur. Retourne l'objet numéro mis à jour avec status `cancelled`.",
     auth: true,
     response: `{
-  "success": true,
-  "refunded": 350,
-  "message": "Numéro annulé. 350 FCFA remboursés sur votre portefeuille."
+  "id": "uuid-numero",
+  "phoneNumber": "+12025551234",
+  "service": "WhatsApp",
+  "country": "Côte d'Ivoire",
+  "status": "cancelled",
+  "price": 350,
+  "expiresAt": "2026-01-01T00:00:00.000Z",
+  "messages": []
 }`,
     codes: [
-      { code: 200, label: "OK", desc: "Numéro annulé et remboursé" },
-      { code: 400, label: "Bad Request", desc: "Le numéro a déjà reçu un SMS (non annulable)" },
+      { code: 200, label: "OK", desc: "Numéro annulé. Remboursement si aucun SMS reçu." },
+      { code: 400, label: "Bad Request", desc: "Numéro déjà annulé" },
       { code: 404, label: "Not Found", desc: "Numéro introuvable" },
     ],
     examples: {
       curl: `curl -X POST ${BASE_URL}/numbers/UUID_NUMERO/cancel \\
   -b cookies.txt`,
-      javascript: `const result = await fetch(\`${BASE_URL}/numbers/\${numberId}/cancel\`, {
+      javascript: `const cancelled = await fetch(\`${BASE_URL}/numbers/\${numberId}/cancel\`, {
   method: 'POST',
   credentials: 'include',
 }).then(r => r.json());
-
-if (result.success) {
-  console.log(\`Remboursé : \${result.refunded} FCFA\`);
-}`,
-      python: `result = session.post(
+// cancelled.status === 'cancelled'
+// Le remboursement est déjà appliqué au solde`,
+      python: `cancelled = session.post(
     f'${BASE_URL}/numbers/{number_id}/cancel'
-).json()`,
+).json()
+print(cancelled['status'])  # 'cancelled'`,
       php: `$ch = curl_init("${BASE_URL}/numbers/$numberId/cancel");
 curl_setopt_array($ch, [
     CURLOPT_RETURNTRANSFER => true,
     CURLOPT_POST           => true,
     CURLOPT_COOKIEFILE     => 'cookies.txt',
 ]);
-$result = json_decode(curl_exec($ch), true);`,
+$cancelled = json_decode(curl_exec($ch), true);`,
       go: `resp, _ := client.Post(
-    "${BASE_URL}/numbers/UUID/cancel",
-    "", nil,
+    "${BASE_URL}/numbers/UUID/cancel", "", nil,
 )`,
     },
   },
@@ -691,35 +919,83 @@ $result = json_decode(curl_exec($ch), true);`,
   {
     id: "get-balance",
     method: "GET",
-    path: "/auth/me",
+    path: "/wallet",
     title: "Consulter le solde",
-    description: "Le solde est inclus dans le profil utilisateur (champ `balance` en FCFA).",
+    description: "Retourne le solde actuel du wallet de l'utilisateur connecté.",
     auth: true,
     response: `{
   "balance": 12450,
   "currency": "FCFA"
 }`,
     codes: [
-      { code: 200, label: "OK", desc: "Solde retourné dans le profil" },
+      { code: 200, label: "OK", desc: "Solde retourné en FCFA" },
       { code: 401, label: "Unauthorized", desc: "Authentification requise" },
     ],
     examples: {
-      curl: `# Le solde est dans /auth/me
-curl ${BASE_URL}/auth/me -b cookies.txt | jq .balance`,
-      javascript: `const { balance } = await fetch('${BASE_URL}/auth/me', {
+      curl: `curl ${BASE_URL}/wallet -b cookies.txt`,
+      javascript: `const { balance, currency } = await fetch('${BASE_URL}/wallet', {
   credentials: 'include',
 }).then(r => r.json());
-console.log(\`Solde : \${balance} FCFA\`);`,
-      python: `user = session.get('${BASE_URL}/auth/me').json()
-print(f"Solde : {user['balance']} FCFA")`,
-      php: `$user = json_decode(
-    file_get_contents('${BASE_URL}/auth/me'), true
-);
-echo $user['balance'] . ' FCFA';`,
-      go: `resp, _ := client.Get("${BASE_URL}/auth/me")
-var user map[string]interface{}
-json.NewDecoder(resp.Body).Decode(&user)
-fmt.Printf("Solde : %v FCFA\n", user["balance"])`,
+console.log(\`Solde : \${balance} \${currency}\`);`,
+      python: `wallet = session.get('${BASE_URL}/wallet').json()
+print(f"Solde : {wallet['balance']} {wallet['currency']}")`,
+      php: `$ch = curl_init('${BASE_URL}/wallet');
+curl_setopt_array($ch, [CURLOPT_RETURNTRANSFER => true, CURLOPT_COOKIEFILE => 'cookies.txt']);
+$wallet = json_decode(curl_exec($ch), true);
+echo $wallet['balance'] . ' ' . $wallet['currency'];`,
+      go: `resp, _ := client.Get("${BASE_URL}/wallet")
+var wallet map[string]interface{}
+json.NewDecoder(resp.Body).Decode(&wallet)
+fmt.Printf("Solde : %v FCFA\n", wallet["balance"])`,
+    },
+  },
+  {
+    id: "get-payment-methods",
+    method: "GET",
+    path: "/wallet/payment-methods",
+    title: "Méthodes de paiement",
+    description: "Retourne les méthodes de paiement disponibles. Avec le paramètre `countryCode`, filtre les méthodes disponibles pour ce pays avec les frais et dépôts minimums.",
+    auth: false,
+    queryParams: [
+      { name: "countryCode", type: "string", required: false, description: "Code pays ISO 2 lettres pour filtrer les méthodes actives", example: "ci" },
+    ],
+    response: `[
+  {
+    "id": "uuid-method",
+    "name": "Mobile Money",
+    "slug": "mobile_money",
+    "description": "Orange Money, MTN MoMo, Wave",
+    "color": "#FF6B00",
+    "logoUrl": "/logos/mobile-money.png",
+    "recommended": true,
+    "sortOrder": 1,
+    "minDeposit": 500,
+    "feePercent": 0
+  }
+]`,
+    codes: [
+      { code: 200, label: "OK", desc: "Liste des méthodes de paiement" },
+    ],
+    examples: {
+      curl: `# Toutes les méthodes
+curl ${BASE_URL}/wallet/payment-methods
+
+# Méthodes disponibles en Côte d'Ivoire
+curl "${BASE_URL}/wallet/payment-methods?countryCode=ci"`,
+      javascript: `const methods = await fetch(
+  '${BASE_URL}/wallet/payment-methods?countryCode=ci'
+).then(r => r.json());
+const recommended = methods.find(m => m.recommended);`,
+      python: `methods = requests.get(
+    '${BASE_URL}/wallet/payment-methods',
+    params={'countryCode': 'ci'},
+).json()`,
+      php: `$methods = json_decode(file_get_contents(
+    '${BASE_URL}/wallet/payment-methods?countryCode=ci'
+), true);`,
+      go: `resp, _ := http.Get("${BASE_URL}/wallet/payment-methods?countryCode=ci")
+var methods []map[string]interface{}
+json.NewDecoder(resp.Body).Decode(&methods)`,
     },
   },
   {
@@ -727,7 +1003,7 @@ fmt.Printf("Solde : %v FCFA\n", user["balance"])`,
     method: "GET",
     path: "/wallet/transactions",
     title: "Historique des transactions",
-    description: "Retourne l'historique complet des transactions du compte connecté.",
+    description: "Retourne les 100 dernières transactions du compte connecté, triées de la plus récente à la plus ancienne. Types possibles : `recharge`, `purchase`, `refund`.",
     auth: true,
     response: `[
   {
@@ -747,10 +1023,19 @@ fmt.Printf("Solde : %v FCFA\n", user["balance"])`,
     "method": "mobile_money",
     "description": "Recharge Orange Money",
     "createdAt": "2025-12-31T22:00:00.000Z"
+  },
+  {
+    "id": "uuid-tx-3",
+    "type": "refund",
+    "amount": 350,
+    "status": "completed",
+    "method": "wallet",
+    "description": "Remboursement – WhatsApp (Côte d'Ivoire)",
+    "createdAt": "2025-12-30T10:00:00.000Z"
   }
 ]`,
     codes: [
-      { code: 200, label: "OK", desc: "Historique retourné" },
+      { code: 200, label: "OK", desc: "Historique retourné (max 100 entrées)" },
       { code: 401, label: "Unauthorized", desc: "Authentification requise" },
     ],
     examples: {
@@ -759,15 +1044,14 @@ fmt.Printf("Solde : %v FCFA\n", user["balance"])`,
   credentials: 'include',
 }).then(r => r.json());
 
-// Filtrer les achats
-const purchases = transactions.filter(t => t.type === 'purchase');`,
-      python: `transactions = session.get(
-    '${BASE_URL}/wallet/transactions'
-).json()`,
-      php: `$transactions = json_decode(
-    file_get_contents('${BASE_URL}/wallet/transactions'),
-    true
-);`,
+const purchases = transactions.filter(t => t.type === 'purchase');
+const totalSpent = purchases.reduce((sum, t) => sum + t.amount, 0);
+console.log(\`Total dépensé : \${totalSpent} FCFA\`);`,
+      python: `transactions = session.get('${BASE_URL}/wallet/transactions').json()
+purchases = [t for t in transactions if t['type'] == 'purchase']`,
+      php: `$ch = curl_init('${BASE_URL}/wallet/transactions');
+curl_setopt_array($ch, [CURLOPT_RETURNTRANSFER => true, CURLOPT_COOKIEFILE => 'cookies.txt']);
+$txs = json_decode(curl_exec($ch), true);`,
       go: `resp, _ := client.Get("${BASE_URL}/wallet/transactions")
 var txs []map[string]interface{}
 json.NewDecoder(resp.Body).Decode(&txs)`,
