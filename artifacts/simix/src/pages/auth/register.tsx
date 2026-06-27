@@ -183,7 +183,7 @@ export default function Register() {
                 <FormControl>
                   <div className="relative h-14">
                     <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                    <Input placeholder="Jean Konan" className="pl-11 bg-card border-card-border focus-visible:ring-primary h-full rounded-xl" {...field} />
+                    <Input placeholder="Jean Konan" className="pl-11 bg-card border-card-border focus-visible:ring-primary h-full rounded-full" {...field} />
                   </div>
                 </FormControl>
                 <FormMessage />
@@ -196,7 +196,7 @@ export default function Register() {
                 <FormControl>
                   <div className="relative h-14">
                     <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                    <Input type="email" placeholder="jean@exemple.com" className="pl-11 bg-card border-card-border focus-visible:ring-primary h-full rounded-xl" {...field} />
+                    <Input type="email" placeholder="jean@exemple.com" className="pl-11 bg-card border-card-border focus-visible:ring-primary h-full rounded-full" {...field} />
                   </div>
                 </FormControl>
                 <FormMessage />
@@ -211,7 +211,7 @@ export default function Register() {
                 <FormControl>
                   <div className="relative h-14">
                     <AtSign className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                    <Input placeholder="jeankonan" className="pl-11 bg-card border-card-border focus-visible:ring-primary h-full rounded-xl" {...field} />
+                    <Input placeholder="jeankonan" className="pl-11 bg-card border-card-border focus-visible:ring-primary h-full rounded-full" {...field} />
                   </div>
                 </FormControl>
                 <FormMessage />
@@ -222,17 +222,17 @@ export default function Register() {
               <FormItem>
                 <FormLabel className="text-sm font-medium text-foreground">Téléphone <span className="text-red-500">*</span></FormLabel>
                 <FormControl>
-                  <div className="flex h-14 bg-card border border-card-border rounded-xl overflow-visible focus-within:ring-1 focus-within:ring-primary focus-within:border-primary transition-all relative">
+                  <div className="flex h-14 bg-card border border-card-border rounded-full overflow-visible focus-within:ring-1 focus-within:ring-primary focus-within:border-primary transition-all relative">
                     <button
                       type="button"
                       onClick={() => { setShowCountryPicker(p => !p); setCountrySearch(""); }}
-                      className="flex items-center gap-1.5 px-3 bg-secondary/50 border-r border-card-border text-sm font-medium text-foreground hover:bg-secondary transition-colors shrink-0 rounded-l-xl"
+                      className="flex items-center gap-1.5 px-4 bg-secondary/50 border-r border-card-border text-sm font-medium text-foreground hover:bg-secondary transition-colors shrink-0 rounded-l-full"
                     >
                       <FlagImg code={selectedCountry?.code ?? "ci"} />
                       <span className="font-mono text-xs">{selectedCountry?.dial ?? "+225"}</span>
                       <span className="text-muted-foreground text-xs">▾</span>
                     </button>
-                    <input {...field} type="tel" autoComplete="tel" className="flex-1 bg-transparent border-none px-3 text-foreground focus:outline-none placeholder:text-muted-foreground text-sm rounded-r-xl" placeholder="07 01 23 45 67" />
+                    <input {...field} type="tel" autoComplete="tel" className="flex-1 bg-transparent border-none px-4 text-foreground focus:outline-none placeholder:text-muted-foreground text-sm rounded-r-full" placeholder="07 01 23 45 67" />
                     {showCountryPicker && (
                       <div className="absolute top-full left-0 mt-1 w-72 bg-card border border-card-border rounded-xl shadow-2xl z-50 overflow-hidden">
                         <div className="p-2 border-b border-card-border">
@@ -281,7 +281,7 @@ export default function Register() {
                     <Input
                       type={showPassword ? "text" : "password"}
                       placeholder="••••••••"
-                      className="pl-11 pr-11 bg-card border-card-border focus-visible:ring-primary h-full rounded-xl"
+                      className="pl-11 pr-11 bg-card border-card-border focus-visible:ring-primary h-full rounded-full"
                       {...field}
                     />
                     <button
@@ -306,7 +306,7 @@ export default function Register() {
                     <Input
                       type={showConfirmPassword ? "text" : "password"}
                       placeholder="••••••••"
-                      className="pl-11 pr-11 bg-card border-card-border focus-visible:ring-primary h-full rounded-xl"
+                      className="pl-11 pr-11 bg-card border-card-border focus-visible:ring-primary h-full rounded-full"
                       {...field}
                     />
                     <button
@@ -335,7 +335,7 @@ export default function Register() {
                   onChange={e => setReferralCode(e.target.value.toUpperCase())}
                   placeholder="SXXXXXXXY"
                   maxLength={12}
-                  className="pl-11 bg-card border-card-border focus-visible:ring-amber-500 h-full rounded-xl font-mono uppercase tracking-wider"
+                  className="pl-11 bg-card border-card-border focus-visible:ring-amber-500 h-full rounded-full font-mono uppercase tracking-wider"
                 />
               </div>
               {referralCode.trim().length > 0 && (
@@ -370,7 +370,7 @@ export default function Register() {
             <Button
               type="submit"
               disabled={registerMutation.isPending}
-              className="w-full h-14 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-base mt-2"
+              className="w-full h-14 rounded-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-base mt-2"
             >
               {registerMutation.isPending ? (
                 <span className="flex items-center gap-2"><svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>Création en cours...</span>

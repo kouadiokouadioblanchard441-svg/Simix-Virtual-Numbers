@@ -212,11 +212,11 @@ export default function Login() {
                   </FormLabel>
                   <FormControl>
                     {method === "phone" ? (
-                      <div className="flex h-14 bg-card border border-card-border rounded-xl overflow-visible focus-within:ring-1 focus-within:ring-primary focus-within:border-primary transition-all relative">
+                      <div className="flex h-14 bg-card border border-card-border rounded-full overflow-visible focus-within:ring-1 focus-within:ring-primary focus-within:border-primary transition-all relative">
                         <button
                           type="button"
                           onClick={() => { setShowCountryPicker(p => !p); setCountrySearch(""); }}
-                          className="flex items-center gap-1.5 px-3 bg-secondary/50 border-r border-card-border text-sm font-medium text-foreground hover:bg-secondary transition-colors shrink-0 rounded-l-xl"
+                          className="flex items-center gap-1.5 px-4 bg-secondary/50 border-r border-card-border text-sm font-medium text-foreground hover:bg-secondary transition-colors shrink-0 rounded-l-full"
                         >
                           <FlagImg code={selectedCountry.code} />
                           <span className="font-mono text-xs">{selectedCountry.dial}</span>
@@ -226,7 +226,7 @@ export default function Login() {
                           {...field}
                           type="tel"
                           autoComplete="tel"
-                          className="flex-1 bg-transparent border-none px-4 text-foreground focus:outline-none placeholder:text-muted-foreground rounded-r-xl"
+                          className="flex-1 bg-transparent border-none px-4 text-foreground focus:outline-none placeholder:text-muted-foreground rounded-r-full"
                           placeholder="07 01 23 45 67"
                         />
                         {showCountryPicker && (
@@ -267,7 +267,7 @@ export default function Login() {
                       <Input
                         placeholder="Nom d'utilisateur ou adresse email"
                         autoComplete="username"
-                        className="bg-card border-card-border focus-visible:ring-primary h-14 rounded-xl"
+                        className="bg-card border-card-border focus-visible:ring-primary h-14 rounded-full"
                         {...field}
                       />
                     )}
@@ -288,7 +288,7 @@ export default function Login() {
                         type={showPassword ? "text" : "password"}
                         placeholder="Votre mot de passe"
                         autoComplete="current-password"
-                        className="bg-card border-card-border focus-visible:ring-primary h-full rounded-xl pr-12"
+                        className="bg-card border-card-border focus-visible:ring-primary h-full rounded-full pr-12"
                         {...field}
                       />
                       <button
