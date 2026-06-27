@@ -33,6 +33,8 @@ export const usersTable = pgTable("users", {
   referralCode: text("referral_code").unique(),
   referredBy: uuid("referred_by"),
   referralEarnings: integer("referral_earnings").notNull().default(0),
+  apiKey: text("api_key").unique(),
+  webhookUrl: text("webhook_url"),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),

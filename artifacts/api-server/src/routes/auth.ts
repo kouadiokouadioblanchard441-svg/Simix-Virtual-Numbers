@@ -1,4 +1,5 @@
 import { Router, type IRouter } from "express";
+import crypto from "node:crypto";
 import bcrypt from "bcryptjs";
 import { eq, or } from "drizzle-orm";
 import { db, usersTable, loginHistoryTable, ipBlacklistTable } from "@workspace/db";
@@ -377,6 +378,122 @@ router.get("/auth/me", requireAuth, async (req, res): Promise<void> => {
     .filter((t) => t.type === "purchase" && t.status === "completed")
     .reduce((sum: number, t) => sum + t.amount, 0);
   res.json(toUser(user, { totalSpent, transactionsCount: allTx.length }));
+});
+
+/* ─── API Key management ─────────────────────────────────────────────── */
+
+function generateApiKey(): string {
+  return "simix_" + crypto.randomBytes(24).toString("hex");
+}
+
+router.get("/auth/me/api-key", requireAuth, async (req, res): Promise<void> => {
+  let user = req.user!;
+  if (!user.apiKey) {
+    const newKey = generateApiKey();
+    const [updated] = await db
+      .update(usersTable)
+      .set({ apiKey: newKey })
+      .where(eq(usersTable.id, user.id))
+      .returning();
+    user = updated;
+  }
+  res.json({ apiKey: user.apiKey });
+});
+
+router.post("/auth/me/api-key/regenerate", requireAuth, async (req, res): Promise<void> => {
+  const newKey = generateApiKey();
+  const [updated] = await db
+    .update(usersTable)
+    .set({ apiKey: newKey })
+    .where(eq(usersTable.id, req.user!.id))
+    .returning();
+  res.json({ apiKey: updated.apiKey });
+});
+
+/* ─── Webhook URL management ─────────────────────────────────────────── */
+
+router.get("/auth/me/webhook", requireAuth, async (req, res): Promise<void> => {
+  res.json({ webhookUrl: req.user!.webhookUrl ?? null });
+});
+
+router.patch("/auth/me/webhook", requireAuth, async (req, res): Promise<void> => {
+  const { webhookUrl } = req.body as { webhookUrl?: string | null };
+
+  if (webhookUrl) {
+    try {
+      const url = new URL(webhookUrl);
+      if (!["http:", "https:"].includes(url.protocol)) {
+        res.status(400).json({ error: "URL invalide — utilisez http:// ou https://" });
+        return;
+      }
+    } catch {
+      res.status(400).json({ error: "URL webhook invalide" });
+      return;
+    }
+  }
+
+  const [updated] = await db
+    .update(usersTable)
+    .set({ webhookUrl: webhookUrl?.trim() || null })
+    .where(eq(usersTable.id, req.user!.id))
+    .returning();
+
+  res.json({ webhookUrl: updated.webhookUrl ?? null });
+});
+
+router.post("/auth/me/webhook/test", requireAuth, async (req, res): Promise<void> => {
+  const user = req.user!;
+  const webhookUrl = user.webhookUrl;
+
+  if (!webhookUrl) {
+    res.status(400).json({ error: "Aucune URL webhook configurée" });
+    return;
+  }
+
+  const payload = {
+    event: "webhook.test",
+    timestamp: new Date().toISOString(),
+    data: {
+      message: "Ceci est un événement de test envoyé depuis votre panel Simix.",
+      userId: user.id,
+    },
+  };
+
+  const body = JSON.stringify(payload);
+  const signature = crypto
+    .createHmac("sha256", user.apiKey ?? "no-key")
+    .update(body)
+    .digest("hex");
+
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 8000);
+
+    const r = await fetch(webhookUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Simix-Signature": signature,
+        "X-Simix-Event": "webhook.test",
+        "User-Agent": "Simix-Webhook/1.0",
+      },
+      body,
+      signal: controller.signal,
+    });
+    clearTimeout(timeout);
+
+    if (r.ok || (r.status >= 200 && r.status < 300)) {
+      res.json({ ok: true, status: r.status });
+    } else {
+      res.status(422).json({ error: `Serveur webhook a répondu ${r.status}` });
+    }
+  } catch (err: any) {
+    if (err?.name === "AbortError") {
+      res.status(408).json({ error: "Timeout — votre serveur n'a pas répondu dans les 8 secondes" });
+    } else {
+      res.status(502).json({ error: "Impossible de joindre l'URL webhook" });
+    }
+  }
 });
 
 export default router;

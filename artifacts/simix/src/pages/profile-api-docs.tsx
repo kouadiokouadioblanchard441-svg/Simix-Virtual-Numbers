@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useMemo } from "react";
+import { useState, useRef, useCallback, useMemo, useEffect } from "react";
 import { AppLayout } from "@/components/layout/app-layout";
 import { AuthGuard } from "@/components/auth-guard";
 import { useLocation } from "wouter";
@@ -7,8 +7,8 @@ import {
   ArrowLeft, Code2, Copy, Check, ChevronDown, ChevronRight,
   Search, X, Zap, Globe, Phone, MessageSquare, Wallet,
   Webhook, AlertTriangle, Terminal,
-  Shield, Key, Play,
-  Package,
+  Shield, Key, Play, Package,
+  KeyRound, Eye, EyeOff, RefreshCw, Save, Loader2, Link, CheckCircle2,
 } from "lucide-react";
 
 /* ─── Types ─────────────────────────────────────────────────────────── */
@@ -50,6 +50,7 @@ const BASE_URL = "https://simix.site/api";
 const API_VERSION = "v1";
 
 const SECTIONS: Section[] = [
+  { id: "credentials", label: "Mes clés API", icon: KeyRound, description: "Votre clé API personnelle & URL Webhook" },
   { id: "quickstart", label: "Démarrage", icon: Zap, description: "Guide de démarrage rapide" },
   { id: "auth", label: "Auth", icon: Key, description: "Authentification & sessions" },
   { id: "countries", label: "Pays", icon: Globe, description: "Pays & opérateurs" },
@@ -1249,6 +1250,342 @@ function EndpointCard({ ep }: { ep: Endpoint }) {
 }
 
 /* ─── Section renderers ──────────────────────────────────────────────── */
+
+function SectionCredentials() {
+  const BASE = typeof window !== "undefined"
+    ? `${window.location.origin}`
+    : "";
+
+  const [apiKey, setApiKey] = useState<string | null>(null);
+  const [webhookUrl, setWebhookUrl] = useState<string>("");
+  const [savedWebhookUrl, setSavedWebhookUrl] = useState<string>("");
+  const [revealed, setRevealed] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [regenerating, setRegenerating] = useState(false);
+  const [savingWebhook, setSavingWebhook] = useState(false);
+  const [testingWebhook, setTestingWebhook] = useState(false);
+  const [webhookSaved, setWebhookSaved] = useState(false);
+  const [webhookTested, setWebhookTested] = useState(false);
+  const [webhookError, setWebhookError] = useState<string | null>(null);
+  const [confirmRegen, setConfirmRegen] = useState(false);
+  const { copied, copy } = useCopy();
+
+  useEffect(() => {
+    fetch(`${BASE}/api/auth/me/api-key`, { credentials: "include" })
+      .then(r => r.json())
+      .then(d => {
+        if (d.apiKey) {
+          setApiKey(d.apiKey);
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+
+    fetch(`${BASE}/api/auth/me/webhook`, { credentials: "include" })
+      .then(r => r.json())
+      .then(d => {
+        if (d.webhookUrl) {
+          setWebhookUrl(d.webhookUrl);
+          setSavedWebhookUrl(d.webhookUrl);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  const maskedKey = apiKey
+    ? `${apiKey.slice(0, 12)}${"•".repeat(24)}${apiKey.slice(-6)}`
+    : "simix_••••••••••••••••••••••••••••••••••••••••••••••••";
+
+  const handleRegenerate = async () => {
+    if (!confirmRegen) { setConfirmRegen(true); return; }
+    setRegenerating(true);
+    setConfirmRegen(false);
+    try {
+      const r = await fetch(`${BASE}/api/auth/me/api-key/regenerate`, {
+        method: "POST",
+        credentials: "include",
+      });
+      const d = await r.json();
+      if (d.apiKey) { setApiKey(d.apiKey); setRevealed(true); }
+    } catch {}
+    setRegenerating(false);
+  };
+
+  const handleSaveWebhook = async () => {
+    setSavingWebhook(true);
+    setWebhookError(null);
+    try {
+      const r = await fetch(`${BASE}/api/auth/me/webhook`, {
+        method: "PATCH",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ webhookUrl: webhookUrl.trim() || null }),
+      });
+      const d = await r.json();
+      if (!r.ok) { setWebhookError(d.error || "Erreur"); }
+      else {
+        setSavedWebhookUrl(d.webhookUrl || "");
+        setWebhookSaved(true);
+        setTimeout(() => setWebhookSaved(false), 3000);
+      }
+    } catch { setWebhookError("Erreur réseau"); }
+    setSavingWebhook(false);
+  };
+
+  const handleTestWebhook = async () => {
+    if (!savedWebhookUrl) return;
+    setTestingWebhook(true);
+    setWebhookTested(false);
+    try {
+      const r = await fetch(`${BASE}/api/auth/me/webhook/test`, {
+        method: "POST",
+        credentials: "include",
+      });
+      if (r.ok) { setWebhookTested(true); setTimeout(() => setWebhookTested(false), 4000); }
+      else { const d = await r.json(); setWebhookError(d.error || "Échec du test"); }
+    } catch { setWebhookError("Erreur réseau"); }
+    setTestingWebhook(false);
+  };
+
+  return (
+    <div className="space-y-5">
+
+      {/* ── Clé API ── */}
+      <div className="bg-gradient-to-br from-violet-900/40 via-card to-card border border-violet-500/30 rounded-2xl overflow-hidden">
+        <div className="px-4 pt-4 pb-3 border-b border-violet-500/15">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-xl bg-violet-600/20 border border-violet-500/30 flex items-center justify-center">
+              <KeyRound className="w-4 h-4 text-violet-400" />
+            </div>
+            <div>
+              <p className="text-sm font-bold text-foreground">Clé API</p>
+              <p className="text-[10px] text-muted-foreground">Authentification Bearer token</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="px-4 py-4 space-y-3">
+          {loading ? (
+            <div className="flex items-center gap-2 py-2">
+              <Loader2 className="w-4 h-4 text-violet-400 animate-spin" />
+              <span className="text-[12px] text-muted-foreground">Chargement…</span>
+            </div>
+          ) : (
+            <>
+              <div>
+                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-2">Votre clé</p>
+                <div className="bg-[#0d0d1a] border border-violet-900/40 rounded-xl flex items-center gap-2 px-3 py-2.5">
+                  <code className="font-mono text-[11px] text-violet-200 flex-1 truncate">
+                    {revealed ? apiKey : maskedKey}
+                  </code>
+                  <button
+                    onClick={() => setRevealed(v => !v)}
+                    className="flex-shrink-0 text-muted-foreground hover:text-foreground transition-colors"
+                    title={revealed ? "Masquer" : "Afficher"}
+                  >
+                    {revealed ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                  <button
+                    onClick={() => apiKey && copy(apiKey, "apikey")}
+                    className="flex-shrink-0 text-muted-foreground hover:text-violet-300 transition-colors"
+                    title="Copier"
+                  >
+                    {copied === "apikey"
+                      ? <Check className="w-4 h-4 text-emerald-400" />
+                      : <Copy className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex gap-2">
+                <button
+                  onClick={() => { setConfirmRegen(false); handleRegenerate(); }}
+                  disabled={regenerating}
+                  className={`flex-1 flex items-center justify-center gap-1.5 h-9 rounded-xl text-[12px] font-bold transition-colors ${
+                    confirmRegen
+                      ? "bg-red-500 hover:bg-red-600 text-white"
+                      : "bg-secondary hover:bg-secondary/80 text-foreground"
+                  }`}
+                >
+                  {regenerating
+                    ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    : <RefreshCw className="w-3.5 h-3.5" />}
+                  {confirmRegen ? "Confirmer la régénération" : "Régénérer"}
+                </button>
+                {confirmRegen && (
+                  <button
+                    onClick={() => setConfirmRegen(false)}
+                    className="h-9 px-3 rounded-xl bg-secondary text-muted-foreground text-[12px] font-bold"
+                  >
+                    Annuler
+                  </button>
+                )}
+              </div>
+
+              {confirmRegen && (
+                <div className="flex items-start gap-2 bg-red-500/8 border border-red-500/20 rounded-xl p-3">
+                  <AlertTriangle className="w-4 h-4 text-red-400 flex-shrink-0 mt-0.5" />
+                  <p className="text-[11px] text-red-300">L'ancienne clé sera <strong>immédiatement invalidée</strong>. Mettez à jour tous vos intégrations avant de continuer.</p>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+
+        <div className="px-4 pb-4">
+          <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-2">Utilisation</p>
+          <div className="bg-[#0d0d1a] border border-violet-900/40 rounded-xl overflow-hidden">
+            <div className="flex items-center justify-between px-3 py-2 border-b border-violet-900/30 bg-violet-950/30">
+              <span className="text-[10px] text-violet-400/70 font-mono">Authorization header</span>
+              <button
+                onClick={() => copy(`Authorization: Bearer ${apiKey ?? "simix_votre_cle"}`, "usage-key")}
+                className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-violet-300 transition-colors"
+              >
+                {copied === "usage-key" ? <><Check className="w-3 h-3 text-emerald-400" /><span className="text-emerald-400">Copié</span></> : <><Copy className="w-3 h-3" /><span>Copier</span></>}
+              </button>
+            </div>
+            <pre className="p-3 text-[11px] font-mono text-violet-100/80 overflow-x-auto leading-relaxed whitespace-pre">
+{`curl https://simix.site/api/auth/me \\
+  -H "Authorization: Bearer ${revealed && apiKey ? apiKey : "simix_votre_cle_ici"}"`}
+            </pre>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Webhook URL ── */}
+      <div className="bg-card border border-card-border rounded-2xl overflow-hidden">
+        <div className="px-4 pt-4 pb-3 border-b border-card-border/50">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center">
+              <Webhook className="w-4 h-4 text-violet-400" />
+            </div>
+            <div>
+              <p className="text-sm font-bold text-foreground">URL Webhook</p>
+              <p className="text-[10px] text-muted-foreground">Notifications temps réel sur votre serveur</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="px-4 py-4 space-y-3">
+          <div>
+            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-2">URL de votre serveur</p>
+            <div className="flex gap-2">
+              <div className="relative flex-1">
+                <Link className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+                <input
+                  type="url"
+                  value={webhookUrl}
+                  onChange={e => { setWebhookUrl(e.target.value); setWebhookError(null); }}
+                  placeholder="https://votre-serveur.com/webhook/simix"
+                  className="w-full bg-[#0d0d1a] border border-violet-900/40 rounded-xl pl-9 pr-3 py-2.5 text-[12px] font-mono text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-violet-500 transition-colors"
+                />
+              </div>
+              <button
+                onClick={handleSaveWebhook}
+                disabled={savingWebhook || webhookUrl === savedWebhookUrl}
+                className="flex-shrink-0 h-10 px-4 bg-violet-600 hover:bg-violet-700 disabled:opacity-40 text-white text-[12px] font-bold rounded-xl flex items-center gap-1.5 transition-colors"
+              >
+                {savingWebhook ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : webhookSaved ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-300" /> : <Save className="w-3.5 h-3.5" />}
+                {webhookSaved ? "Enregistré" : "Sauvegarder"}
+              </button>
+            </div>
+            {webhookError && (
+              <p className="mt-1.5 text-[11px] text-red-400 flex items-center gap-1.5">
+                <AlertTriangle className="w-3 h-3 flex-shrink-0" />{webhookError}
+              </p>
+            )}
+          </div>
+
+          {savedWebhookUrl && (
+            <button
+              onClick={handleTestWebhook}
+              disabled={testingWebhook}
+              className="w-full h-9 flex items-center justify-center gap-2 bg-emerald-500/10 border border-emerald-500/20 hover:bg-emerald-500/20 text-emerald-400 text-[12px] font-bold rounded-xl transition-colors"
+            >
+              {testingWebhook
+                ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                : webhookTested ? <CheckCircle2 className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
+              {testingWebhook ? "Envoi en cours…" : webhookTested ? "Événement envoyé !" : "Tester le webhook"}
+            </button>
+          )}
+        </div>
+
+        {/* Events reference */}
+        <div className="px-4 pb-4">
+          <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-3">Événements envoyés</p>
+          <div className="space-y-2">
+            {[
+              { event: "sms.received", color: "bg-emerald-500/15 text-emerald-400", desc: "SMS de vérification reçu sur un numéro actif" },
+              { event: "number.expired", color: "bg-amber-500/15 text-amber-400", desc: "Numéro expiré sans réception de SMS" },
+              { event: "number.cancelled", color: "bg-red-500/15 text-red-400", desc: "Numéro annulé, remboursement effectué" },
+              { event: "deposit.completed", color: "bg-violet-500/15 text-violet-400", desc: "Recharge wallet validée et créditée" },
+            ].map(ev => (
+              <div key={ev.event} className="flex items-start gap-3">
+                <span className={`flex-shrink-0 font-mono text-[10px] px-2 py-0.5 rounded-full font-bold mt-0.5 ${ev.color}`}>{ev.event}</span>
+                <span className="text-[11px] text-muted-foreground leading-relaxed">{ev.desc}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Payload example */}
+        <div className="px-4 pb-4 border-t border-card-border/40 pt-3">
+          <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-2">Exemple de payload</p>
+          <div className="bg-[#0d0d1a] border border-violet-900/40 rounded-xl overflow-hidden">
+            <div className="flex items-center justify-between px-3 py-2 border-b border-violet-900/30 bg-violet-950/30">
+              <span className="text-[10px] text-violet-400/70 font-mono">POST → votre-url-webhook</span>
+              <button
+                onClick={() => copy(`{\n  "event": "sms.received",\n  "timestamp": "2026-01-01T00:05:32.000Z",\n  "data": {\n    "numberId": "uuid-numero",\n    "phoneNumber": "+12025551234",\n    "service": "whatsapp",\n    "code": "847291",\n    "body": "Your WhatsApp code is 847291"\n  }\n}`, "payload-ex")}
+                className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-violet-300 transition-colors"
+              >
+                {copied === "payload-ex" ? <><Check className="w-3 h-3 text-emerald-400" /><span className="text-emerald-400">Copié</span></> : <><Copy className="w-3 h-3" /><span>Copier</span></>}
+              </button>
+            </div>
+            <pre className="p-3 text-[11px] font-mono text-violet-100/80 overflow-x-auto leading-relaxed whitespace-pre">{`{
+  "event": "sms.received",
+  "timestamp": "2026-01-01T00:05:32.000Z",
+  "data": {
+    "numberId": "uuid-numero",
+    "phoneNumber": "+12025551234",
+    "service": "whatsapp",
+    "code": "847291",
+    "body": "Your WhatsApp code is 847291"
+  }
+}`}</pre>
+          </div>
+          <div className="mt-3 flex items-start gap-2 bg-violet-500/8 border border-violet-500/20 rounded-xl p-3">
+            <Shield className="w-3.5 h-3.5 text-violet-400 flex-shrink-0 mt-0.5" />
+            <p className="text-[11px] text-violet-300">Chaque payload est signé avec votre clé API via <code className="font-mono bg-violet-900/30 px-1 rounded">X-Simix-Signature</code> (HMAC-SHA256). Vérifiez la signature avant de traiter l'événement.</p>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Sécurité ── */}
+      <div className="bg-amber-500/8 border border-amber-500/20 rounded-2xl p-4">
+        <div className="flex items-center gap-2 mb-3">
+          <AlertTriangle className="w-4 h-4 text-amber-400" />
+          <p className="text-sm font-bold text-amber-300">Sécurité de la clé API</p>
+        </div>
+        <ul className="space-y-1.5 text-[12px] text-muted-foreground">
+          {[
+            "Ne jamais exposer votre clé API côté client (navigateur, app mobile)",
+            "Stocker la clé dans une variable d'environnement serveur uniquement",
+            "En cas de compromission, régénérez immédiatement via ce panel",
+            "La clé est liée à votre compte — toute requête avec cette clé agit en votre nom",
+            "Chaque webhook entrant est signé — vérifiez X-Simix-Signature avant traitement",
+          ].map((tip, i) => (
+            <li key={i} className="flex items-start gap-2">
+              <span className="text-amber-400 flex-shrink-0 mt-0.5">→</span>
+              <span>{tip}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+
+    </div>
+  );
+}
+
 function SectionQuickstart() {
   const { copied, copy } = useCopy();
   return (
@@ -2185,7 +2522,7 @@ export default function ProfileApiDocs() {
 
 function ApiDocsContent() {
   const [, setLocation] = useLocation();
-  const [activeSection, setActiveSection] = useState("quickstart");
+  const [activeSection, setActiveSection] = useState("credentials");
   const [searchQuery, setSearchQuery] = useState("");
   const [showSearch, setShowSearch] = useState(false);
   const [showExplorer, setShowExplorer] = useState(false);
@@ -2242,6 +2579,7 @@ function ApiDocsContent() {
     }
 
     switch (activeSection) {
+      case "credentials": return <SectionCredentials />;
       case "quickstart": return <SectionQuickstart />;
       case "auth": return <SectionAuth />;
       case "countries": return (

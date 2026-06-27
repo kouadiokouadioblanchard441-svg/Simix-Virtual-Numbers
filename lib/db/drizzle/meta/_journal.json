@@ -64,6 +64,20 @@
       "when": 1748530000000,
       "tag": "0008_referral_columns",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1782530000000,
+      "tag": "0009_transactions_gateway_meta",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1782540000000,
+      "tag": "0010_user_api_credentials",
+      "breakpoints": true
     }
   ]
 }
