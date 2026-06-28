@@ -42,12 +42,25 @@ async function creditCryptoDeposit(
   amountFcfa: number,
   paymentId: string,
   partial = false,
+  payinHash?: string | null,
 ): Promise<boolean> {
   const label = partial ? "partiel" : "confirmé";
 
+  /* Merge payinHash into gatewayMeta if provided */
+  let newGatewayMeta: string | undefined;
+  if (payinHash) {
+    const [current] = await db
+      .select({ gatewayMeta: transactionsTable.gatewayMeta })
+      .from(transactionsTable)
+      .where(eq(transactionsTable.id, txId))
+      .limit(1);
+    const existing = current?.gatewayMeta ? (JSON.parse(current.gatewayMeta) as Record<string, unknown>) : {};
+    newGatewayMeta = JSON.stringify({ ...existing, payinHash });
+  }
+
   const [justCompleted] = await db
     .update(transactionsTable)
-    .set({ status: "completed" })
+    .set({ status: "completed", ...(newGatewayMeta ? { gatewayMeta: newGatewayMeta } : {}) })
     .where(
       and(
         eq(transactionsTable.id, txId),
@@ -282,7 +295,7 @@ router.get("/wallet/crypto/:paymentId/status", requireAuth, async (req, res): Pr
     sdkStatus = p.status;
 
     if (sdkStatus === "paid") {
-      await creditCryptoDeposit(tx.id, user.id, tx.amount, paymentId);
+      await creditCryptoDeposit(tx.id, user.id, tx.amount, paymentId, false, p.payin_hash);
     } else if (sdkStatus === "partially_paid") {
       /*
        * User sent less than required. Credit whatever was actually received
@@ -294,7 +307,7 @@ router.get("/wallet/crypto/:paymentId/status", requireAuth, async (req, res): Pr
       const actualPaidFcfa = p.actually_paid
         ? Math.floor(Number(p.actually_paid) * fcfaRate)
         : tx.amount;
-      await creditCryptoDeposit(tx.id, user.id, actualPaidFcfa, paymentId, true);
+      await creditCryptoDeposit(tx.id, user.id, actualPaidFcfa, paymentId, true, p.payin_hash);
     } else if (
       sdkStatus === "failed" ||
       sdkStatus === "expired" ||
@@ -389,7 +402,7 @@ router.post("/wallet/crypto/webhook", async (req, res): Promise<void> => {
   }
 
   if (sdkStatus === "paid") {
-    await creditCryptoDeposit(tx.id, tx.userId, tx.amount, paymentId);
+    await creditCryptoDeposit(tx.id, tx.userId, tx.amount, paymentId, false, payment.payin_hash);
   } else if (sdkStatus === "partially_paid") {
     /*
      * partially_paid: user sent less than the required amount.
@@ -400,7 +413,7 @@ router.post("/wallet/crypto/webhook", async (req, res): Promise<void> => {
     const actualPaidFcfa = payment.actually_paid
       ? Math.floor(Number(payment.actually_paid) * fcfaRate)
       : tx.amount;
-    await creditCryptoDeposit(tx.id, tx.userId, actualPaidFcfa, paymentId, true);
+    await creditCryptoDeposit(tx.id, tx.userId, actualPaidFcfa, paymentId, true, payment.payin_hash);
   } else if (
     sdkStatus === "failed" ||
     sdkStatus === "expired" ||
@@ -416,6 +429,78 @@ router.post("/wallet/crypto/webhook", async (req, res): Promise<void> => {
   /* 'processing' / 'pending' / 'unknown' → no action, wait for next update */
 
   res.json({ ok: true });
+});
+
+/* ────────────────────────────────────────────────────────────────
+ * GET /wallet/crypto/history
+ *
+ * Returns all crypto deposit transactions for the authenticated user,
+ * ordered newest first. gatewayMeta is parsed and merged into the response
+ * so the frontend gets: payAddress, payAmount, network, payinHash, etc.
+ * ──────────────────────────────────────────────────────────────── */
+router.get("/wallet/crypto/history", requireAuth, async (req, res): Promise<void> => {
+  const user = req.user!;
+
+  const rows = await db
+    .select()
+    .from(transactionsTable)
+    .where(
+      and(
+        eq(transactionsTable.userId, user.id),
+        sql`${transactionsTable.externalDepositId} LIKE ${"crypto_%"}`,
+      ),
+    )
+    .orderBy(sql`${transactionsTable.createdAt} DESC`)
+    .limit(100);
+
+  const result = rows.map(tx => {
+    const meta = tx.gatewayMeta
+      ? (JSON.parse(tx.gatewayMeta) as Record<string, unknown>)
+      : {};
+
+    const paymentId  = String(meta.paymentId  ?? "").replace(/^crypto_/, "");
+    const network    = String(meta.network     ?? "trc20");
+    const currency   = String(meta.currency    ?? "usdttrc20");
+    const payAddress = String(meta.payAddress  ?? "");
+    const payAmount  = Number(meta.payAmount   ?? 0);
+    const amountUsd  = Number(meta.amountUsd   ?? 0);
+    const fcfaRate   = Number(meta.fcfaRate    ?? 610);
+    const expiresAt  = meta.expiresAt ? String(meta.expiresAt) : null;
+    const payinHash  = meta.payinHash ? String(meta.payinHash) : null;
+    const orderId    = String(meta.orderId ?? "");
+
+    const networkLabels: Record<string, string> = {
+      trc20: "USDT · TRC-20",
+      erc20: "USDT · ERC-20",
+      bep20: "USDT · BEP-20",
+    };
+    const chainLabels: Record<string, string> = {
+      trc20: "Tron",
+      erc20: "Ethereum",
+      bep20: "BNB Smart Chain",
+    };
+
+    return {
+      id:           tx.id,
+      status:       tx.status,
+      amountFcfa:   tx.amount,
+      createdAt:    tx.createdAt.toISOString(),
+      paymentId,
+      orderId,
+      payAddress,
+      payAmount,
+      amountUsd,
+      fcfaRate,
+      network,
+      currency,
+      networkLabel: networkLabels[network] ?? `USDT · ${network.toUpperCase()}`,
+      chain:        chainLabels[network]   ?? network,
+      expiresAt,
+      payinHash,
+    };
+  });
+
+  res.json(result);
 });
 
 export default router;

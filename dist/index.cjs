@@ -116127,9 +116127,15 @@ async function getCryptoWebhookUrl() {
   return domain ? `https://${domain}/api/wallet/crypto/webhook` : "https://simix.site/api/wallet/crypto/webhook";
 }
 var CRYPTO_PREFIX = "crypto_";
-async function creditCryptoDeposit(txId, userId, amountFcfa, paymentId, partial = false) {
+async function creditCryptoDeposit(txId, userId, amountFcfa, paymentId, partial = false, payinHash) {
   const label = partial ? "partiel" : "confirm\xE9";
-  const [justCompleted] = await db.update(transactionsTable).set({ status: "completed" }).where(
+  let newGatewayMeta;
+  if (payinHash) {
+    const [current] = await db.select({ gatewayMeta: transactionsTable.gatewayMeta }).from(transactionsTable).where(eq(transactionsTable.id, txId)).limit(1);
+    const existing = current?.gatewayMeta ? JSON.parse(current.gatewayMeta) : {};
+    newGatewayMeta = JSON.stringify({ ...existing, payinHash });
+  }
+  const [justCompleted] = await db.update(transactionsTable).set({ status: "completed", ...newGatewayMeta ? { gatewayMeta: newGatewayMeta } : {} }).where(
     and(
       eq(transactionsTable.id, txId),
       eq(transactionsTable.status, "pending")
@@ -116278,12 +116284,12 @@ router11.get("/wallet/crypto/:paymentId/status", requireAuth, async (req, res) =
     const p = await sdk.getPaymentStatus(paymentId);
     sdkStatus = p.status;
     if (sdkStatus === "paid") {
-      await creditCryptoDeposit(tx.id, user.id, tx.amount, paymentId);
+      await creditCryptoDeposit(tx.id, user.id, tx.amount, paymentId, false, p.payin_hash);
     } else if (sdkStatus === "partially_paid") {
       const meta = tx.gatewayMeta ? JSON.parse(tx.gatewayMeta) : {};
       const fcfaRate = typeof meta.fcfaRate === "number" ? meta.fcfaRate : await getFcfaToUsdRate();
       const actualPaidFcfa = p.actually_paid ? Math.floor(Number(p.actually_paid) * fcfaRate) : tx.amount;
-      await creditCryptoDeposit(tx.id, user.id, actualPaidFcfa, paymentId, true);
+      await creditCryptoDeposit(tx.id, user.id, actualPaidFcfa, paymentId, true, p.payin_hash);
     } else if (sdkStatus === "failed" || sdkStatus === "expired" || sdkStatus === "cancelled" || sdkStatus === "refunded") {
       await db.update(transactionsTable).set({ status: "failed" }).where(and(eq(transactionsTable.id, tx.id), eq(transactionsTable.status, "pending")));
     }
@@ -116331,17 +116337,68 @@ router11.post("/wallet/crypto/webhook", async (req, res) => {
     return;
   }
   if (sdkStatus === "paid") {
-    await creditCryptoDeposit(tx.id, tx.userId, tx.amount, paymentId);
+    await creditCryptoDeposit(tx.id, tx.userId, tx.amount, paymentId, false, payment.payin_hash);
   } else if (sdkStatus === "partially_paid") {
     const meta = tx.gatewayMeta ? JSON.parse(tx.gatewayMeta) : {};
     const fcfaRate = typeof meta.fcfaRate === "number" ? meta.fcfaRate : await getFcfaToUsdRate();
     const actualPaidFcfa = payment.actually_paid ? Math.floor(Number(payment.actually_paid) * fcfaRate) : tx.amount;
-    await creditCryptoDeposit(tx.id, tx.userId, actualPaidFcfa, paymentId, true);
+    await creditCryptoDeposit(tx.id, tx.userId, actualPaidFcfa, paymentId, true, payment.payin_hash);
   } else if (sdkStatus === "failed" || sdkStatus === "expired" || sdkStatus === "cancelled" || sdkStatus === "refunded") {
     await db.update(transactionsTable).set({ status: "failed" }).where(and(eq(transactionsTable.externalDepositId, externalDepositId), eq(transactionsTable.status, "pending")));
     logger.info({ paymentId, sdkStatus }, "[Crypto Webhook] Transaction marked as failed");
   }
   res.json({ ok: true });
+});
+router11.get("/wallet/crypto/history", requireAuth, async (req, res) => {
+  const user = req.user;
+  const rows = await db.select().from(transactionsTable).where(
+    and(
+      eq(transactionsTable.userId, user.id),
+      sql`${transactionsTable.externalDepositId} LIKE ${"crypto_%"}`
+    )
+  ).orderBy(sql`${transactionsTable.createdAt} DESC`).limit(100);
+  const result = rows.map((tx) => {
+    const meta = tx.gatewayMeta ? JSON.parse(tx.gatewayMeta) : {};
+    const paymentId = String(meta.paymentId ?? "").replace(/^crypto_/, "");
+    const network = String(meta.network ?? "trc20");
+    const currency = String(meta.currency ?? "usdttrc20");
+    const payAddress = String(meta.payAddress ?? "");
+    const payAmount = Number(meta.payAmount ?? 0);
+    const amountUsd = Number(meta.amountUsd ?? 0);
+    const fcfaRate = Number(meta.fcfaRate ?? 610);
+    const expiresAt = meta.expiresAt ? String(meta.expiresAt) : null;
+    const payinHash = meta.payinHash ? String(meta.payinHash) : null;
+    const orderId = String(meta.orderId ?? "");
+    const networkLabels = {
+      trc20: "USDT \xB7 TRC-20",
+      erc20: "USDT \xB7 ERC-20",
+      bep20: "USDT \xB7 BEP-20"
+    };
+    const chainLabels = {
+      trc20: "Tron",
+      erc20: "Ethereum",
+      bep20: "BNB Smart Chain"
+    };
+    return {
+      id: tx.id,
+      status: tx.status,
+      amountFcfa: tx.amount,
+      createdAt: tx.createdAt.toISOString(),
+      paymentId,
+      orderId,
+      payAddress,
+      payAmount,
+      amountUsd,
+      fcfaRate,
+      network,
+      currency,
+      networkLabel: networkLabels[network] ?? `USDT \xB7 ${network.toUpperCase()}`,
+      chain: chainLabels[network] ?? network,
+      expiresAt,
+      payinHash
+    };
+  });
+  res.json(result);
 });
 var crypto_wallet_default = router11;
 

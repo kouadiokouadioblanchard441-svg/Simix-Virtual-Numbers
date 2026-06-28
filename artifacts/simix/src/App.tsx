@@ -29,6 +29,7 @@ import Dashboard from "@/pages/dashboard";
 import Profile from "@/pages/profile";
 import Wallet from "@/pages/wallet";
 import History from "@/pages/history";
+import CryptoHistory from "@/pages/crypto-history";
 import Services from "@/pages/services";
 import Countries from "@/pages/countries";
 import NumberDetails from "@/pages/number-details";
@@ -195,6 +196,7 @@ function InnerRouter() {
           <Route path="/profile" component={Profile} />
           <Route path="/wallet" component={Wallet} />
           <Route path="/history" component={History} />
+          <Route path="/history/crypto" component={CryptoHistory} />
           <Route path="/services" component={Services} />
           <Route path="/countries" component={Countries} />
           <Route path="/numbers/new" component={NumberDetails} />

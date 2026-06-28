@@ -14,9 +14,9 @@ import { useState, useMemo, useRef } from "react";
 import { cn } from "@/lib/utils";
 import {
   ArrowUpCircle, ShoppingBag, Search, X, CheckCircle2, XCircle, Clock,
-  Copy, ChevronRight, Shield,
-  Globe,
+  Copy, ChevronRight, Shield, Globe, Bitcoin,
 } from "lucide-react";
+import { useLocation } from "wouter";
 
 /* ─── Types ─── */
 interface TxItem {
@@ -544,6 +544,7 @@ function StatsBar({ transactions, numbers }: { transactions: TxItem[]; numbers: 
 
 /* ─── Main content ─── */
 function HistoryContent() {
+  const [, navigate] = useLocation();
   const [tab, setTab] = useState<"all" | "recharges" | "achats">("all");
   const [search, setSearch] = useState("");
   const [showSearch, setShowSearch] = useState(false);
@@ -662,12 +663,21 @@ function HistoryContent() {
               <h1 className="text-lg font-black text-foreground">Historique</h1>
               <p className="text-[11px] text-muted-foreground">{completedDeposits} dépôts · {purchaseCount} achats</p>
             </div>
-            <button
-              onClick={() => { setShowSearch(s => !s); if (!showSearch) setTimeout(() => searchRef.current?.focus(), 80); }}
-              className="w-9 h-9 bg-card border border-card-border rounded-xl flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
-            >
-              {showSearch ? <X className="w-4 h-4" /> : <Search className="w-4 h-4" />}
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => navigate("/history/crypto")}
+                className="h-9 px-3 bg-amber-500/10 border border-amber-500/20 rounded-xl flex items-center gap-1.5 text-amber-400 hover:bg-amber-500/20 transition-colors"
+              >
+                <Bitcoin className="w-3.5 h-3.5" />
+                <span className="text-[11px] font-bold">Crypto</span>
+              </button>
+              <button
+                onClick={() => { setShowSearch(s => !s); if (!showSearch) setTimeout(() => searchRef.current?.focus(), 80); }}
+                className="w-9 h-9 bg-card border border-card-border rounded-xl flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
+              >
+                {showSearch ? <X className="w-4 h-4" /> : <Search className="w-4 h-4" />}
+              </button>
+            </div>
           </div>
 
           {/* Search bar */}
