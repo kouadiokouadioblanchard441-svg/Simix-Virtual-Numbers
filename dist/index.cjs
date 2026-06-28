@@ -43071,7 +43071,7 @@ var init_src = __esm({
     init_schema2();
     init_schema2();
     ({ Pool: Pool3 } = esm_default);
-    dbUrl = process.env.SUPABASE_DATABASE_URL ?? process.env.DATABASE_URL;
+    dbUrl = process.env.DATABASE_URL ?? process.env.SUPABASE_DATABASE_URL;
     if (!dbUrl) {
       throw new Error(
         "DATABASE_URL must be set."
