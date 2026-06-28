@@ -50,17 +50,6 @@ const NETWORKS = [
     chainLogo: "/crypto/bnb.svg",
     desc: "Réseau BNB, faibles frais",
   },
-  {
-    id: "erc20",
-    label: "USDT · ERC-20",
-    chain: "Ethereum",
-    badge: "Frais élevés",
-    badgeColor: "text-blue-400 bg-blue-500/10 border-blue-500/20",
-    recommended: false,
-    color: "#627EEA",
-    chainLogo: "/crypto/eth.svg",
-    desc: "Réseau Ethereum standard",
-  },
 ] as const;
 
 type NetworkId = typeof NETWORKS[number]["id"];
