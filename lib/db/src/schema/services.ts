@@ -21,6 +21,13 @@ export const servicesTable = pgTable("services", {
   enabled: boolean("enabled").notNull().default(true),
   sortOrder: integer("sort_order").notNull().default(100),
   logoUrl: text("logo_url"),
+  /**
+   * Set to TRUE by admin price-update endpoints.
+   * When TRUE, the sync scheduler NEVER recalculates or overwrites `price`.
+   * When FALSE (default for sync-created entries), sync may recalculate price
+   * using providerPrice × (1 + margin/100).
+   */
+  adminPriceModified: boolean("admin_price_modified").notNull().default(false),
 });
 
 export type Service = typeof servicesTable.$inferSelect;

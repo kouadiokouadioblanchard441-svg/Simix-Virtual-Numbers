@@ -461,17 +461,22 @@ function calcAutoApplyPrice(providerFcfa: number): number {
 /**
  * Apply service_country_availability cache → service_prices.
  *
- * Rules:
- *  - Combos with available > 0 → enabled = true in service_prices
- *    · Social services: price NOT overwritten on conflict (preserved)
- *    · Other services:  price set to 300–450 FCFA based on provider cost
- *  - Combos absent from SCA (or available = 0) → enabled = false
+ * PRICE PROTECTION RULES:
+ *  - `price` is NEVER overwritten on conflict for admin-modified entries (adminModified = true).
+ *    Once an admin sets a price, the sync must not touch it.
+ *  - For sync-managed entries (adminModified = false), price is updated from 5sim provider cost.
+ *  - New combos (INSERT) receive a default calculated price with adminModified = false.
+ *  - Combos absent from SCA or with available = 0 → enabled = false (price preserved).
  *
- * Safe to call repeatedly (idempotent upserts).
- * Returns { enabled, disabled, priceFixed } counts.
+ * NEVER modified by this function:
+ *  - adminModified flag (only admin endpoints may set this to true)
+ *  - price of any entry where adminModified = true
+ *
+ * Safe to call repeatedly (idempotent).
+ * Returns { enabled, disabled, priceUpdated } counts.
  */
 export async function applyAvailabilityToServicePrices(): Promise<{
-  enabled: number; disabled: number; priceFixed: number;
+  enabled: number; disabled: number; priceUpdated: number; priceFixed: number;
 }> {
   const BATCH = 150;
 
@@ -484,10 +489,14 @@ export async function applyAvailabilityToServicePrices(): Promise<{
   );
 
   const allPrices = await db
-    .select({ serviceSlug: servicePricesTable.serviceSlug, countryCode: servicePricesTable.countryCode })
+    .select({
+      serviceSlug:   servicePricesTable.serviceSlug,
+      countryCode:   servicePricesTable.countryCode,
+      adminModified: servicePricesTable.adminModified,
+    })
     .from(servicePricesTable);
 
-  /* 1. Disable combos absent from SCA */
+  /* ── 1. Disable combos absent from SCA (never touch price) ── */
   const toDisable = allPrices.filter(
     p => !availableSet.has(`${p.serviceSlug}::${p.countryCode}`),
   );
@@ -504,55 +513,57 @@ export async function applyAvailabilityToServicePrices(): Promise<{
     }
   }
 
-  /* 2a. Upsert social services (enabled=true, price preserved on conflict) */
-  const socialRows = allSCA.filter(
-    r => r.available > 0 && AUTO_APPLY_SOCIAL_SLUGS.has(r.serviceSlug.toLowerCase()),
-  );
-  let enabledSocial = 0;
-  for (let i = 0; i < socialRows.length; i += BATCH) {
-    const batch = socialRows.slice(i, i + BATCH).map(r => ({
-      serviceSlug: r.serviceSlug.toLowerCase(),
-      countryCode: r.countryCode.toLowerCase(),
-      price:       Math.max(300, Math.round((r.providerPriceFcfa || 500) * 1.3)),
-      enabled:     true as const,
-    }));
-    await db.insert(servicePricesTable)
-      .values(batch)
-      .onConflictDoUpdate({
-        target: [servicePricesTable.serviceSlug, servicePricesTable.countryCode],
-        set: { enabled: true, updatedAt: new Date() },
-      });
-    enabledSocial += batch.length;
-  }
+  /* ── 2. Upsert available combos ── */
+  const availableRows = allSCA.filter(r => r.available > 0);
+  let priceUpdated = 0;
+  let priceFixed   = 0; /* admin-protected entries where we only update enabled */
 
-  /* 2b. Upsert non-social services (enabled=true, price 300–450 FCFA) */
-  const nonSocialRows = allSCA.filter(
-    r => r.available > 0 && !AUTO_APPLY_SOCIAL_SLUGS.has(r.serviceSlug.toLowerCase()),
-  );
-  let priceFixed = 0;
-  for (let i = 0; i < nonSocialRows.length; i += BATCH) {
-    const batch = nonSocialRows.slice(i, i + BATCH).map(r => ({
-      serviceSlug: r.serviceSlug.toLowerCase(),
-      countryCode: r.countryCode.toLowerCase(),
-      price:       calcAutoApplyPrice(r.providerPriceFcfa),
-      enabled:     true as const,
+  for (let i = 0; i < availableRows.length; i += BATCH) {
+    const batch = availableRows.slice(i, i + BATCH).map(r => ({
+      serviceSlug:   r.serviceSlug.toLowerCase(),
+      countryCode:   r.countryCode.toLowerCase(),
+      price:         calcAutoApplyPrice(r.providerPriceFcfa),
+      enabled:       true as const,
+      adminModified: false as const,
     }));
+
+    /*
+     * On conflict (existing row):
+     *   - enabled → always set to true (service is available)
+     *   - price → only updated when adminModified = false (sync-managed price)
+     *             preserved when adminModified = true (admin has set a custom price)
+     *   - adminModified → NEVER changed by sync
+     */
     await db.insert(servicePricesTable)
       .values(batch)
       .onConflictDoUpdate({
         target: [servicePricesTable.serviceSlug, servicePricesTable.countryCode],
         set: {
           enabled:   true,
-          price:     sql`excluded.price`,
           updatedAt: new Date(),
+          price: sql`
+            CASE
+              WHEN service_prices.admin_modified = true
+              THEN service_prices.price
+              ELSE excluded.price
+            END
+          `,
+          /* adminModified is intentionally NOT listed here — it stays as-is */
         },
       });
-    priceFixed += batch.length;
+
+    priceUpdated += batch.length;
   }
 
-  const enabled = enabledSocial + priceFixed;
-  logger.info({ enabled, disabled, priceFixed }, "[5sim-sync] applyAvailabilityToServicePrices done");
-  return { enabled, disabled, priceFixed };
+  /* Count how many were protected (admin-modified) */
+  priceFixed = allPrices.filter(p => p.adminModified && availableSet.has(`${p.serviceSlug}::${p.countryCode}`)).length;
+
+  const enabled = priceUpdated;
+  logger.info(
+    { enabled, disabled, priceUpdated, priceFixed },
+    "[5sim-sync] applyAvailabilityToServicePrices done",
+  );
+  return { enabled, disabled, priceUpdated, priceFixed };
 }
 
 /**

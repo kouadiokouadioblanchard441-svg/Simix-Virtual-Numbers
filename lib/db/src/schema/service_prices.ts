@@ -18,6 +18,13 @@ export const servicePricesTable = pgTable(
     enabled: boolean("enabled").notNull().default(true),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+    /**
+     * Set to TRUE by admin price-update endpoints.
+     * When TRUE, the sync scheduler NEVER overwrites `price`.
+     * When FALSE (default for sync-created entries), sync may update price
+     * based on the latest 5sim provider cost.
+     */
+    adminModified: boolean("admin_modified").notNull().default(false),
   },
   (t) => [unique("service_prices_country_service_unique").on(t.countryCode, t.serviceSlug)],
 );
