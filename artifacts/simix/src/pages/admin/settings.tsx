@@ -136,6 +136,14 @@ const SETTINGS_SCHEMA = [
       { key: "mobile_money_gateway", label: "Passerelle Mobile Money active", placeholder: "pawapay", type: "text", hint: "Valeurs : pawapay · clapay · auto_pawapay_first · auto_clapay_first" },
     ],
   },
+  {
+    group: "NowPayments — Crypto USDT",
+    fields: [
+      { key: "nowpayments_api_key", label: "Clé API NowPayments", placeholder: "XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX", type: "password", hint: "Obtenez votre clé sur nowpayments.io → Store Settings → API Keys" },
+      { key: "nowpayments_ipn_secret", label: "Secret IPN NowPayments", placeholder: "xxxxxxxxxxxxxxxx", type: "password", hint: "Clé de signature des webhooks — nowpayments.io → Store Settings → IPN" },
+      { key: "fcfa_to_usd_rate", label: "Taux de conversion USDT → FCFA", placeholder: "512", type: "number", hint: "1 USDT = X FCFA. Ex : 512 signifie que 1 USDT sera crédité 512 FCFA sur le solde utilisateur." },
+    ],
+  },
 ];
 
 interface PawaPayTestResult {
