@@ -122410,85 +122410,324 @@ function checkUserBlocked(req, res, next) {
   next();
 }
 
-// src/lib/seed-providers.ts
-init_src();
-init_drizzle_orm();
-init_logger2();
-async function seedProvidersFromEnv() {
-  const fivesimKey = process.env.FIVESIM_API_KEY;
-  if (!fivesimKey) {
-    logger.debug("[seed-providers] FIVESIM_API_KEY not set \u2014 skipping 5sim provider seed");
-    return;
-  }
-  try {
-    const [existing] = await db.select({ id: apiProvidersTable.id, apiKey: apiProvidersTable.apiKey, active: apiProvidersTable.active }).from(apiProvidersTable).where(eq(apiProvidersTable.slug, "5sim")).limit(1);
-    if (existing) {
-      if (existing.apiKey === fivesimKey && existing.active) {
-        logger.info("[seed-providers] 5sim provider already configured and active \u2014 nothing to do");
-        return;
-      }
-      await db.update(apiProvidersTable).set({ apiKey: fivesimKey, active: true }).where(eq(apiProvidersTable.id, existing.id));
-      logger.info("[seed-providers] 5sim provider updated from FIVESIM_API_KEY env var");
-    } else {
-      await db.insert(apiProvidersTable).values({
-        name: "5sim",
-        slug: "5sim",
-        apiKey: fivesimKey,
-        baseUrl: "https://5sim.net/v1",
-        active: true,
-        priority: 1,
-        markup: 20
-      });
-      logger.info("[seed-providers] 5sim provider created from FIVESIM_API_KEY env var");
-    }
-  } catch (err) {
-    logger.error({ err }, "[seed-providers] Failed to seed 5sim provider \u2014 continuing startup");
-  }
-}
-
-// src/lib/seed-payment-methods.ts
-init_src();
-init_logger2();
-var PAYMENT_METHODS = [
-  /* ── West Africa (primary) ── */
-  { name: "Orange Money", slug: "orange_money", description: "CI, SN, ML, BF, CM, GN, NE", color: "#FF7A00", recommended: true, sortOrder: 10 },
-  { name: "MTN Mobile Money", slug: "mtn_money", description: "CI, GH, CM, NG, UG, RW, ZM", color: "#FFCC00", recommended: true, sortOrder: 20 },
-  { name: "Wave", slug: "wave", description: "CI, SN, BF, ML, GN", color: "#1AC9FF", recommended: true, sortOrder: 30 },
-  { name: "Moov Money", slug: "moov_money", description: "CI, BJ, TG, BF, ML, NE", color: "#0066CC", recommended: false, sortOrder: 40 },
-  { name: "Free Money", slug: "free_money", description: "SN, GN", color: "#CC0000", recommended: false, sortOrder: 50 },
-  /* ── East & Southern Africa ── */
-  { name: "Airtel Money", slug: "airtel_money", description: "GH, KE, TZ, UG, RW, ZM, MW", color: "#FF0000", recommended: false, sortOrder: 60 },
-  { name: "M-Pesa", slug: "mpesa", description: "KE, TZ, MZ, MW, ZA", color: "#4CAF50", recommended: false, sortOrder: 70 },
-  { name: "Vodacom M-Pesa", slug: "vodacom_mpesa", description: "TZ, MZ, ZA", color: "#E60000", recommended: false, sortOrder: 80 },
-  { name: "Zamtel Kwacha", slug: "zamtel", description: "ZM", color: "#006633", recommended: false, sortOrder: 90 },
-  /* ── Central Africa ── */
-  { name: "Flooz", slug: "flooz", description: "TG, BJ", color: "#7B2D8B", recommended: false, sortOrder: 100 },
-  { name: "T-Money", slug: "tmoney", description: "TG", color: "#00AEEF", recommended: false, sortOrder: 110 },
-  { name: "MVola", slug: "mvola", description: "MG (Madagascar)", color: "#E30613", recommended: false, sortOrder: 120 },
-  /* ── Southern Africa ── */
-  { name: "EcoCash (Econet)", slug: "econet", description: "ZW (Zimbabwe)", color: "#009900", recommended: false, sortOrder: 130 }
-];
-async function seedPaymentMethods() {
-  try {
-    for (const pm of PAYMENT_METHODS) {
-      await db.insert(paymentMethodsTable).values(pm).onConflictDoUpdate({
-        target: paymentMethodsTable.slug,
-        set: {
-          name: pm.name,
-          description: pm.description,
-          color: pm.color,
-          recommended: pm.recommended,
-          sortOrder: pm.sortOrder
-        }
-      });
-    }
-    logger.info({ count: PAYMENT_METHODS.length }, "[seed-payments] Payment methods seeded");
-  } catch (err) {
-    logger.error({ err }, "[seed-payments] Failed to seed payment methods \u2014 continuing startup");
-  }
-}
-
 // src/app.ts
+var app = (0, import_express29.default)();
+app.set("trust proxy", 1);
+var buildAllowedOrigins = () => {
+  const origins = /* @__PURE__ */ new Set();
+  if (process.env.APP_URL) origins.add(process.env.APP_URL.replace(/\/$/, ""));
+  if (process.env.REPLIT_DEV_DOMAIN) origins.add(`https://${process.env.REPLIT_DEV_DOMAIN}`);
+  if (process.env.REPLIT_DOMAINS) {
+    for (const d of process.env.REPLIT_DOMAINS.split(",")) {
+      const domain = d.trim();
+      if (domain) origins.add(`https://${domain}`);
+    }
+  }
+  origins.add("http://localhost:5000");
+  if (process.env.NODE_ENV !== "production") {
+    origins.add("http://localhost:3000");
+    origins.add("http://localhost:5173");
+  }
+  return origins;
+};
+var _allowedOrigins = null;
+function getAllowedOrigins() {
+  if (!_allowedOrigins) _allowedOrigins = buildAllowedOrigins();
+  return _allowedOrigins;
+}
+app.use(
+  (0, import_cors.default)({
+    credentials: true,
+    origin: (origin, callback) => {
+      if (!origin) return callback(null, true);
+      if (getAllowedOrigins().has(origin)) return callback(null, true);
+      logger.warn({ origin }, "[cors] Rejected cross-origin request");
+      callback(new Error("CORS: origin not allowed"));
+    }
+  })
+);
+app.use(
+  helmet({
+    /* CORP: cross-origin to allow PWA assets fetched from the same server */
+    crossOriginResourcePolicy: { policy: "cross-origin" },
+    /* CSP: block XSS. 'unsafe-inline' for styles is required by Tailwind v4.
+     * Script nonces would be ideal but require SSR integration — this is a
+     * SPA so all scripts are hashed by Vite at build time from /assets/.    */
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'", "'unsafe-inline'", "https://challenges.cloudflare.com"],
+        scriptSrcElem: ["'self'", "'unsafe-inline'", "https://challenges.cloudflare.com"],
+        styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+        imgSrc: ["'self'", "data:", "blob:", "https:"],
+        connectSrc: ["'self'", "wss:", "ws:", "https:"],
+        fontSrc: ["'self'", "data:", "https://fonts.gstatic.com"],
+        mediaSrc: ["'self'", "blob:"],
+        workerSrc: ["'self'", "blob:"],
+        childSrc: ["'self'", "blob:", "https://challenges.cloudflare.com"],
+        frameSrc: ["'self'", "https://challenges.cloudflare.com"],
+        frameAncestors: ["'self'", "https://*.replit.dev", "https://*.repl.co", "https://*.replit.app", "https://*.kirk.replit.dev"],
+        objectSrc: ["'none'"],
+        baseUri: ["'self'"],
+        formAction: ["'self'"]
+      }
+    },
+    /* Clickjacking: disabled so Replit preview iframe can embed the app.
+     * Protection is handled by the CSP frame-ancestors directive above.  */
+    frameguard: false,
+    /* HSTS: force HTTPS for 1 year, include subdomains */
+    hsts: {
+      maxAge: 31536e3,
+      includeSubDomains: true,
+      preload: true
+    },
+    /* Block MIME sniffing */
+    noSniff: true,
+    /* Referrer policy */
+    referrerPolicy: { policy: "strict-origin-when-cross-origin" }
+  })
+);
+app.use((_req, res, next) => {
+  res.setHeader(
+    "Permissions-Policy",
+    "camera=(), microphone=(), geolocation=(), payment=(), usb=(), interest-cohort=()"
+  );
+  next();
+});
+app.use((req, res, next) => {
+  const url2 = req.path;
+  if (url2 === "/sw.js" || url2 === "/sw.ts") {
+    res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+    res.setHeader("Service-Worker-Allowed", "/");
+    return next();
+  }
+  if (url2 === "/manifest.webmanifest" || url2 === "/manifest.json") {
+    res.setHeader("Cache-Control", "public, max-age=86400");
+    res.setHeader("Content-Type", "application/manifest+json");
+    return next();
+  }
+  if (url2.startsWith("/assets/")) {
+    const isHashed = /\-[a-f0-9]{8,}\.(js|css|woff2?|png|svg|webp)$/.test(url2);
+    if (isHashed) {
+      res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+    } else {
+      res.setHeader("Cache-Control", "public, max-age=0, must-revalidate");
+    }
+    return next();
+  }
+  if (url2.startsWith("/icons/")) {
+    res.setHeader("Cache-Control", "public, max-age=2592000");
+    return next();
+  }
+  next();
+});
+app.use(
+  (0, import_pino_http.default)({
+    logger,
+    serializers: {
+      req(req) {
+        return { id: req.id, method: req.method, url: req.url?.split("?")[0] };
+      },
+      res(res) {
+        return { statusCode: res.statusCode };
+      }
+    }
+  })
+);
+var WEBHOOK_PATHS_SET = /* @__PURE__ */ new Set([
+  "/api/wallet/pawapay/webhook",
+  "/api/wallet/pawapay/refund-webhook",
+  "/api/wallet/clapay/webhook"
+]);
+var rawBodyCapture = (req, _res, buf) => {
+  req.rawBody = buf.toString("utf8");
+};
+app.use((req, res, next) => {
+  if (WEBHOOK_PATHS_SET.has(req.path)) {
+    import_express29.default.json({ limit: "1mb", verify: rawBodyCapture })(req, res, next);
+  } else {
+    next();
+  }
+});
+app.use((req, res, next) => {
+  if (!WEBHOOK_PATHS_SET.has(req.path)) {
+    import_express29.default.json({ limit: "256kb", verify: rawBodyCapture })(req, res, next);
+  } else {
+    next();
+  }
+});
+app.use(import_express29.default.urlencoded({ extended: true, limit: "64kb" }));
+app.use((0, import_cookie_parser.default)());
+app.use(globalRateLimit);
+app.use(checkMaintenanceMode);
+app.use(checkIpBlacklist);
+app.use(attachUser);
+app.use(checkUserBlocked);
+var EXCLUDED_REGISTRATION_COUNTRIES = [
+  "MA",
+  "DZ",
+  "TN",
+  "EG",
+  "LY",
+  "MR",
+  "SD",
+  "FR",
+  "GB",
+  "BE",
+  "US",
+  "CA",
+  "DE",
+  "NL",
+  "SE",
+  "IT",
+  "ES",
+  "PT",
+  "AU",
+  "JP",
+  "IN",
+  "BR",
+  "MX",
+  "KZ",
+  "RU",
+  "UA",
+  "CN",
+  "KR",
+  "TR",
+  "SA",
+  "AE",
+  "QA",
+  "KW",
+  "IQ",
+  "IR",
+  "JO",
+  "LB",
+  "IL",
+  "SY",
+  "PK",
+  "BD",
+  "VN",
+  "TH",
+  "PH",
+  "ID",
+  "MY",
+  "LK",
+  "NP",
+  "MM",
+  "KH",
+  "LA",
+  "MN",
+  "UZ",
+  "TJ",
+  "KG",
+  "TM",
+  "AZ",
+  "AM",
+  "GE",
+  "AL",
+  "RS",
+  "MK",
+  "BA",
+  "HR",
+  "BG",
+  "RO",
+  "HU",
+  "PL",
+  "CZ",
+  "SK",
+  "SI",
+  "EE",
+  "LV",
+  "LT",
+  "FI",
+  "DK",
+  "NO",
+  "AT",
+  "CH",
+  "IE",
+  "LU",
+  "MC",
+  "AD",
+  "LI",
+  "SM",
+  "VA",
+  "MT",
+  "CY",
+  "GR",
+  "BY",
+  "MD",
+  "XK",
+  "ME",
+  "MO",
+  "HK",
+  "TW",
+  "SG",
+  "BN",
+  "PW",
+  "GU",
+  "MH",
+  "FM",
+  "NR",
+  "WS",
+  "TO",
+  "VU",
+  "SB",
+  "PG",
+  "FJ",
+  "CK",
+  "NU",
+  "TV",
+  "KI",
+  "NZ",
+  "NC",
+  "PF",
+  "RE"
+];
+app.get("/api/public/registration-countries", async (_req, res) => {
+  try {
+    const rows = await db.select({
+      code: countriesTable.code,
+      dialCode: countriesTable.dialCode,
+      name: countriesTable.name,
+      flag: countriesTable.flag
+    }).from(countriesTable).where(
+      and(
+        eq(countriesTable.enabled, true),
+        notInArray(countriesTable.code, EXCLUDED_REGISTRATION_COUNTRIES)
+      )
+    ).orderBy(countriesTable.sortOrder);
+    res.json(
+      rows.map((r2) => ({
+        code: r2.code.toLowerCase(),
+        dial: r2.dialCode,
+        label: r2.name,
+        flag: r2.flag
+      }))
+    );
+  } catch (err) {
+    logger.error({ err }, "[public] registration-countries query failed");
+    res.status(500).json({ error: "Impossible de charger les pays." });
+  }
+});
+app.use("/api", routes_default);
+if (process.env.NODE_ENV === "production") {
+  const currentDir = globalThis.__dirname;
+  if (currentDir) {
+    const publicDir = import_path2.default.join(currentDir, "public");
+    if ((0, import_fs3.existsSync)(publicDir)) {
+      app.use(import_express29.default.static(publicDir));
+      app.use((_req, res) => {
+        res.sendFile(import_path2.default.join(publicDir, "index.html"));
+      });
+    } else {
+      logger.warn({ publicDir }, "Frontend public dir not found \u2014 static serving disabled");
+    }
+  }
+}
+var app_default = app;
+
+// src/index.ts
+init_src();
+init_logger2();
 init_fivesim_sync();
 
 // src/lib/clapay-reconciliation.ts
@@ -122729,6 +122968,134 @@ function startPawaPayReconciliation() {
       (e2) => logger.error({ error: e2.message }, "[PawaPay Reconcile] Startup run error")
     );
   }, 6e4);
+}
+
+// src/lib/seed-demo-user.ts
+init_drizzle_orm();
+init_src();
+init_logger2();
+async function seedDemoUser() {
+  try {
+    const phone = "+2250701234567";
+    const [existing] = await db.select({ id: usersTable.id }).from(usersTable).where(eq(usersTable.phone, phone)).limit(1);
+    if (existing) {
+      await db.update(usersTable).set({ isAdmin: true, emailVerified: true, lastLoginAt: /* @__PURE__ */ new Date() }).where(eq(usersTable.id, existing.id));
+      logger.info("[seed-demo] Demo user already exists \u2014 ensured admin + emailVerified");
+      return;
+    }
+    const passwordHash = await bcryptjs_default.hash("simix2026", 10);
+    const [user] = await db.insert(usersTable).values({
+      fullName: "Kouassi David",
+      phone,
+      countryCode: "+225",
+      username: "kouassi_david",
+      email: "kouassidavid@gmail.com",
+      passwordHash,
+      balance: 12450,
+      verified: true,
+      emailVerified: true,
+      lastLoginAt: /* @__PURE__ */ new Date(),
+      status: "Standard",
+      isAdmin: true
+    }).returning();
+    if (!user) return;
+    const seedTx = [
+      { type: "recharge", amount: 5e3, method: "Orange Money", description: "Recharge Orange Money" },
+      { type: "purchase", amount: 150, method: "wallet", description: "Num\xE9ro WhatsApp - C\xF4te d'Ivoire" },
+      { type: "recharge", amount: 1e4, method: "MTN Mobile Money", description: "Recharge MTN" }
+    ];
+    for (const t2 of seedTx) {
+      await db.insert(transactionsTable).values({
+        userId: user.id,
+        type: t2.type,
+        amount: t2.amount,
+        status: "completed",
+        method: t2.method,
+        description: t2.description
+      });
+    }
+    logger.info("[seed-demo] Demo user created \u2713");
+  } catch (err) {
+    logger.warn({ err }, "[seed-demo] Demo user seed failed (non-blocking)");
+  }
+}
+
+// src/lib/seed-payment-methods.ts
+init_src();
+init_logger2();
+var PAYMENT_METHODS = [
+  /* ── West Africa (primary) ── */
+  { name: "Orange Money", slug: "orange_money", description: "CI, SN, ML, BF, CM, GN, NE", color: "#FF7A00", recommended: true, sortOrder: 10 },
+  { name: "MTN Mobile Money", slug: "mtn_money", description: "CI, GH, CM, NG, UG, RW, ZM", color: "#FFCC00", recommended: true, sortOrder: 20 },
+  { name: "Wave", slug: "wave", description: "CI, SN, BF, ML, GN", color: "#1AC9FF", recommended: true, sortOrder: 30 },
+  { name: "Moov Money", slug: "moov_money", description: "CI, BJ, TG, BF, ML, NE", color: "#0066CC", recommended: false, sortOrder: 40 },
+  { name: "Free Money", slug: "free_money", description: "SN, GN", color: "#CC0000", recommended: false, sortOrder: 50 },
+  /* ── East & Southern Africa ── */
+  { name: "Airtel Money", slug: "airtel_money", description: "GH, KE, TZ, UG, RW, ZM, MW", color: "#FF0000", recommended: false, sortOrder: 60 },
+  { name: "M-Pesa", slug: "mpesa", description: "KE, TZ, MZ, MW, ZA", color: "#4CAF50", recommended: false, sortOrder: 70 },
+  { name: "Vodacom M-Pesa", slug: "vodacom_mpesa", description: "TZ, MZ, ZA", color: "#E60000", recommended: false, sortOrder: 80 },
+  { name: "Zamtel Kwacha", slug: "zamtel", description: "ZM", color: "#006633", recommended: false, sortOrder: 90 },
+  /* ── Central Africa ── */
+  { name: "Flooz", slug: "flooz", description: "TG, BJ", color: "#7B2D8B", recommended: false, sortOrder: 100 },
+  { name: "T-Money", slug: "tmoney", description: "TG", color: "#00AEEF", recommended: false, sortOrder: 110 },
+  { name: "MVola", slug: "mvola", description: "MG (Madagascar)", color: "#E30613", recommended: false, sortOrder: 120 },
+  /* ── Southern Africa ── */
+  { name: "EcoCash (Econet)", slug: "econet", description: "ZW (Zimbabwe)", color: "#009900", recommended: false, sortOrder: 130 }
+];
+async function seedPaymentMethods() {
+  try {
+    for (const pm of PAYMENT_METHODS) {
+      await db.insert(paymentMethodsTable).values(pm).onConflictDoUpdate({
+        target: paymentMethodsTable.slug,
+        set: {
+          name: pm.name,
+          description: pm.description,
+          color: pm.color,
+          recommended: pm.recommended,
+          sortOrder: pm.sortOrder
+        }
+      });
+    }
+    logger.info({ count: PAYMENT_METHODS.length }, "[seed-payments] Payment methods seeded");
+  } catch (err) {
+    logger.error({ err }, "[seed-payments] Failed to seed payment methods \u2014 continuing startup");
+  }
+}
+
+// src/lib/seed-providers.ts
+init_src();
+init_drizzle_orm();
+init_logger2();
+async function seedProvidersFromEnv() {
+  const fivesimKey = process.env.FIVESIM_API_KEY;
+  if (!fivesimKey) {
+    logger.debug("[seed-providers] FIVESIM_API_KEY not set \u2014 skipping 5sim provider seed");
+    return;
+  }
+  try {
+    const [existing] = await db.select({ id: apiProvidersTable.id, apiKey: apiProvidersTable.apiKey, active: apiProvidersTable.active }).from(apiProvidersTable).where(eq(apiProvidersTable.slug, "5sim")).limit(1);
+    if (existing) {
+      if (existing.apiKey === fivesimKey && existing.active) {
+        logger.info("[seed-providers] 5sim provider already configured and active \u2014 nothing to do");
+        return;
+      }
+      await db.update(apiProvidersTable).set({ apiKey: fivesimKey, active: true }).where(eq(apiProvidersTable.id, existing.id));
+      logger.info("[seed-providers] 5sim provider updated from FIVESIM_API_KEY env var");
+    } else {
+      await db.insert(apiProvidersTable).values({
+        name: "5sim",
+        slug: "5sim",
+        apiKey: fivesimKey,
+        baseUrl: "https://5sim.net/v1",
+        active: true,
+        priority: 1,
+        markup: 20
+      });
+      logger.info("[seed-providers] 5sim provider created from FIVESIM_API_KEY env var");
+    }
+  } catch (err) {
+    logger.error({ err }, "[seed-providers] Failed to seed 5sim provider \u2014 continuing startup");
+  }
 }
 
 // src/lib/seed-routing.ts
@@ -123278,397 +123645,6 @@ async function seedCountryPaymentConfigs() {
   }
 }
 
-// src/app.ts
-var app = (0, import_express29.default)();
-app.set("trust proxy", 1);
-var buildAllowedOrigins = () => {
-  const origins = /* @__PURE__ */ new Set();
-  if (process.env.APP_URL) origins.add(process.env.APP_URL.replace(/\/$/, ""));
-  if (process.env.REPLIT_DEV_DOMAIN) origins.add(`https://${process.env.REPLIT_DEV_DOMAIN}`);
-  if (process.env.REPLIT_DOMAINS) {
-    for (const d of process.env.REPLIT_DOMAINS.split(",")) {
-      const domain = d.trim();
-      if (domain) origins.add(`https://${domain}`);
-    }
-  }
-  origins.add("http://localhost:5000");
-  if (process.env.NODE_ENV !== "production") {
-    origins.add("http://localhost:3000");
-    origins.add("http://localhost:5173");
-  }
-  return origins;
-};
-var _allowedOrigins = null;
-function getAllowedOrigins() {
-  if (!_allowedOrigins) _allowedOrigins = buildAllowedOrigins();
-  return _allowedOrigins;
-}
-app.use(
-  (0, import_cors.default)({
-    credentials: true,
-    origin: (origin, callback) => {
-      if (!origin) return callback(null, true);
-      if (getAllowedOrigins().has(origin)) return callback(null, true);
-      logger.warn({ origin }, "[cors] Rejected cross-origin request");
-      callback(new Error("CORS: origin not allowed"));
-    }
-  })
-);
-app.use(
-  helmet({
-    /* CORP: cross-origin to allow PWA assets fetched from the same server */
-    crossOriginResourcePolicy: { policy: "cross-origin" },
-    /* CSP: block XSS. 'unsafe-inline' for styles is required by Tailwind v4.
-     * Script nonces would be ideal but require SSR integration — this is a
-     * SPA so all scripts are hashed by Vite at build time from /assets/.    */
-    contentSecurityPolicy: {
-      directives: {
-        defaultSrc: ["'self'"],
-        scriptSrc: ["'self'", "'unsafe-inline'", "https://challenges.cloudflare.com"],
-        scriptSrcElem: ["'self'", "'unsafe-inline'", "https://challenges.cloudflare.com"],
-        styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
-        imgSrc: ["'self'", "data:", "blob:", "https:"],
-        connectSrc: ["'self'", "wss:", "ws:", "https:"],
-        fontSrc: ["'self'", "data:", "https://fonts.gstatic.com"],
-        mediaSrc: ["'self'", "blob:"],
-        workerSrc: ["'self'", "blob:"],
-        childSrc: ["'self'", "blob:", "https://challenges.cloudflare.com"],
-        frameSrc: ["'self'", "https://challenges.cloudflare.com"],
-        frameAncestors: ["'self'", "https://*.replit.dev", "https://*.repl.co", "https://*.replit.app", "https://*.kirk.replit.dev"],
-        objectSrc: ["'none'"],
-        baseUri: ["'self'"],
-        formAction: ["'self'"]
-      }
-    },
-    /* Clickjacking: disabled so Replit preview iframe can embed the app.
-     * Protection is handled by the CSP frame-ancestors directive above.  */
-    frameguard: false,
-    /* HSTS: force HTTPS for 1 year, include subdomains */
-    hsts: {
-      maxAge: 31536e3,
-      includeSubDomains: true,
-      preload: true
-    },
-    /* Block MIME sniffing */
-    noSniff: true,
-    /* Referrer policy */
-    referrerPolicy: { policy: "strict-origin-when-cross-origin" }
-  })
-);
-app.use((_req, res, next) => {
-  res.setHeader(
-    "Permissions-Policy",
-    "camera=(), microphone=(), geolocation=(), payment=(), usb=(), interest-cohort=()"
-  );
-  next();
-});
-app.use((req, res, next) => {
-  const url2 = req.path;
-  if (url2 === "/sw.js" || url2 === "/sw.ts") {
-    res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
-    res.setHeader("Service-Worker-Allowed", "/");
-    return next();
-  }
-  if (url2 === "/manifest.webmanifest" || url2 === "/manifest.json") {
-    res.setHeader("Cache-Control", "public, max-age=86400");
-    res.setHeader("Content-Type", "application/manifest+json");
-    return next();
-  }
-  if (url2.startsWith("/assets/")) {
-    const isHashed = /\-[a-f0-9]{8,}\.(js|css|woff2?|png|svg|webp)$/.test(url2);
-    if (isHashed) {
-      res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
-    } else {
-      res.setHeader("Cache-Control", "public, max-age=0, must-revalidate");
-    }
-    return next();
-  }
-  if (url2.startsWith("/icons/")) {
-    res.setHeader("Cache-Control", "public, max-age=2592000");
-    return next();
-  }
-  next();
-});
-app.use(
-  (0, import_pino_http.default)({
-    logger,
-    serializers: {
-      req(req) {
-        return { id: req.id, method: req.method, url: req.url?.split("?")[0] };
-      },
-      res(res) {
-        return { statusCode: res.statusCode };
-      }
-    }
-  })
-);
-var WEBHOOK_PATHS_SET = /* @__PURE__ */ new Set([
-  "/api/wallet/pawapay/webhook",
-  "/api/wallet/pawapay/refund-webhook",
-  "/api/wallet/clapay/webhook"
-]);
-var rawBodyCapture = (req, _res, buf) => {
-  req.rawBody = buf.toString("utf8");
-};
-app.use((req, res, next) => {
-  if (WEBHOOK_PATHS_SET.has(req.path)) {
-    import_express29.default.json({ limit: "1mb", verify: rawBodyCapture })(req, res, next);
-  } else {
-    next();
-  }
-});
-app.use((req, res, next) => {
-  if (!WEBHOOK_PATHS_SET.has(req.path)) {
-    import_express29.default.json({ limit: "256kb", verify: rawBodyCapture })(req, res, next);
-  } else {
-    next();
-  }
-});
-app.use(import_express29.default.urlencoded({ extended: true, limit: "64kb" }));
-app.use((0, import_cookie_parser.default)());
-app.use(globalRateLimit);
-app.use(checkMaintenanceMode);
-app.use(checkIpBlacklist);
-app.use(attachUser);
-app.use(checkUserBlocked);
-var EXCLUDED_REGISTRATION_COUNTRIES = [
-  "MA",
-  "DZ",
-  "TN",
-  "EG",
-  "LY",
-  "MR",
-  "SD",
-  "FR",
-  "GB",
-  "BE",
-  "US",
-  "CA",
-  "DE",
-  "NL",
-  "SE",
-  "IT",
-  "ES",
-  "PT",
-  "AU",
-  "JP",
-  "IN",
-  "BR",
-  "MX",
-  "KZ",
-  "RU",
-  "UA",
-  "CN",
-  "KR",
-  "TR",
-  "SA",
-  "AE",
-  "QA",
-  "KW",
-  "IQ",
-  "IR",
-  "JO",
-  "LB",
-  "IL",
-  "SY",
-  "PK",
-  "BD",
-  "VN",
-  "TH",
-  "PH",
-  "ID",
-  "MY",
-  "LK",
-  "NP",
-  "MM",
-  "KH",
-  "LA",
-  "MN",
-  "UZ",
-  "TJ",
-  "KG",
-  "TM",
-  "AZ",
-  "AM",
-  "GE",
-  "AL",
-  "RS",
-  "MK",
-  "BA",
-  "HR",
-  "BG",
-  "RO",
-  "HU",
-  "PL",
-  "CZ",
-  "SK",
-  "SI",
-  "EE",
-  "LV",
-  "LT",
-  "FI",
-  "DK",
-  "NO",
-  "AT",
-  "CH",
-  "IE",
-  "LU",
-  "MC",
-  "AD",
-  "LI",
-  "SM",
-  "VA",
-  "MT",
-  "CY",
-  "GR",
-  "BY",
-  "MD",
-  "XK",
-  "ME",
-  "MO",
-  "HK",
-  "TW",
-  "SG",
-  "BN",
-  "PW",
-  "GU",
-  "MH",
-  "FM",
-  "NR",
-  "WS",
-  "TO",
-  "VU",
-  "SB",
-  "PG",
-  "FJ",
-  "CK",
-  "NU",
-  "TV",
-  "KI",
-  "NZ",
-  "NC",
-  "PF",
-  "RE"
-];
-app.get("/api/public/registration-countries", async (_req, res) => {
-  try {
-    const rows = await db.select({
-      code: countriesTable.code,
-      dialCode: countriesTable.dialCode,
-      name: countriesTable.name,
-      flag: countriesTable.flag
-    }).from(countriesTable).where(
-      and(
-        eq(countriesTable.enabled, true),
-        notInArray(countriesTable.code, EXCLUDED_REGISTRATION_COUNTRIES)
-      )
-    ).orderBy(countriesTable.sortOrder);
-    res.json(
-      rows.map((r2) => ({
-        code: r2.code.toLowerCase(),
-        dial: r2.dialCode,
-        label: r2.name,
-        flag: r2.flag
-      }))
-    );
-  } catch (err) {
-    logger.error({ err }, "[public] registration-countries query failed");
-    res.status(500).json({ error: "Impossible de charger les pays." });
-  }
-});
-app.use("/api", routes_default);
-if (process.env.NODE_ENV === "production") {
-  const currentDir = globalThis.__dirname;
-  if (currentDir) {
-    const publicDir = import_path2.default.join(currentDir, "public");
-    if ((0, import_fs3.existsSync)(publicDir)) {
-      app.use(import_express29.default.static(publicDir));
-      app.use((_req, res) => {
-        res.sendFile(import_path2.default.join(publicDir, "index.html"));
-      });
-    } else {
-      logger.warn({ publicDir }, "Frontend public dir not found \u2014 static serving disabled");
-    }
-  }
-}
-void seedPaymentMethods();
-void seedCountryPaymentConfigs();
-void seedRoutingData();
-void seedProvidersFromEnv().then(async () => {
-  startFiveSimPoller();
-  startFiveSimSyncScheduler();
-  startClapayReconciliation();
-  startPawaPayReconciliation();
-  try {
-    const result = await syncFiveSimCountries();
-    logger.info({ added: result.added, updated: result.updated, total: result.total }, "[startup] 5sim countries synced");
-  } catch (e2) {
-    logger.warn({ err: e2.message }, "[startup] 5sim countries sync skipped");
-  }
-  try {
-    const result = await syncFiveSimProducts();
-    logger.info({ added: result.added, updated: result.updated, total: result.total }, "[startup] 5sim products synced");
-  } catch (e2) {
-    logger.warn({ err: e2.message }, "[startup] 5sim products sync skipped");
-  }
-});
-var app_default = app;
-
-// src/index.ts
-init_src();
-init_logger2();
-init_fivesim_sync();
-
-// src/lib/seed-demo-user.ts
-init_drizzle_orm();
-init_src();
-init_logger2();
-async function seedDemoUser() {
-  try {
-    const phone = "+2250701234567";
-    const [existing] = await db.select({ id: usersTable.id }).from(usersTable).where(eq(usersTable.phone, phone)).limit(1);
-    if (existing) {
-      await db.update(usersTable).set({ isAdmin: true, emailVerified: true, lastLoginAt: /* @__PURE__ */ new Date() }).where(eq(usersTable.id, existing.id));
-      logger.info("[seed-demo] Demo user already exists \u2014 ensured admin + emailVerified");
-      return;
-    }
-    const passwordHash = await bcryptjs_default.hash("simix2026", 10);
-    const [user] = await db.insert(usersTable).values({
-      fullName: "Kouassi David",
-      phone,
-      countryCode: "+225",
-      username: "kouassi_david",
-      email: "kouassidavid@gmail.com",
-      passwordHash,
-      balance: 12450,
-      verified: true,
-      emailVerified: true,
-      lastLoginAt: /* @__PURE__ */ new Date(),
-      status: "Standard",
-      isAdmin: true
-    }).returning();
-    if (!user) return;
-    const seedTx = [
-      { type: "recharge", amount: 5e3, method: "Orange Money", description: "Recharge Orange Money" },
-      { type: "purchase", amount: 150, method: "wallet", description: "Num\xE9ro WhatsApp - C\xF4te d'Ivoire" },
-      { type: "recharge", amount: 1e4, method: "MTN Mobile Money", description: "Recharge MTN" }
-    ];
-    for (const t2 of seedTx) {
-      await db.insert(transactionsTable).values({
-        userId: user.id,
-        type: t2.type,
-        amount: t2.amount,
-        status: "completed",
-        method: t2.method,
-        description: t2.description
-      });
-    }
-    logger.info("[seed-demo] Demo user created \u2713");
-  } catch (err) {
-    logger.warn({ err }, "[seed-demo] Demo user seed failed (non-blocking)");
-  }
-}
-
 // src/index.ts
 var rawPort = process.env["PORT"] ?? "3000";
 var port = Number(rawPort);
@@ -123682,7 +123658,6 @@ async function start() {
     logger.info({ migrationsFolder }, "[startup] Running database migrations\u2026");
     await migrate(db, { migrationsFolder });
     logger.info("[startup] Database migrations applied \u2713");
-    void seedDemoUser();
   } catch (err) {
     const msg = err?.message ?? "";
     const isAlreadyExists = msg.includes("already exists") || msg.includes("duplicate");
@@ -123692,14 +123667,34 @@ async function start() {
       logger.warn({ err }, "[startup] Migration skipped (schema already up to date)");
     }
   }
+  void seedDemoUser();
+  void seedPaymentMethods();
+  void seedCountryPaymentConfigs();
+  void seedRoutingData();
+  void seedProvidersFromEnv().then(async () => {
+    startFiveSimPoller();
+    startFiveSimSyncScheduler();
+    startClapayReconciliation();
+    startPawaPayReconciliation();
+    try {
+      const result = await syncFiveSimCountries();
+      logger.info({ added: result.added, updated: result.updated, total: result.total }, "[startup] 5sim countries synced");
+    } catch (e2) {
+      logger.warn({ err: e2.message }, "[startup] 5sim countries sync skipped");
+    }
+    try {
+      const result = await syncFiveSimProducts();
+      logger.info({ added: result.added, updated: result.updated, total: result.total }, "[startup] 5sim products synced");
+    } catch (e2) {
+      logger.warn({ err: e2.message }, "[startup] 5sim products sync skipped");
+    }
+  });
   app_default.listen(port, (err) => {
     if (err) {
       logger.error({ err }, "Error listening on port");
       process.exit(1);
     }
     logger.info({ port }, "Server listening");
-    startFiveSimPoller();
-    startFiveSimSyncScheduler();
     logger.info("[startup] 5sim poller + sync scheduler started \u2713");
   });
 }

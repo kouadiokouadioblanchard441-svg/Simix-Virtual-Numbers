@@ -12,14 +12,6 @@ import { db } from "@workspace/db";
 import { countriesTable } from "@workspace/db";
 import { eq, and, notInArray } from "drizzle-orm";
 import { globalRateLimit, checkUserBlocked, checkMaintenanceMode, checkIpBlacklist } from "./middlewares/security";
-import { seedProvidersFromEnv } from "./lib/seed-providers";
-import { seedPaymentMethods } from "./lib/seed-payment-methods";
-import { startFiveSimPoller } from "./lib/fivesim-poller";
-import { startFiveSimSyncScheduler, syncFiveSimCountries, syncFiveSimProducts } from "./lib/fivesim-sync";
-import { startClapayReconciliation } from "./lib/clapay-reconciliation";
-import { startPawaPayReconciliation } from "./lib/pawapay-reconciliation";
-import { seedRoutingData } from "./lib/seed-routing";
-import { seedCountryPaymentConfigs } from "./lib/seed-country-payment-configs";
 
 const app: Express = express();
 
@@ -298,31 +290,5 @@ if (process.env.NODE_ENV === "production") {
     }
   }
 }
-
-/* ── Seed reference data + providers, then start real-time sync + poller ── */
-void seedPaymentMethods();
-void seedCountryPaymentConfigs();
-void seedRoutingData();
-
-void seedProvidersFromEnv().then(async () => {
-  startFiveSimPoller();
-  startFiveSimSyncScheduler();
-  startClapayReconciliation();
-  startPawaPayReconciliation();
-
-  try {
-    const result = await syncFiveSimCountries();
-    logger.info({ added: result.added, updated: result.updated, total: result.total }, "[startup] 5sim countries synced");
-  } catch (e) {
-    logger.warn({ err: (e as Error).message }, "[startup] 5sim countries sync skipped");
-  }
-
-  try {
-    const result = await syncFiveSimProducts();
-    logger.info({ added: result.added, updated: result.updated, total: result.total }, "[startup] 5sim products synced");
-  } catch (e) {
-    logger.warn({ err: (e as Error).message }, "[startup] 5sim products sync skipped");
-  }
-});
 
 export default app;

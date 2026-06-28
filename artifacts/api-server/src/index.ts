@@ -4,8 +4,14 @@ import app from "./app";
 import { db } from "@workspace/db";
 import { logger } from "./lib/logger";
 import { startFiveSimPoller } from "./lib/fivesim-poller";
-import { startFiveSimSyncScheduler } from "./lib/fivesim-sync";
+import { startFiveSimSyncScheduler, syncFiveSimCountries, syncFiveSimProducts } from "./lib/fivesim-sync";
+import { startClapayReconciliation } from "./lib/clapay-reconciliation";
+import { startPawaPayReconciliation } from "./lib/pawapay-reconciliation";
 import { seedDemoUser } from "./lib/seed-demo-user";
+import { seedPaymentMethods } from "./lib/seed-payment-methods";
+import { seedProvidersFromEnv } from "./lib/seed-providers";
+import { seedRoutingData } from "./lib/seed-routing";
+import { seedCountryPaymentConfigs } from "./lib/seed-country-payment-configs";
 
 const rawPort = process.env["PORT"] ?? "3000";
 const port = Number(rawPort);
@@ -27,7 +33,6 @@ async function start(): Promise<void> {
     logger.info({ migrationsFolder }, "[startup] Running database migrations…");
     await migrate(db, { migrationsFolder });
     logger.info("[startup] Database migrations applied ✓");
-    void seedDemoUser();
   } catch (err) {
     /* Non-fatal: tables may already exist (e.g. after drizzle-kit push).
      * Common case: constraint/table already exists from a previous push.
@@ -41,6 +46,33 @@ async function start(): Promise<void> {
     }
   }
 
+  /* ── Seed reference data AFTER migrations complete ─────────────── */
+  void seedDemoUser();
+  void seedPaymentMethods();
+  void seedCountryPaymentConfigs();
+  void seedRoutingData();
+
+  void seedProvidersFromEnv().then(async () => {
+    startFiveSimPoller();
+    startFiveSimSyncScheduler();
+    startClapayReconciliation();
+    startPawaPayReconciliation();
+
+    try {
+      const result = await syncFiveSimCountries();
+      logger.info({ added: result.added, updated: result.updated, total: result.total }, "[startup] 5sim countries synced");
+    } catch (e) {
+      logger.warn({ err: (e as Error).message }, "[startup] 5sim countries sync skipped");
+    }
+
+    try {
+      const result = await syncFiveSimProducts();
+      logger.info({ added: result.added, updated: result.updated, total: result.total }, "[startup] 5sim products synced");
+    } catch (e) {
+      logger.warn({ err: (e as Error).message }, "[startup] 5sim products sync skipped");
+    }
+  });
+
   /* ── Start HTTP server ─────────────────────────────────────────── */
   app.listen(port, (err) => {
     if (err) {
@@ -48,10 +80,6 @@ async function start(): Promise<void> {
       process.exit(1);
     }
     logger.info({ port }, "Server listening");
-
-    /* ── Start 5sim background services (after server is up) ──────── */
-    startFiveSimPoller();
-    startFiveSimSyncScheduler();
     logger.info("[startup] 5sim poller + sync scheduler started ✓");
   });
 }
