@@ -652,7 +652,7 @@ export default function SupportChat() {
                         }}
                       />
                       <button
-                        onClick={sendMessage}
+                        onClick={() => sendMessage()}
                         disabled={isStreaming || (!input.trim() && !imageData)}
                         className="flex-shrink-0 p-2 rounded-xl transition-all disabled:opacity-30 disabled:cursor-not-allowed"
                         style={{
