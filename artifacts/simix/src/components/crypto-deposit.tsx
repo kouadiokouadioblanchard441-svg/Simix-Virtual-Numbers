@@ -36,6 +36,7 @@ const NETWORKS = [
     badgeColor: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20",
     recommended: true,
     color: "#EF0027",
+    chainLogo: "/crypto/tron.svg",
     desc: "Transfert rapide, frais quasi-nuls",
   },
   {
@@ -46,6 +47,7 @@ const NETWORKS = [
     badgeColor: "text-amber-400 bg-amber-500/10 border-amber-500/20",
     recommended: false,
     color: "#F0B90B",
+    chainLogo: "/crypto/bnb.svg",
     desc: "Réseau BNB, faibles frais",
   },
   {
@@ -56,6 +58,7 @@ const NETWORKS = [
     badgeColor: "text-blue-400 bg-blue-500/10 border-blue-500/20",
     recommended: false,
     color: "#627EEA",
+    chainLogo: "/crypto/eth.svg",
     desc: "Réseau Ethereum standard",
   },
 ] as const;
@@ -92,6 +95,31 @@ function useCopy() {
     });
   }, []);
   return { copied, copy };
+}
+
+/* ─── Crypto network icon: USDT logo + chain badge ─── */
+function CryptoNetworkIcon({ net, size = 32 }: { net: typeof NETWORKS[number]; size?: number }) {
+  const badgeSize = Math.round(size * 0.44);
+  return (
+    <div className="relative flex-shrink-0" style={{ width: size, height: size }}>
+      <img
+        src="/crypto/usdt.svg"
+        alt="USDT"
+        width={size}
+        height={size}
+        className="rounded-full"
+        style={{ width: size, height: size }}
+      />
+      <img
+        src={net.chainLogo}
+        alt={net.chain}
+        width={badgeSize}
+        height={badgeSize}
+        className="absolute -bottom-0.5 -right-0.5 rounded-full border border-card shadow-sm"
+        style={{ width: badgeSize, height: badgeSize, backgroundColor: net.color }}
+      />
+    </div>
+  );
 }
 
 /* ─── QR code using public API ─── */
@@ -248,12 +276,7 @@ export function CryptoDeposit({
           )}
         >
           <div className="flex items-center gap-3">
-            <div
-              className="w-8 h-8 rounded-xl flex items-center justify-center text-white text-xs font-black flex-shrink-0"
-              style={{ backgroundColor: selectedNet.color }}
-            >
-              U
-            </div>
+            <CryptoNetworkIcon net={selectedNet} size={32} />
             <div>
               <p className="text-sm font-bold text-foreground">{selectedNet.label}</p>
               <p className="text-[11px] text-muted-foreground">{selectedNet.desc}</p>
@@ -287,12 +310,7 @@ export function CryptoDeposit({
                     network === n.id ? "bg-primary/8" : "hover:bg-secondary/60"
                   )}
                 >
-                  <div
-                    className="w-8 h-8 rounded-xl flex items-center justify-center text-white text-xs font-black flex-shrink-0"
-                    style={{ backgroundColor: n.color }}
-                  >
-                    U
-                  </div>
+                  <CryptoNetworkIcon net={n} size={32} />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-bold text-foreground">{n.label}</p>
                     <p className="text-[11px] text-muted-foreground">{n.desc}</p>
