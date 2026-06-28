@@ -116102,9 +116102,9 @@ async function getNowPaymentsSDK(ipnCallbackUrl) {
   });
 }
 async function getFcfaToUsdRate() {
-  const raw = await getSetting("fcfa_to_usd_rate", "610");
+  const raw = await getSetting("fcfa_to_usd_rate", "512");
   const rate = parseFloat(raw);
-  return !isNaN(rate) && rate > 0 ? rate : 610;
+  return !isNaN(rate) && rate > 0 ? rate : 512;
 }
 function fcfaToUsd(fcfa, rate) {
   return Math.round(fcfa / rate * 100) / 100;

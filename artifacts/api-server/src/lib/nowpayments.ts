@@ -27,12 +27,12 @@ export async function getNowPaymentsSDK(ipnCallbackUrl?: string): Promise<NowPay
 }
 
 /* ── FCFA ↔ USD conversion ─────────────────────────────────────
- * Default: 1 USD = 610 XOF (West African CFA fixed peg region)
+ * Default: 1 USDT = 512 FCFA
  * Overridable via system_settings.fcfa_to_usd_rate             */
 export async function getFcfaToUsdRate(): Promise<number> {
-  const raw = await getSetting("fcfa_to_usd_rate", "610");
+  const raw = await getSetting("fcfa_to_usd_rate", "512");
   const rate = parseFloat(raw);
-  return !isNaN(rate) && rate > 0 ? rate : 610;
+  return !isNaN(rate) && rate > 0 ? rate : 512;
 }
 
 export function fcfaToUsd(fcfa: number, rate: number): number {

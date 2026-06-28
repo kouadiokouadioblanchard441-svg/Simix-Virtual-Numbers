@@ -366,7 +366,7 @@ export function CryptoDeposit({
             animate={{ opacity: 1 }}
             className="text-xs text-muted-foreground text-right"
           >
-            ≈ ${(parsedAmount / 610).toFixed(2)} USD à envoyer en USDT
+            ≈ ${(parsedAmount / 512).toFixed(2)} USD à envoyer en USDT
           </motion.p>
         )}
       </div>
