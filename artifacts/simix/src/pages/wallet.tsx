@@ -11,8 +11,9 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, CheckCircle2, Shield, Loader2,
   ChevronDown, Search, X, AlertCircle, Clock,
-  Zap, Star, ChevronRight,
+  Zap, Star, ChevronRight, Smartphone, Coins,
 } from "lucide-react";
+import { CryptoDeposit } from "@/components/crypto-deposit";
 import { useLocation } from "wouter";
 import { useGoBack } from "@/hooks/use-go-back";
 import { useState, useRef, useEffect, useCallback } from "react";
@@ -679,6 +680,8 @@ export default function Wallet() {
   );
 }
 
+type PaymentType = "mobile_money" | "crypto";
+
 /* ─── Deposit Content ─── */
 function DepositContent() {
   const [, setLocation] = useLocation();
@@ -686,6 +689,9 @@ function DepositContent() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const rechargeMutation = useRechargeWallet();
+
+  const [paymentType, setPaymentType] = useState<PaymentType>("mobile_money");
+  const [cryptoSuccess, setCryptoSuccess] = useState<{ amountFcfa: number } | null>(null);
 
   const [selectedCountry, setSelectedCountry] = useState<DepositCountry | null>(null);
   const [selectedMethod, setSelectedMethod] = useState<DepositMethod | null>(null);
@@ -794,8 +800,18 @@ function DepositContent() {
     }
   }
 
+  const handleCryptoSuccess = useCallback((amountFcfa: number) => {
+    setCryptoSuccess({ amountFcfa });
+    queryClient.invalidateQueries({ queryKey: getGetWalletQueryKey() });
+    queryClient.invalidateQueries({ queryKey: getGetMeQueryKey() });
+    queryClient.invalidateQueries({ queryKey: getListTransactionsQueryKey() });
+    queryClient.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() });
+    setTimeout(() => setLocation("/dashboard"), 3000);
+  }, [queryClient, setLocation]);
+
   return (
     <div className="flex-1 w-full bg-background overflow-y-auto overflow-x-hidden relative">
+      {/* ── MM Success overlay ── */}
       {showSuccess && (
         <SuccessOverlay
           amountXof={totalAmount}
@@ -803,6 +819,38 @@ function DepositContent() {
           currencyCode={currencyCode}
         />
       )}
+
+      {/* ── Crypto success overlay ── */}
+      {cryptoSuccess && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="fixed inset-0 z-50 flex items-center justify-center"
+          style={{ background: "rgba(0,0,0,0.92)" }}
+        >
+          <motion.div
+            initial={{ scale: 0.7, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ type: "spring", damping: 20 }}
+            className="text-center px-8"
+          >
+            <motion.div
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              transition={{ delay: 0.1, type: "spring", damping: 14 }}
+              className="w-24 h-24 rounded-full bg-emerald-500/20 border-4 border-emerald-500 flex items-center justify-center mx-auto mb-5"
+            >
+              <CheckCircle2 className="w-12 h-12 text-emerald-400" />
+            </motion.div>
+            <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}>
+              <p className="text-2xl font-black text-white mb-2">Paiement crypto reçu !</p>
+              <p className="text-emerald-400 font-bold text-xl mb-1">{formatFCFA(cryptoSuccess.amountFcfa)}</p>
+              <p className="text-muted-foreground text-sm">Votre solde a été crédité avec succès</p>
+            </motion.div>
+          </motion.div>
+        </motion.div>
+      )}
+
       {pendingDepositId && selectedMethod && (
         <PendingOverlay
           localAmount={parsedAmount}
@@ -818,7 +866,7 @@ function DepositContent() {
 
       {/* ── Header ── */}
       <div className="sticky top-0 z-20 bg-background/95 backdrop-blur-md border-b border-card-border/30 px-5 pt-5 pb-4">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between mb-4">
           <button
             onClick={goBack}
             className="w-9 h-9 bg-card border border-card-border rounded-xl flex items-center justify-center text-foreground hover:bg-secondary transition-colors"
@@ -828,7 +876,6 @@ function DepositContent() {
 
           <div className="text-center">
             <h1 className="text-sm font-bold text-foreground">Recharger mon compte</h1>
-            <p className="text-[10px] text-muted-foreground">Via Mobile Money</p>
           </div>
 
           <div className="bg-card border border-card-border rounded-xl px-3 py-1.5 flex items-center gap-1.5">
@@ -839,12 +886,52 @@ function DepositContent() {
           </div>
         </div>
 
-        {/* Step bar */}
-        <StepBar step={currentStep} />
+        {/* ── Payment method type tabs ── */}
+        <div className="flex gap-2 p-1 bg-card border border-card-border rounded-2xl">
+          <button
+            type="button"
+            onClick={() => setPaymentType("mobile_money")}
+            className={cn(
+              "flex-1 flex items-center justify-center gap-2 py-2 rounded-xl text-xs font-bold transition-all",
+              paymentType === "mobile_money"
+                ? "bg-background text-foreground shadow-sm border border-card-border"
+                : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            <Smartphone className="w-3.5 h-3.5" />
+            Mobile Money
+          </button>
+          <button
+            type="button"
+            onClick={() => setPaymentType("crypto")}
+            className={cn(
+              "flex-1 flex items-center justify-center gap-2 py-2 rounded-xl text-xs font-bold transition-all",
+              paymentType === "crypto"
+                ? "bg-background text-foreground shadow-sm border border-card-border"
+                : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            <Coins className="w-3.5 h-3.5" />
+            Crypto (USDT)
+          </button>
+        </div>
+
+        {/* Step bar — only for Mobile Money */}
+        {paymentType === "mobile_money" && <StepBar step={currentStep} />}
       </div>
 
-      {/* ── Content ── */}
-      <div className="px-4 pt-5 pb-44 space-y-5">
+      {/* ── Crypto content ── */}
+      {paymentType === "crypto" && (
+        <div className="px-4 pt-5 pb-24">
+          <CryptoDeposit
+            onSuccess={handleCryptoSuccess}
+            onCancel={goBack}
+          />
+        </div>
+      )}
+
+      {/* ── Mobile Money content ── */}
+      {paymentType === "mobile_money" && <div className="px-4 pt-5 pb-44 space-y-5">
 
         {/* ÉTAPE 1 — Pays */}
         <div className="space-y-2">
@@ -1106,45 +1193,47 @@ function DepositContent() {
             </motion.div>
           )}
         </AnimatePresence>
-      </div>
+      </div>}
 
-      {/* ── Fixed bottom CTA ── */}
-      <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md px-4 pb-6 pt-3 bg-background/95 backdrop-blur-md border-t border-card-border/30 space-y-2 z-30">
-        <motion.button
-          onClick={handleConfirm}
-          disabled={!canConfirm}
-          whileTap={canConfirm ? { scale: 0.97 } : {}}
-          className="w-full h-13 rounded-2xl text-white font-bold text-sm flex items-center justify-center gap-2 transition-all relative overflow-hidden"
-          style={{
-            background: canConfirm
-              ? "linear-gradient(135deg, #10B981, #059669)"
-              : undefined,
-            backgroundColor: canConfirm ? undefined : "rgb(63,63,70)",
-            opacity: canConfirm ? 1 : 0.45,
-            height: 52,
-          }}
-        >
-          {canConfirm && (
-            <div className="absolute inset-0 bg-white/10 opacity-0 hover:opacity-100 transition-opacity" />
-          )}
-          {confirming ? (
-            <><Loader2 className="w-5 h-5 animate-spin" /> Vérification…</>
-          ) : (
-            <><CheckCircle2 className="w-5 h-5" /> Confirmer le dépôt {parsedAmount > 0 && amountValid ? `· ${isFxCurrency ? `${parsedAmount.toLocaleString("fr-FR")} ${currencyCode}` : formatFCFA(totalAmount)}` : ""}</>
-          )}
-        </motion.button>
+      {/* ── Fixed bottom CTA (Mobile Money only) ── */}
+      {paymentType === "mobile_money" && (
+        <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md px-4 pb-6 pt-3 bg-background/95 backdrop-blur-md border-t border-card-border/30 space-y-2 z-30">
+          <motion.button
+            onClick={handleConfirm}
+            disabled={!canConfirm}
+            whileTap={canConfirm ? { scale: 0.97 } : {}}
+            className="w-full h-13 rounded-2xl text-white font-bold text-sm flex items-center justify-center gap-2 transition-all relative overflow-hidden"
+            style={{
+              background: canConfirm
+                ? "linear-gradient(135deg, #10B981, #059669)"
+                : undefined,
+              backgroundColor: canConfirm ? undefined : "rgb(63,63,70)",
+              opacity: canConfirm ? 1 : 0.45,
+              height: 52,
+            }}
+          >
+            {canConfirm && (
+              <div className="absolute inset-0 bg-white/10 opacity-0 hover:opacity-100 transition-opacity" />
+            )}
+            {confirming ? (
+              <><Loader2 className="w-5 h-5 animate-spin" /> Vérification…</>
+            ) : (
+              <><CheckCircle2 className="w-5 h-5" /> Confirmer le dépôt {parsedAmount > 0 && amountValid ? `· ${isFxCurrency ? `${parsedAmount.toLocaleString("fr-FR")} ${currencyCode}` : formatFCFA(totalAmount)}` : ""}</>
+            )}
+          </motion.button>
 
-        <button
-          onClick={goBack}
-          className="w-full h-10 rounded-2xl bg-transparent border border-card-border text-muted-foreground font-semibold text-sm transition-colors hover:bg-secondary text-xs"
-        >
-          Annuler
-        </button>
+          <button
+            onClick={goBack}
+            className="w-full h-10 rounded-2xl bg-transparent border border-card-border text-muted-foreground font-semibold text-sm transition-colors hover:bg-secondary text-xs"
+          >
+            Annuler
+          </button>
 
-        <p className="text-center text-[10px] text-muted-foreground/50 flex items-center justify-center gap-1">
-          <Shield className="w-3 h-3" /> Transaction sécurisée · SSL 256-bit
-        </p>
-      </div>
+          <p className="text-center text-[10px] text-muted-foreground/50 flex items-center justify-center gap-1">
+            <Shield className="w-3 h-3" /> Transaction sécurisée · SSL 256-bit
+          </p>
+        </div>
+      )}
     </div>
   );
 }

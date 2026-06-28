@@ -18761,14 +18761,14 @@ var require_etag = __commonJS({
   "../../node_modules/.pnpm/etag@1.8.1/node_modules/etag/index.js"(exports2, module2) {
     "use strict";
     module2.exports = etag;
-    var crypto11 = require("crypto");
+    var crypto12 = require("crypto");
     var Stats = require("fs").Stats;
     var toString = Object.prototype.toString;
     function entitytag(entity) {
       if (entity.length === 0) {
         return '"0-2jmj7l5rSw0yVb/vlWAYkK/YBwk"';
       }
-      var hash2 = crypto11.createHash("sha1").update(entity, "utf8").digest("base64").substring(0, 27);
+      var hash2 = crypto12.createHash("sha1").update(entity, "utf8").digest("base64").substring(0, 27);
       var len = typeof entity === "string" ? Buffer.byteLength(entity, "utf8") : entity.length;
       return '"' + len.toString(16) + "-" + hash2 + '"';
     }
@@ -20477,27 +20477,27 @@ var require_router = __commonJS({
     var slice = Array.prototype.slice;
     var flatten = Array.prototype.flat;
     var methods = METHODS.map((method) => method.toLowerCase());
-    module2.exports = Router27;
+    module2.exports = Router28;
     module2.exports.Route = Route;
-    function Router27(options) {
-      if (!(this instanceof Router27)) {
-        return new Router27(options);
+    function Router28(options) {
+      if (!(this instanceof Router28)) {
+        return new Router28(options);
       }
       const opts = options || {};
-      function router27(req, res, next) {
-        router27.handle(req, res, next);
+      function router28(req, res, next) {
+        router28.handle(req, res, next);
       }
-      Object.setPrototypeOf(router27, this);
-      router27.caseSensitive = opts.caseSensitive;
-      router27.mergeParams = opts.mergeParams;
-      router27.params = {};
-      router27.strict = opts.strict;
-      router27.stack = [];
-      return router27;
+      Object.setPrototypeOf(router28, this);
+      router28.caseSensitive = opts.caseSensitive;
+      router28.mergeParams = opts.mergeParams;
+      router28.params = {};
+      router28.strict = opts.strict;
+      router28.stack = [];
+      return router28;
     }
-    Router27.prototype = function() {
+    Router28.prototype = function() {
     };
-    Router27.prototype.param = function param2(name2, fn) {
+    Router28.prototype.param = function param2(name2, fn) {
       if (!name2) {
         throw new TypeError("argument name is required");
       }
@@ -20517,7 +20517,7 @@ var require_router = __commonJS({
       params.push(fn);
       return this;
     };
-    Router27.prototype.handle = function handle(req, res, callback) {
+    Router28.prototype.handle = function handle(req, res, callback) {
       if (!callback) {
         throw new TypeError("argument callback is required");
       }
@@ -20644,7 +20644,7 @@ var require_router = __commonJS({
         }
       }
     };
-    Router27.prototype.use = function use(handler) {
+    Router28.prototype.use = function use(handler) {
       let offset = 0;
       let path5 = "/";
       if (typeof handler !== "function") {
@@ -20677,7 +20677,7 @@ var require_router = __commonJS({
       }
       return this;
     };
-    Router27.prototype.route = function route(path5) {
+    Router28.prototype.route = function route(path5) {
       const route2 = new Route(path5);
       const layer = new Layer(path5, {
         sensitive: this.caseSensitive,
@@ -20692,7 +20692,7 @@ var require_router = __commonJS({
       return route2;
     };
     methods.concat("all").forEach(function(method) {
-      Router27.prototype[method] = function(path5) {
+      Router28.prototype[method] = function(path5) {
         const route = this.route(path5);
         route[method].apply(route, slice.call(arguments, 1));
         return this;
@@ -20875,13 +20875,13 @@ var require_application = __commonJS({
     var compileTrust = require_utils3().compileTrust;
     var resolve = require("node:path").resolve;
     var once = require_once();
-    var Router27 = require_router();
+    var Router28 = require_router();
     var slice = Array.prototype.slice;
     var flatten = Array.prototype.flat;
     var app2 = exports2 = module2.exports = {};
     var trustProxyDefaultSymbol = "@@symbol:trust_proxy_default";
     app2.init = function init() {
-      var router27 = null;
+      var router28 = null;
       this.cache = /* @__PURE__ */ Object.create(null);
       this.engines = /* @__PURE__ */ Object.create(null);
       this.settings = /* @__PURE__ */ Object.create(null);
@@ -20890,13 +20890,13 @@ var require_application = __commonJS({
         configurable: true,
         enumerable: true,
         get: function getrouter() {
-          if (router27 === null) {
-            router27 = new Router27({
+          if (router28 === null) {
+            router28 = new Router28({
               caseSensitive: this.enabled("case sensitive routing"),
               strict: this.enabled("strict routing")
             });
           }
-          return router27;
+          return router28;
         }
       });
     };
@@ -20967,15 +20967,15 @@ var require_application = __commonJS({
       if (fns.length === 0) {
         throw new TypeError("app.use() requires a middleware function");
       }
-      var router27 = this.router;
+      var router28 = this.router;
       fns.forEach(function(fn2) {
         if (!fn2 || !fn2.handle || !fn2.set) {
-          return router27.use(path5, fn2);
+          return router28.use(path5, fn2);
         }
         debug(".use app under %s", path5);
         fn2.mountpath = path5;
         fn2.parent = this;
-        router27.use(path5, function mounted_app(req, res, next) {
+        router28.use(path5, function mounted_app(req, res, next) {
           var orig = req.app;
           fn2.handle(req, res, function(err) {
             Object.setPrototypeOf(req, orig.request);
@@ -22183,17 +22183,17 @@ var require_content_disposition = __commonJS({
 // ../../node_modules/.pnpm/cookie-signature@1.2.2/node_modules/cookie-signature/index.js
 var require_cookie_signature = __commonJS({
   "../../node_modules/.pnpm/cookie-signature@1.2.2/node_modules/cookie-signature/index.js"(exports2) {
-    var crypto11 = require("crypto");
+    var crypto12 = require("crypto");
     exports2.sign = function(val, secret) {
       if ("string" != typeof val) throw new TypeError("Cookie value must be provided as a string.");
       if (null == secret) throw new TypeError("Secret key must be provided.");
-      return val + "." + crypto11.createHmac("sha256", secret).update(val).digest("base64").replace(/\=+$/, "");
+      return val + "." + crypto12.createHmac("sha256", secret).update(val).digest("base64").replace(/\=+$/, "");
     };
     exports2.unsign = function(input, secret) {
       if ("string" != typeof input) throw new TypeError("Signed cookie string must be provided.");
       if (null == secret) throw new TypeError("Secret key must be provided.");
       var tentativeValue = input.slice(0, input.lastIndexOf(".")), expectedInput = exports2.sign(tentativeValue, secret), expectedBuffer = Buffer.from(expectedInput), inputBuffer = Buffer.from(input);
-      return expectedBuffer.length === inputBuffer.length && crypto11.timingSafeEqual(expectedBuffer, inputBuffer) ? tentativeValue : false;
+      return expectedBuffer.length === inputBuffer.length && crypto12.timingSafeEqual(expectedBuffer, inputBuffer) ? tentativeValue : false;
     };
   }
 });
@@ -23499,10 +23499,10 @@ var require_express = __commonJS({
   "../../node_modules/.pnpm/express@5.2.1/node_modules/express/lib/express.js"(exports2, module2) {
     "use strict";
     var bodyParser = require_body_parser();
-    var EventEmitter2 = require("node:events").EventEmitter;
+    var EventEmitter3 = require("node:events").EventEmitter;
     var mixin = require_merge_descriptors();
     var proto = require_application();
-    var Router27 = require_router();
+    var Router28 = require_router();
     var req = require_request();
     var res = require_response();
     exports2 = module2.exports = createApplication;
@@ -23510,7 +23510,7 @@ var require_express = __commonJS({
       var app2 = function(req2, res2, next) {
         app2.handle(req2, res2, next);
       };
-      mixin(app2, EventEmitter2.prototype, false);
+      mixin(app2, EventEmitter3.prototype, false);
       mixin(app2, proto, false);
       app2.request = Object.create(req, {
         app: { configurable: true, enumerable: true, writable: true, value: app2 }
@@ -23524,8 +23524,8 @@ var require_express = __commonJS({
     exports2.application = proto;
     exports2.request = req;
     exports2.response = res;
-    exports2.Route = Router27.Route;
-    exports2.Router = Router27;
+    exports2.Route = Router28.Route;
+    exports2.Router = Router28;
     exports2.json = bodyParser.json;
     exports2.raw = bodyParser.raw;
     exports2.static = require_serve_static();
@@ -23823,11 +23823,11 @@ var require_lib3 = __commonJS({
 // ../../node_modules/.pnpm/cookie-signature@1.0.6/node_modules/cookie-signature/index.js
 var require_cookie_signature2 = __commonJS({
   "../../node_modules/.pnpm/cookie-signature@1.0.6/node_modules/cookie-signature/index.js"(exports2) {
-    var crypto11 = require("crypto");
+    var crypto12 = require("crypto");
     exports2.sign = function(val, secret) {
       if ("string" != typeof val) throw new TypeError("Cookie value must be provided as a string.");
       if ("string" != typeof secret) throw new TypeError("Secret string must be provided.");
-      return val + "." + crypto11.createHmac("sha256", secret).update(val).digest("base64").replace(/\=+$/, "");
+      return val + "." + crypto12.createHmac("sha256", secret).update(val).digest("base64").replace(/\=+$/, "");
     };
     exports2.unsign = function(val, secret) {
       if ("string" != typeof val) throw new TypeError("Signed cookie string must be provided.");
@@ -23836,7 +23836,7 @@ var require_cookie_signature2 = __commonJS({
       return sha12(mac) == sha12(val) ? str : false;
     };
     function sha12(str) {
-      return crypto11.createHash("sha1").update(str).digest("hex");
+      return crypto12.createHash("sha1").update(str).digest("hex");
     }
   }
 });
@@ -25109,7 +25109,7 @@ var require_sonic_boom = __commonJS({
   "../../node_modules/.pnpm/sonic-boom@4.2.1/node_modules/sonic-boom/index.js"(exports2, module2) {
     "use strict";
     var fs6 = require("fs");
-    var EventEmitter2 = require("events");
+    var EventEmitter3 = require("events");
     var inherits = require("util").inherits;
     var path5 = require("path");
     var sleep = require_atomic_sleep();
@@ -25346,7 +25346,7 @@ var require_sonic_boom = __commonJS({
       sonic._asyncDrainScheduled = false;
       sonic.emit("drain");
     }
-    inherits(SonicBoom, EventEmitter2);
+    inherits(SonicBoom, EventEmitter3);
     function mergeBuf(bufs, len) {
       if (bufs.length === 0) {
         return kEmptyBuffer;
@@ -25924,7 +25924,7 @@ var require_thread_stream = __commonJS({
   "../../node_modules/.pnpm/thread-stream@3.1.0/node_modules/thread-stream/index.js"(exports2, module2) {
     "use strict";
     var { version: version4 } = require_package();
-    var { EventEmitter: EventEmitter2 } = require("events");
+    var { EventEmitter: EventEmitter3 } = require("events");
     var { Worker } = require("worker_threads");
     var { join } = require("path");
     var { pathToFileURL } = require("url");
@@ -26080,7 +26080,7 @@ var require_thread_stream = __commonJS({
       stream.worker.off("exit", onWorkerExit);
       destroy(stream, code !== 0 ? new Error("the worker thread exited") : null);
     }
-    var ThreadStream = class extends EventEmitter2 {
+    var ThreadStream = class extends EventEmitter3 {
       constructor(opts = {}) {
         super();
         if (opts.bufferSize < 4) {
@@ -27037,7 +27037,7 @@ var require_meta = __commonJS({
 var require_proto = __commonJS({
   "../../node_modules/.pnpm/pino@9.14.0/node_modules/pino/lib/proto.js"(exports2, module2) {
     "use strict";
-    var { EventEmitter: EventEmitter2 } = require("node:events");
+    var { EventEmitter: EventEmitter3 } = require("node:events");
     var {
       lsCacheSym,
       levelValSym,
@@ -27119,7 +27119,7 @@ var require_proto = __commonJS({
       [getLevelSym]: getLevel,
       [setLevelSym]: setLevel
     };
-    Object.setPrototypeOf(prototype, EventEmitter2.prototype);
+    Object.setPrototypeOf(prototype, EventEmitter3.prototype);
     module2.exports = function() {
       return Object.create(prototype);
     };
@@ -29872,7 +29872,7 @@ var require_cert_signatures = __commonJS({
 var require_sasl = __commonJS({
   "../../node_modules/.pnpm/pg@8.20.0/node_modules/pg/lib/crypto/sasl.js"(exports2, module2) {
     "use strict";
-    var crypto11 = require_utils5();
+    var crypto12 = require_utils5();
     var { signatureAlgorithmHashFromCertificate } = require_cert_signatures();
     function startSession(mechanisms, stream) {
       const candidates = ["SCRAM-SHA-256"];
@@ -29884,7 +29884,7 @@ var require_sasl = __commonJS({
       if (mechanism === "SCRAM-SHA-256-PLUS" && typeof stream.getPeerCertificate !== "function") {
         throw new Error("SASL: Mechanism SCRAM-SHA-256-PLUS requires a certificate");
       }
-      const clientNonce = crypto11.randomBytes(18).toString("base64");
+      const clientNonce = crypto12.randomBytes(18).toString("base64");
       const gs2Header = mechanism === "SCRAM-SHA-256-PLUS" ? "p=tls-server-end-point" : stream ? "y" : "n";
       return {
         mechanism,
@@ -29919,20 +29919,20 @@ var require_sasl = __commonJS({
         const peerCert = stream.getPeerCertificate().raw;
         let hashName = signatureAlgorithmHashFromCertificate(peerCert);
         if (hashName === "MD5" || hashName === "SHA-1") hashName = "SHA-256";
-        const certHash = await crypto11.hashByName(hashName, peerCert);
+        const certHash = await crypto12.hashByName(hashName, peerCert);
         const bindingData = Buffer.concat([Buffer.from("p=tls-server-end-point,,"), Buffer.from(certHash)]);
         channelBinding = bindingData.toString("base64");
       }
       const clientFinalMessageWithoutProof = "c=" + channelBinding + ",r=" + sv.nonce;
       const authMessage = clientFirstMessageBare + "," + serverFirstMessage + "," + clientFinalMessageWithoutProof;
       const saltBytes = Buffer.from(sv.salt, "base64");
-      const saltedPassword = await crypto11.deriveKey(password, saltBytes, sv.iteration);
-      const clientKey = await crypto11.hmacSha256(saltedPassword, "Client Key");
-      const storedKey = await crypto11.sha256(clientKey);
-      const clientSignature = await crypto11.hmacSha256(storedKey, authMessage);
+      const saltedPassword = await crypto12.deriveKey(password, saltBytes, sv.iteration);
+      const clientKey = await crypto12.hmacSha256(saltedPassword, "Client Key");
+      const storedKey = await crypto12.sha256(clientKey);
+      const clientSignature = await crypto12.hmacSha256(storedKey, authMessage);
       const clientProof = xorBuffers(Buffer.from(clientKey), Buffer.from(clientSignature)).toString("base64");
-      const serverKey = await crypto11.hmacSha256(saltedPassword, "Server Key");
-      const serverSignatureBytes = await crypto11.hmacSha256(serverKey, authMessage);
+      const serverKey = await crypto12.hmacSha256(saltedPassword, "Server Key");
+      const serverSignatureBytes = await crypto12.hmacSha256(serverKey, authMessage);
       session.message = "SASLResponse";
       session.serverSignature = Buffer.from(serverSignatureBytes).toString("base64");
       session.response = clientFinalMessageWithoutProof + ",p=" + clientProof;
@@ -30491,10 +30491,10 @@ var require_result = __commonJS({
 var require_query = __commonJS({
   "../../node_modules/.pnpm/pg@8.20.0/node_modules/pg/lib/query.js"(exports2, module2) {
     "use strict";
-    var { EventEmitter: EventEmitter2 } = require("events");
+    var { EventEmitter: EventEmitter3 } = require("events");
     var Result2 = require_result();
     var utils = require_utils4();
-    var Query2 = class extends EventEmitter2 {
+    var Query2 = class extends EventEmitter3 {
       constructor(config, values, callback) {
         super();
         config = utils.normalizeQueryConfig(config, values, callback);
@@ -31616,13 +31616,13 @@ var require_stream = __commonJS({
 var require_connection = __commonJS({
   "../../node_modules/.pnpm/pg@8.20.0/node_modules/pg/lib/connection.js"(exports2, module2) {
     "use strict";
-    var EventEmitter2 = require("events").EventEmitter;
+    var EventEmitter3 = require("events").EventEmitter;
     var { parse: parse2, serialize } = require_dist2();
     var { getStream, getSecureStream } = require_stream();
     var flushBuffer = serialize.flush();
     var syncBuffer = serialize.sync();
     var endBuffer = serialize.end();
-    var Connection2 = class extends EventEmitter2 {
+    var Connection2 = class extends EventEmitter3 {
       constructor(config) {
         super();
         config = config || {};
@@ -32091,7 +32091,7 @@ var require_lib4 = __commonJS({
 // ../../node_modules/.pnpm/pg@8.20.0/node_modules/pg/lib/client.js
 var require_client = __commonJS({
   "../../node_modules/.pnpm/pg@8.20.0/node_modules/pg/lib/client.js"(exports2, module2) {
-    var EventEmitter2 = require("events").EventEmitter;
+    var EventEmitter3 = require("events").EventEmitter;
     var utils = require_utils4();
     var nodeUtils = require("util");
     var sasl = require_sasl();
@@ -32100,7 +32100,7 @@ var require_client = __commonJS({
     var Query2 = require_query();
     var defaults2 = require_defaults();
     var Connection2 = require_connection();
-    var crypto11 = require_utils5();
+    var crypto12 = require_utils5();
     var activeQueryDeprecationNotice = nodeUtils.deprecate(
       () => {
       },
@@ -32126,7 +32126,7 @@ var require_client = __commonJS({
       },
       "Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead."
     );
-    var Client2 = class extends EventEmitter2 {
+    var Client2 = class extends EventEmitter3 {
       constructor(config) {
         super();
         this.connectionParameters = new ConnectionParameters(config);
@@ -32335,7 +32335,7 @@ var require_client = __commonJS({
       _handleAuthMD5Password(msg) {
         this._getPassword(async () => {
           try {
-            const hashedPassword = await crypto11.postgresMd5PasswordHash(this.user, this.password, msg.salt);
+            const hashedPassword = await crypto12.postgresMd5PasswordHash(this.user, this.password, msg.salt);
             this.connection.password(hashedPassword);
           } catch (e2) {
             this.emit("error", e2);
@@ -32710,7 +32710,7 @@ var require_client = __commonJS({
 var require_pg_pool = __commonJS({
   "../../node_modules/.pnpm/pg-pool@3.13.0_pg@8.20.0/node_modules/pg-pool/index.js"(exports2, module2) {
     "use strict";
-    var EventEmitter2 = require("events").EventEmitter;
+    var EventEmitter3 = require("events").EventEmitter;
     var NOOP = function() {
     };
     var removeWhere = (list, predicate) => {
@@ -32761,7 +32761,7 @@ var require_pg_pool = __commonJS({
         pool2.emit("error", err, client);
       };
     }
-    var Pool4 = class extends EventEmitter2 {
+    var Pool4 = class extends EventEmitter3 {
       constructor(options, Client2) {
         super();
         this.options = Object.assign({}, options);
@@ -33136,11 +33136,11 @@ var require_pg_pool = __commonJS({
 var require_query2 = __commonJS({
   "../../node_modules/.pnpm/pg@8.20.0/node_modules/pg/lib/native/query.js"(exports2, module2) {
     "use strict";
-    var EventEmitter2 = require("events").EventEmitter;
+    var EventEmitter3 = require("events").EventEmitter;
     var util3 = require("util");
     var utils = require_utils4();
     var NativeQuery = module2.exports = function(config, values, callback) {
-      EventEmitter2.call(this);
+      EventEmitter3.call(this);
       config = utils.normalizeQueryConfig(config, values, callback);
       this.text = config.text;
       this.values = config.values;
@@ -33157,7 +33157,7 @@ var require_query2 = __commonJS({
         }.bind(this)
       );
     };
-    util3.inherits(NativeQuery, EventEmitter2);
+    util3.inherits(NativeQuery, EventEmitter3);
     var errorFieldMap = {
       sqlState: "code",
       statementPosition: "position",
@@ -33284,7 +33284,7 @@ var require_client2 = __commonJS({
       throw e2;
     }
     var TypeOverrides2 = require_type_overrides();
-    var EventEmitter2 = require("events").EventEmitter;
+    var EventEmitter3 = require("events").EventEmitter;
     var util3 = require("util");
     var ConnectionParameters = require_connection_parameters();
     var NativeQuery = require_query2();
@@ -33294,7 +33294,7 @@ var require_client2 = __commonJS({
       "Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead."
     );
     var Client2 = module2.exports = function(config) {
-      EventEmitter2.call(this);
+      EventEmitter3.call(this);
       config = config || {};
       this._Promise = config.Promise || global.Promise;
       this._types = new TypeOverrides2(config.types);
@@ -33321,7 +33321,7 @@ var require_client2 = __commonJS({
       this.namedQueries = {};
     };
     Client2.Query = NativeQuery;
-    util3.inherits(Client2, EventEmitter2);
+    util3.inherits(Client2, EventEmitter3);
     Client2.prototype._errorAllQueries = function(err) {
       const enqueueError = (query) => {
         process.nextTick(() => {
@@ -42177,7 +42177,14 @@ var init_services = __esm({
       popular: boolean("popular").notNull().default(false),
       enabled: boolean("enabled").notNull().default(true),
       sortOrder: integer("sort_order").notNull().default(100),
-      logoUrl: text("logo_url")
+      logoUrl: text("logo_url"),
+      /**
+       * Set to TRUE by admin price-update endpoints.
+       * When TRUE, the sync scheduler NEVER recalculates or overwrites `price`.
+       * When FALSE (default for sync-created entries), sync may recalculate price
+       * using providerPrice × (1 + margin/100).
+       */
+      adminPriceModified: boolean("admin_price_modified").notNull().default(false)
     });
   }
 });
@@ -42816,7 +42823,14 @@ var init_service_prices = __esm({
         price: integer("price").notNull(),
         enabled: boolean("enabled").notNull().default(true),
         createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-        updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull()
+        updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+        /**
+         * Set to TRUE by admin price-update endpoints.
+         * When TRUE, the sync scheduler NEVER overwrites `price`.
+         * When FALSE (default for sync-created entries), sync may update price
+         * based on the latest 5sim provider cost.
+         */
+        adminModified: boolean("admin_modified").notNull().default(false)
       },
       (t2) => [unique("service_prices_country_service_unique").on(t2.countryCode, t2.serviceSlug)]
     );
@@ -50458,22 +50472,22 @@ var require_crypto2 = __commonJS({
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.NodeCrypto = void 0;
-    var crypto11 = require("crypto");
+    var crypto12 = require("crypto");
     var NodeCrypto = class {
       async sha256DigestBase64(str) {
-        return crypto11.createHash("sha256").update(str).digest("base64");
+        return crypto12.createHash("sha256").update(str).digest("base64");
       }
       randomBytesBase64(count2) {
-        return crypto11.randomBytes(count2).toString("base64");
+        return crypto12.randomBytes(count2).toString("base64");
       }
       async verify(pubkey, data, signature) {
-        const verifier = crypto11.createVerify("RSA-SHA256");
+        const verifier = crypto12.createVerify("RSA-SHA256");
         verifier.update(data);
         verifier.end();
         return verifier.verify(pubkey, signature, "base64");
       }
       async sign(privateKey, data) {
-        const signer = crypto11.createSign("RSA-SHA256");
+        const signer = crypto12.createSign("RSA-SHA256");
         signer.update(data);
         signer.end();
         return signer.sign(privateKey, "base64");
@@ -50491,7 +50505,7 @@ var require_crypto2 = __commonJS({
        *   string in hexadecimal encoding.
        */
       async sha256DigestHex(str) {
-        return crypto11.createHash("sha256").update(str).digest("hex");
+        return crypto12.createHash("sha256").update(str).digest("hex");
       }
       /**
        * Computes the HMAC hash of a message using the provided crypto key and the
@@ -50503,7 +50517,7 @@ var require_crypto2 = __commonJS({
        */
       async signWithHmacSha256(key, msg) {
         const cryptoKey = typeof key === "string" ? key : toBuffer(key);
-        return toArrayBuffer(crypto11.createHmac("sha256", cryptoKey).update(msg).digest());
+        return toArrayBuffer(crypto12.createHmac("sha256", cryptoKey).update(msg).digest());
       }
     };
     exports2.NodeCrypto = NodeCrypto;
@@ -51281,10 +51295,10 @@ var require_oauth2client = __commonJS({
        * https://github.com/googleapis/google-auth-library-nodejs/blob/main/samples/oauth2-codeVerifier.js
        */
       async generateCodeVerifierAsync() {
-        const crypto11 = (0, crypto_1.createCrypto)();
-        const randomString = crypto11.randomBytesBase64(96);
+        const crypto12 = (0, crypto_1.createCrypto)();
+        const randomString = crypto12.randomBytesBase64(96);
         const codeVerifier = randomString.replace(/\+/g, "~").replace(/=/g, "_").replace(/\//g, "-");
-        const unencodedCodeChallenge = await crypto11.sha256DigestBase64(codeVerifier);
+        const unencodedCodeChallenge = await crypto12.sha256DigestBase64(codeVerifier);
         const codeChallenge = unencodedCodeChallenge.split("=")[0].replace(/\+/g, "-").replace(/\//g, "_");
         return { codeVerifier, codeChallenge };
       }
@@ -51728,7 +51742,7 @@ var require_oauth2client = __commonJS({
        * @return Returns a promise resolving to LoginTicket on verification.
        */
       async verifySignedJwtWithCertsAsync(jwt, certs, requiredAudience, issuers, maxExpiry) {
-        const crypto11 = (0, crypto_1.createCrypto)();
+        const crypto12 = (0, crypto_1.createCrypto)();
         if (!maxExpiry) {
           maxExpiry = _OAuth2Client.DEFAULT_MAX_TOKEN_LIFETIME_SECS_;
         }
@@ -51741,7 +51755,7 @@ var require_oauth2client = __commonJS({
         let envelope;
         let payload;
         try {
-          envelope = JSON.parse(crypto11.decodeBase64StringUtf8(segments[0]));
+          envelope = JSON.parse(crypto12.decodeBase64StringUtf8(segments[0]));
         } catch (err) {
           if (err instanceof Error) {
             err.message = `Can't parse token envelope: ${segments[0]}': ${err.message}`;
@@ -51752,7 +51766,7 @@ var require_oauth2client = __commonJS({
           throw new Error("Can't parse token envelope: " + segments[0]);
         }
         try {
-          payload = JSON.parse(crypto11.decodeBase64StringUtf8(segments[1]));
+          payload = JSON.parse(crypto12.decodeBase64StringUtf8(segments[1]));
         } catch (err) {
           if (err instanceof Error) {
             err.message = `Can't parse token payload '${segments[0]}`;
@@ -51769,7 +51783,7 @@ var require_oauth2client = __commonJS({
         if (envelope.alg === "ES256") {
           signature = formatEcdsa.joseToDer(signature, "ES256").toString("base64");
         }
-        const verified = await crypto11.verify(cert, signed, signature);
+        const verified = await crypto12.verify(cert, signed, signature);
         if (!verified) {
           throw new Error("Invalid token signature: " + jwt);
         }
@@ -52137,14 +52151,14 @@ var require_buffer_equal_constant_time = __commonJS({
 var require_jwa = __commonJS({
   "../../node_modules/.pnpm/jwa@2.0.1/node_modules/jwa/index.js"(exports2, module2) {
     var Buffer4 = require_safe_buffer().Buffer;
-    var crypto11 = require("crypto");
+    var crypto12 = require("crypto");
     var formatEcdsa = require_ecdsa_sig_formatter();
     var util3 = require("util");
     var MSG_INVALID_ALGORITHM = '"%s" is not a valid algorithm.\n  Supported algorithms are:\n  "HS256", "HS384", "HS512", "RS256", "RS384", "RS512", "PS256", "PS384", "PS512", "ES256", "ES384", "ES512" and "none".';
     var MSG_INVALID_SECRET = "secret must be a string or buffer";
     var MSG_INVALID_VERIFIER_KEY = "key must be a string or a buffer";
     var MSG_INVALID_SIGNER_KEY = "key must be a string, a buffer or an object";
-    var supportsKeyObjects = typeof crypto11.createPublicKey === "function";
+    var supportsKeyObjects = typeof crypto12.createPublicKey === "function";
     if (supportsKeyObjects) {
       MSG_INVALID_VERIFIER_KEY += " or a KeyObject";
       MSG_INVALID_SECRET += "or a KeyObject";
@@ -52234,17 +52248,17 @@ var require_jwa = __commonJS({
       return function sign(thing, secret) {
         checkIsSecretKey(secret);
         thing = normalizeInput(thing);
-        var hmac = crypto11.createHmac("sha" + bits, secret);
+        var hmac = crypto12.createHmac("sha" + bits, secret);
         var sig = (hmac.update(thing), hmac.digest("base64"));
         return fromBase64(sig);
       };
     }
     var bufferEqual;
-    var timingSafeEqual2 = "timingSafeEqual" in crypto11 ? function timingSafeEqual3(a, b) {
+    var timingSafeEqual2 = "timingSafeEqual" in crypto12 ? function timingSafeEqual3(a, b) {
       if (a.byteLength !== b.byteLength) {
         return false;
       }
-      return crypto11.timingSafeEqual(a, b);
+      return crypto12.timingSafeEqual(a, b);
     } : function timingSafeEqual3(a, b) {
       if (!bufferEqual) {
         bufferEqual = require_buffer_equal_constant_time();
@@ -52261,7 +52275,7 @@ var require_jwa = __commonJS({
       return function sign(thing, privateKey) {
         checkIsPrivateKey(privateKey);
         thing = normalizeInput(thing);
-        var signer = crypto11.createSign("RSA-SHA" + bits);
+        var signer = crypto12.createSign("RSA-SHA" + bits);
         var sig = (signer.update(thing), signer.sign(privateKey, "base64"));
         return fromBase64(sig);
       };
@@ -52271,7 +52285,7 @@ var require_jwa = __commonJS({
         checkIsPublicKey(publicKey);
         thing = normalizeInput(thing);
         signature = toBase64(signature);
-        var verifier = crypto11.createVerify("RSA-SHA" + bits);
+        var verifier = crypto12.createVerify("RSA-SHA" + bits);
         verifier.update(thing);
         return verifier.verify(publicKey, signature, "base64");
       };
@@ -52280,11 +52294,11 @@ var require_jwa = __commonJS({
       return function sign(thing, privateKey) {
         checkIsPrivateKey(privateKey);
         thing = normalizeInput(thing);
-        var signer = crypto11.createSign("RSA-SHA" + bits);
+        var signer = crypto12.createSign("RSA-SHA" + bits);
         var sig = (signer.update(thing), signer.sign({
           key: privateKey,
-          padding: crypto11.constants.RSA_PKCS1_PSS_PADDING,
-          saltLength: crypto11.constants.RSA_PSS_SALTLEN_DIGEST
+          padding: crypto12.constants.RSA_PKCS1_PSS_PADDING,
+          saltLength: crypto12.constants.RSA_PSS_SALTLEN_DIGEST
         }, "base64"));
         return fromBase64(sig);
       };
@@ -52294,12 +52308,12 @@ var require_jwa = __commonJS({
         checkIsPublicKey(publicKey);
         thing = normalizeInput(thing);
         signature = toBase64(signature);
-        var verifier = crypto11.createVerify("RSA-SHA" + bits);
+        var verifier = crypto12.createVerify("RSA-SHA" + bits);
         verifier.update(thing);
         return verifier.verify({
           key: publicKey,
-          padding: crypto11.constants.RSA_PKCS1_PSS_PADDING,
-          saltLength: crypto11.constants.RSA_PSS_SALTLEN_DIGEST
+          padding: crypto12.constants.RSA_PKCS1_PSS_PADDING,
+          saltLength: crypto12.constants.RSA_PSS_SALTLEN_DIGEST
         }, signature, "base64");
       };
     }
@@ -54457,14 +54471,14 @@ var require_awsrequestsigner = __commonJS({
       }
     };
     exports2.AwsRequestSigner = AwsRequestSigner;
-    async function sign(crypto11, key, msg) {
-      return await crypto11.signWithHmacSha256(key, msg);
+    async function sign(crypto12, key, msg) {
+      return await crypto12.signWithHmacSha256(key, msg);
     }
-    async function getSigningKey(crypto11, key, dateStamp, region, serviceName) {
-      const kDate = await sign(crypto11, `AWS4${key}`, dateStamp);
-      const kRegion = await sign(crypto11, kDate, region);
-      const kService = await sign(crypto11, kRegion, serviceName);
-      const kSigning = await sign(crypto11, kService, "aws4_request");
+    async function getSigningKey(crypto12, key, dateStamp, region, serviceName) {
+      const kDate = await sign(crypto12, `AWS4${key}`, dateStamp);
+      const kRegion = await sign(crypto12, kDate, region);
+      const kService = await sign(crypto12, kRegion, serviceName);
+      const kSigning = await sign(crypto12, kService, "aws4_request");
       return kSigning;
     }
     async function generateAuthenticationHeaderMap(options) {
@@ -56049,24 +56063,24 @@ var require_googleauth = __commonJS({
           const signed = await client.sign(data);
           return signed.signedBlob;
         }
-        const crypto11 = (0, crypto_1.createCrypto)();
+        const crypto12 = (0, crypto_1.createCrypto)();
         if (client instanceof jwtclient_1.JWT && client.key) {
-          const sign = await crypto11.sign(client.key, data);
+          const sign = await crypto12.sign(client.key, data);
           return sign;
         }
         const creds = await this.getCredentials();
         if (!creds.client_email) {
           throw new Error("Cannot sign data without `client_email`.");
         }
-        return this.signBlob(crypto11, creds.client_email, data, endpoint);
+        return this.signBlob(crypto12, creds.client_email, data, endpoint);
       }
-      async signBlob(crypto11, emailOrUniqueId, data, endpoint) {
+      async signBlob(crypto12, emailOrUniqueId, data, endpoint) {
         const url2 = new URL(endpoint + `${emailOrUniqueId}:signBlob`);
         const res = await this.request({
           method: "POST",
           url: url2.href,
           data: {
-            payload: crypto11.encodeBase64StringUtf8(data)
+            payload: crypto12.encodeBase64StringUtf8(data)
           },
           retry: true,
           retryConfig: {
@@ -69594,15 +69608,15 @@ var require_HttpErrors = __commonJS({
         format: ""
       }
     ];
-    var ValidationError = class _ValidationError {
+    var ValidationError2 = class _ValidationError {
       static getAttributeTypeMap() {
         return _ValidationError.attributeTypeMap;
       }
     };
-    exports2.ValidationError = ValidationError;
-    ValidationError.discriminator = void 0;
-    ValidationError.mapping = void 0;
-    ValidationError.attributeTypeMap = [
+    exports2.ValidationError = ValidationError2;
+    ValidationError2.discriminator = void 0;
+    ValidationError2.mapping = void 0;
+    ValidationError2.attributeTypeMap = [
       {
         name: "loc",
         baseName: "loc",
@@ -77693,7 +77707,7 @@ var require_gaxios2 = __commonJS({
     var retry_js_1 = require_retry4();
     var stream_1 = require("stream");
     var interceptor_js_1 = require_interceptor2();
-    var randomUUID4 = async () => globalThis.crypto?.randomUUID() || (await import("crypto")).randomUUID();
+    var randomUUID5 = async () => globalThis.crypto?.randomUUID() || (await import("crypto")).randomUUID();
     var HTTP_STATUS_NO_CONTENT = 204;
     var Gaxios = class {
       agentCache = /* @__PURE__ */ new Map();
@@ -77966,7 +77980,7 @@ var require_gaxios2 = __commonJS({
          */
         ["Blob", "File", "FormData"].includes(opts.data?.constructor?.name || "");
         if (opts.multipart?.length) {
-          const boundary = await randomUUID4();
+          const boundary = await randomUUID5();
           preparedHeaders.set("content-type", `multipart/related; boundary=${boundary}`);
           opts.body = stream_1.Readable.from(this.getMultipartRequest(opts.multipart, boundary));
         } else if (shouldDirectlyPassData) {
@@ -78993,22 +79007,22 @@ var require_crypto5 = __commonJS({
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.NodeCrypto = void 0;
-    var crypto11 = require("crypto");
+    var crypto12 = require("crypto");
     var NodeCrypto = class {
       async sha256DigestBase64(str) {
-        return crypto11.createHash("sha256").update(str).digest("base64");
+        return crypto12.createHash("sha256").update(str).digest("base64");
       }
       randomBytesBase64(count2) {
-        return crypto11.randomBytes(count2).toString("base64");
+        return crypto12.randomBytes(count2).toString("base64");
       }
       async verify(pubkey, data, signature) {
-        const verifier = crypto11.createVerify("RSA-SHA256");
+        const verifier = crypto12.createVerify("RSA-SHA256");
         verifier.update(data);
         verifier.end();
         return verifier.verify(pubkey, signature, "base64");
       }
       async sign(privateKey, data) {
-        const signer = crypto11.createSign("RSA-SHA256");
+        const signer = crypto12.createSign("RSA-SHA256");
         signer.update(data);
         signer.end();
         return signer.sign(privateKey, "base64");
@@ -79026,7 +79040,7 @@ var require_crypto5 = __commonJS({
        *   string in hexadecimal encoding.
        */
       async sha256DigestHex(str) {
-        return crypto11.createHash("sha256").update(str).digest("hex");
+        return crypto12.createHash("sha256").update(str).digest("hex");
       }
       /**
        * Computes the HMAC hash of a message using the provided crypto key and the
@@ -79038,7 +79052,7 @@ var require_crypto5 = __commonJS({
        */
       async signWithHmacSha256(key, msg) {
         const cryptoKey = typeof key === "string" ? key : toBuffer(key);
-        return toArrayBuffer(crypto11.createHmac("sha256", cryptoKey).update(msg).digest());
+        return toArrayBuffer(crypto12.createHmac("sha256", cryptoKey).update(msg).digest());
       }
     };
     exports2.NodeCrypto = NodeCrypto;
@@ -79731,10 +79745,10 @@ var require_oauth2client2 = __commonJS({
        * https://github.com/googleapis/google-auth-library-nodejs/blob/main/samples/oauth2-codeVerifier.js
        */
       async generateCodeVerifierAsync() {
-        const crypto11 = (0, crypto_1.createCrypto)();
-        const randomString = crypto11.randomBytesBase64(96);
+        const crypto12 = (0, crypto_1.createCrypto)();
+        const randomString = crypto12.randomBytesBase64(96);
         const codeVerifier = randomString.replace(/\+/g, "~").replace(/=/g, "_").replace(/\//g, "-");
-        const unencodedCodeChallenge = await crypto11.sha256DigestBase64(codeVerifier);
+        const unencodedCodeChallenge = await crypto12.sha256DigestBase64(codeVerifier);
         const codeChallenge = unencodedCodeChallenge.split("=")[0].replace(/\+/g, "-").replace(/\//g, "_");
         return { codeVerifier, codeChallenge };
       }
@@ -80175,7 +80189,7 @@ var require_oauth2client2 = __commonJS({
        * @return Returns a promise resolving to LoginTicket on verification.
        */
       async verifySignedJwtWithCertsAsync(jwt, certs, requiredAudience, issuers, maxExpiry) {
-        const crypto11 = (0, crypto_1.createCrypto)();
+        const crypto12 = (0, crypto_1.createCrypto)();
         if (!maxExpiry) {
           maxExpiry = _OAuth2Client.DEFAULT_MAX_TOKEN_LIFETIME_SECS_;
         }
@@ -80188,7 +80202,7 @@ var require_oauth2client2 = __commonJS({
         let envelope;
         let payload;
         try {
-          envelope = JSON.parse(crypto11.decodeBase64StringUtf8(segments[0]));
+          envelope = JSON.parse(crypto12.decodeBase64StringUtf8(segments[0]));
         } catch (err) {
           if (err instanceof Error) {
             err.message = `Can't parse token envelope: ${segments[0]}': ${err.message}`;
@@ -80199,7 +80213,7 @@ var require_oauth2client2 = __commonJS({
           throw new Error("Can't parse token envelope: " + segments[0]);
         }
         try {
-          payload = JSON.parse(crypto11.decodeBase64StringUtf8(segments[1]));
+          payload = JSON.parse(crypto12.decodeBase64StringUtf8(segments[1]));
         } catch (err) {
           if (err instanceof Error) {
             err.message = `Can't parse token payload '${segments[0]}`;
@@ -80216,7 +80230,7 @@ var require_oauth2client2 = __commonJS({
         if (envelope.alg === "ES256") {
           signature = formatEcdsa.joseToDer(signature, "ES256").toString("base64");
         }
-        const verified = await crypto11.verify(cert, signed, signature);
+        const verified = await crypto12.verify(cert, signed, signature);
         if (!verified) {
           throw new Error("Invalid token signature: " + jwt);
         }
@@ -82786,14 +82800,14 @@ var require_awsrequestsigner2 = __commonJS({
       }
     };
     exports2.AwsRequestSigner = AwsRequestSigner;
-    async function sign(crypto11, key, msg) {
-      return await crypto11.signWithHmacSha256(key, msg);
+    async function sign(crypto12, key, msg) {
+      return await crypto12.signWithHmacSha256(key, msg);
     }
-    async function getSigningKey(crypto11, key, dateStamp, region, serviceName) {
-      const kDate = await sign(crypto11, `AWS4${key}`, dateStamp);
-      const kRegion = await sign(crypto11, kDate, region);
-      const kService = await sign(crypto11, kRegion, serviceName);
-      const kSigning = await sign(crypto11, kService, "aws4_request");
+    async function getSigningKey(crypto12, key, dateStamp, region, serviceName) {
+      const kDate = await sign(crypto12, `AWS4${key}`, dateStamp);
+      const kRegion = await sign(crypto12, kDate, region);
+      const kService = await sign(crypto12, kRegion, serviceName);
+      const kSigning = await sign(crypto12, kService, "aws4_request");
       return kSigning;
     }
     async function generateAuthenticationHeaderMap(options) {
@@ -84512,24 +84526,24 @@ var require_googleauth2 = __commonJS({
           const signed = await client.sign(data);
           return signed.signedBlob;
         }
-        const crypto11 = (0, crypto_1.createCrypto)();
+        const crypto12 = (0, crypto_1.createCrypto)();
         if (client instanceof jwtclient_1.JWT && client.key) {
-          const sign = await crypto11.sign(client.key, data);
+          const sign = await crypto12.sign(client.key, data);
           return sign;
         }
         const creds = await this.getCredentials();
         if (!creds.client_email) {
           throw new Error("Cannot sign data without `client_email`.");
         }
-        return this.signBlob(crypto11, creds.client_email, data, endpoint);
+        return this.signBlob(crypto12, creds.client_email, data, endpoint);
       }
-      async signBlob(crypto11, emailOrUniqueId, data, endpoint) {
+      async signBlob(crypto12, emailOrUniqueId, data, endpoint) {
         const url2 = new URL(endpoint + `${emailOrUniqueId}:signBlob`);
         const res = await this.request({
           method: "POST",
           url: url2.href,
           data: {
-            payload: crypto11.encodeBase64StringUtf8(data)
+            payload: crypto12.encodeBase64StringUtf8(data)
           },
           retry: true,
           retryConfig: {
@@ -86025,7 +86039,11 @@ async function applyAvailabilityToServicePrices() {
   const availableSet = new Set(
     allSCA.filter((r2) => r2.available > 0).map((r2) => `${r2.serviceSlug.toLowerCase()}::${r2.countryCode.toLowerCase()}`)
   );
-  const allPrices = await db.select({ serviceSlug: servicePricesTable.serviceSlug, countryCode: servicePricesTable.countryCode }).from(servicePricesTable);
+  const allPrices = await db.select({
+    serviceSlug: servicePricesTable.serviceSlug,
+    countryCode: servicePricesTable.countryCode,
+    adminModified: servicePricesTable.adminModified
+  }).from(servicePricesTable);
   const toDisable = allPrices.filter(
     (p) => !availableSet.has(`${p.serviceSlug}::${p.countryCode}`)
   );
@@ -86039,47 +86057,41 @@ async function applyAvailabilityToServicePrices() {
       disabled++;
     }
   }
-  const socialRows = allSCA.filter(
-    (r2) => r2.available > 0 && AUTO_APPLY_SOCIAL_SLUGS.has(r2.serviceSlug.toLowerCase())
-  );
-  let enabledSocial = 0;
-  for (let i2 = 0; i2 < socialRows.length; i2 += BATCH) {
-    const batch = socialRows.slice(i2, i2 + BATCH).map((r2) => ({
-      serviceSlug: r2.serviceSlug.toLowerCase(),
-      countryCode: r2.countryCode.toLowerCase(),
-      price: Math.max(300, Math.round((r2.providerPriceFcfa || 500) * 1.3)),
-      enabled: true
-    }));
-    await db.insert(servicePricesTable).values(batch).onConflictDoUpdate({
-      target: [servicePricesTable.serviceSlug, servicePricesTable.countryCode],
-      set: { enabled: true, updatedAt: /* @__PURE__ */ new Date() }
-    });
-    enabledSocial += batch.length;
-  }
-  const nonSocialRows = allSCA.filter(
-    (r2) => r2.available > 0 && !AUTO_APPLY_SOCIAL_SLUGS.has(r2.serviceSlug.toLowerCase())
-  );
+  const availableRows = allSCA.filter((r2) => r2.available > 0);
+  let priceUpdated = 0;
   let priceFixed = 0;
-  for (let i2 = 0; i2 < nonSocialRows.length; i2 += BATCH) {
-    const batch = nonSocialRows.slice(i2, i2 + BATCH).map((r2) => ({
+  for (let i2 = 0; i2 < availableRows.length; i2 += BATCH) {
+    const batch = availableRows.slice(i2, i2 + BATCH).map((r2) => ({
       serviceSlug: r2.serviceSlug.toLowerCase(),
       countryCode: r2.countryCode.toLowerCase(),
       price: calcAutoApplyPrice(r2.providerPriceFcfa),
-      enabled: true
+      enabled: true,
+      adminModified: false
     }));
     await db.insert(servicePricesTable).values(batch).onConflictDoUpdate({
       target: [servicePricesTable.serviceSlug, servicePricesTable.countryCode],
       set: {
         enabled: true,
-        price: sql`excluded.price`,
-        updatedAt: /* @__PURE__ */ new Date()
+        updatedAt: /* @__PURE__ */ new Date(),
+        price: sql`
+            CASE
+              WHEN service_prices.admin_modified = true
+              THEN service_prices.price
+              ELSE excluded.price
+            END
+          `
+        /* adminModified is intentionally NOT listed here — it stays as-is */
       }
     });
-    priceFixed += batch.length;
+    priceUpdated += batch.length;
   }
-  const enabled = enabledSocial + priceFixed;
-  logger.info({ enabled, disabled, priceFixed }, "[5sim-sync] applyAvailabilityToServicePrices done");
-  return { enabled, disabled, priceFixed };
+  priceFixed = allPrices.filter((p) => p.adminModified && availableSet.has(`${p.serviceSlug}::${p.countryCode}`)).length;
+  const enabled = priceUpdated;
+  logger.info(
+    { enabled, disabled, priceUpdated, priceFixed },
+    "[5sim-sync] applyAvailabilityToServicePrices done"
+  );
+  return { enabled, disabled, priceUpdated, priceFixed };
 }
 async function syncFiveSimProducts(triggeredBy = "scheduler") {
   if (currentlySyncing) {
@@ -86367,7 +86379,7 @@ async function runScheduledSync() {
 function flagEmoji(code) {
   return [...code.toUpperCase()].map((c) => String.fromCodePoint(127462 - 65 + c.charCodeAt(0))).join("");
 }
-var FIVESIM_TO_ISO, SYNC_INTERVAL_MS, SYNC_LOGS_KEY, LAST_SYNC_KEY, SYNC_STATUS_KEY, MAX_LOG_ENTRIES, SAMPLE_COUNTRIES, CATEGORY_MAP, COLOR_MAP, LOGO_MAP, syncTimer, syncRunning, currentlySyncing, AUTO_APPLY_SOCIAL_SLUGS, FR_NAMES, POPULAR_ISO_WESTERN, POPULAR_ISO_AFRICAN, POPULAR_ISO;
+var FIVESIM_TO_ISO, SYNC_INTERVAL_MS, SYNC_LOGS_KEY, LAST_SYNC_KEY, SYNC_STATUS_KEY, MAX_LOG_ENTRIES, SAMPLE_COUNTRIES, CATEGORY_MAP, COLOR_MAP, LOGO_MAP, syncTimer, syncRunning, currentlySyncing, FR_NAMES, POPULAR_ISO_WESTERN, POPULAR_ISO_AFRICAN, POPULAR_ISO;
 var init_fivesim_sync = __esm({
   "src/lib/fivesim-sync.ts"() {
     "use strict";
@@ -86864,17 +86876,6 @@ var init_fivesim_sync = __esm({
     syncTimer = null;
     syncRunning = false;
     currentlySyncing = false;
-    AUTO_APPLY_SOCIAL_SLUGS = /* @__PURE__ */ new Set([
-      "whatsapp",
-      "telegram",
-      "instagram",
-      "google",
-      "youtube",
-      "facebook",
-      "tiktok",
-      "snapchat",
-      "binance"
-    ]);
     FR_NAMES = {
       AF: "Afghanistan",
       AL: "Albanie",
@@ -87105,7 +87106,7 @@ async function migrate(db2, config) {
 }
 
 // src/app.ts
-var import_express28 = __toESM(require_express2(), 1);
+var import_express29 = __toESM(require_express2(), 1);
 var import_cors = __toESM(require_lib3(), 1);
 var import_cookie_parser = __toESM(require_cookie_parser(), 1);
 var import_pino_http = __toESM(require_logger(), 1);
@@ -87657,7 +87658,7 @@ var import_path2 = __toESM(require("path"), 1);
 var import_fs3 = require("fs");
 
 // src/routes/index.ts
-var import_express27 = __toESM(require_express2(), 1);
+var import_express28 = __toESM(require_express2(), 1);
 
 // src/routes/health.ts
 var import_express = __toESM(require_express2(), 1);
@@ -114905,12 +114906,1441 @@ router10.get(
 );
 var wallet_default = router10;
 
-// src/routes/dashboard.ts
+// src/routes/crypto-wallet.ts
 var import_express12 = __toESM(require_express2(), 1);
 init_drizzle_orm();
 init_src();
+init_logger2();
+
+// ../../node_modules/.pnpm/@nowpaymentsio+nowpayments-sdk-nodejs@0.2.1/node_modules/@nowpaymentsio/nowpayments-sdk-nodejs/dist/errors.js
+var DEFAULT_MESSAGES = {
+  configuration: "SDK configuration error.",
+  validation: "Input validation error.",
+  network: "Network error while calling payment API.",
+  timeout: "Payment API request timed out.",
+  api: "Payment API returned an error.",
+  unknown: "Unexpected SDK error."
+};
+var SDKError = class extends Error {
+  constructor({ type = "unknown", code = "SDK_ERROR", message, httpStatus, requestId, details, cause } = {}) {
+    super(message || DEFAULT_MESSAGES[type] || DEFAULT_MESSAGES.unknown, { cause });
+    this.name = "SDKError";
+    this.type = type;
+    this.code = code;
+    this.httpStatus = httpStatus;
+    this.requestId = requestId;
+    this.details = details;
+  }
+  toJSON() {
+    return {
+      name: this.name,
+      type: this.type,
+      code: this.code,
+      message: this.message,
+      httpStatus: this.httpStatus,
+      requestId: this.requestId,
+      details: this.details
+    };
+  }
+};
+var ConfigurationError = class extends SDKError {
+  constructor(message, options = {}) {
+    super({ type: "configuration", code: options.code || "CONFIGURATION_ERROR", message, ...options });
+    this.name = "ConfigurationError";
+  }
+};
+var ValidationError = class extends SDKError {
+  constructor(message, options = {}) {
+    super({ type: "validation", code: options.code || "VALIDATION_ERROR", message, ...options });
+    this.name = "ValidationError";
+  }
+};
+var NetworkError = class extends SDKError {
+  constructor(message, options = {}) {
+    super({ type: options.type || "network", code: options.code || "NETWORK_ERROR", message, ...options });
+    this.name = "NetworkError";
+  }
+};
+var APIError = class extends SDKError {
+  constructor(message, options = {}) {
+    super({ type: "api", code: options.code || "API_ERROR", message, ...options });
+    this.name = "APIError";
+  }
+};
+
+// ../../node_modules/.pnpm/@nowpaymentsio+nowpayments-sdk-nodejs@0.2.1/node_modules/@nowpaymentsio/nowpayments-sdk-nodejs/dist/validators.js
+var PAYMENT_LIST_SORT_FIELDS = /* @__PURE__ */ new Set([
+  "created_at",
+  "updated_at",
+  "payment_id",
+  "payment_status",
+  "pay_address",
+  "price_amount",
+  "price_currency",
+  "pay_amount",
+  "actually_paid",
+  "pay_currency",
+  "order_id",
+  "order_description",
+  "purchase_id",
+  "outcome_amount",
+  "outcome_currency"
+]);
+function assertConfiguredApiKey(apiKey) {
+  if (!isNonEmptyString(apiKey)) {
+    throw new ConfigurationError("NOWPayments API key is required. Pass { apiKey } to the SDK constructor.", {
+      code: "MISSING_API_KEY"
+    });
+  }
+}
+function isNonEmptyString(value) {
+  return typeof value === "string" && value.trim().length > 0;
+}
+function isPositiveNumber(value) {
+  return typeof value === "number" && Number.isFinite(value) && value > 0;
+}
+function assertPositiveNumber(value, fieldName) {
+  if (!isPositiveNumber(value)) {
+    throw new ValidationError(`${fieldName} must be a positive number.`, {
+      code: "INVALID_AMOUNT",
+      details: { field: fieldName }
+    });
+  }
+}
+function assertString(value, fieldName) {
+  if (!isNonEmptyString(value)) {
+    throw new ValidationError(`${fieldName} is required and must be a non-empty string.`, {
+      code: "INVALID_STRING",
+      details: { field: fieldName }
+    });
+  }
+}
+function assertOptionalUrl(value, fieldName) {
+  if (value == null || value === "") return;
+  try {
+    const url2 = new URL(value);
+    if (!["http:", "https:"].includes(url2.protocol)) {
+      throw new Error("unsupported protocol");
+    }
+  } catch {
+    throw new ValidationError(`${fieldName} must be a valid http(s) URL.`, {
+      code: "INVALID_URL",
+      details: { field: fieldName }
+    });
+  }
+}
+function cleanCurrency(value, fieldName) {
+  assertString(value, fieldName);
+  return value.trim().toLowerCase();
+}
+function compactObject(object) {
+  return Object.fromEntries(
+    Object.entries(object).filter(([, value]) => value !== void 0)
+  );
+}
+function validateCheckoutInput(input = {}) {
+  const amount = input.amount ?? input.priceAmount ?? input.price_amount;
+  const currency = input.currency ?? input.priceCurrency ?? input.price_currency;
+  assertPositiveNumber(amount, "amount");
+  const normalized = {
+    ...input,
+    amount,
+    currency: cleanCurrency(currency, "currency")
+  };
+  const payCurrency = input.payCurrency ?? input.pay_currency;
+  const payoutCurrency = input.payoutCurrency ?? input.payout_currency;
+  if (payCurrency != null) normalized.payCurrency = cleanCurrency(payCurrency, "payCurrency");
+  if (payoutCurrency != null) normalized.payoutCurrency = cleanCurrency(payoutCurrency, "payoutCurrency");
+  assertOptionalUrl(normalized.ipnCallbackUrl ?? normalized.ipn_callback_url, "ipnCallbackUrl");
+  assertOptionalUrl(normalized.successUrl ?? normalized.success_url, "successUrl");
+  assertOptionalUrl(normalized.cancelUrl ?? normalized.cancel_url, "cancelUrl");
+  assertOptionalUrl(normalized.partiallyPaidUrl ?? normalized.partially_paid_url, "partiallyPaidUrl");
+  if (!normalized.ipnCallbackUrl && normalized.ipn_callback_url) normalized.ipnCallbackUrl = normalized.ipn_callback_url;
+  if (!normalized.successUrl && normalized.success_url) normalized.successUrl = normalized.success_url;
+  if (!normalized.cancelUrl && normalized.cancel_url) normalized.cancelUrl = normalized.cancel_url;
+  if (!normalized.partiallyPaidUrl && normalized.partially_paid_url) normalized.partiallyPaidUrl = normalized.partially_paid_url;
+  return normalized;
+}
+function validateDirectPaymentInput(input = {}) {
+  const normalized = validateCheckoutInput(input);
+  if (!normalized.payCurrency) {
+    throw new ValidationError("payCurrency is required for direct payments.", {
+      code: "MISSING_PAY_CURRENCY",
+      details: { field: "payCurrency" }
+    });
+  }
+  if (normalized.payoutAddress != null && normalized.payoutAddress !== "") {
+    assertString(normalized.payoutAddress, "payoutAddress");
+  }
+  return normalized;
+}
+function validateEstimateInput(input = {}) {
+  const amount = input.amount;
+  assertPositiveNumber(amount, "amount");
+  const fromCurrency = cleanCurrency(input.fromCurrency ?? input.currencyFrom ?? input.currency_from, "fromCurrency");
+  const toCurrency = cleanCurrency(input.toCurrency ?? input.currencyTo ?? input.currency_to, "toCurrency");
+  return { amount, fromCurrency, toCurrency };
+}
+function validateMinimumInput(input = {}) {
+  const fromCurrency = cleanCurrency(input.fromCurrency ?? input.currencyFrom ?? input.currency_from, "fromCurrency");
+  const toCurrency = input.toCurrency ?? input.currencyTo ?? input.currency_to;
+  return {
+    ...input,
+    fromCurrency,
+    toCurrency: toCurrency == null || toCurrency === "" ? void 0 : cleanCurrency(toCurrency, "toCurrency")
+  };
+}
+function validateInvoicePaymentInput(input = {}) {
+  const invoiceId = input.invoiceId ?? input.iid;
+  assertString(invoiceId, "invoiceId");
+  const payCurrency = cleanCurrency(input.payCurrency ?? input.pay_currency, "payCurrency");
+  return { ...input, invoiceId: String(invoiceId), payCurrency };
+}
+function validatePaymentId(paymentId) {
+  assertString(String(paymentId ?? ""), "paymentId");
+  return String(paymentId);
+}
+function normalizeInteger(value, fieldName, { min: min2, max: max2 } = {}) {
+  if (value == null || value === "") return void 0;
+  const numeric2 = Number(value);
+  if (!Number.isInteger(numeric2) || min2 != null && numeric2 < min2 || max2 != null && numeric2 > max2) {
+    throw new ValidationError(`${fieldName} must be an integer${min2 == null ? "" : ` >= ${min2}`}${max2 == null ? "" : ` and <= ${max2}`}.`, {
+      code: "INVALID_PAYMENT_LIST_QUERY",
+      details: { field: fieldName, value }
+    });
+  }
+  return numeric2;
+}
+function normalizeSortBy(value) {
+  if (value == null || value === "") return void 0;
+  const normalized = String(value).trim();
+  if (!PAYMENT_LIST_SORT_FIELDS.has(normalized)) {
+    throw new ValidationError("sortBy has an unsupported value for payment list.", {
+      code: "INVALID_PAYMENT_LIST_SORT_BY",
+      details: {
+        field: "sortBy",
+        value,
+        allowed: Array.from(PAYMENT_LIST_SORT_FIELDS)
+      }
+    });
+  }
+  return normalized;
+}
+function normalizeOrderBy(value) {
+  if (value == null || value === "") return void 0;
+  const normalized = String(value).trim().toLowerCase();
+  if (normalized === "asc" || normalized === "desc") return normalized;
+  return null;
+}
+function validatePaymentsListQuery(query = {}) {
+  let sortBy = query.sortBy ?? query.sort_by;
+  let orderBy = query.orderBy ?? query.order_by;
+  const normalizedOrderBy = normalizeOrderBy(orderBy);
+  if (orderBy != null && normalizedOrderBy === null) {
+    const possibleSortBy = String(orderBy).trim();
+    if (sortBy == null && PAYMENT_LIST_SORT_FIELDS.has(possibleSortBy)) {
+      sortBy = possibleSortBy;
+      orderBy = void 0;
+    } else {
+      throw new ValidationError("orderBy accepts only asc or desc. Use sortBy for fields such as created_at.", {
+        code: "INVALID_PAYMENT_LIST_ORDER_BY",
+        details: {
+          field: "orderBy",
+          value: orderBy,
+          allowed: ["asc", "desc"],
+          hint: "Use sortBy for the sorting field and orderBy for asc/desc."
+        }
+      });
+    }
+  }
+  return compactObject({
+    limit: normalizeInteger(query.limit, "limit", { min: 1, max: 500 }),
+    page: normalizeInteger(query.page, "page", { min: 0 }),
+    sortBy: normalizeSortBy(sortBy),
+    orderBy: normalizedOrderBy === null ? void 0 : normalizedOrderBy,
+    dateFrom: query.dateFrom ?? query.date_from,
+    dateTo: query.dateTo ?? query.date_to,
+    invoiceId: query.invoiceId ?? query.invoice_id
+  });
+}
+
+// ../../node_modules/.pnpm/@nowpaymentsio+nowpayments-sdk-nodejs@0.2.1/node_modules/@nowpaymentsio/nowpayments-sdk-nodejs/dist/http.js
+function safeHeader(response, name2) {
+  try {
+    return response.headers?.get?.(name2) ?? void 0;
+  } catch {
+    return void 0;
+  }
+}
+function sanitizeApiErrorBody(body) {
+  if (!body || typeof body !== "object") return void 0;
+  const details = {};
+  for (const key of ["code", "message", "error", "statusCode"]) {
+    if (body[key] !== void 0 && typeof body[key] !== "object") {
+      details[key] = body[key];
+    }
+  }
+  return Object.keys(details).length ? details : void 0;
+}
+function extractApiErrorMessage(body, status) {
+  if (body && typeof body === "object") {
+    if (typeof body.message === "string" && body.message.trim()) return body.message;
+    if (typeof body.error === "string" && body.error.trim()) return body.error;
+  }
+  if (typeof body === "string" && body.trim() && body.length < 300) return body;
+  return `Payment API request failed with status ${status}.`;
+}
+async function readResponseBody(response) {
+  const contentType = safeHeader(response, "content-type") || "";
+  if (response.status === 204) return null;
+  if (contentType.includes("application/json")) {
+    try {
+      return await response.json();
+    } catch {
+      return null;
+    }
+  }
+  try {
+    const text2 = await response.text();
+    if (!text2) return null;
+    try {
+      return JSON.parse(text2);
+    } catch {
+      return text2;
+    }
+  } catch {
+    return null;
+  }
+}
+var HttpClient = class {
+  constructor({ apiKey, baseUrl: baseUrl2, timeoutMs = 3e4, fetchImpl, userAgent: userAgent2, getJwtToken } = {}) {
+    this.apiKey = apiKey;
+    this.baseUrl = (baseUrl2 || "https://api.nowpayments.io").replace(/\/$/, "");
+    this.timeoutMs = timeoutMs;
+    this.fetchImpl = fetchImpl || globalThis.fetch;
+    this.userAgent = userAgent2 || "@nowpayments-sdk/node/0.2.1";
+    this.getJwtToken = getJwtToken;
+    if (typeof this.fetchImpl !== "function") {
+      throw new NetworkError("No fetch implementation is available. Use Node.js >= 18 or pass { fetch } to the SDK constructor.", {
+        code: "FETCH_UNAVAILABLE"
+      });
+    }
+  }
+  buildUrl(path5, query) {
+    const url2 = new URL(path5, this.baseUrl);
+    for (const [key, value] of Object.entries(query || {})) {
+      if (value === void 0 || value === null || value === "") continue;
+      url2.searchParams.set(key, String(value));
+    }
+    return url2;
+  }
+  async request(path5, { method = "GET", query, body, apiKey = true, bearer = false, headers = {}, timeoutMs } = {}) {
+    if (apiKey) assertConfiguredApiKey(this.apiKey);
+    const url2 = this.buildUrl(path5, query);
+    const makeHeaders = async ({ forceRefreshJwt = false } = {}) => {
+      let token = null;
+      if (bearer) {
+        token = await this.getJwtToken?.({ forceRefresh: forceRefreshJwt });
+      }
+      return compactObject({
+        accept: "application/json",
+        "content-type": body === void 0 ? void 0 : "application/json",
+        "user-agent": this.userAgent,
+        "x-api-key": apiKey ? this.apiKey : void 0,
+        authorization: bearer && token ? `Bearer ${token}` : void 0,
+        ...headers
+      });
+    };
+    const execute = async ({ forceRefreshJwt = false } = {}) => {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), timeoutMs ?? this.timeoutMs);
+      try {
+        return await this.fetchImpl(url2, {
+          method,
+          headers: await makeHeaders({ forceRefreshJwt }),
+          body: body === void 0 ? void 0 : JSON.stringify(body),
+          signal: controller.signal
+        });
+      } catch (error) {
+        if (error?.name === "AbortError") {
+          throw new NetworkError("Payment API request timed out.", {
+            type: "timeout",
+            code: "REQUEST_TIMEOUT",
+            details: { path: path5, timeoutMs: timeoutMs ?? this.timeoutMs },
+            cause: error
+          });
+        }
+        throw new NetworkError("Network error while calling payment API.", {
+          code: "NETWORK_ERROR",
+          details: { path: path5 },
+          cause: error
+        });
+      } finally {
+        clearTimeout(timeout);
+      }
+    };
+    let response = await execute();
+    let responseBody = await readResponseBody(response);
+    if (!response.ok && bearer && response.status === 401 && this.getJwtToken) {
+      response = await execute({ forceRefreshJwt: true });
+      responseBody = await readResponseBody(response);
+    }
+    if (!response.ok) {
+      throw new APIError(extractApiErrorMessage(responseBody, response.status), {
+        code: "API_REQUEST_FAILED",
+        httpStatus: response.status,
+        requestId: safeHeader(response, "x-request-id") || safeHeader(response, "cf-ray"),
+        details: sanitizeApiErrorBody(responseBody)
+      });
+    }
+    return responseBody;
+  }
+};
+
+// ../../node_modules/.pnpm/@nowpaymentsio+nowpayments-sdk-nodejs@0.2.1/node_modules/@nowpaymentsio/nowpayments-sdk-nodejs/dist/normalizers.js
+var SDK_PAYMENT_STATUSES = Object.freeze({
+  PENDING: "pending",
+  PROCESSING: "processing",
+  PAID: "paid",
+  PARTIALLY_PAID: "partially_paid",
+  FAILED: "failed",
+  REFUNDED: "refunded",
+  EXPIRED: "expired",
+  CANCELLED: "cancelled",
+  UNKNOWN: "unknown"
+});
+var PAYMENT_STATUS_MAP = Object.freeze({
+  waiting: SDK_PAYMENT_STATUSES.PENDING,
+  confirming: SDK_PAYMENT_STATUSES.PROCESSING,
+  confirmed: SDK_PAYMENT_STATUSES.PROCESSING,
+  sending: SDK_PAYMENT_STATUSES.PROCESSING,
+  partially_paid: SDK_PAYMENT_STATUSES.PARTIALLY_PAID,
+  finished: SDK_PAYMENT_STATUSES.PAID,
+  failed: SDK_PAYMENT_STATUSES.FAILED,
+  refunded: SDK_PAYMENT_STATUSES.REFUNDED,
+  expired: SDK_PAYMENT_STATUSES.EXPIRED,
+  cancelled: SDK_PAYMENT_STATUSES.CANCELLED,
+  canceled: SDK_PAYMENT_STATUSES.CANCELLED
+});
+var TERMINAL_PAYMENT_STATUSES = Object.freeze([
+  SDK_PAYMENT_STATUSES.PAID,
+  SDK_PAYMENT_STATUSES.PARTIALLY_PAID,
+  SDK_PAYMENT_STATUSES.FAILED,
+  SDK_PAYMENT_STATUSES.REFUNDED,
+  SDK_PAYMENT_STATUSES.EXPIRED,
+  SDK_PAYMENT_STATUSES.CANCELLED
+]);
+function normalizePaymentStatus(apiStatus) {
+  if (!apiStatus || typeof apiStatus !== "string") return SDK_PAYMENT_STATUSES.UNKNOWN;
+  return PAYMENT_STATUS_MAP[apiStatus.toLowerCase()] || SDK_PAYMENT_STATUSES.UNKNOWN;
+}
+function withAliases(target, aliases) {
+  for (const [key, value] of Object.entries(aliases)) {
+    if (key in target) continue;
+    Object.defineProperty(target, key, {
+      value,
+      enumerable: false,
+      configurable: true,
+      writable: true
+    });
+  }
+  return target;
+}
+function toStringOrNull(value) {
+  if (value === void 0 || value === null || value === "") return null;
+  return String(value);
+}
+function toLowerStringOrNull(value) {
+  return toStringOrNull(value)?.toLowerCase() ?? null;
+}
+function toNumberOrNull(value) {
+  if (value === void 0 || value === null || value === "") return null;
+  const numeric2 = Number(value);
+  return Number.isFinite(numeric2) ? numeric2 : null;
+}
+function toBooleanOrNull(value) {
+  if (value === void 0 || value === null || value === "") return null;
+  if (typeof value === "boolean") return value;
+  if (typeof value === "string") {
+    if (value.toLowerCase() === "true") return true;
+    if (value.toLowerCase() === "false") return false;
+  }
+  return Boolean(value);
+}
+function normalizeDate(value) {
+  if (!value) return null;
+  const date2 = new Date(value);
+  return Number.isNaN(date2.getTime()) ? null : date2.toISOString();
+}
+function copyIfPresent(source, target, keys) {
+  for (const key of keys) {
+    if (source?.[key] !== void 0) target[key] = source[key];
+  }
+}
+function normalizeEstimate(api = {}) {
+  const estimate = {
+    currency_from: toLowerStringOrNull(api.currency_from),
+    amount_from: toNumberOrNull(api.amount_from),
+    currency_to: toLowerStringOrNull(api.currency_to),
+    estimated_amount: toNumberOrNull(api.estimated_amount)
+  };
+  return withAliases(estimate, {
+    fromCurrency: estimate.currency_from,
+    amountFrom: estimate.amount_from,
+    toCurrency: estimate.currency_to,
+    estimatedAmount: estimate.estimated_amount,
+    from: {
+      amount: estimate.amount_from,
+      currency: estimate.currency_from
+    },
+    to: {
+      amount: estimate.estimated_amount,
+      currency: estimate.currency_to
+    }
+  });
+}
+function normalizeMinimumAmount(api = {}) {
+  const minimum = {
+    currency_from: toLowerStringOrNull(api.currency_from),
+    currency_to: toLowerStringOrNull(api.currency_to),
+    min_amount: toNumberOrNull(api.min_amount),
+    fiat_equivalent: api.fiat_equivalent == null ? null : toNumberOrNull(api.fiat_equivalent)
+  };
+  return withAliases(minimum, {
+    fromCurrency: minimum.currency_from,
+    toCurrency: minimum.currency_to,
+    minAmount: minimum.min_amount,
+    amount: minimum.min_amount,
+    fiatEquivalent: minimum.fiat_equivalent
+  });
+}
+function normalizeInvoice(api = {}) {
+  const invoice = {};
+  copyIfPresent(api, invoice, [
+    "id",
+    "token_id",
+    "order_id",
+    "order_description",
+    "price_amount",
+    "price_currency",
+    "pay_currency",
+    "ipn_callback_url",
+    "invoice_url",
+    "success_url",
+    "cancel_url",
+    "partially_paid_url",
+    "payout_currency",
+    "created_at",
+    "updated_at",
+    "is_fixed_rate",
+    "is_fee_paid_by_user"
+  ]);
+  if ("id" in invoice) invoice.id = toStringOrNull(invoice.id);
+  if ("token_id" in invoice) invoice.token_id = toStringOrNull(invoice.token_id);
+  if ("order_id" in invoice) invoice.order_id = toStringOrNull(invoice.order_id);
+  if ("order_description" in invoice) invoice.order_description = toStringOrNull(invoice.order_description);
+  if ("price_amount" in invoice) invoice.price_amount = toNumberOrNull(invoice.price_amount);
+  if ("price_currency" in invoice) invoice.price_currency = toLowerStringOrNull(invoice.price_currency);
+  if ("pay_currency" in invoice) invoice.pay_currency = toLowerStringOrNull(invoice.pay_currency);
+  if ("ipn_callback_url" in invoice) invoice.ipn_callback_url = toStringOrNull(invoice.ipn_callback_url);
+  if ("invoice_url" in invoice) invoice.invoice_url = toStringOrNull(invoice.invoice_url);
+  if ("success_url" in invoice) invoice.success_url = toStringOrNull(invoice.success_url);
+  if ("cancel_url" in invoice) invoice.cancel_url = toStringOrNull(invoice.cancel_url);
+  if ("partially_paid_url" in invoice) invoice.partially_paid_url = toStringOrNull(invoice.partially_paid_url);
+  if ("payout_currency" in invoice) invoice.payout_currency = toLowerStringOrNull(invoice.payout_currency);
+  if ("created_at" in invoice) invoice.created_at = normalizeDate(invoice.created_at);
+  if ("updated_at" in invoice) invoice.updated_at = normalizeDate(invoice.updated_at);
+  if ("is_fixed_rate" in invoice) invoice.is_fixed_rate = toBooleanOrNull(invoice.is_fixed_rate);
+  if ("is_fee_paid_by_user" in invoice) invoice.is_fee_paid_by_user = toBooleanOrNull(invoice.is_fee_paid_by_user);
+  return withAliases(invoice, {
+    checkoutUrl: invoice.invoice_url ?? null,
+    invoiceUrl: invoice.invoice_url ?? null,
+    amount: {
+      value: invoice.price_amount ?? null,
+      currency: invoice.price_currency ?? null
+    },
+    paymentCurrency: invoice.pay_currency ?? null,
+    order: {
+      id: invoice.order_id ?? null,
+      description: invoice.order_description ?? null
+    },
+    redirects: {
+      successUrl: invoice.success_url ?? null,
+      cancelUrl: invoice.cancel_url ?? null,
+      partiallyPaidUrl: invoice.partially_paid_url ?? null
+    },
+    callbacks: {
+      ipnUrl: invoice.ipn_callback_url ?? null
+    },
+    fixedRate: invoice.is_fixed_rate ?? null,
+    feePaidByUser: invoice.is_fee_paid_by_user ?? null,
+    createdAt: invoice.created_at ?? null,
+    updatedAt: invoice.updated_at ?? null
+  });
+}
+function normalizePayment(api = {}) {
+  const paymentId = toStringOrNull(api.payment_id ?? api.id);
+  const invoiceId = toStringOrNull(api.invoice_id);
+  const rawStatus = toStringOrNull(api.payment_status ?? api.status);
+  const normalizedStatus = normalizePaymentStatus(rawStatus);
+  const payment = {
+    payment_id: paymentId,
+    invoice_id: invoiceId,
+    payment_status: rawStatus,
+    status: normalizedStatus,
+    pay_address: toStringOrNull(api.pay_address),
+    payin_extra_id: toStringOrNull(api.payin_extra_id),
+    price_amount: toNumberOrNull(api.price_amount),
+    price_currency: toLowerStringOrNull(api.price_currency),
+    pay_amount: toNumberOrNull(api.pay_amount),
+    actually_paid: toNumberOrNull(api.actually_paid),
+    actually_paid_at_fiat: toNumberOrNull(api.actually_paid_at_fiat),
+    pay_currency: toLowerStringOrNull(api.pay_currency),
+    order_id: toStringOrNull(api.order_id),
+    order_description: toStringOrNull(api.order_description),
+    purchase_id: toStringOrNull(api.purchase_id),
+    outcome_amount: toNumberOrNull(api.outcome_amount),
+    outcome_currency: toLowerStringOrNull(api.outcome_currency),
+    ipn_callback_url: toStringOrNull(api.ipn_callback_url),
+    created_at: normalizeDate(api.created_at),
+    updated_at: normalizeDate(api.updated_at),
+    valid_until: normalizeDate(api.valid_until),
+    expiration_estimate_date: normalizeDate(api.expiration_estimate_date),
+    amount_received: toNumberOrNull(api.amount_received),
+    payin_hash: toStringOrNull(api.payin_hash),
+    payout_hash: toStringOrNull(api.payout_hash),
+    smart_contract: toStringOrNull(api.smart_contract),
+    network: toLowerStringOrNull(api.network),
+    network_precision: toNumberOrNull(api.network_precision),
+    time_limit: toStringOrNull(api.time_limit),
+    burning_percent: toStringOrNull(api.burning_percent),
+    type: toStringOrNull(api.type),
+    parent_payment_id: toStringOrNull(api.parent_payment_id),
+    origin_type: toStringOrNull(api.origin_type),
+    payment_extra_ids: Array.isArray(api.payment_extra_ids) ? api.payment_extra_ids.map(toStringOrNull) : null,
+    fee: api.fee && typeof api.fee === "object" ? api.fee : null,
+    redirectData: api.redirectData ?? null
+  };
+  return withAliases(payment, {
+    id: payment.payment_id,
+    invoiceId: payment.invoice_id,
+    rawStatus: payment.payment_status,
+    deposit: {
+      address: payment.pay_address,
+      memo: payment.payin_extra_id,
+      network: payment.network,
+      precision: payment.network_precision
+    },
+    price: {
+      amount: payment.price_amount,
+      currency: payment.price_currency
+    },
+    payment: {
+      amount: payment.pay_amount,
+      currency: payment.pay_currency,
+      actuallyPaid: payment.actually_paid
+    },
+    outcome: {
+      amount: payment.outcome_amount,
+      currency: payment.outcome_currency
+    },
+    order: {
+      id: payment.order_id,
+      description: payment.order_description
+    },
+    purchaseId: payment.purchase_id,
+    callbackUrl: payment.ipn_callback_url,
+    expiresAt: payment.valid_until ?? payment.expiration_estimate_date,
+    createdAt: payment.created_at,
+    updatedAt: payment.updated_at
+  });
+}
+function normalizeCheckoutSession({ invoice, estimate = null, minimum = null } = {}) {
+  const checkout = normalizeInvoice(invoice);
+  if (estimate !== void 0) checkout.estimate = estimate;
+  if (minimum !== void 0) checkout.minimum = minimum;
+  return checkout;
+}
+function normalizePaymentsList(api = {}) {
+  const data = Array.isArray(api.data) ? api.data.map(normalizePayment) : [];
+  const list = {
+    data,
+    limit: toNumberOrNull(api.limit),
+    page: toNumberOrNull(api.page),
+    pagesCount: toNumberOrNull(api.pagesCount ?? api.pages_count),
+    total: toNumberOrNull(api.total)
+  };
+  return withAliases(list, {
+    items: list.data
+  });
+}
+function normalizeCurrency(api) {
+  if (typeof api === "string") {
+    const currency2 = {
+      code: api.toLowerCase(),
+      name: null,
+      enable: null,
+      network: null,
+      extra_id_exists: null,
+      logo_url: null
+    };
+    return withAliases(currency2, {
+      enabled: null,
+      requiresExtraId: null,
+      logoUrl: null
+    });
+  }
+  const currency = {
+    id: api?.id ?? null,
+    code: toLowerStringOrNull(api?.code),
+    name: toStringOrNull(api?.name),
+    enable: api?.enable == null ? null : Boolean(api.enable),
+    network: toLowerStringOrNull(api?.network),
+    extra_id_exists: api?.extra_id_exists == null ? null : Boolean(api.extra_id_exists),
+    logo_url: toStringOrNull(api?.logo_url),
+    track: api?.track ?? null,
+    cg_id: toStringOrNull(api?.cg_id),
+    is_maxlimit: api?.is_maxlimit ?? null,
+    smart_contract: toStringOrNull(api?.smart_contract),
+    network_precision: toNumberOrNull(api?.network_precision)
+  };
+  return withAliases(currency, {
+    enabled: currency.enable,
+    requiresExtraId: currency.extra_id_exists,
+    logoUrl: currency.logo_url
+  });
+}
+function normalizeCurrencies(api) {
+  const list = Array.isArray(api?.currencies) ? api.currencies : Array.isArray(api) ? api : [];
+  return list.map(normalizeCurrency).filter((currency) => currency.code);
+}
+
+// ../../node_modules/.pnpm/@nowpaymentsio+nowpayments-sdk-nodejs@0.2.1/node_modules/@nowpaymentsio/nowpayments-sdk-nodejs/dist/ipn.js
+var import_node_crypto8 = __toESM(require("node:crypto"), 1);
+function sortObjectDeep(value) {
+  if (Array.isArray(value)) return value.map(sortObjectDeep);
+  if (value && typeof value === "object" && value.constructor === Object) {
+    return Object.keys(value).sort().reduce((result, key) => {
+      result[key] = sortObjectDeep(value[key]);
+      return result;
+    }, {});
+  }
+  return value;
+}
+function createWebhookSignature(payload, secret) {
+  if (!isNonEmptyString(secret)) {
+    throw new ConfigurationError("IPN secret is required to create webhook signature.", {
+      code: "MISSING_IPN_SECRET"
+    });
+  }
+  if (payload == null || typeof payload !== "object") {
+    throw new ValidationError("Webhook payload must be an object.", {
+      code: "INVALID_WEBHOOK_PAYLOAD"
+    });
+  }
+  return import_node_crypto8.default.createHmac("sha512", secret.trim()).update(JSON.stringify(sortObjectDeep(payload))).digest("hex");
+}
+function verifyWebhookSignature(payload, signature, secret) {
+  if (!isNonEmptyString(signature)) {
+    return false;
+  }
+  const expected = createWebhookSignature(payload, secret);
+  const expectedBuffer = Buffer.from(expected, "hex");
+  const actualBuffer = Buffer.from(String(signature).trim(), "hex");
+  if (expectedBuffer.length !== actualBuffer.length) return false;
+  return import_node_crypto8.default.timingSafeEqual(expectedBuffer, actualBuffer);
+}
+function normalizeWebhook(payload = {}) {
+  if ("payment_id" in payload || "payment_status" in payload) {
+    return {
+      type: "payment.status_changed",
+      payment: normalizePayment(payload)
+    };
+  }
+  return {
+    type: "unknown",
+    data: null
+  };
+}
+
+// ../../node_modules/.pnpm/@nowpaymentsio+nowpayments-sdk-nodejs@0.2.1/node_modules/@nowpaymentsio/nowpayments-sdk-nodejs/dist/watcher.js
+var import_node_events = require("node:events");
+var PaymentStatusWatcher = class extends import_node_events.EventEmitter {
+  constructor({ sdk, paymentId, intervalMs = 5e3, timeoutMs, terminalStatuses = TERMINAL_PAYMENT_STATUSES } = {}) {
+    super();
+    this.sdk = sdk;
+    this.paymentId = String(paymentId);
+    this.intervalMs = Math.max(1e3, Number(intervalMs) || 5e3);
+    this.timeoutMs = timeoutMs == null ? void 0 : Number(timeoutMs);
+    this.terminalStatuses = new Set(terminalStatuses);
+    this.timer = null;
+    this.timeoutTimer = null;
+    this.stopped = false;
+    this.lastStatus = null;
+    this._changeEverFired = false;
+  }
+  start() {
+    if (this.timer || this.stopped) return this;
+    this.poll();
+    this.timer = setInterval(() => this.poll(), this.intervalMs);
+    if (this.timeoutMs && Number.isFinite(this.timeoutMs) && this.timeoutMs > 0) {
+      this.timeoutTimer = setTimeout(() => {
+        this.emit("timeout", { paymentId: this.paymentId });
+        this.stop();
+      }, this.timeoutMs);
+    }
+    return this;
+  }
+  stop() {
+    this.stopped = true;
+    if (this.timer) clearInterval(this.timer);
+    if (this.timeoutTimer) clearTimeout(this.timeoutTimer);
+    this.timer = null;
+    this.timeoutTimer = null;
+    return this;
+  }
+  async poll() {
+    try {
+      const payment = await this.sdk.getPaymentStatus(this.paymentId);
+      if (this.stopped) return;
+      this.emit("status", payment);
+      if (this.lastStatus && this.lastStatus !== payment.status) {
+        this._changeEverFired = true;
+        this.emit("change", { from: this.lastStatus, to: payment.status, payment });
+      }
+      this.lastStatus = payment.status;
+      if (this.terminalStatuses.has(payment.status)) {
+        this.emit("terminal", payment);
+        this.stop();
+      }
+    } catch (error) {
+      if (!this.stopped) this.emit("error", error);
+    }
+  }
+};
+
+// ../../node_modules/.pnpm/@nowpaymentsio+nowpayments-sdk-nodejs@0.2.1/node_modules/@nowpaymentsio/nowpayments-sdk-nodejs/dist/client.js
+var DEFAULT_JWT_REFRESH_SKEW_MS = 3e4;
+var DEFAULT_JWT_FALLBACK_TTL_MS = 4 * 60 * 1e3;
+function base64UrlDecode(value) {
+  const normalized = String(value).replace(/-/g, "+").replace(/_/g, "/");
+  const padded = normalized.padEnd(normalized.length + (4 - normalized.length % 4) % 4, "=");
+  return Buffer.from(padded, "base64").toString("utf8");
+}
+function getJwtExpiresAtMs(token) {
+  if (typeof token !== "string" || !token.includes(".")) return null;
+  const [, payload] = token.split(".");
+  if (!payload) return null;
+  try {
+    const decoded = JSON.parse(base64UrlDecode(payload));
+    if (typeof decoded.exp !== "number" || !Number.isFinite(decoded.exp)) return null;
+    return decoded.exp * 1e3;
+  } catch {
+    return null;
+  }
+}
+function normalizeRefreshSkewMs(options = {}) {
+  const value = options.jwtRefreshSkewMs ?? (options.jwtRefreshSkewSeconds == null ? void 0 : Number(options.jwtRefreshSkewSeconds) * 1e3);
+  if (value == null) return DEFAULT_JWT_REFRESH_SKEW_MS;
+  const numeric2 = Number(value);
+  return Number.isFinite(numeric2) && numeric2 >= 0 ? numeric2 : DEFAULT_JWT_REFRESH_SKEW_MS;
+}
+function toApiBoolean(value) {
+  if (value === void 0 || value === null) return void 0;
+  return Boolean(value);
+}
+function checkoutToInvoicePayload(input) {
+  return compactObject({
+    price_amount: input.amount,
+    price_currency: input.currency,
+    pay_currency: input.payCurrency ?? input.pay_currency,
+    order_id: input.orderId ?? input.order_id,
+    order_description: input.description ?? input.orderDescription ?? input.order_description,
+    ipn_callback_url: input.ipnCallbackUrl ?? input.ipn_callback_url,
+    success_url: input.successUrl ?? input.success_url,
+    cancel_url: input.cancelUrl ?? input.cancel_url,
+    partially_paid_url: input.partiallyPaidUrl ?? input.partially_paid_url,
+    is_fixed_rate: toApiBoolean(input.fixedRate ?? input.isFixedRate),
+    is_fee_paid_by_user: toApiBoolean(input.feePaidByUser ?? input.isFeePaidByUser)
+  });
+}
+function directPaymentPayload(input) {
+  return compactObject({
+    price_amount: input.amount,
+    price_currency: input.currency,
+    pay_amount: input.payAmount ?? input.pay_amount,
+    pay_currency: input.payCurrency ?? input.pay_currency,
+    ipn_callback_url: input.ipnCallbackUrl ?? input.ipn_callback_url,
+    order_id: input.orderId ?? input.order_id,
+    order_description: input.description ?? input.orderDescription ?? input.order_description,
+    payout_address: input.payoutAddress ?? input.payout_address,
+    payout_currency: input.payoutCurrency ?? input.payout_currency,
+    payout_extra_id: input.payoutExtraId ?? input.payout_extra_id,
+    is_fixed_rate: toApiBoolean(input.fixedRate ?? input.isFixedRate),
+    is_fee_paid_by_user: toApiBoolean(input.feePaidByUser ?? input.isFeePaidByUser)
+  });
+}
+function invoicePaymentPayload(input) {
+  return compactObject({
+    iid: input.invoiceId,
+    pay_currency: input.payCurrency ?? input.pay_currency,
+    purchase_id: input.purchaseId ?? input.purchase_id,
+    order_description: input.description ?? input.orderDescription ?? input.order_description,
+    customer_email: input.customerEmail ?? input.customer_email,
+    payout_address: input.payoutAddress ?? input.payout_address,
+    payout_extra_id: input.payoutExtraId ?? input.payout_extra_id,
+    payout_currency: input.payoutCurrency ?? input.payout_currency
+  });
+}
+var NowPaymentsSDK = class {
+  constructor(options = {}) {
+    this.apiKey = options.apiKey;
+    this.ipnSecret = options.ipnSecret;
+    this.jwtToken = null;
+    this.jwtExpiresAt = null;
+    this.jwtRefreshSkewMs = normalizeRefreshSkewMs(options);
+    this.jwtFallbackTtlMs = Number.isFinite(Number(options.jwtFallbackTtlMs)) && Number(options.jwtFallbackTtlMs) > 0 ? Number(options.jwtFallbackTtlMs) : DEFAULT_JWT_FALLBACK_TTL_MS;
+    this.authPromise = null;
+    this.email = options.email;
+    this.password = options.password;
+    this.defaultIpnCallbackUrl = options.ipnCallbackUrl;
+    this.defaultSuccessUrl = options.successUrl;
+    this.defaultCancelUrl = options.cancelUrl;
+    this.defaultPartiallyPaidUrl = options.partiallyPaidUrl;
+    this.setJwtToken(options.jwtToken ?? options.token ?? null);
+    this.http = new HttpClient({
+      apiKey: this.apiKey,
+      baseUrl: options.baseUrl,
+      timeoutMs: options.timeoutMs,
+      fetchImpl: options.fetch,
+      userAgent: options.userAgent,
+      getJwtToken: (jwtOptions) => this.getJwtToken(jwtOptions)
+    });
+    this.raw = this.createRawClient();
+  }
+  createRawClient() {
+    return {
+      getApiStatus: () => this.http.request("/v1/status", { apiKey: false }),
+      authenticate: (credentials) => this.http.request("/v1/auth", {
+        method: "POST",
+        apiKey: false,
+        body: credentials
+      }),
+      getEstimatedPrice: (query) => this.http.request("/v1/estimate", { query }),
+      getMinimumPaymentAmount: (query) => this.http.request("/v1/min-amount", { query }),
+      getCurrencies: (query) => this.http.request("/v1/currencies", { query }),
+      getFullCurrencies: () => this.http.request("/v1/full-currencies"),
+      getMerchantCoins: () => this.http.request("/v1/merchant/coins"),
+      getBalance: () => this.http.request("/v1/balance"),
+      createInvoice: (body) => this.http.request("/v1/invoice", { method: "POST", body }),
+      createPayment: (body, options = {}) => this.http.request("/v1/payment", {
+        method: "POST",
+        body,
+        headers: compactObject({ "origin-ip": options.originIp })
+      }),
+      createPaymentByInvoice: (body, options = {}) => this.http.request("/v1/invoice-payment", {
+        method: "POST",
+        body,
+        headers: compactObject({ "origin-ip": options.originIp })
+      }),
+      updatePaymentEstimate: (paymentId) => this.http.request(`/v1/payment/${encodeURIComponent(paymentId)}/update-merchant-estimate`, {
+        method: "POST"
+      }),
+      getPaymentStatus: (paymentId) => this.http.request(`/v1/payment/${encodeURIComponent(paymentId)}`),
+      listPayments: (query) => this.http.request("/v1/payment/", { query, bearer: true })
+    };
+  }
+  setJwtToken(token) {
+    this.jwtToken = token || null;
+    this.jwtExpiresAt = getJwtExpiresAtMs(this.jwtToken);
+    return this;
+  }
+  isJwtTokenExpired(now = Date.now()) {
+    if (!this.jwtToken) return true;
+    if (!this.jwtExpiresAt) return false;
+    return this.jwtExpiresAt <= now + this.jwtRefreshSkewMs;
+  }
+  hasAuthCredentials() {
+    return Boolean(this.email && this.password);
+  }
+  async getJwtToken(options = {}) {
+    const forceRefresh = Boolean(options.forceRefresh);
+    if (!forceRefresh && this.jwtToken && !this.isJwtTokenExpired()) {
+      return this.jwtToken;
+    }
+    if (!this.hasAuthCredentials()) {
+      return this.jwtToken;
+    }
+    return this.refreshJwtToken();
+  }
+  async refreshJwtToken() {
+    if (!this.hasAuthCredentials()) {
+      throw new ValidationError("email and password are required for automatic JWT authentication.", {
+        code: "MISSING_AUTH_CREDENTIALS"
+      });
+    }
+    if (this.authPromise) return this.authPromise;
+    this.authPromise = (async () => {
+      const response = await this.raw.authenticate({ email: this.email, password: this.password });
+      const token = response?.token;
+      if (typeof token !== "string" || token.length === 0) {
+        throw new APIError("Authentication response did not include a JWT token.", {
+          code: "INVALID_AUTH_RESPONSE",
+          details: response
+        });
+      }
+      this.setJwtToken(token);
+      if (!this.jwtExpiresAt) {
+        this.jwtExpiresAt = Date.now() + this.jwtFallbackTtlMs;
+      }
+      return this.jwtToken;
+    })();
+    try {
+      return await this.authPromise;
+    } finally {
+      this.authPromise = null;
+    }
+  }
+  async getApiStatus() {
+    return this.raw.getApiStatus();
+  }
+  async authenticate(credentials = {}) {
+    const email = credentials.email ?? this.email;
+    const password = credentials.password ?? this.password;
+    if (!email || !password) {
+      throw new ValidationError("email and password are required for authentication.", {
+        code: "MISSING_AUTH_CREDENTIALS"
+      });
+    }
+    this.email = email;
+    this.password = password;
+    return this.refreshJwtToken();
+  }
+  async estimatePrice(input) {
+    const normalized = validateEstimateInput(input);
+    const response = await this.raw.getEstimatedPrice({
+      amount: normalized.amount,
+      currency_from: normalized.fromCurrency,
+      currency_to: normalized.toCurrency
+    });
+    return normalizeEstimate(response);
+  }
+  async getMinimumPaymentAmount(input) {
+    const normalized = validateMinimumInput(input);
+    const response = await this.raw.getMinimumPaymentAmount(compactObject({
+      currency_from: normalized.fromCurrency,
+      currency_to: normalized.toCurrency,
+      fiat_equivalent: normalized.fiatEquivalent,
+      is_fixed_rate: normalized.fixedRate ?? normalized.isFixedRate,
+      is_fee_paid_by_user: normalized.feePaidByUser ?? normalized.isFeePaidByUser
+    }));
+    return normalizeMinimumAmount(response);
+  }
+  async getAvailableCurrencies(options = {}) {
+    const response = await this.raw.getFullCurrencies();
+    const currencies = normalizeCurrencies(response);
+    if (options.onlyEnabled === false) return currencies;
+    return currencies.filter((c) => c.enabled === true || c.enable === true);
+  }
+  /**
+   * Returns currencies available for fixed-rate payments.
+   * Backed by GET /v1/currencies?fixed_rate=true.
+   * For the full enriched list, use getAvailableCurrencies().
+   */
+  async getFixedRateCurrencies() {
+    const response = await this.raw.getCurrencies({ fixed_rate: true });
+    return normalizeCurrencies(response);
+  }
+  /**
+   * Returns only the currencies enabled for this specific merchant account.
+   * Backed by GET /v1/merchant/coins.
+   */
+  async getMerchantCurrencies() {
+    const response = await this.raw.getMerchantCoins();
+    return normalizeCurrencies(response);
+  }
+  async createInvoice(input) {
+    const normalized = validateCheckoutInput(this.applyDefaults(input));
+    const response = await this.raw.createInvoice(checkoutToInvoicePayload(normalized));
+    return normalizeInvoice(response);
+  }
+  async createPaymentFromInvoice(input) {
+    const normalized = validateInvoicePaymentInput(input);
+    const response = await this.raw.createPaymentByInvoice(invoicePaymentPayload(normalized), {
+      originIp: input.originIp
+    });
+    return normalizePayment(response);
+  }
+  async createDirectPayment(input) {
+    const normalized = validateDirectPaymentInput(this.applyDefaults(input));
+    const { estimate, minimum } = await this.preflightPayment(normalized);
+    const response = await this.raw.createPayment(directPaymentPayload(normalized), {
+      originIp: normalized.originIp
+    });
+    const payment = normalizePayment(response);
+    payment.estimate = estimate;
+    payment.minimum = minimum;
+    return payment;
+  }
+  async createPayment(input) {
+    return this.createCheckout(input);
+  }
+  async createCheckout(input) {
+    const normalized = validateCheckoutInput(this.applyDefaults(input));
+    const { estimate, minimum } = await this.preflightPayment(normalized);
+    const invoice = await this.raw.createInvoice(checkoutToInvoicePayload(normalized));
+    return normalizeCheckoutSession({ invoice, estimate, minimum });
+  }
+  async createHostedCheckout(input) {
+    return this.createCheckout(input);
+  }
+  async refreshPaymentEstimate(paymentId) {
+    const id = validatePaymentId(paymentId);
+    const response = await this.raw.updatePaymentEstimate(id);
+    return normalizePayment({ payment_id: id, ...response });
+  }
+  async getPaymentStatus(paymentId) {
+    const id = validatePaymentId(paymentId);
+    const response = await this.raw.getPaymentStatus(id);
+    return normalizePayment(response);
+  }
+  async listPayments(query = {}) {
+    const response = await this.raw.listPayments(validatePaymentsListQuery(query));
+    return normalizePaymentsList(response);
+  }
+  watchPaymentStatus(paymentId, options = {}) {
+    const id = validatePaymentId(paymentId);
+    return new PaymentStatusWatcher({ sdk: this, paymentId: id, ...options }).start();
+  }
+  onPaymentStatusChange(paymentId, callback, options = {}) {
+    if (typeof callback !== "function") {
+      throw new ValidationError("callback must be a function.", { code: "INVALID_CALLBACK" });
+    }
+    const watcher = this.watchPaymentStatus(paymentId, options);
+    watcher.on("change", callback);
+    watcher.on("terminal", (payment) => {
+      if (!watcher._changeEverFired) {
+        callback({ from: null, to: payment.status, payment });
+      }
+    });
+    return () => watcher.stop();
+  }
+  verifyWebhookSignature(payload, signature, secret = this.ipnSecret) {
+    return verifyWebhookSignature(payload, signature, secret);
+  }
+  parseWebhook(payload, signature, options = {}) {
+    const secret = options.secret ?? this.ipnSecret;
+    if (options.verify !== false) {
+      const valid = this.verifyWebhookSignature(payload, signature, secret);
+      if (!valid) {
+        throw new ValidationError("Invalid NOWPayments webhook signature.", {
+          code: "INVALID_WEBHOOK_SIGNATURE"
+        });
+      }
+    }
+    return normalizeWebhook(payload);
+  }
+  applyDefaults(input = {}) {
+    return {
+      ...input,
+      ipnCallbackUrl: input.ipnCallbackUrl ?? input.ipn_callback_url ?? this.defaultIpnCallbackUrl,
+      successUrl: input.successUrl ?? input.success_url ?? this.defaultSuccessUrl,
+      cancelUrl: input.cancelUrl ?? input.cancel_url ?? this.defaultCancelUrl,
+      partiallyPaidUrl: input.partiallyPaidUrl ?? input.partially_paid_url ?? this.defaultPartiallyPaidUrl
+    };
+  }
+  async preflightPayment(input) {
+    if (input.skipPreflight || !input.payCurrency) {
+      return { estimate: null, minimum: null };
+    }
+    const estimate = await this.estimatePrice({
+      amount: input.amount,
+      fromCurrency: input.currency,
+      toCurrency: input.payCurrency
+    });
+    const minimum = await this.getMinimumPaymentAmount({
+      fromCurrency: input.payCurrency,
+      toCurrency: input.payoutCurrency,
+      fixedRate: input.fixedRate ?? input.isFixedRate,
+      feePaidByUser: input.feePaidByUser ?? input.isFeePaidByUser
+    });
+    if (typeof estimate.estimated_amount === "number" && typeof minimum.min_amount === "number" && estimate.estimated_amount < minimum.min_amount) {
+      throw new ValidationError("Payment amount is below the minimum amount for the selected currency pair.", {
+        code: "BELOW_MINIMUM_PAYMENT_AMOUNT",
+        details: {
+          estimatedPayAmount: estimate.estimated_amount,
+          minimumPayAmount: minimum.min_amount,
+          payCurrency: input.payCurrency,
+          priceAmount: input.amount,
+          priceCurrency: input.currency
+        }
+      });
+    }
+    return { estimate, minimum };
+  }
+};
+
+// src/lib/nowpayments.ts
+async function getNowPaymentsApiKey() {
+  const envKey = process.env.NOWPAYMENTS_API_KEY;
+  if (envKey) return envKey;
+  return getSetting("nowpayments_api_key", "").then((v) => v || null);
+}
+async function getNowPaymentsIpnSecret() {
+  const envSecret = process.env.NOWPAYMENTS_IPN_SECRET;
+  if (envSecret) return envSecret;
+  return getSetting("nowpayments_ipn_secret", "").then((v) => v || null);
+}
+async function getNowPaymentsSDK(ipnCallbackUrl) {
+  const apiKey = await getNowPaymentsApiKey();
+  if (!apiKey) return null;
+  const ipnSecret = await getNowPaymentsIpnSecret();
+  return new NowPaymentsSDK({
+    apiKey,
+    ipnSecret: ipnSecret ?? void 0,
+    ipnCallbackUrl: ipnCallbackUrl ?? void 0
+  });
+}
+async function getFcfaToUsdRate() {
+  const raw = await getSetting("fcfa_to_usd_rate", "610");
+  const rate = parseFloat(raw);
+  return !isNaN(rate) && rate > 0 ? rate : 610;
+}
+function fcfaToUsd(fcfa, rate) {
+  return Math.round(fcfa / rate * 100) / 100;
+}
+var CRYPTO_NETWORKS = {
+  trc20: { currency: "usdttrc20", label: "USDT \xB7 TRC-20", chain: "Tron", icon: "TRX" },
+  erc20: { currency: "usdterc20", label: "USDT \xB7 ERC-20", chain: "Ethereum", icon: "ETH" },
+  bep20: { currency: "usdtbsc", label: "USDT \xB7 BEP-20", chain: "BNB Smart Chain", icon: "BNB" }
+};
+
+// src/routes/crypto-wallet.ts
+init_src();
+var import_node_crypto9 = require("node:crypto");
 var router11 = (0, import_express12.Router)();
-router11.get(
+async function getCryptoWebhookUrl() {
+  if (process.env.NOWPAYMENTS_WEBHOOK_URL) return process.env.NOWPAYMENTS_WEBHOOK_URL;
+  const val = await getSetting("nowpayments_webhook_url", "");
+  if (val) return val;
+  const domain = process.env.REPLIT_DOMAINS?.split(",")[0]?.trim() || process.env.REPLIT_DEV_DOMAIN || process.env.APP_URL?.replace(/^https?:\/\//, "");
+  return domain ? `https://${domain}/api/wallet/crypto/webhook` : "https://simix.site/api/wallet/crypto/webhook";
+}
+var CRYPTO_PREFIX = "crypto_";
+router11.post("/wallet/crypto/initiate", requireAuth, async (req, res) => {
+  const user = req.user;
+  const { amountFcfa, network } = req.body;
+  if (typeof amountFcfa !== "number" || amountFcfa <= 0) {
+    res.status(400).json({ error: "Montant invalide." });
+    return;
+  }
+  const net = typeof network === "string" ? network : "trc20";
+  const netConfig = CRYPTO_NETWORKS[net];
+  if (!netConfig) {
+    res.status(400).json({ error: "R\xE9seau crypto non support\xE9." });
+    return;
+  }
+  const sdk = await getNowPaymentsSDK(await getCryptoWebhookUrl());
+  if (!sdk) {
+    res.status(503).json({ error: "Le d\xE9p\xF4t crypto est temporairement indisponible. Contactez le support." });
+    return;
+  }
+  const rate = await getFcfaToUsdRate();
+  const amountUsd = fcfaToUsd(amountFcfa, rate);
+  if (amountUsd < 2) {
+    res.status(400).json({ error: `Montant minimum de d\xE9p\xF4t crypto : ${Math.ceil(2 * rate)} FCFA.` });
+    return;
+  }
+  const orderId = (0, import_node_crypto9.randomUUID)();
+  let payment;
+  try {
+    payment = await sdk.createDirectPayment({
+      amount: amountUsd,
+      currency: "usd",
+      payCurrency: netConfig.currency,
+      orderId,
+      description: `Recharge Simix ${amountFcfa.toLocaleString("fr-FR")} FCFA`
+    });
+  } catch (e2) {
+    const msg = e2.message ?? "Erreur inconnue";
+    logger.error({ error: msg, userId: user.id, amountUsd, net }, "[Crypto] createDirectPayment failed");
+    res.status(502).json({ error: `Impossible de cr\xE9er l'adresse de d\xE9p\xF4t : ${msg}` });
+    return;
+  }
+  const paymentId = String(payment.payment_id ?? "");
+  const payAddress = String(payment.pay_address ?? "");
+  const payAmount = Number(payment.pay_amount ?? 0);
+  const expiresAt = payment.expiration_estimate_date ? new Date(payment.expiration_estimate_date) : new Date(Date.now() + 30 * 60 * 1e3);
+  const externalDepositId = `${CRYPTO_PREFIX}${paymentId}`;
+  const [tx] = await db.insert(transactionsTable).values({
+    userId: user.id,
+    type: "recharge",
+    amount: amountFcfa,
+    status: "pending",
+    method: `Crypto USDT (${netConfig.chain})`,
+    description: `Recharge crypto USDT \xB7 ${netConfig.chain} \u2014 ${amountFcfa.toLocaleString("fr-FR")} FCFA`,
+    externalDepositId,
+    gatewayMeta: JSON.stringify({
+      gateway: "nowpayments",
+      orderId,
+      paymentId,
+      payAddress,
+      payAmount,
+      network: net,
+      currency: netConfig.currency,
+      amountUsd,
+      fcfaRate: rate,
+      expiresAt: expiresAt.toISOString()
+    })
+  }).returning();
+  logger.info({ paymentId, userId: user.id, amountFcfa, amountUsd, net, payAddress }, "[Crypto] Deposit initiated");
+  res.json({
+    paymentId,
+    orderId,
+    payAddress,
+    payAmount,
+    payAmountFormatted: `${payAmount.toFixed(6)} USDT`,
+    network: net,
+    networkLabel: netConfig.label,
+    chain: netConfig.chain,
+    amountFcfa,
+    amountUsd,
+    expiresAt: expiresAt.toISOString(),
+    txId: tx.id
+  });
+});
+router11.get("/wallet/crypto/:paymentId/status", requireAuth, async (req, res) => {
+  const user = req.user;
+  const { paymentId } = req.params;
+  const externalDepositId = `${CRYPTO_PREFIX}${paymentId}`;
+  const [tx] = await db.select().from(transactionsTable).where(and(
+    eq(transactionsTable.externalDepositId, externalDepositId),
+    eq(transactionsTable.userId, user.id)
+  )).limit(1);
+  if (!tx) {
+    res.status(404).json({ error: "Transaction introuvable." });
+    return;
+  }
+  if (tx.status !== "pending") {
+    res.json({ status: tx.status, amountFcfa: tx.amount, paymentId });
+    return;
+  }
+  const sdk = await getNowPaymentsSDK();
+  if (!sdk) {
+    res.json({ status: "pending", amountFcfa: tx.amount, paymentId });
+    return;
+  }
+  let sdkStatus = "pending";
+  try {
+    const p = await sdk.getPaymentStatus(paymentId);
+    sdkStatus = p.status;
+    if (sdkStatus === "paid") {
+      const [justCompleted] = await db.update(transactionsTable).set({ status: "completed" }).where(and(
+        eq(transactionsTable.id, tx.id),
+        eq(transactionsTable.status, "pending")
+      )).returning();
+      if (justCompleted) {
+        await db.update(usersTable).set({ balance: sql`${usersTable.balance} + ${tx.amount}` }).where(eq(usersTable.id, user.id));
+        await db.insert(notificationsTable).values({
+          userId: user.id,
+          title: "Recharge confirm\xE9e \u2713",
+          body: `${tx.amount.toLocaleString("fr-FR")} FCFA ont \xE9t\xE9 cr\xE9dit\xE9s via crypto.`,
+          type: "deposit_success"
+        });
+        broadcastNotification(user.id, {
+          title: "Recharge confirm\xE9e \u2713",
+          body: `${tx.amount.toLocaleString("fr-FR")} FCFA cr\xE9dit\xE9s.`,
+          type: "deposit_success"
+        });
+        logger.info({ paymentId, userId: user.id, amount: tx.amount }, "[Crypto] Balance credited via polling");
+      }
+    } else if (sdkStatus === "failed" || sdkStatus === "expired" || sdkStatus === "cancelled") {
+      await db.update(transactionsTable).set({ status: "failed" }).where(and(eq(transactionsTable.id, tx.id), eq(transactionsTable.status, "pending")));
+    }
+  } catch (e2) {
+    logger.warn({ error: e2.message, paymentId }, "[Crypto] Status poll failed");
+  }
+  res.json({ status: sdkStatus, amountFcfa: tx.amount, paymentId });
+});
+router11.post("/wallet/crypto/webhook", async (req, res) => {
+  const sig = req.headers["x-nowpayments-sig"];
+  if (!sig) {
+    logger.warn("[Crypto Webhook] Missing signature header");
+    res.status(400).json({ ok: false, error: "Missing signature" });
+    return;
+  }
+  const sdk = await getNowPaymentsSDK();
+  if (!sdk) {
+    logger.error("[Crypto Webhook] SDK not configured");
+    res.status(500).json({ ok: false });
+    return;
+  }
+  let event;
+  try {
+    event = sdk.parseWebhook(req.body, sig);
+  } catch (e2) {
+    logger.warn({ error: e2.message }, "[Crypto Webhook] Invalid signature");
+    res.status(400).json({ ok: false, error: "Invalid signature" });
+    return;
+  }
+  if (event.type !== "payment.status_changed") {
+    res.json({ ok: true });
+    return;
+  }
+  const payment = event.payment;
+  const paymentId = String(payment.payment_id ?? "");
+  const orderId = String(payment.order_id ?? "");
+  const sdkStatus = payment.status;
+  logger.info({ paymentId, orderId, sdkStatus }, "[Crypto Webhook] Status update received");
+  if (sdkStatus !== "paid") {
+    if (sdkStatus === "failed" || sdkStatus === "expired" || sdkStatus === "cancelled") {
+      const externalDepositId2 = `${CRYPTO_PREFIX}${paymentId}`;
+      await db.update(transactionsTable).set({ status: "failed" }).where(and(
+        eq(transactionsTable.externalDepositId, externalDepositId2),
+        eq(transactionsTable.status, "pending")
+      ));
+    }
+    res.json({ ok: true });
+    return;
+  }
+  const externalDepositId = `${CRYPTO_PREFIX}${paymentId}`;
+  const [tx] = await db.select().from(transactionsTable).where(eq(transactionsTable.externalDepositId, externalDepositId)).limit(1);
+  if (!tx) {
+    logger.warn({ paymentId, externalDepositId }, "[Crypto Webhook] Transaction not found");
+    res.json({ ok: true });
+    return;
+  }
+  const [justCompleted] = await db.update(transactionsTable).set({ status: "completed" }).where(and(
+    eq(transactionsTable.id, tx.id),
+    eq(transactionsTable.status, "pending")
+  )).returning();
+  if (justCompleted) {
+    await db.update(usersTable).set({ balance: sql`${usersTable.balance} + ${tx.amount}` }).where(eq(usersTable.id, tx.userId));
+    await db.insert(notificationsTable).values({
+      userId: tx.userId,
+      title: "Recharge confirm\xE9e \u2713",
+      body: `${tx.amount.toLocaleString("fr-FR")} FCFA ont \xE9t\xE9 cr\xE9dit\xE9s via crypto.`,
+      type: "deposit_success"
+    });
+    broadcastNotification(tx.userId, {
+      title: "Recharge confirm\xE9e \u2713",
+      body: `${tx.amount.toLocaleString("fr-FR")} FCFA cr\xE9dit\xE9s.`,
+      type: "deposit_success"
+    });
+    logger.info({ paymentId, userId: tx.userId, amount: tx.amount }, "[Crypto Webhook] Balance credited via webhook");
+  } else {
+    logger.info({ paymentId }, "[Crypto Webhook] Already processed \u2014 skipping double credit");
+  }
+  res.json({ ok: true });
+});
+var crypto_wallet_default = router11;
+
+// src/routes/dashboard.ts
+var import_express13 = __toESM(require_express2(), 1);
+init_drizzle_orm();
+init_src();
+var router12 = (0, import_express13.Router)();
+router12.get(
   "/dashboard/summary",
   requireAuth,
   async (req, res) => {
@@ -114940,16 +116370,16 @@ router11.get(
     });
   }
 );
-var dashboard_default = router11;
+var dashboard_default = router12;
 
 // src/routes/admin.ts
-var import_express13 = __toESM(require_express2(), 1);
+var import_express14 = __toESM(require_express2(), 1);
 init_drizzle_orm();
 init_src();
 init_fivesim();
 init_logger2();
-var router12 = (0, import_express13.Router)();
-router12.use(requireAdminJwt);
+var router13 = (0, import_express14.Router)();
+router13.use(requireAdminJwt);
 function requireAdmin2(req, res, next) {
   if (req.adminPayload) {
     next();
@@ -114975,7 +116405,7 @@ async function logAdminAction(adminId3, action, ip, targetType, targetId, detail
     logger.debug({ err: e2.message, action }, "[admin-log] Non-critical: failed to write admin log");
   }
 }
-router12.get("/admin/stats", requireAdmin2, async (req, res) => {
+router13.get("/admin/stats", requireAdmin2, async (req, res) => {
   const now = /* @__PURE__ */ new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1e3);
@@ -115015,7 +116445,7 @@ router12.get("/admin/stats", requireAdmin2, async (req, res) => {
     activeProviders: activeProviders?.c ?? 0
   });
 });
-router12.get("/admin/users", requireAdmin2, async (req, res) => {
+router13.get("/admin/users", requireAdmin2, async (req, res) => {
   const exportAll = req.query.export === "true";
   const limit = exportAll ? 5e3 : Math.min(Number(req.query.limit) || 50, 200);
   const offset = exportAll ? 0 : Number(req.query.offset) || 0;
@@ -115064,7 +116494,7 @@ router12.get("/admin/users", requireAdmin2, async (req, res) => {
   const [totalRow] = await db.select({ c: count() }).from(usersTable).where(where);
   res.json({ users: rows, total: totalRow?.c ?? 0 });
 });
-router12.get("/admin/users/:userId", requireAdmin2, async (req, res) => {
+router13.get("/admin/users/:userId", requireAdmin2, async (req, res) => {
   const userId = String(req.params.userId);
   const [user] = await db.select().from(usersTable).where(eq(usersTable.id, userId)).limit(1);
   if (!user) {
@@ -115077,7 +116507,7 @@ router12.get("/admin/users/:userId", requireAdmin2, async (req, res) => {
   const { passwordHash, ...safeUser } = user;
   res.json({ user: safeUser, numbers, transactions, securityEvents });
 });
-router12.post("/admin/users/:userId/block", requireAdmin2, async (req, res) => {
+router13.post("/admin/users/:userId/block", requireAdmin2, async (req, res) => {
   const userId = String(req.params.userId);
   const reason = String(req.body?.reason || "Bloqu\xE9 par un administrateur");
   await blockUser(userId, reason);
@@ -115086,20 +116516,20 @@ router12.post("/admin/users/:userId/block", requireAdmin2, async (req, res) => {
   logger.warn({ userId, adminId: req.user.id, reason }, "[ADMIN] User blocked");
   res.json({ success: true, message: "Utilisateur bloqu\xE9" });
 });
-router12.post("/admin/users/:userId/unblock", requireAdmin2, async (req, res) => {
+router13.post("/admin/users/:userId/unblock", requireAdmin2, async (req, res) => {
   const userId = String(req.params.userId);
   await db.update(usersTable).set({ status: "Standard", blockedReason: null }).where(eq(usersTable.id, userId));
   await logSecurityEvent({ userId, eventType: "admin_unblock_user", severity: "low", ip: req.ip, details: { adminId: req.user.id } });
   await logAdminAction(adminId2(req), "unblock_user", req.ip, "user", userId);
   res.json({ success: true, message: "Utilisateur d\xE9bloqu\xE9" });
 });
-router12.post("/admin/users/:userId/promote", requireAdmin2, async (req, res) => {
+router13.post("/admin/users/:userId/promote", requireAdmin2, async (req, res) => {
   const userId = String(req.params.userId);
   await db.update(usersTable).set({ isAdmin: true }).where(eq(usersTable.id, userId));
   await logAdminAction(adminId2(req), "promote_admin", req.ip, "user", userId);
   res.json({ success: true });
 });
-router12.post("/admin/users/:userId/demote", requireAdmin2, async (req, res) => {
+router13.post("/admin/users/:userId/demote", requireAdmin2, async (req, res) => {
   const userId = String(req.params.userId);
   if (userId === req.user.id) {
     res.status(400).json({ error: "Impossible de se r\xE9trograder soi-m\xEAme" });
@@ -115109,7 +116539,7 @@ router12.post("/admin/users/:userId/demote", requireAdmin2, async (req, res) => 
   await logAdminAction(adminId2(req), "demote_admin", req.ip, "user", userId);
   res.json({ success: true });
 });
-router12.post("/admin/users/:userId/adjust-balance", requireAdmin2, async (req, res) => {
+router13.post("/admin/users/:userId/adjust-balance", requireAdmin2, async (req, res) => {
   const userId = String(req.params.userId);
   const amount = Number(req.body?.amount);
   const reason = String(req.body?.reason || "Ajustement administrateur");
@@ -115150,7 +116580,7 @@ router12.post("/admin/users/:userId/adjust-balance", requireAdmin2, async (req, 
   }
   res.json({ success: true, newBalance });
 });
-router12.post("/admin/users/:userId/set-limits", requireAdmin2, async (req, res) => {
+router13.post("/admin/users/:userId/set-limits", requireAdmin2, async (req, res) => {
   const userId = String(req.params.userId);
   const { maxPurchasesPerMin, maxBalance, isRestricted } = req.body;
   const updates = {};
@@ -115170,7 +116600,7 @@ router12.post("/admin/users/:userId/set-limits", requireAdmin2, async (req, res)
   await logAdminAction(adminId2(req), "set_user_limits", req.ip, "user", userId, updates);
   res.json({ success: true, limits: updates });
 });
-router12.post("/admin/users/:userId/reset-password", requireAdmin2, async (req, res) => {
+router13.post("/admin/users/:userId/reset-password", requireAdmin2, async (req, res) => {
   const userId = String(req.params.userId);
   const [user] = await db.select({ id: usersTable.id, fullName: usersTable.fullName }).from(usersTable).where(eq(usersTable.id, userId)).limit(1);
   if (!user) {
@@ -115185,7 +116615,7 @@ router12.post("/admin/users/:userId/reset-password", requireAdmin2, async (req, 
   logger.warn({ userId, adminId: req.user.id }, "[ADMIN] User password reset");
   res.json({ success: true, newPassword, message: `Le mot de passe de ${user.fullName} a \xE9t\xE9 r\xE9initialis\xE9` });
 });
-router12.post("/admin/users/:userId/force-logout", requireAdmin2, async (req, res) => {
+router13.post("/admin/users/:userId/force-logout", requireAdmin2, async (req, res) => {
   const userId = String(req.params.userId);
   const [user] = await db.select({ id: usersTable.id, fullName: usersTable.fullName }).from(usersTable).where(eq(usersTable.id, userId)).limit(1);
   if (!user) {
@@ -115196,7 +116626,7 @@ router12.post("/admin/users/:userId/force-logout", requireAdmin2, async (req, re
   await logAdminAction(adminId2(req), "force_logout", req.ip, "user", userId);
   res.json({ success: true, message: `${user.fullName} a \xE9t\xE9 d\xE9connect\xE9 de force` });
 });
-router12.delete("/admin/users/:userId", requireAdmin2, async (req, res) => {
+router13.delete("/admin/users/:userId", requireAdmin2, async (req, res) => {
   const userId = String(req.params.userId);
   if (userId === req.user.id) {
     res.status(400).json({ error: "Impossible de supprimer votre propre compte" });
@@ -115206,11 +116636,11 @@ router12.delete("/admin/users/:userId", requireAdmin2, async (req, res) => {
   await logAdminAction(adminId2(req), "delete_user", req.ip, "user", userId);
   res.json({ success: true });
 });
-router12.get("/admin/services", requireAdmin2, async (_req, res) => {
+router13.get("/admin/services", requireAdmin2, async (_req, res) => {
   const rows = await db.select().from(servicesTable).orderBy(servicesTable.sortOrder, servicesTable.name);
   res.json(rows);
 });
-router12.put("/admin/services/:serviceId", requireAdmin2, async (req, res) => {
+router13.put("/admin/services/:serviceId", requireAdmin2, async (req, res) => {
   const serviceId = String(req.params.serviceId);
   const { name: name2, price, providerPrice, margin, available, color, category, popular, scope, enabled, logoUrl } = req.body;
   const updates = {};
@@ -115243,7 +116673,7 @@ router12.put("/admin/services/:serviceId", requireAdmin2, async (req, res) => {
   await logAdminAction(adminId2(req), "update_service", req.ip, "service", serviceId, updates);
   res.json({ success: true });
 });
-router12.post("/admin/services/bulk-enable", requireAdmin2, async (req, res) => {
+router13.post("/admin/services/bulk-enable", requireAdmin2, async (req, res) => {
   const { slugs, markPopular } = req.body;
   if (!Array.isArray(slugs) || slugs.length === 0) {
     res.status(400).json({ error: "slugs[] requis" });
@@ -115260,7 +116690,7 @@ router12.post("/admin/services/bulk-enable", requireAdmin2, async (req, res) => 
   await logAdminAction(adminId2(req), "bulk_enable_services", req.ip, "service", "bulk", { count: enabled, slugs });
   res.json({ enabled, message: `${enabled} services activ\xE9s` });
 });
-router12.post("/admin/services/bulk-disable", requireAdmin2, async (req, res) => {
+router13.post("/admin/services/bulk-disable", requireAdmin2, async (req, res) => {
   const { slugs } = req.body;
   if (!Array.isArray(slugs) || slugs.length === 0) {
     res.status(400).json({ error: "slugs[] requis" });
@@ -115272,7 +116702,7 @@ router12.post("/admin/services/bulk-disable", requireAdmin2, async (req, res) =>
   await logAdminAction(adminId2(req), "bulk_disable_services", req.ip, "service", "bulk", { count: slugs.length });
   res.json({ disabled: slugs.length, message: `${slugs.length} services d\xE9sactiv\xE9s` });
 });
-router12.post("/admin/services", requireAdmin2, async (req, res) => {
+router13.post("/admin/services", requireAdmin2, async (req, res) => {
   const { name: name2, slug, category, color, price, providerPrice, margin, available, popular, scope, enabled } = req.body;
   if (!name2 || !slug) {
     res.status(400).json({ error: "name et slug sont requis" });
@@ -115297,7 +116727,7 @@ router12.post("/admin/services", requireAdmin2, async (req, res) => {
   await logAdminAction(adminId2(req), "create_service", req.ip, "service", row.id, { name: name2, slug });
   res.status(201).json(row);
 });
-router12.delete("/admin/services/:serviceId", requireAdmin2, async (req, res) => {
+router13.delete("/admin/services/:serviceId", requireAdmin2, async (req, res) => {
   const serviceId = String(req.params.serviceId);
   await db.delete(servicesTable).where(eq(servicesTable.id, serviceId));
   await logAdminAction(adminId2(req), "delete_service", req.ip, "service", serviceId, {});
@@ -115352,12 +116782,12 @@ var SUBSAHARAN_AFRICA_CODES_ADMIN = [
   "ER",
   "CD"
 ];
-router12.get("/admin/countries", requireAdmin2, async (_req, res) => {
+router13.get("/admin/countries", requireAdmin2, async (_req, res) => {
   const { inArray: inArrayFn } = await Promise.resolve().then(() => (init_drizzle_orm(), drizzle_orm_exports));
   const rows = await db.select().from(countriesTable).where(inArrayFn(countriesTable.code, SUBSAHARAN_AFRICA_CODES_ADMIN)).orderBy(countriesTable.sortOrder, countriesTable.name);
   res.json(rows);
 });
-router12.put("/admin/countries/:countryId", requireAdmin2, async (req, res) => {
+router13.put("/admin/countries/:countryId", requireAdmin2, async (req, res) => {
   const countryId = String(req.params.countryId);
   const { price, available, popular, enabled, numbersEnabled } = req.body;
   const updates = {};
@@ -115375,7 +116805,7 @@ router12.put("/admin/countries/:countryId", requireAdmin2, async (req, res) => {
   const [updated] = await db.select().from(countriesTable).where(eq(countriesTable.id, countryId)).limit(1);
   res.json(updated);
 });
-router12.post("/admin/countries/seed-africa", requireAdmin2, async (req, res) => {
+router13.post("/admin/countries/seed-africa", requireAdmin2, async (req, res) => {
   const AFRICAN_COUNTRIES = [
     { code: "CI", name: "C\xF4te d'Ivoire", dialCode: "+225", popular: true, sortOrder: 1 },
     { code: "SN", name: "S\xE9n\xE9gal", dialCode: "+221", popular: true, sortOrder: 2 },
@@ -115465,7 +116895,7 @@ router12.post("/admin/countries/seed-africa", requireAdmin2, async (req, res) =>
   await logAdminAction(adminId2(req), "seed_african_countries", req.ip, "countries", "bulk", { inserted, updated: skipped });
   res.json({ success: true, inserted, updated: skipped, total: AFRICAN_COUNTRIES.length });
 });
-router12.post("/admin/countries/seed-world", requireAdmin2, async (req, res) => {
+router13.post("/admin/countries/seed-world", requireAdmin2, async (req, res) => {
   const WORLD_COUNTRIES = [
     // Europe
     { code: "AD", name: "Andorre", dialCode: "+376", popular: false, sortOrder: 900 },
@@ -115704,7 +117134,7 @@ router12.post("/admin/countries/seed-world", requireAdmin2, async (req, res) => 
   await logAdminAction(adminId2(req), "seed_world_countries", req.ip, "countries", "bulk", { inserted, updated, total });
   res.json({ success: true, inserted, updated, total: Number(total) });
 });
-router12.post("/admin/countries/sync-5sim", requireAdmin2, async (req, res) => {
+router13.post("/admin/countries/sync-5sim", requireAdmin2, async (req, res) => {
   try {
     const { syncFiveSimCountries: syncFiveSimCountries2 } = await Promise.resolve().then(() => (init_fivesim_sync(), fivesim_sync_exports));
     const result = await syncFiveSimCountries2();
@@ -115714,11 +117144,11 @@ router12.post("/admin/countries/sync-5sim", requireAdmin2, async (req, res) => {
     res.status(503).json({ error: e2.message });
   }
 });
-router12.get("/admin/payment-methods", requireAdmin2, async (_req, res) => {
+router13.get("/admin/payment-methods", requireAdmin2, async (_req, res) => {
   const rows = await db.select().from(paymentMethodsTable).orderBy(paymentMethodsTable.sortOrder, paymentMethodsTable.name);
   res.json(rows);
 });
-router12.post("/admin/payment-methods", requireAdmin2, async (req, res) => {
+router13.post("/admin/payment-methods", requireAdmin2, async (req, res) => {
   const { name: name2, slug, description, color, logoUrl, recommended, sortOrder } = req.body;
   if (!name2 || !slug) {
     res.status(400).json({ error: "Nom et slug requis" });
@@ -115741,7 +117171,7 @@ router12.post("/admin/payment-methods", requireAdmin2, async (req, res) => {
   await logAdminAction(adminId2(req), "create_payment_method", req.ip, "payment_method", method.id, { name: name2, slug });
   res.status(201).json(method);
 });
-router12.put("/admin/payment-methods/:methodId", requireAdmin2, async (req, res) => {
+router13.put("/admin/payment-methods/:methodId", requireAdmin2, async (req, res) => {
   const methodId = String(req.params.methodId);
   const { name: name2, description, color, logoUrl, recommended, sortOrder } = req.body;
   const updates = {};
@@ -115759,13 +117189,13 @@ router12.put("/admin/payment-methods/:methodId", requireAdmin2, async (req, res)
   await logAdminAction(adminId2(req), "update_payment_method", req.ip, "payment_method", methodId, updates);
   res.json({ success: true });
 });
-router12.delete("/admin/payment-methods/:methodId", requireAdmin2, async (req, res) => {
+router13.delete("/admin/payment-methods/:methodId", requireAdmin2, async (req, res) => {
   const methodId = String(req.params.methodId);
   await db.delete(paymentMethodsTable).where(eq(paymentMethodsTable.id, methodId));
   await logAdminAction(adminId2(req), "delete_payment_method", req.ip, "payment_method", methodId);
   res.json({ success: true });
 });
-router12.get("/admin/payment-configs", requireAdmin2, async (_req, res) => {
+router13.get("/admin/payment-configs", requireAdmin2, async (_req, res) => {
   const configs = await db.select().from(countryPaymentConfigsTable);
   const countries = await db.select({
     code: countriesTable.code,
@@ -115775,7 +117205,7 @@ router12.get("/admin/payment-configs", requireAdmin2, async (_req, res) => {
   const methods = await db.select().from(paymentMethodsTable).orderBy(paymentMethodsTable.sortOrder);
   res.json({ configs, countries, methods });
 });
-router12.put("/admin/payment-configs", requireAdmin2, async (req, res) => {
+router13.put("/admin/payment-configs", requireAdmin2, async (req, res) => {
   const { countryCode, methodSlug, enabled, minDeposit, feePercent } = req.body;
   if (!countryCode || !methodSlug) {
     res.status(400).json({ error: "countryCode et methodSlug sont requis" });
@@ -115795,7 +117225,7 @@ router12.put("/admin/payment-configs", requireAdmin2, async (req, res) => {
   await logAdminAction(adminId2(req), "update_payment_config", req.ip, "payment_config", void 0, values);
   res.json({ success: true });
 });
-router12.post("/admin/payment-configs/add-country", requireAdmin2, async (req, res) => {
+router13.post("/admin/payment-configs/add-country", requireAdmin2, async (req, res) => {
   const { countryCode } = req.body;
   if (!countryCode) {
     res.status(400).json({ error: "countryCode est requis" });
@@ -115815,7 +117245,7 @@ router12.post("/admin/payment-configs/add-country", requireAdmin2, async (req, r
   await logAdminAction(adminId2(req), "add_deposit_country", req.ip, "payment_config", String(countryCode), { inserted, total: methods.length });
   res.json({ success: true, country: country[0], inserted, total: methods.length });
 });
-router12.get("/admin/orders", requireAdmin2, async (req, res) => {
+router13.get("/admin/orders", requireAdmin2, async (req, res) => {
   const exportAll = req.query.export === "true";
   const limit = exportAll ? 5e3 : Math.min(Number(req.query.limit) || 50, 200);
   const offset = exportAll ? 0 : Number(req.query.offset) || 0;
@@ -115838,7 +117268,7 @@ router12.get("/admin/orders", requireAdmin2, async (req, res) => {
   const [totalRow] = await db.select({ c: count() }).from(virtualNumbersTable).where(where);
   res.json({ orders: rows, total: totalRow?.c ?? 0 });
 });
-router12.post("/admin/orders/:orderId/cancel", requireAdmin2, async (req, res) => {
+router13.post("/admin/orders/:orderId/cancel", requireAdmin2, async (req, res) => {
   const orderId = String(req.params.orderId);
   const [order] = await db.select().from(virtualNumbersTable).where(eq(virtualNumbersTable.id, orderId)).limit(1);
   if (!order) {
@@ -115857,7 +117287,7 @@ router12.post("/admin/orders/:orderId/cancel", requireAdmin2, async (req, res) =
   await logAdminAction(adminId2(req), "cancel_order", req.ip, "order", orderId, { phoneNumber: order.phoneNumber, price: order.price });
   res.json({ success: true, message: "Commande annul\xE9e et rembours\xE9e" });
 });
-router12.get("/admin/analytics", requireAdmin2, async (req, res) => {
+router13.get("/admin/analytics", requireAdmin2, async (req, res) => {
   const days = Math.min(Number(req.query.days) || 30, 365);
   const since = new Date(Date.now() - days * 24 * 60 * 60 * 1e3);
   const allTx = await db.select({
@@ -115928,11 +117358,11 @@ router12.get("/admin/analytics", requireAdmin2, async (req, res) => {
   const avgOrderValue = totalOrders30d > 0 ? Math.round(totalRevenue30d / totalOrders30d) : 0;
   res.json({ dailyRevenue, topServices, topCountries, txBreakdown, userGrowth, totalRevenue30d, totalOrders30d, avgOrderValue });
 });
-router12.get("/admin/api-providers", requireAdmin2, async (_req, res) => {
+router13.get("/admin/api-providers", requireAdmin2, async (_req, res) => {
   const rows = await db.select().from(apiProvidersTable).orderBy(apiProvidersTable.priority);
   res.json(rows);
 });
-router12.post("/admin/api-providers", requireAdmin2, async (req, res) => {
+router13.post("/admin/api-providers", requireAdmin2, async (req, res) => {
   const { name: name2, slug, apiKey, baseUrl: baseUrl2, active, priority, markup } = req.body;
   if (!name2 || !slug) {
     res.status(400).json({ error: "Nom et slug requis" });
@@ -115965,7 +117395,7 @@ router12.post("/admin/api-providers", requireAdmin2, async (req, res) => {
     res.status(500).json({ error: "Erreur lors de la cr\xE9ation du fournisseur : " + e2.message });
   }
 });
-router12.put("/admin/api-providers/:providerId", requireAdmin2, async (req, res) => {
+router13.put("/admin/api-providers/:providerId", requireAdmin2, async (req, res) => {
   const providerId = String(req.params.providerId);
   const { name: name2, apiKey, baseUrl: baseUrl2, active, priority, markup } = req.body;
   const updates = {};
@@ -115992,7 +117422,7 @@ router12.put("/admin/api-providers/:providerId", requireAdmin2, async (req, res)
     res.status(500).json({ error: "Erreur lors de la mise \xE0 jour : " + e2.message });
   }
 });
-router12.delete("/admin/api-providers/:providerId", requireAdmin2, async (req, res) => {
+router13.delete("/admin/api-providers/:providerId", requireAdmin2, async (req, res) => {
   const providerId = String(req.params.providerId);
   try {
     await db.delete(apiProvidersTable).where(eq(apiProvidersTable.id, providerId));
@@ -116003,7 +117433,7 @@ router12.delete("/admin/api-providers/:providerId", requireAdmin2, async (req, r
     res.status(500).json({ error: "Erreur lors de la suppression : " + e2.message });
   }
 });
-router12.post("/admin/api-providers/:providerId/test", requireAdmin2, async (req, res) => {
+router13.post("/admin/api-providers/:providerId/test", requireAdmin2, async (req, res) => {
   const providerId = String(req.params.providerId);
   const [provider] = await db.select().from(apiProvidersTable).where(eq(apiProvidersTable.id, providerId)).limit(1);
   if (!provider) {
@@ -116044,7 +117474,7 @@ router12.post("/admin/api-providers/:providerId/test", requireAdmin2, async (req
     res.json({ success: false, message: e2.message, latencyMs: Date.now() - start2 });
   }
 });
-router12.get("/admin/api-providers/:providerId/balance", requireAdmin2, async (req, res) => {
+router13.get("/admin/api-providers/:providerId/balance", requireAdmin2, async (req, res) => {
   const providerId = String(req.params.providerId);
   const [provider] = await db.select().from(apiProvidersTable).where(eq(apiProvidersTable.id, providerId)).limit(1);
   if (!provider) {
@@ -116065,7 +117495,7 @@ router12.get("/admin/api-providers/:providerId/balance", requireAdmin2, async (r
   }
   res.json(null);
 });
-router12.post("/admin/api-providers/:providerId/sync-products", requireAdmin2, async (req, res) => {
+router13.post("/admin/api-providers/:providerId/sync-products", requireAdmin2, async (req, res) => {
   const providerId = String(req.params.providerId);
   const [provider] = await db.select({ slug: apiProvidersTable.slug, apiKey: apiProvidersTable.apiKey }).from(apiProvidersTable).where(eq(apiProvidersTable.id, providerId)).limit(1);
   if (!provider) {
@@ -116085,7 +117515,7 @@ router12.post("/admin/api-providers/:providerId/sync-products", requireAdmin2, a
     res.status(503).json({ error: e2.message });
   }
 });
-router12.get("/admin/api-providers/sync-status", requireAdmin2, async (_req, res) => {
+router13.get("/admin/api-providers/sync-status", requireAdmin2, async (_req, res) => {
   const rows = await db.select().from(systemSettingsTable).where(eq(systemSettingsTable.key, "fivesim_last_sync"));
   const statusRows = await db.select().from(systemSettingsTable).where(eq(systemSettingsTable.key, "fivesim_sync_status"));
   res.json({
@@ -116093,7 +117523,7 @@ router12.get("/admin/api-providers/sync-status", requireAdmin2, async (_req, res
     status: statusRows[0]?.value ?? null
   });
 });
-router12.get("/admin/settings", requireAdmin2, async (_req, res) => {
+router13.get("/admin/settings", requireAdmin2, async (_req, res) => {
   const rows = await db.select().from(systemSettingsTable);
   const settings = {};
   for (const row of rows) {
@@ -116101,7 +117531,7 @@ router12.get("/admin/settings", requireAdmin2, async (_req, res) => {
   }
   res.json(settings);
 });
-router12.put("/admin/settings", requireAdmin2, async (req, res) => {
+router13.put("/admin/settings", requireAdmin2, async (req, res) => {
   const updates = req.body;
   if (!updates || typeof updates !== "object") {
     res.status(400).json({ error: "Donn\xE9es invalides" });
@@ -116119,7 +117549,7 @@ router12.put("/admin/settings", requireAdmin2, async (req, res) => {
     res.status(500).json({ error: "Erreur lors de la sauvegarde : " + e2.message });
   }
 });
-router12.post("/admin/pawapay/test", requireAdmin2, async (req, res) => {
+router13.post("/admin/pawapay/test", requireAdmin2, async (req, res) => {
   const bodyToken = req.body.token;
   const bodyEnv = req.body.env;
   let token = bodyToken?.trim() || null;
@@ -116160,7 +117590,7 @@ router12.post("/admin/pawapay/test", requireAdmin2, async (req, res) => {
     });
   }
 });
-router12.get("/admin/pawapay/pending-deposits", requireAdmin2, async (_req, res) => {
+router13.get("/admin/pawapay/pending-deposits", requireAdmin2, async (_req, res) => {
   const rows = await db.select({
     id: transactionsTable.id,
     externalDepositId: transactionsTable.externalDepositId,
@@ -116178,7 +117608,7 @@ router12.get("/admin/pawapay/pending-deposits", requireAdmin2, async (_req, res)
   )).orderBy(desc(transactionsTable.createdAt)).limit(50);
   res.json(rows);
 });
-router12.post("/admin/pawapay/simulate-deposit", requireAdmin2, async (req, res) => {
+router13.post("/admin/pawapay/simulate-deposit", requireAdmin2, async (req, res) => {
   const { depositId, status = "COMPLETED", depositedAmount } = req.body;
   if (!depositId) {
     res.status(400).json({ error: "depositId requis" });
@@ -116237,7 +117667,7 @@ router12.post("/admin/pawapay/simulate-deposit", requireAdmin2, async (req, res)
     res.status(400).json({ error: "status doit \xEAtre COMPLETED ou FAILED" });
   }
 });
-router12.post("/admin/clapay/test", requireAdmin2, async (req, res) => {
+router13.post("/admin/clapay/test", requireAdmin2, async (req, res) => {
   const { token: bodyToken, baseUrl: bodyBaseUrl } = req.body;
   let token = bodyToken?.trim() || null;
   let baseUrl2 = bodyBaseUrl?.trim() || null;
@@ -116278,7 +117708,7 @@ router12.post("/admin/clapay/test", requireAdmin2, async (req, res) => {
     });
   }
 });
-router12.get("/admin/clapay/pending-deposits", requireAdmin2, async (_req, res) => {
+router13.get("/admin/clapay/pending-deposits", requireAdmin2, async (_req, res) => {
   const rows = await db.select({
     id: transactionsTable.id,
     externalDepositId: transactionsTable.externalDepositId,
@@ -116296,7 +117726,7 @@ router12.get("/admin/clapay/pending-deposits", requireAdmin2, async (_req, res) 
   )).orderBy(desc(transactionsTable.createdAt)).limit(50);
   res.json(rows);
 });
-router12.post("/admin/clapay/simulate-deposit", requireAdmin2, async (req, res) => {
+router13.post("/admin/clapay/simulate-deposit", requireAdmin2, async (req, res) => {
   const { depositId, status = "COMPLETED", depositedAmount } = req.body;
   if (!depositId) {
     res.status(400).json({ error: "depositId requis" });
@@ -116355,13 +117785,13 @@ router12.post("/admin/clapay/simulate-deposit", requireAdmin2, async (req, res) 
     res.status(400).json({ error: "status doit \xEAtre COMPLETED ou FAILED" });
   }
 });
-router12.get("/admin/security-events", requireAdmin2, async (req, res) => {
+router13.get("/admin/security-events", requireAdmin2, async (req, res) => {
   const limit = Math.min(Number(req.query.limit) || 50, 200);
   const severity = req.query.severity;
   const rows = await db.select().from(securityEventsTable).where(severity ? eq(securityEventsTable.severity, severity) : void 0).orderBy(desc(securityEventsTable.createdAt)).limit(limit);
   res.json(rows);
 });
-router12.get("/admin/logs", requireAdmin2, async (req, res) => {
+router13.get("/admin/logs", requireAdmin2, async (req, res) => {
   const limit = Math.min(Number(req.query.limit) || 50, 200);
   const rows = await db.select({
     id: adminLogsTable.id,
@@ -116375,7 +117805,7 @@ router12.get("/admin/logs", requireAdmin2, async (req, res) => {
   }).from(adminLogsTable).leftJoin(usersTable, eq(adminLogsTable.adminId, usersTable.id)).orderBy(desc(adminLogsTable.createdAt)).limit(limit);
   res.json(rows);
 });
-router12.get("/admin/transactions", requireAdmin2, async (req, res) => {
+router13.get("/admin/transactions", requireAdmin2, async (req, res) => {
   const exportAll = req.query.export === "true";
   const limit = exportAll ? 5e3 : Math.min(Number(req.query.limit) || 50, 200);
   const offset = exportAll ? 0 : Number(req.query.offset) || 0;
@@ -116395,7 +117825,7 @@ router12.get("/admin/transactions", requireAdmin2, async (req, res) => {
   const [totalRow] = await db.select({ c: count() }).from(transactionsTable).where(where);
   res.json({ transactions: rows, total: totalRow?.c ?? 0 });
 });
-router12.get("/admin/realtime", requireAdmin2, async (req, res) => {
+router13.get("/admin/realtime", requireAdmin2, async (req, res) => {
   const now = /* @__PURE__ */ new Date();
   const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1e3);
@@ -116454,11 +117884,11 @@ router12.get("/admin/realtime", requireAdmin2, async (req, res) => {
     generatedAt: (/* @__PURE__ */ new Date()).toISOString()
   });
 });
-router12.get("/admin/blacklist", requireAdmin2, async (req, res) => {
+router13.get("/admin/blacklist", requireAdmin2, async (req, res) => {
   const entries = await db.select().from(ipBlacklistTable).orderBy(desc(ipBlacklistTable.createdAt)).limit(500);
   res.json(entries);
 });
-router12.post("/admin/blacklist", requireAdmin2, async (req, res) => {
+router13.post("/admin/blacklist", requireAdmin2, async (req, res) => {
   const { type, value, reason, permanent, expiresAt } = req.body;
   if (!type || !value) {
     res.status(400).json({ error: "type et value sont requis" });
@@ -116483,12 +117913,12 @@ router12.post("/admin/blacklist", requireAdmin2, async (req, res) => {
   }
   res.json(entry);
 });
-router12.delete("/admin/blacklist/:id", requireAdmin2, async (req, res) => {
+router13.delete("/admin/blacklist/:id", requireAdmin2, async (req, res) => {
   await db.delete(ipBlacklistTable).where(eq(ipBlacklistTable.id, req.params.id));
   await logAdminAction(adminId2(req), "blacklist_remove", req.ip, "blacklist", req.params.id);
   res.json({ success: true });
 });
-router12.get("/admin/blacklist/check", requireAdmin2, async (req, res) => {
+router13.get("/admin/blacklist/check", requireAdmin2, async (req, res) => {
   const { value } = req.query;
   if (!value || typeof value !== "string") {
     res.status(400).json({ error: "value required" });
@@ -116497,7 +117927,7 @@ router12.get("/admin/blacklist/check", requireAdmin2, async (req, res) => {
   const entries = await db.select().from(ipBlacklistTable).where(eq(ipBlacklistTable.value, value));
   res.json({ banned: entries.length > 0, entries });
 });
-router12.get("/admin/login-history", requireAdmin2, async (req, res) => {
+router13.get("/admin/login-history", requireAdmin2, async (req, res) => {
   const userId = typeof req.query.userId === "string" ? req.query.userId : void 0;
   const { limit = "200", offset = "0" } = req.query;
   const rows = await db.select({
@@ -116520,7 +117950,7 @@ router12.get("/admin/login-history", requireAdmin2, async (req, res) => {
   const [totalRow] = await db.select({ c: count() }).from(loginHistoryTable).where(userId ? eq(loginHistoryTable.userId, userId) : sql`1=1`);
   res.json({ entries: rows, total: totalRow?.c ?? 0 });
 });
-router12.get("/admin/login-history/stats", requireAdmin2, async (req, res) => {
+router13.get("/admin/login-history/stats", requireAdmin2, async (req, res) => {
   const dayAgo = new Date(Date.now() - 24 * 60 * 60 * 1e3);
   const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1e3);
   const [totalRow] = await db.select({ c: count() }).from(loginHistoryTable);
@@ -116549,7 +117979,7 @@ var SAMPLE_COUNTRIES_PRICE = [
   { code: "usa", label: "\xC9tats-Unis", flag: "\u{1F1FA}\u{1F1F8}" },
   { code: "india", label: "Inde", flag: "\u{1F1EE}\u{1F1F3}" }
 ];
-router12.get("/admin/live-prices", requireAdmin2, async (req, res) => {
+router13.get("/admin/live-prices", requireAdmin2, async (req, res) => {
   const { service } = req.query;
   const [provider] = await db.select().from(apiProvidersTable).where(and(eq(apiProvidersTable.slug, "5sim"), eq(apiProvidersTable.active, true))).limit(1);
   if (!provider?.apiKey) {
@@ -116589,7 +118019,7 @@ router12.get("/admin/live-prices", requireAdmin2, async (req, res) => {
   }));
   res.json({ data, markup, providerName: provider.name, generatedAt: (/* @__PURE__ */ new Date()).toISOString() });
 });
-router12.get("/admin/live-prices/services", requireAdmin2, async (req, res) => {
+router13.get("/admin/live-prices/services", requireAdmin2, async (req, res) => {
   const [provider] = await db.select().from(apiProvidersTable).where(and(eq(apiProvidersTable.slug, "5sim"), eq(apiProvidersTable.active, true))).limit(1);
   if (!provider?.apiKey) {
     res.status(404).json({ error: "Aucun fournisseur 5sim actif" });
@@ -116613,13 +118043,13 @@ router12.get("/admin/live-prices/services", requireAdmin2, async (req, res) => {
     res.status(500).json({ error: e2.message });
   }
 });
-router12.get("/admin/site-content", requireAdmin2, async (_req, res) => {
+router13.get("/admin/site-content", requireAdmin2, async (_req, res) => {
   const rows = await db.select().from(systemSettingsTable).where(like(systemSettingsTable.key, "content_%"));
   const content = {};
   for (const r2 of rows) content[r2.key] = r2.value;
   res.json(content);
 });
-router12.put("/admin/site-content", requireAdmin2, async (req, res) => {
+router13.put("/admin/site-content", requireAdmin2, async (req, res) => {
   const updates = req.body;
   if (!updates || typeof updates !== "object") {
     res.status(400).json({ error: "Invalid body" });
@@ -116632,7 +118062,7 @@ router12.put("/admin/site-content", requireAdmin2, async (req, res) => {
   await logAdminAction(adminId2(req), "site_content_update", req.ip, "site", "content", { keys: Object.keys(updates) });
   res.json({ success: true });
 });
-router12.get("/admin/sync/status", requireAdmin2, async (_req, res) => {
+router13.get("/admin/sync/status", requireAdmin2, async (_req, res) => {
   const { isSyncInProgress: isSyncInProgress2, getSyncLogs: getSyncLogs2 } = await Promise.resolve().then(() => (init_fivesim_sync(), fivesim_sync_exports));
   const settingKeys = [
     "fivesim_last_sync",
@@ -116675,7 +118105,7 @@ router12.get("/admin/sync/status", requireAdmin2, async (_req, res) => {
     generatedAt: (/* @__PURE__ */ new Date()).toISOString()
   });
 });
-router12.post("/admin/sync/services", requireAdmin2, async (req, res) => {
+router13.post("/admin/sync/services", requireAdmin2, async (req, res) => {
   try {
     const { syncFiveSimProducts: syncFiveSimProducts2 } = await Promise.resolve().then(() => (init_fivesim_sync(), fivesim_sync_exports));
     const result = await syncFiveSimProducts2("admin");
@@ -116690,7 +118120,7 @@ router12.post("/admin/sync/services", requireAdmin2, async (req, res) => {
     res.status(503).json({ success: false, error: e2.message });
   }
 });
-router12.post("/admin/sync/countries", requireAdmin2, async (req, res) => {
+router13.post("/admin/sync/countries", requireAdmin2, async (req, res) => {
   try {
     const { syncFiveSimCountries: syncFiveSimCountries2 } = await Promise.resolve().then(() => (init_fivesim_sync(), fivesim_sync_exports));
     const result = await syncFiveSimCountries2("admin");
@@ -116705,7 +118135,7 @@ router12.post("/admin/sync/countries", requireAdmin2, async (req, res) => {
     res.status(503).json({ success: false, error: e2.message });
   }
 });
-router12.post("/admin/sync/full", requireAdmin2, async (req, res) => {
+router13.post("/admin/sync/full", requireAdmin2, async (req, res) => {
   try {
     const { syncFiveSimFull: syncFiveSimFull2 } = await Promise.resolve().then(() => (init_fivesim_sync(), fivesim_sync_exports));
     const result = await syncFiveSimFull2("admin");
@@ -116720,12 +118150,12 @@ router12.post("/admin/sync/full", requireAdmin2, async (req, res) => {
     res.status(503).json({ success: false, error: e2.message });
   }
 });
-router12.get("/admin/sync/logs", requireAdmin2, async (_req, res) => {
+router13.get("/admin/sync/logs", requireAdmin2, async (_req, res) => {
   const { getSyncLogs: getSyncLogs2 } = await Promise.resolve().then(() => (init_fivesim_sync(), fivesim_sync_exports));
   const logs = await getSyncLogs2();
   res.json(logs);
 });
-router12.post("/admin/service-prices/bulk", requireAdmin2, async (req, res) => {
+router13.post("/admin/service-prices/bulk", requireAdmin2, async (req, res) => {
   const { prices: items } = req.body;
   if (!Array.isArray(items) || items.length === 0) {
     res.status(400).json({ error: "prices doit \xEAtre un tableau non vide" });
@@ -116750,13 +118180,13 @@ router12.post("/admin/service-prices/bulk", requireAdmin2, async (req, res) => {
   await logAdminAction(adminId2(req), "service_prices_bulk_upsert", req.ip, "service_price", void 0, { count: results.length });
   res.json({ updated: results.length, prices: results });
 });
-router12.get("/admin/service-prices", requireAdmin2, async (req, res) => {
+router13.get("/admin/service-prices", requireAdmin2, async (req, res) => {
   const { serviceSlug } = req.query;
   const query = db.select().from(servicePricesTable);
   const rows = serviceSlug ? await query.where(eq(servicePricesTable.serviceSlug, serviceSlug.toLowerCase())).orderBy(servicePricesTable.countryCode) : await query.orderBy(servicePricesTable.countryCode, servicePricesTable.serviceSlug);
   res.json(rows);
 });
-router12.post("/admin/service-prices", requireAdmin2, async (req, res) => {
+router13.post("/admin/service-prices", requireAdmin2, async (req, res) => {
   const { countryCode, serviceSlug, price, enabled } = req.body;
   if (!countryCode || !serviceSlug || price == null) {
     res.status(400).json({ error: "countryCode, serviceSlug et price sont requis" });
@@ -116769,7 +118199,7 @@ router12.post("/admin/service-prices", requireAdmin2, async (req, res) => {
   await logAdminAction(adminId2(req), "service_price_upsert", req.ip, "service_price", row.id, { countryCode, serviceSlug, price });
   res.status(201).json(row);
 });
-router12.put("/admin/service-prices/:id", requireAdmin2, async (req, res) => {
+router13.put("/admin/service-prices/:id", requireAdmin2, async (req, res) => {
   const { id } = req.params;
   const { price, enabled } = req.body;
   const updates = { updatedAt: /* @__PURE__ */ new Date() };
@@ -116783,13 +118213,13 @@ router12.put("/admin/service-prices/:id", requireAdmin2, async (req, res) => {
   await logAdminAction(adminId2(req), "service_price_update", req.ip, "service_price", id, updates);
   res.json(row);
 });
-router12.delete("/admin/service-prices/:id", requireAdmin2, async (req, res) => {
+router13.delete("/admin/service-prices/:id", requireAdmin2, async (req, res) => {
   const { id } = req.params;
   await db.delete(servicePricesTable).where(eq(servicePricesTable.id, id));
   await logAdminAction(adminId2(req), "service_price_delete", req.ip, "service_price", id);
   res.json({ success: true });
 });
-router12.get("/admin/diagnostics", requireAdmin2, async (_req, res) => {
+router13.get("/admin/diagnostics", requireAdmin2, async (_req, res) => {
   const checks = [];
   try {
     const t0 = Date.now();
@@ -116857,15 +118287,15 @@ router12.get("/admin/diagnostics", requireAdmin2, async (_req, res) => {
   });
   res.json({ ok: checks.every((c) => c.status !== "error"), checks });
 });
-var admin_default = router12;
+var admin_default = router13;
 
 // src/routes/admin-support.ts
-var import_express14 = __toESM(require_express2(), 1);
+var import_express15 = __toESM(require_express2(), 1);
 init_drizzle_orm();
 init_src();
 init_logger2();
-var router13 = (0, import_express14.Router)();
-router13.use(requireAdminJwt);
+var router14 = (0, import_express15.Router)();
+router14.use(requireAdminJwt);
 function requireAdmin3(req, res, next) {
   if (req.adminPayload) {
     next();
@@ -116911,7 +118341,7 @@ var DEFAULT_AI_CONFIG = [
   { key: "company_telegram", value: "", label: "Lien Telegram support", group: "entreprise" },
   { key: "company_phone", value: "", label: "T\xE9l\xE9phone support", group: "entreprise" }
 ];
-router13.get("/admin/support/conversations", requireAdmin3, async (req, res) => {
+router14.get("/admin/support/conversations", requireAdmin3, async (req, res) => {
   const limit = Math.min(Number(req.query.limit) || 50, 200);
   const offset = Number(req.query.offset) || 0;
   const status = req.query.status;
@@ -116936,12 +118366,12 @@ router13.get("/admin/support/conversations", requireAdmin3, async (req, res) => 
   const [totalRow] = await db.select({ c: count() }).from(supportConversationsTable).where(where);
   res.json({ conversations: rows, total: totalRow?.c ?? 0 });
 });
-router13.get("/admin/support/conversations/:id/messages", requireAdmin3, async (req, res) => {
+router14.get("/admin/support/conversations/:id/messages", requireAdmin3, async (req, res) => {
   const { id } = req.params;
   const msgs = await db.select().from(supportMessagesTable).where(eq(supportMessagesTable.conversationId, id)).orderBy(asc(supportMessagesTable.createdAt));
   res.json({ messages: msgs });
 });
-router13.post("/admin/support/conversations/:id/messages", requireAdmin3, async (req, res) => {
+router14.post("/admin/support/conversations/:id/messages", requireAdmin3, async (req, res) => {
   const { id } = req.params;
   const { content, imageData } = req.body;
   if (!content?.trim() && !imageData) {
@@ -116964,7 +118394,7 @@ router13.post("/admin/support/conversations/:id/messages", requireAdmin3, async 
   logger.info({ convId: id, adminId: req.user.id }, "[admin-support] Admin replied to conversation");
   res.json({ message: msg });
 });
-router13.put("/admin/support/conversations/:id/status", requireAdmin3, async (req, res) => {
+router14.put("/admin/support/conversations/:id/status", requireAdmin3, async (req, res) => {
   const { id } = req.params;
   const { status, isHumanTakeover, agentNote, priority } = req.body;
   const updates = { updatedAt: /* @__PURE__ */ new Date() };
@@ -116975,12 +118405,12 @@ router13.put("/admin/support/conversations/:id/status", requireAdmin3, async (re
   await db.update(supportConversationsTable).set(updates).where(eq(supportConversationsTable.id, id));
   res.json({ success: true });
 });
-router13.delete("/admin/support/conversations/:id", requireAdmin3, async (req, res) => {
+router14.delete("/admin/support/conversations/:id", requireAdmin3, async (req, res) => {
   const { id } = req.params;
   await db.delete(supportConversationsTable).where(eq(supportConversationsTable.id, id));
   res.json({ success: true });
 });
-router13.get("/admin/support/stats", requireAdmin3, async (_req, res) => {
+router14.get("/admin/support/stats", requireAdmin3, async (_req, res) => {
   const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1e3);
   const dayAgo = new Date(Date.now() - 24 * 60 * 60 * 1e3);
   const [totalConvs] = await db.select({ c: count() }).from(supportConversationsTable);
@@ -117006,13 +118436,13 @@ router13.get("/admin/support/stats", requireAdmin3, async (_req, res) => {
     activeKnowledgeEntries: activeKnowledge?.c ?? 0
   });
 });
-router13.get("/admin/support/knowledge", requireAdmin3, async (req, res) => {
+router14.get("/admin/support/knowledge", requireAdmin3, async (req, res) => {
   const category = req.query.category;
   const where = category ? eq(aiKnowledgeBaseTable.category, category) : void 0;
   const entries = await db.select().from(aiKnowledgeBaseTable).where(where).orderBy(asc(aiKnowledgeBaseTable.category), asc(aiKnowledgeBaseTable.sortOrder), asc(aiKnowledgeBaseTable.title));
   res.json(entries);
 });
-router13.post("/admin/support/knowledge", requireAdmin3, async (req, res) => {
+router14.post("/admin/support/knowledge", requireAdmin3, async (req, res) => {
   const { category, title, content, isActive, sortOrder } = req.body;
   if (!title?.trim() || !content?.trim()) {
     res.status(400).json({ error: "Titre et contenu requis" });
@@ -117027,7 +118457,7 @@ router13.post("/admin/support/knowledge", requireAdmin3, async (req, res) => {
   }).returning();
   res.status(201).json(entry);
 });
-router13.put("/admin/support/knowledge/:id", requireAdmin3, async (req, res) => {
+router14.put("/admin/support/knowledge/:id", requireAdmin3, async (req, res) => {
   const { id } = req.params;
   const { category, title, content, isActive, sortOrder } = req.body;
   const updates = {};
@@ -117043,12 +118473,12 @@ router13.put("/admin/support/knowledge/:id", requireAdmin3, async (req, res) => 
   const [entry] = await db.update(aiKnowledgeBaseTable).set(updates).where(eq(aiKnowledgeBaseTable.id, id)).returning();
   res.json(entry);
 });
-router13.delete("/admin/support/knowledge/:id", requireAdmin3, async (req, res) => {
+router14.delete("/admin/support/knowledge/:id", requireAdmin3, async (req, res) => {
   const { id } = req.params;
   await db.delete(aiKnowledgeBaseTable).where(eq(aiKnowledgeBaseTable.id, id));
   res.json({ success: true });
 });
-router13.get("/admin/support/config", requireAdmin3, async (_req, res) => {
+router14.get("/admin/support/config", requireAdmin3, async (_req, res) => {
   const entries = await db.select().from(aiSupportConfigTable).orderBy(asc(aiSupportConfigTable.group), asc(aiSupportConfigTable.key));
   if (entries.length === 0) {
     await db.insert(aiSupportConfigTable).values(DEFAULT_AI_CONFIG).onConflictDoNothing();
@@ -117065,7 +118495,7 @@ router13.get("/admin/support/config", requireAdmin3, async (_req, res) => {
   const full = await db.select().from(aiSupportConfigTable).orderBy(asc(aiSupportConfigTable.group), asc(aiSupportConfigTable.key));
   res.json(full);
 });
-router13.put("/admin/support/config", requireAdmin3, async (req, res) => {
+router14.put("/admin/support/config", requireAdmin3, async (req, res) => {
   const updates = req.body;
   if (!updates || typeof updates !== "object") {
     res.status(400).json({ error: "Donn\xE9es invalides" });
@@ -117079,14 +118509,14 @@ router13.put("/admin/support/config", requireAdmin3, async (req, res) => {
   }
   res.json({ success: true });
 });
-var admin_support_default = router13;
+var admin_support_default = router14;
 
 // src/routes/admin-auth.ts
-var import_express15 = __toESM(require_express2(), 1);
+var import_express16 = __toESM(require_express2(), 1);
 init_drizzle_orm();
 init_src();
 init_logger2();
-var router14 = (0, import_express15.Router)();
+var router15 = (0, import_express16.Router)();
 function getIp(req) {
   return req.headers["x-forwarded-for"]?.split(",")[0]?.trim() ?? req.ip ?? "unknown";
 }
@@ -117109,7 +118539,7 @@ async function logAccess(ip, action, success, email, details, userAgent2) {
     logger.error({ err }, "Failed to log admin access");
   }
 }
-router14.post("/admin-auth/verify-token", async (req, res) => {
+router15.post("/admin-auth/verify-token", async (req, res) => {
   const ip = getIp(req);
   const ua = req.headers["user-agent"] ?? "";
   if (isRateLimited(`admin-token:${ip}`, 20, 15 * 6e4)) {
@@ -117137,7 +118567,7 @@ router14.post("/admin-auth/verify-token", async (req, res) => {
   await logAccess(ip, "token_verify_success", true, void 0, {}, ua);
   res.json({ granted: true });
 });
-router14.post("/admin-auth/login", async (req, res) => {
+router15.post("/admin-auth/login", async (req, res) => {
   const ip = getIp(req);
   const ua = req.headers["user-agent"] ?? "";
   const loginKey = `admin-login:${ip}`;
@@ -117202,7 +118632,7 @@ router14.post("/admin-auth/login", async (req, res) => {
     }
   });
 });
-router14.get("/admin-auth/session", async (req, res) => {
+router15.get("/admin-auth/session", async (req, res) => {
   const token = getBearerToken(req);
   if (!token) {
     res.status(401).json({ valid: false, error: "No token provided" });
@@ -117224,7 +118654,7 @@ router14.get("/admin-auth/session", async (req, res) => {
     expiresAt: payload.exp
   });
 });
-router14.post("/admin-auth/logout", async (req, res) => {
+router15.post("/admin-auth/logout", async (req, res) => {
   const ip = getIp(req);
   const ua = req.headers["user-agent"] ?? "";
   const token = getBearerToken(req);
@@ -117236,7 +118666,7 @@ router14.post("/admin-auth/logout", async (req, res) => {
   await logAccess(ip, "logout", true, email, {}, ua);
   res.json({ success: true });
 });
-router14.get("/admin-auth/access-logs", async (req, res) => {
+router15.get("/admin-auth/access-logs", async (req, res) => {
   const token = getBearerToken(req);
   if (!token) {
     res.status(401).json({ error: "No token" });
@@ -117251,15 +118681,15 @@ router14.get("/admin-auth/access-logs", async (req, res) => {
   const logs = await db.select().from(adminAccessLogsTable).orderBy(descFn(adminAccessLogsTable.createdAt)).limit(100);
   res.json({ logs });
 });
-var admin_auth_default = router14;
+var admin_auth_default = router15;
 
 // src/routes/admin-notifications.ts
-var import_express16 = __toESM(require_express2(), 1);
+var import_express17 = __toESM(require_express2(), 1);
 init_drizzle_orm();
 init_src();
 init_logger2();
-var router15 = (0, import_express16.Router)();
-router15.use(requireAdminJwt);
+var router16 = (0, import_express17.Router)();
+router16.use(requireAdminJwt);
 function requireAdmin4(req, res, next) {
   if (req.adminPayload) {
     next();
@@ -117275,7 +118705,7 @@ function requireAdmin4(req, res, next) {
   }
   next();
 }
-router15.post("/admin/notifications", requireAdmin4, async (req, res) => {
+router16.post("/admin/notifications", requireAdmin4, async (req, res) => {
   const {
     title,
     body,
@@ -117322,14 +118752,14 @@ router15.post("/admin/notifications", requireAdmin4, async (req, res) => {
   logger.info({ count: created.length }, "[admin-notifications] Notifications sent");
   res.status(201).json({ created: created.length, notifications: created });
 });
-router15.get("/admin/notifications", requireAdmin4, async (req, res) => {
+router16.get("/admin/notifications", requireAdmin4, async (req, res) => {
   const limit = Math.min(Number(req.query.limit) || 50, 200);
   const offset = Number(req.query.offset) || 0;
   const notifications = await db.select().from(notificationsTable).orderBy(desc(notificationsTable.createdAt)).limit(limit).offset(offset);
   const [{ total }] = await db.select({ total: count() }).from(notificationsTable);
   res.json({ notifications, total: Number(total) });
 });
-router15.get("/admin/notifications/stats", requireAdmin4, async (_req, res) => {
+router16.get("/admin/notifications/stats", requireAdmin4, async (_req, res) => {
   const [total] = await db.select({ count: count() }).from(notificationsTable);
   const [global2] = await db.select({ count: count() }).from(notificationsTable).where(and(eq(notificationsTable.isGlobal, true), isNull(notificationsTable.userId)));
   const [targeted] = await db.select({ count: count() }).from(notificationsTable).where(eq(notificationsTable.isGlobal, false));
@@ -117339,20 +118769,20 @@ router15.get("/admin/notifications/stats", requireAdmin4, async (_req, res) => {
     targeted: Number(targeted.count)
   });
 });
-router15.delete("/admin/notifications/:id", requireAdmin4, async (req, res) => {
+router16.delete("/admin/notifications/:id", requireAdmin4, async (req, res) => {
   const { id } = req.params;
   await db.delete(notificationsTable).where(eq(notificationsTable.id, id));
   res.json({ success: true });
 });
-var admin_notifications_default = router15;
+var admin_notifications_default = router16;
 
 // src/routes/admin-emails.ts
-var import_express17 = __toESM(require_express2(), 1);
+var import_express18 = __toESM(require_express2(), 1);
 init_drizzle_orm();
 init_src();
 init_logger2();
-var router16 = (0, import_express17.Router)();
-router16.use(requireAdminJwt);
+var router17 = (0, import_express18.Router)();
+router17.use(requireAdminJwt);
 function requireAdmin5(req, res, next) {
   if (req.adminPayload) {
     next();
@@ -117436,7 +118866,7 @@ function buildEmailHtml(subject, body, templateType) {
 </body>
 </html>`;
 }
-router16.post("/admin/emails/send", requireAdmin5, async (req, res) => {
+router17.post("/admin/emails/send", requireAdmin5, async (req, res) => {
   const {
     subject,
     body,
@@ -117571,14 +119001,14 @@ router16.post("/admin/emails/send", requireAdmin5, async (req, res) => {
   await db.update(emailCampaignsTable).set({ status: finalStatus, sentCount, failedCount, sentAt: /* @__PURE__ */ new Date() }).where(eq(emailCampaignsTable.id, campaign.id));
   logger.info({ campaignId: campaign.id, sentCount, failedCount, totalRecipients: recipients.length }, "[emails] Campaign complete");
 });
-router16.get("/admin/emails/campaigns", requireAdmin5, async (req, res) => {
+router17.get("/admin/emails/campaigns", requireAdmin5, async (req, res) => {
   const limit = Math.min(Number(req.query.limit) || 20, 100);
   const offset = Number(req.query.offset) || 0;
   const campaigns = await db.select().from(emailCampaignsTable).orderBy(desc(emailCampaignsTable.createdAt)).limit(limit).offset(offset);
   const [{ total }] = await db.select({ total: count() }).from(emailCampaignsTable);
   res.json({ campaigns, total: Number(total) });
 });
-router16.get("/admin/emails/campaigns/:id/progress", requireAdmin5, async (req, res) => {
+router17.get("/admin/emails/campaigns/:id/progress", requireAdmin5, async (req, res) => {
   const { id } = req.params;
   const campaign = await db.select().from(emailCampaignsTable).where(eq(emailCampaignsTable.id, id)).limit(1);
   if (!campaign[0]) {
@@ -117601,7 +119031,7 @@ router16.get("/admin/emails/campaigns/:id/progress", requireAdmin5, async (req, 
     isDone: campaign[0].status !== "sending"
   });
 });
-router16.get("/admin/emails/campaigns/:id/logs", requireAdmin5, async (req, res) => {
+router17.get("/admin/emails/campaigns/:id/logs", requireAdmin5, async (req, res) => {
   const { id } = req.params;
   const limit = Math.min(Number(req.query.limit) || 50, 200);
   const offset = Number(req.query.offset) || 0;
@@ -117615,7 +119045,7 @@ router16.get("/admin/emails/campaigns/:id/logs", requireAdmin5, async (req, res)
   }).from(emailLogsTable).leftJoin(usersTable, eq(emailLogsTable.userId, usersTable.id)).where(eq(emailLogsTable.campaignId, id)).orderBy(desc(emailLogsTable.createdAt)).limit(limit).offset(offset);
   res.json({ logs });
 });
-router16.post("/admin/emails/test", requireAdmin5, async (req, res) => {
+router17.post("/admin/emails/test", requireAdmin5, async (req, res) => {
   const { email } = req.body;
   if (!email || typeof email !== "string" || !email.includes("@")) {
     res.status(400).json({ error: "Adresse email invalide" });
@@ -117697,7 +119127,7 @@ router16.post("/admin/emails/test", requireAdmin5, async (req, res) => {
     res.status(500).json({ success: false, error: msg, latencyMs });
   }
 });
-router16.get("/admin/emails/recipients", requireAdmin5, async (req, res) => {
+router17.get("/admin/emails/recipients", requireAdmin5, async (req, res) => {
   const search = req.query.search?.trim();
   const limit = Math.min(Number(req.query.limit) || 50, 200);
   const rows = await db.select({
@@ -117724,7 +119154,7 @@ router16.get("/admin/emails/recipients", requireAdmin5, async (req, res) => {
   });
   res.json({ recipients: eligible, total: eligible.length });
 });
-router16.get("/admin/emails/stats", requireAdmin5, async (_req, res) => {
+router17.get("/admin/emails/stats", requireAdmin5, async (_req, res) => {
   const [total] = await db.select({ count: count() }).from(emailCampaignsTable);
   const [sent] = await db.select({ count: count() }).from(emailLogsTable).where(eq(emailLogsTable.status, "sent"));
   const [failed] = await db.select({ count: count() }).from(emailLogsTable).where(eq(emailLogsTable.status, "failed"));
@@ -117736,10 +119166,10 @@ router16.get("/admin/emails/stats", requireAdmin5, async (_req, res) => {
     resendConfigured: !!resend
   });
 });
-var admin_emails_default = router16;
+var admin_emails_default = router17;
 
 // src/routes/admin-fivesim.ts
-var import_express18 = __toESM(require_express2(), 1);
+var import_express19 = __toESM(require_express2(), 1);
 init_drizzle_orm();
 init_src();
 init_fivesim();
@@ -118122,7 +119552,7 @@ function extractCode2(text2) {
 
 // src/routes/admin-fivesim.ts
 init_fivesim_sync();
-var router17 = (0, import_express18.Router)();
+var router18 = (0, import_express19.Router)();
 async function get5SimClient() {
   const [provider] = await db.select().from(apiProvidersTable).where(and(eq(apiProvidersTable.slug, "5sim"), eq(apiProvidersTable.active, true))).limit(1);
   if (!provider?.apiKey) return null;
@@ -118139,7 +119569,7 @@ function handle5SimError(e2, res) {
     res.status(500).json({ error: "Erreur serveur inattendue" });
   }
 }
-router17.get("/admin/fivesim/profile", requireAdminJwt, async (req, res) => {
+router18.get("/admin/fivesim/profile", requireAdminJwt, async (req, res) => {
   const client = await get5SimClient();
   if (!client) {
     res.status(503).json({ error: "Fournisseur 5sim non configur\xE9 ou inactif" });
@@ -118152,7 +119582,7 @@ router17.get("/admin/fivesim/profile", requireAdminJwt, async (req, res) => {
     handle5SimError(e2, res);
   }
 });
-router17.get("/admin/fivesim/statistic", requireAdminJwt, async (req, res) => {
+router18.get("/admin/fivesim/statistic", requireAdminJwt, async (req, res) => {
   const client = await get5SimClient();
   if (!client) {
     res.status(503).json({ error: "Fournisseur 5sim non configur\xE9 ou inactif" });
@@ -118165,7 +119595,7 @@ router17.get("/admin/fivesim/statistic", requireAdminJwt, async (req, res) => {
     handle5SimError(e2, res);
   }
 });
-router17.get("/admin/fivesim/wallets", requireAdminJwt, async (req, res) => {
+router18.get("/admin/fivesim/wallets", requireAdminJwt, async (req, res) => {
   const client = await get5SimClient();
   if (!client) {
     res.status(503).json({ error: "Fournisseur 5sim non configur\xE9 ou inactif" });
@@ -118178,7 +119608,7 @@ router17.get("/admin/fivesim/wallets", requireAdminJwt, async (req, res) => {
     handle5SimError(e2, res);
   }
 });
-router17.get("/admin/fivesim/orders", requireAdminJwt, async (req, res) => {
+router18.get("/admin/fivesim/orders", requireAdminJwt, async (req, res) => {
   const client = await get5SimClient();
   if (!client) {
     res.status(503).json({ error: "Fournisseur 5sim non configur\xE9 ou inactif" });
@@ -118194,7 +119624,7 @@ router17.get("/admin/fivesim/orders", requireAdminJwt, async (req, res) => {
     handle5SimError(e2, res);
   }
 });
-router17.get("/admin/fivesim/payments", requireAdminJwt, async (req, res) => {
+router18.get("/admin/fivesim/payments", requireAdminJwt, async (req, res) => {
   const client = await get5SimClient();
   if (!client) {
     res.status(503).json({ error: "Fournisseur 5sim non configur\xE9 ou inactif" });
@@ -118209,7 +119639,7 @@ router17.get("/admin/fivesim/payments", requireAdminJwt, async (req, res) => {
     handle5SimError(e2, res);
   }
 });
-router17.get("/admin/fivesim/flash", requireAdminJwt, async (req, res) => {
+router18.get("/admin/fivesim/flash", requireAdminJwt, async (req, res) => {
   const client = await get5SimClient();
   if (!client) {
     res.status(503).json({ error: "Fournisseur 5sim non configur\xE9 ou inactif" });
@@ -118223,7 +119653,7 @@ router17.get("/admin/fivesim/flash", requireAdminJwt, async (req, res) => {
     handle5SimError(e2, res);
   }
 });
-router17.get("/admin/fivesim/prices", requireAdminJwt, async (req, res) => {
+router18.get("/admin/fivesim/prices", requireAdminJwt, async (req, res) => {
   const client = await get5SimClient();
   if (!client) {
     res.status(503).json({ error: "Fournisseur 5sim non configur\xE9 ou inactif" });
@@ -118241,7 +119671,7 @@ router17.get("/admin/fivesim/prices", requireAdminJwt, async (req, res) => {
     handle5SimError(e2, res);
   }
 });
-router17.get("/admin/fivesim/user/orders", requireAdminJwt, async (req, res) => {
+router18.get("/admin/fivesim/user/orders", requireAdminJwt, async (req, res) => {
   const client = await get5SimClient();
   if (!client) {
     res.status(503).json({ error: "Fournisseur 5sim non configur\xE9 ou inactif" });
@@ -118257,7 +119687,7 @@ router17.get("/admin/fivesim/user/orders", requireAdminJwt, async (req, res) => 
     handle5SimError(e2, res);
   }
 });
-router17.get("/admin/fivesim/user/payments", requireAdminJwt, async (req, res) => {
+router18.get("/admin/fivesim/user/payments", requireAdminJwt, async (req, res) => {
   const client = await get5SimClient();
   if (!client) {
     res.status(503).json({ error: "Fournisseur 5sim non configur\xE9 ou inactif" });
@@ -118272,7 +119702,7 @@ router17.get("/admin/fivesim/user/payments", requireAdminJwt, async (req, res) =
     handle5SimError(e2, res);
   }
 });
-router17.get("/admin/fivesim/pending-refunds", requireAdminJwt, async (_req, res) => {
+router18.get("/admin/fivesim/pending-refunds", requireAdminJwt, async (_req, res) => {
   const cutoff30 = new Date(Date.now() - 30 * 60 * 1e3);
   try {
     const rows = await db.select({
@@ -118300,7 +119730,7 @@ router17.get("/admin/fivesim/pending-refunds", requireAdminJwt, async (_req, res
     res.status(500).json({ error: "Erreur lors de la r\xE9cup\xE9ration des remboursements en attente" });
   }
 });
-router17.post("/admin/fivesim/trigger-refund-sweep", requireAdminJwt, async (_req, res) => {
+router18.post("/admin/fivesim/trigger-refund-sweep", requireAdminJwt, async (_req, res) => {
   try {
     logger.info("[admin] Manual auto-refund sweep triggered");
     const result = await triggerAutoRefundSweep();
@@ -118314,7 +119744,7 @@ router17.post("/admin/fivesim/trigger-refund-sweep", requireAdminJwt, async (_re
     res.status(500).json({ error: "Erreur lors du sweep de remboursement" });
   }
 });
-router17.post("/admin/sync/apply-availability-prices", requireAdminJwt, async (_req, res) => {
+router18.post("/admin/sync/apply-availability-prices", requireAdminJwt, async (_req, res) => {
   try {
     const result = await applyAvailabilityToServicePrices();
     res.json({
@@ -118329,7 +119759,7 @@ router17.post("/admin/sync/apply-availability-prices", requireAdminJwt, async (_
     res.status(500).json({ error: "Erreur lors de l'application des disponibilit\xE9s et prix" });
   }
 });
-router17.get("/admin/fivesim/refund-stats", requireAdminJwt, async (_req, res) => {
+router18.get("/admin/fivesim/refund-stats", requireAdminJwt, async (_req, res) => {
   try {
     const [overview] = await db.select({
       totalRefunds: sql`count(*) filter (where type = 'refund')::int`,
@@ -118399,12 +119829,12 @@ router17.get("/admin/fivesim/refund-stats", requireAdminJwt, async (_req, res) =
     res.status(500).json({ error: "Erreur lors du chargement des statistiques de remboursement" });
   }
 });
-var admin_fivesim_default = router17;
+var admin_fivesim_default = router18;
 
 // src/routes/config.ts
-var import_express19 = __toESM(require_express2(), 1);
-var router18 = (0, import_express19.Router)();
-router18.get("/config", async (_req, res) => {
+var import_express20 = __toESM(require_express2(), 1);
+var router19 = (0, import_express20.Router)();
+router19.get("/config", async (_req, res) => {
   const [
     platformName,
     supportEmail,
@@ -118472,15 +119902,15 @@ router18.get("/config", async (_req, res) => {
     }
   });
 });
-var config_default = router18;
+var config_default = router19;
 
 // src/routes/currencies.ts
-var import_express20 = __toESM(require_express2(), 1);
+var import_express21 = __toESM(require_express2(), 1);
 init_drizzle_orm();
 init_src();
 init_logger2();
-var router19 = (0, import_express20.Router)();
-router19.get("/currencies", async (_req, res) => {
+var router20 = (0, import_express21.Router)();
+router20.get("/currencies", async (_req, res) => {
   const rows = await db.select().from(currenciesTable).where(eq(currenciesTable.active, true)).orderBy(currenciesTable.countryCode);
   res.json(rows.map((r2) => ({
     id: r2.id,
@@ -118490,7 +119920,7 @@ router19.get("/currencies", async (_req, res) => {
     clientRate: Number(r2.clientRate)
   })));
 });
-router19.get("/currencies/country/:cc", async (req, res) => {
+router20.get("/currencies/country/:cc", async (req, res) => {
   const cc = req.params.cc?.toUpperCase();
   if (!cc) {
     res.status(400).json({ error: "Code pays requis" });
@@ -118517,7 +119947,7 @@ router19.get("/currencies/country/:cc", async (req, res) => {
     isXof: row.currencyCode === "XOF" || row.currencyCode === "XAF"
   });
 });
-router19.post("/payment/preview", async (req, res) => {
+router20.post("/payment/preview", async (req, res) => {
   const { country, currency: currencyCode, amount } = req.body;
   if (!country || !amount || isNaN(Number(amount)) || Number(amount) <= 0) {
     res.status(400).json({ error: "country et amount requis" });
@@ -118553,7 +119983,7 @@ router19.post("/payment/preview", async (req, res) => {
     }
   });
 });
-router19.get("/admin/currencies", requireAdminJwt, async (_req, res) => {
+router20.get("/admin/currencies", requireAdminJwt, async (_req, res) => {
   const rows = await db.select().from(currenciesTable).orderBy(currenciesTable.countryCode);
   res.json(rows.map((r2) => ({
     ...r2,
@@ -118561,7 +119991,7 @@ router19.get("/admin/currencies", requireAdminJwt, async (_req, res) => {
     clientRate: Number(r2.clientRate)
   })));
 });
-router19.post("/admin/currencies", requireAdminJwt, async (req, res) => {
+router20.post("/admin/currencies", requireAdminJwt, async (req, res) => {
   const { countryCode, currencyCode, currencyName, realRate, clientRate, active } = req.body;
   if (!countryCode || !currencyCode || !currencyName || realRate == null || clientRate == null) {
     res.status(400).json({ error: "Tous les champs sont requis" });
@@ -118578,7 +120008,7 @@ router19.post("/admin/currencies", requireAdminJwt, async (req, res) => {
   logger.info({ countryCode, currencyCode }, "[Admin] Currency created");
   res.status(201).json({ ...created, realRate: Number(created.realRate), clientRate: Number(created.clientRate) });
 });
-router19.put("/admin/currencies/:id", requireAdminJwt, async (req, res) => {
+router20.put("/admin/currencies/:id", requireAdminJwt, async (req, res) => {
   const id = Number(req.params.id);
   const { countryCode, currencyCode, currencyName, realRate, clientRate, active } = req.body;
   const updates = {};
@@ -118596,13 +120026,13 @@ router19.put("/admin/currencies/:id", requireAdminJwt, async (req, res) => {
   logger.info({ id }, "[Admin] Currency updated");
   res.json({ ...updated, realRate: Number(updated.realRate), clientRate: Number(updated.clientRate) });
 });
-router19.delete("/admin/currencies/:id", requireAdminJwt, async (req, res) => {
+router20.delete("/admin/currencies/:id", requireAdminJwt, async (req, res) => {
   const id = Number(req.params.id);
   await db.delete(currenciesTable).where(eq(currenciesTable.id, id));
   logger.info({ id }, "[Admin] Currency deleted");
   res.json({ success: true });
 });
-router19.get("/admin/fx-profits", requireAdminJwt, async (req, res) => {
+router20.get("/admin/fx-profits", requireAdminJwt, async (req, res) => {
   const limit = Math.min(Number(req.query.limit) || 50, 200);
   const offset = Number(req.query.offset) || 0;
   const rows = await db.select().from(fxProfitsTable).orderBy(desc(fxProfitsTable.createdAt)).limit(limit).offset(offset);
@@ -118619,7 +120049,7 @@ router19.get("/admin/fx-profits", requireAdminJwt, async (req, res) => {
     total
   });
 });
-router19.get("/admin/fx-profits/summary", requireAdminJwt, async (_req, res) => {
+router20.get("/admin/fx-profits/summary", requireAdminJwt, async (_req, res) => {
   const byCurrency = await db.select({
     currency: fxProfitsTable.currency,
     totalProfit: sum(fxProfitsTable.profitXof),
@@ -118647,13 +120077,13 @@ router19.get("/admin/fx-profits/summary", requireAdminJwt, async (_req, res) => 
     }))
   });
 });
-var currencies_default = router19;
+var currencies_default = router20;
 
 // src/routes/footer.ts
-var import_express21 = __toESM(require_express2(), 1);
+var import_express22 = __toESM(require_express2(), 1);
 init_drizzle_orm();
 init_src();
-var router20 = (0, import_express21.Router)();
+var router21 = (0, import_express22.Router)();
 function requireAdmin6(req, res, next) {
   if (req.adminPayload) {
     next();
@@ -118669,18 +120099,18 @@ function requireAdmin6(req, res, next) {
   }
   next();
 }
-router20.get("/footer", async (_req, res) => {
+router21.get("/footer", async (_req, res) => {
   const [socialLinks, operators] = await Promise.all([
     db.select().from(socialLinksTable).where(eq(socialLinksTable.isActive, true)).orderBy(asc(socialLinksTable.sortOrder)),
     db.select().from(paymentOperatorsTable).where(eq(paymentOperatorsTable.isActive, true)).orderBy(asc(paymentOperatorsTable.sortOrder))
   ]);
   res.json({ socialLinks, operators });
 });
-router20.get("/admin/social-links", requireAdminJwt, requireAdmin6, async (_req, res) => {
+router21.get("/admin/social-links", requireAdminJwt, requireAdmin6, async (_req, res) => {
   const links = await db.select().from(socialLinksTable).orderBy(asc(socialLinksTable.sortOrder));
   res.json({ links });
 });
-router20.post("/admin/social-links", requireAdminJwt, requireAdmin6, async (req, res) => {
+router21.post("/admin/social-links", requireAdminJwt, requireAdmin6, async (req, res) => {
   const { platform, name: name2, url: url2, color, isActive, sortOrder } = req.body;
   if (!platform || !name2 || !url2) {
     res.status(400).json({ error: "platform, name, url required" });
@@ -118696,7 +120126,7 @@ router20.post("/admin/social-links", requireAdminJwt, requireAdmin6, async (req,
   }).returning();
   res.json({ link });
 });
-router20.put("/admin/social-links/:id", requireAdminJwt, requireAdmin6, async (req, res) => {
+router21.put("/admin/social-links/:id", requireAdminJwt, requireAdmin6, async (req, res) => {
   const { id } = req.params;
   const data = req.body;
   const [link] = await db.update(socialLinksTable).set(data).where(eq(socialLinksTable.id, id)).returning();
@@ -118706,16 +120136,16 @@ router20.put("/admin/social-links/:id", requireAdminJwt, requireAdmin6, async (r
   }
   res.json({ link });
 });
-router20.delete("/admin/social-links/:id", requireAdminJwt, requireAdmin6, async (req, res) => {
+router21.delete("/admin/social-links/:id", requireAdminJwt, requireAdmin6, async (req, res) => {
   const { id } = req.params;
   await db.delete(socialLinksTable).where(eq(socialLinksTable.id, id));
   res.json({ success: true });
 });
-router20.get("/admin/payment-operators", requireAdminJwt, requireAdmin6, async (_req, res) => {
+router21.get("/admin/payment-operators", requireAdminJwt, requireAdmin6, async (_req, res) => {
   const operators = await db.select().from(paymentOperatorsTable).orderBy(asc(paymentOperatorsTable.sortOrder));
   res.json({ operators });
 });
-router20.post("/admin/payment-operators", requireAdminJwt, requireAdmin6, async (req, res) => {
+router21.post("/admin/payment-operators", requireAdminJwt, requireAdmin6, async (req, res) => {
   const { name: name2, logoUrl, logoData, websiteUrl, countries, bgColor, isActive, sortOrder } = req.body;
   if (!name2) {
     res.status(400).json({ error: "name required" });
@@ -118733,7 +120163,7 @@ router20.post("/admin/payment-operators", requireAdminJwt, requireAdmin6, async 
   }).returning();
   res.json({ operator: op });
 });
-router20.put("/admin/payment-operators/:id", requireAdminJwt, requireAdmin6, async (req, res) => {
+router21.put("/admin/payment-operators/:id", requireAdminJwt, requireAdmin6, async (req, res) => {
   const { id } = req.params;
   const data = req.body;
   const [op] = await db.update(paymentOperatorsTable).set(data).where(eq(paymentOperatorsTable.id, id)).returning();
@@ -118743,15 +120173,15 @@ router20.put("/admin/payment-operators/:id", requireAdminJwt, requireAdmin6, asy
   }
   res.json({ operator: op });
 });
-router20.delete("/admin/payment-operators/:id", requireAdminJwt, requireAdmin6, async (req, res) => {
+router21.delete("/admin/payment-operators/:id", requireAdminJwt, requireAdmin6, async (req, res) => {
   const { id } = req.params;
   await db.delete(paymentOperatorsTable).where(eq(paymentOperatorsTable.id, id));
   res.json({ success: true });
 });
-var footer_default = router20;
+var footer_default = router21;
 
 // src/routes/support.ts
-var import_express22 = __toESM(require_express2(), 1);
+var import_express23 = __toESM(require_express2(), 1);
 init_drizzle_orm();
 init_src();
 
@@ -119764,7 +121194,7 @@ var GoogleGenerativeAI = class {
 
 // src/routes/support.ts
 init_logger2();
-var router21 = (0, import_express22.Router)();
+var router22 = (0, import_express23.Router)();
 async function loadUserContext(userId) {
   const [user] = await db.select({
     fullName: usersTable.fullName,
@@ -119960,7 +121390,7 @@ ${knowledgeSection ? `
 INFOS SUPPLEMENTAIRES DE LA BASE DE CONNAISSANCES:
 ${knowledgeSection}` : ""}`;
 }
-router21.get("/support/history/:sessionId", async (req, res) => {
+router22.get("/support/history/:sessionId", async (req, res) => {
   const { sessionId } = req.params;
   if (!sessionId || sessionId.length < 8) {
     res.status(400).json({ error: "Session ID invalide" });
@@ -119974,7 +121404,7 @@ router21.get("/support/history/:sessionId", async (req, res) => {
   const msgs = await db.select().from(supportMessagesTable).where(eq(supportMessagesTable.conversationId, conv.id)).orderBy(asc(supportMessagesTable.createdAt)).limit(50);
   res.json({ conversationId: conv.id, messages: msgs });
 });
-router21.get("/support/config", async (req, res) => {
+router22.get("/support/config", async (req, res) => {
   const entries = await db.select().from(aiSupportConfigTable);
   const cfg = Object.fromEntries(entries.map((e2) => [e2.key, e2.value]));
   let greetingFr = cfg["ai_greeting_fr"] ?? "Bonjour ! Je suis Simia, votre conseill\xE8re Simix. Comment puis-je vous aider aujourd'hui ?";
@@ -119998,7 +121428,7 @@ router21.get("/support/config", async (req, res) => {
     enabled: cfg["ai_enabled"] !== "false"
   });
 });
-router21.post("/support/chat", async (req, res) => {
+router22.post("/support/chat", async (req, res) => {
   const { sessionId, message, imageData, language } = req.body;
   if (!sessionId || sessionId.length < 8) {
     res.status(400).json({ error: "Session ID requis" });
@@ -120447,7 +121877,7 @@ router21.post("/support/chat", async (req, res) => {
     res.end();
   }
 });
-router21.delete("/support/history/:sessionId", async (req, res) => {
+router22.delete("/support/history/:sessionId", async (req, res) => {
   const { sessionId } = req.params;
   const [conv] = await db.select().from(supportConversationsTable).where(eq(supportConversationsTable.sessionId, sessionId)).limit(1);
   if (conv) {
@@ -120455,30 +121885,30 @@ router21.delete("/support/history/:sessionId", async (req, res) => {
   }
   res.json({ success: true });
 });
-var support_default = router21;
+var support_default = router22;
 
 // src/routes/banners.ts
-var import_express23 = __toESM(require_express2(), 1);
+var import_express24 = __toESM(require_express2(), 1);
 init_drizzle_orm();
 init_src();
 init_logger2();
-var router22 = (0, import_express23.Router)();
-router22.get("/banners", async (_req, res) => {
+var router23 = (0, import_express24.Router)();
+router23.get("/banners", async (_req, res) => {
   const rows = await db.select().from(bannersTable).where(eq(bannersTable.isActive, true)).orderBy(asc(bannersTable.sortOrder));
   res.json(rows);
 });
-router22.get("/site-content", async (_req, res) => {
+router23.get("/site-content", async (_req, res) => {
   const rows = await db.select().from(systemSettingsTable).where(like(systemSettingsTable.key, "content_%"));
   const content = {};
   for (const r2 of rows) content[r2.key] = r2.value;
   res.json(content);
 });
-router22.use("/admin/banners", requireAdminJwt);
-router22.get("/admin/banners", async (_req, res) => {
+router23.use("/admin/banners", requireAdminJwt);
+router23.get("/admin/banners", async (_req, res) => {
   const rows = await db.select().from(bannersTable).orderBy(asc(bannersTable.sortOrder));
   res.json(rows);
 });
-router22.post("/admin/banners", async (req, res) => {
+router23.post("/admin/banners", async (req, res) => {
   const { title, subtitle, imageData, imageUrl, linkUrl, linkLabel, bgFrom, bgTo, textColor, isActive, sortOrder } = req.body;
   if (!title?.trim()) {
     res.status(400).json({ error: "Le titre est requis" });
@@ -120500,7 +121930,7 @@ router22.post("/admin/banners", async (req, res) => {
   logger.info({ bannerId: banner.id }, "[Banners] Created");
   res.status(201).json(banner);
 });
-router22.put("/admin/banners/:id", async (req, res) => {
+router23.put("/admin/banners/:id", async (req, res) => {
   const { id } = req.params;
   const { title, subtitle, imageData, imageUrl, linkUrl, linkLabel, bgFrom, bgTo, textColor, isActive, sortOrder } = req.body;
   if (!title?.trim()) {
@@ -120526,7 +121956,7 @@ router22.put("/admin/banners/:id", async (req, res) => {
   }
   res.json(banner);
 });
-router22.patch("/admin/banners/:id/toggle", async (req, res) => {
+router23.patch("/admin/banners/:id/toggle", async (req, res) => {
   const { id } = req.params;
   const [current] = await db.select().from(bannersTable).where(eq(bannersTable.id, id)).limit(1);
   if (!current) {
@@ -120536,7 +121966,7 @@ router22.patch("/admin/banners/:id/toggle", async (req, res) => {
   const [updated] = await db.update(bannersTable).set({ isActive: !current.isActive }).where(eq(bannersTable.id, id)).returning();
   res.json(updated);
 });
-router22.patch("/admin/banners/reorder", async (req, res) => {
+router23.patch("/admin/banners/reorder", async (req, res) => {
   const { order } = req.body;
   if (!Array.isArray(order)) {
     res.status(400).json({ error: "order doit \xEAtre un tableau" });
@@ -120547,19 +121977,19 @@ router22.patch("/admin/banners/reorder", async (req, res) => {
   }
   res.json({ success: true });
 });
-router22.delete("/admin/banners/:id", async (req, res) => {
+router23.delete("/admin/banners/:id", async (req, res) => {
   const { id } = req.params;
   await db.delete(bannersTable).where(eq(bannersTable.id, id));
   res.json({ success: true });
 });
-var banners_default = router22;
+var banners_default = router23;
 
 // src/routes/otp.ts
-var import_express24 = __toESM(require_express2(), 1);
+var import_express25 = __toESM(require_express2(), 1);
 init_drizzle_orm();
 init_src();
-var router23 = (0, import_express24.Router)();
-router23.post("/auth/otp/send", requireAuth, async (req, res) => {
+var router24 = (0, import_express25.Router)();
+router24.post("/auth/otp/send", requireAuth, async (req, res) => {
   const user = req.user;
   const ip = req.ip ?? "unknown";
   if (isRateLimited(`otp_send:${user.id}`, 5, 60 * 6e4)) {
@@ -120580,7 +122010,7 @@ router23.post("/auth/otp/send", requireAuth, async (req, res) => {
     res.status(500).json({ error: "Impossible d'envoyer l'email. V\xE9rifiez votre adresse email." });
   }
 });
-router23.post("/auth/otp/verify", requireAuth, async (req, res) => {
+router24.post("/auth/otp/verify", requireAuth, async (req, res) => {
   const user = req.user;
   const ip = req.ip ?? "unknown";
   const { code } = req.body;
@@ -120605,7 +122035,7 @@ router23.post("/auth/otp/verify", requireAuth, async (req, res) => {
   }).where(eq(usersTable.id, user.id));
   res.json({ success: true, message: "Email v\xE9rifi\xE9 avec succ\xE8s." });
 });
-router23.post("/auth/otp/resend", requireAuth, async (req, res) => {
+router24.post("/auth/otp/resend", requireAuth, async (req, res) => {
   const user = req.user;
   if (isRateLimited(`otp_resend:${user.id}`, 3, 60 * 6e4)) {
     res.status(429).json({ error: "Limite de renvoi atteinte. R\xE9essayez dans une heure." });
@@ -120625,7 +122055,7 @@ router23.post("/auth/otp/resend", requireAuth, async (req, res) => {
     res.status(500).json({ error: "Impossible d'envoyer l'email." });
   }
 });
-router23.get("/auth/otp/status", requireAuth, async (req, res) => {
+router24.get("/auth/otp/status", requireAuth, async (req, res) => {
   const user = req.user;
   const needsEmailVerification = !user.emailVerified;
   const needsInactivityCheck = user.emailVerified && isUserInactive(user.lastLoginAt ?? null);
@@ -120636,14 +122066,14 @@ router23.get("/auth/otp/status", requireAuth, async (req, res) => {
     email: user.email
   });
 });
-var otp_default = router23;
+var otp_default = router24;
 
 // src/routes/forgot-password.ts
-var import_express25 = __toESM(require_express2(), 1);
+var import_express26 = __toESM(require_express2(), 1);
 init_drizzle_orm();
 init_src();
-var router24 = (0, import_express25.Router)();
-router24.post("/auth/forgot-password", requireTurnstile, async (req, res) => {
+var router25 = (0, import_express26.Router)();
+router25.post("/auth/forgot-password", requireTurnstile, async (req, res) => {
   const ip = req.ip ?? "unknown";
   if (isRateLimited(`forgot_pwd:${ip}`, 5, 60 * 6e4)) {
     res.status(429).json({ error: "Trop de tentatives. R\xE9essayez dans une heure." });
@@ -120678,7 +122108,7 @@ router24.post("/auth/forgot-password", requireTurnstile, async (req, res) => {
   }
   res.json({ success: true, message: "Si un compte correspond, un email a \xE9t\xE9 envoy\xE9.", userId: user.id });
 });
-router24.post("/auth/forgot-password/verify", async (req, res) => {
+router25.post("/auth/forgot-password/verify", async (req, res) => {
   const ip = req.ip ?? "unknown";
   if (isRateLimited(`reset_verify:${ip}`, 10, 15 * 6e4)) {
     res.status(429).json({ error: "Trop de tentatives. R\xE9essayez dans 15 minutes." });
@@ -120696,7 +122126,7 @@ router24.post("/auth/forgot-password/verify", async (req, res) => {
   }
   res.json({ success: true, resetToken: `${userId}:${code}` });
 });
-router24.post("/auth/reset-password", async (req, res) => {
+router25.post("/auth/reset-password", async (req, res) => {
   const ip = req.ip ?? "unknown";
   if (isRateLimited(`reset_pwd:${ip}`, 5, 60 * 6e4)) {
     res.status(429).json({ error: "Trop de tentatives. R\xE9essayez dans une heure." });
@@ -120720,7 +122150,7 @@ router24.post("/auth/reset-password", async (req, res) => {
   await db.update(usersTable).set({ passwordHash, lastLoginAt: /* @__PURE__ */ new Date() }).where(eq(usersTable.id, userId));
   res.json({ success: true, message: "Mot de passe r\xE9initialis\xE9 avec succ\xE8s." });
 });
-router24.post("/auth/forgot-password/resend", async (req, res) => {
+router25.post("/auth/forgot-password/resend", async (req, res) => {
   const ip = req.ip ?? "unknown";
   if (isRateLimited(`reset_resend:${ip}`, 3, 60 * 6e4)) {
     res.status(429).json({ error: "Limite atteinte. R\xE9essayez dans une heure." });
@@ -120749,14 +122179,14 @@ router24.post("/auth/forgot-password/resend", async (req, res) => {
     res.status(500).json({ error: "Impossible d'envoyer l'email." });
   }
 });
-var forgot_password_default = router24;
+var forgot_password_default = router25;
 
 // src/routes/referral.ts
-var import_express26 = __toESM(require_express2(), 1);
+var import_express27 = __toESM(require_express2(), 1);
 init_drizzle_orm();
 init_src();
-var router25 = (0, import_express26.Router)();
-router25.get("/referral/me", requireAuth, async (req, res) => {
+var router26 = (0, import_express27.Router)();
+router26.get("/referral/me", requireAuth, async (req, res) => {
   const user = req.user;
   const commissionRate = await getReferralCommissionRate();
   const commissions = await db.select({
@@ -120783,36 +122213,37 @@ router25.get("/referral/me", requireAuth, async (req, res) => {
     }))
   });
 });
-var referral_default = router25;
+var referral_default = router26;
 
 // src/routes/index.ts
-var router26 = (0, import_express27.Router)();
-router26.use(health_default);
-router26.use(storage_default);
-router26.use(config_default);
-router26.use(auth_default);
-router26.use(google_auth_default);
-router26.use(services_default);
-router26.use(countries_default);
-router26.use(numbers_default);
-router26.use(wallet_default);
-router26.use(dashboard_default);
-router26.use(currencies_default);
-router26.use(admin_auth_default);
-router26.use(footer_default);
-router26.use(support_default);
-router26.use(notifications_default);
-router26.use(banners_default);
-router26.use(otp_default);
-router26.use(forgot_password_default);
-router26.use(referral_default);
-router26.use(admin_default);
-router26.use(admin_support_default);
-router26.use(admin_notifications_default);
-router26.use(admin_emails_default);
-router26.use(admin_payment_routing_default);
-router26.use(admin_fivesim_default);
-var routes_default = router26;
+var router27 = (0, import_express28.Router)();
+router27.use(health_default);
+router27.use(storage_default);
+router27.use(config_default);
+router27.use(auth_default);
+router27.use(google_auth_default);
+router27.use(services_default);
+router27.use(countries_default);
+router27.use(numbers_default);
+router27.use(wallet_default);
+router27.use(crypto_wallet_default);
+router27.use(dashboard_default);
+router27.use(currencies_default);
+router27.use(admin_auth_default);
+router27.use(footer_default);
+router27.use(support_default);
+router27.use(notifications_default);
+router27.use(banners_default);
+router27.use(otp_default);
+router27.use(forgot_password_default);
+router27.use(referral_default);
+router27.use(admin_default);
+router27.use(admin_support_default);
+router27.use(admin_notifications_default);
+router27.use(admin_emails_default);
+router27.use(admin_payment_routing_default);
+router27.use(admin_fivesim_default);
+var routes_default = router27;
 
 // src/app.ts
 init_logger2();
@@ -121781,7 +123212,7 @@ async function seedCountryPaymentConfigs() {
 }
 
 // src/app.ts
-var app = (0, import_express28.default)();
+var app = (0, import_express29.default)();
 app.set("trust proxy", 1);
 var buildAllowedOrigins = () => {
   const origins = /* @__PURE__ */ new Set();
@@ -121914,19 +123345,19 @@ var rawBodyCapture = (req, _res, buf) => {
 };
 app.use((req, res, next) => {
   if (WEBHOOK_PATHS_SET.has(req.path)) {
-    import_express28.default.json({ limit: "1mb", verify: rawBodyCapture })(req, res, next);
+    import_express29.default.json({ limit: "1mb", verify: rawBodyCapture })(req, res, next);
   } else {
     next();
   }
 });
 app.use((req, res, next) => {
   if (!WEBHOOK_PATHS_SET.has(req.path)) {
-    import_express28.default.json({ limit: "256kb", verify: rawBodyCapture })(req, res, next);
+    import_express29.default.json({ limit: "256kb", verify: rawBodyCapture })(req, res, next);
   } else {
     next();
   }
 });
-app.use(import_express28.default.urlencoded({ extended: true, limit: "64kb" }));
+app.use(import_express29.default.urlencoded({ extended: true, limit: "64kb" }));
 app.use((0, import_cookie_parser.default)());
 app.use(globalRateLimit);
 app.use(checkMaintenanceMode);
@@ -122084,7 +123515,7 @@ if (process.env.NODE_ENV === "production") {
   if (currentDir) {
     const publicDir = import_path2.default.join(currentDir, "public");
     if ((0, import_fs3.existsSync)(publicDir)) {
-      app.use(import_express28.default.static(publicDir));
+      app.use(import_express29.default.static(publicDir));
       app.use((_req, res) => {
         res.sendFile(import_path2.default.join(publicDir, "index.html"));
       });

@@ -172,6 +172,9 @@ importers:
       '@google/generative-ai':
         specifier: ^0.24.1
         version: 0.24.1
+      '@nowpaymentsio/nowpayments-sdk-nodejs':
+        specifier: ^0.2.1
+        version: 0.2.1
       '@workspace/api-zod':
         specifier: workspace:*
         version: link:../../lib/api-zod
@@ -1599,6 +1602,10 @@ packages:
   '@nodelib/fs.walk@1.2.8':
     resolution: {integrity: sha512-oGB+UxlgWcgQkgwo8GcEGwemoTFt3FIO9ababBmaGwXIoBKZ+GTy0pP185beGg7Llih/NSHSV2XAs1lnznocSg==}
     engines: {node: '>= 8'}
+
+  '@nowpaymentsio/nowpayments-sdk-nodejs@0.2.1':
+    resolution: {integrity: sha512-VqmntfJXFyN09lGhfqvtXB7uGK/oCgQVyr/RO5K5/FrWG3KmpLIj3FgpUTTpNOo8CHqm1qfk1b3RyWVzdo2PQg==}
+    engines: {node: '>=18'}
 
   '@orval/angular@8.5.3':
     resolution: {integrity: sha512-0xzgPyZI+XbDVPsGVW2zTUkAK/xcloadfshI6T1KyVrmtPkCUbWnRFYF7w/IxRnoQ/WIXa2vMFTq04tXGWCGvw==}
@@ -6090,6 +6097,8 @@ snapshots:
     dependencies:
       '@nodelib/fs.scandir': 2.1.5
       fastq: 1.20.1
+
+  '@nowpaymentsio/nowpayments-sdk-nodejs@0.2.1': {}
 
   '@orval/angular@8.5.3(typescript@5.9.3)':
     dependencies:
