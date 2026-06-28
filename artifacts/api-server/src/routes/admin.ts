@@ -235,48 +235,6 @@ router.post("/admin/users/:userId/demote", requireAdmin, async (req, res): Promi
   res.json({ success: true });
 });
 
-router.post("/admin/users/:userId/adjust-balance", requireAdmin, async (req, res): Promise<void> => {
-  const userId = String(req.params.userId);
-  const amount = Number(req.body?.amount);
-  const reason = String(req.body?.reason || "Ajustement administrateur");
-
-  if (isNaN(amount) || amount === 0) { res.status(400).json({ error: "Montant invalide" }); return; }
-
-  const [user] = await db.select({ balance: usersTable.balance }).from(usersTable).where(eq(usersTable.id, userId)).limit(1);
-  if (!user) { res.status(404).json({ error: "Utilisateur introuvable" }); return; }
-
-  const newBalance = Math.max(0, user.balance + amount);
-  await db.update(usersTable).set({ balance: newBalance }).where(eq(usersTable.id, userId));
-  const [tx] = await db.insert(transactionsTable).values({
-    userId,
-    type: amount > 0 ? "recharge" : "purchase",
-    amount: Math.abs(amount),
-    status: "completed",
-    description: reason,
-  }).returning();
-  await logAdminAction(adminId(req), "adjust_balance", req.ip, "user", userId, { amount, reason, newBalance });
-
-  /* ── Send deposit confirmation email for positive admin top-ups ── */
-  if (amount > 0 && tx) {
-    const [userFull] = await db.select({ email: usersTable.email, fullName: usersTable.fullName })
-      .from(usersTable).where(eq(usersTable.id, userId)).limit(1);
-    if (userFull?.email) {
-      sendDepositConfirmationEmail({
-        userEmail: userFull.email,
-        userFullName: userFull.fullName ?? "Utilisateur",
-        amount: Math.abs(amount),
-        method: "Ajustement administrateur",
-        phoneNumber: null,
-        transactionId: String(tx.id),
-        depositId: null,
-        createdAt: tx.createdAt ? new Date(tx.createdAt) : new Date(),
-        newBalance,
-      }).catch((e: Error) => logger.warn({ error: e.message }, "[email] Admin adjust-balance email non-critical error"));
-    }
-  }
-
-  res.json({ success: true, newBalance });
-});
 
 router.post("/admin/users/:userId/set-limits", requireAdmin, async (req, res): Promise<void> => {
   const userId = String(req.params.userId);
@@ -297,22 +255,6 @@ router.post("/admin/users/:userId/set-limits", requireAdmin, async (req, res): P
   res.json({ success: true, limits: updates });
 });
 
-router.post("/admin/users/:userId/reset-password", requireAdmin, async (req, res): Promise<void> => {
-  const userId = String(req.params.userId);
-
-  const [user] = await db.select({ id: usersTable.id, fullName: usersTable.fullName }).from(usersTable).where(eq(usersTable.id, userId)).limit(1);
-  if (!user) { res.status(404).json({ error: "Utilisateur introuvable" }); return; }
-
-  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789@#!";
-  const newPassword = Array.from({ length: 12 }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
-  const passwordHash = await bcrypt.hash(newPassword, 10);
-
-  await db.update(usersTable).set({ passwordHash }).where(eq(usersTable.id, userId));
-  await logAdminAction(adminId(req), "reset_password", req.ip, "user", userId, { note: "Password was reset by admin" });
-  logger.warn({ userId, adminId: req.user!.id }, "[ADMIN] User password reset");
-
-  res.json({ success: true, newPassword, message: `Le mot de passe de ${user.fullName} a été réinitialisé` });
-});
 
 router.post("/admin/users/:userId/force-logout", requireAdmin, async (req, res): Promise<void> => {
   const userId = String(req.params.userId);
