@@ -85961,6 +85961,7 @@ var init_clapay = __esm({
 // src/lib/fivesim-sync.ts
 var fivesim_sync_exports = {};
 __export(fivesim_sync_exports, {
+  applyAvailabilityToServicePrices: () => applyAvailabilityToServicePrices,
   getSyncLogs: () => getSyncLogs,
   isSyncInProgress: () => isSyncInProgress,
   startFiveSimSyncScheduler: () => startFiveSimSyncScheduler,
@@ -86010,6 +86011,75 @@ function isSyncInProgress() {
 }
 async function getSyncLogs() {
   return readSyncLogs();
+}
+function calcAutoApplyPrice(providerFcfa) {
+  if (providerFcfa <= 0) return 350;
+  if (providerFcfa <= 100) return 300;
+  if (providerFcfa <= 200) return 350;
+  if (providerFcfa <= 300) return 400;
+  return 450;
+}
+async function applyAvailabilityToServicePrices() {
+  const BATCH = 150;
+  const allSCA = await db.select().from(serviceCountryAvailabilityTable);
+  const availableSet = new Set(
+    allSCA.filter((r2) => r2.available > 0).map((r2) => `${r2.serviceSlug.toLowerCase()}::${r2.countryCode.toLowerCase()}`)
+  );
+  const allPrices = await db.select({ serviceSlug: servicePricesTable.serviceSlug, countryCode: servicePricesTable.countryCode }).from(servicePricesTable);
+  const toDisable = allPrices.filter(
+    (p) => !availableSet.has(`${p.serviceSlug}::${p.countryCode}`)
+  );
+  let disabled = 0;
+  for (let i2 = 0; i2 < toDisable.length; i2 += BATCH) {
+    for (const row of toDisable.slice(i2, i2 + BATCH)) {
+      await db.update(servicePricesTable).set({ enabled: false, updatedAt: /* @__PURE__ */ new Date() }).where(and(
+        eq(servicePricesTable.serviceSlug, row.serviceSlug),
+        eq(servicePricesTable.countryCode, row.countryCode)
+      ));
+      disabled++;
+    }
+  }
+  const socialRows = allSCA.filter(
+    (r2) => r2.available > 0 && AUTO_APPLY_SOCIAL_SLUGS.has(r2.serviceSlug.toLowerCase())
+  );
+  let enabledSocial = 0;
+  for (let i2 = 0; i2 < socialRows.length; i2 += BATCH) {
+    const batch = socialRows.slice(i2, i2 + BATCH).map((r2) => ({
+      serviceSlug: r2.serviceSlug.toLowerCase(),
+      countryCode: r2.countryCode.toLowerCase(),
+      price: Math.max(300, Math.round((r2.providerPriceFcfa || 500) * 1.3)),
+      enabled: true
+    }));
+    await db.insert(servicePricesTable).values(batch).onConflictDoUpdate({
+      target: [servicePricesTable.serviceSlug, servicePricesTable.countryCode],
+      set: { enabled: true, updatedAt: /* @__PURE__ */ new Date() }
+    });
+    enabledSocial += batch.length;
+  }
+  const nonSocialRows = allSCA.filter(
+    (r2) => r2.available > 0 && !AUTO_APPLY_SOCIAL_SLUGS.has(r2.serviceSlug.toLowerCase())
+  );
+  let priceFixed = 0;
+  for (let i2 = 0; i2 < nonSocialRows.length; i2 += BATCH) {
+    const batch = nonSocialRows.slice(i2, i2 + BATCH).map((r2) => ({
+      serviceSlug: r2.serviceSlug.toLowerCase(),
+      countryCode: r2.countryCode.toLowerCase(),
+      price: calcAutoApplyPrice(r2.providerPriceFcfa),
+      enabled: true
+    }));
+    await db.insert(servicePricesTable).values(batch).onConflictDoUpdate({
+      target: [servicePricesTable.serviceSlug, servicePricesTable.countryCode],
+      set: {
+        enabled: true,
+        price: sql`excluded.price`,
+        updatedAt: /* @__PURE__ */ new Date()
+      }
+    });
+    priceFixed += batch.length;
+  }
+  const enabled = enabledSocial + priceFixed;
+  logger.info({ enabled, disabled, priceFixed }, "[5sim-sync] applyAvailabilityToServicePrices done");
+  return { enabled, disabled, priceFixed };
 }
 async function syncFiveSimProducts(triggeredBy = "scheduler") {
   if (currentlySyncing) {
@@ -86171,6 +86241,12 @@ async function syncFiveSimProducts(triggeredBy = "scheduler") {
       errors: errors.slice(0, 20)
     };
     await writeSyncLog(entry);
+    try {
+      const applyResult = await applyAvailabilityToServicePrices();
+      logger.info(applyResult, "[5sim-sync] Auto-applied availability to service_prices");
+    } catch (applyErr) {
+      logger.warn({ err: applyErr.message }, "[5sim-sync] Auto-apply service_prices failed (non-fatal)");
+    }
     logger.info({ added, updated, priceProtected, countryErrors, total: productList.length }, "[5sim-sync] Sync complete");
     return { added, updated, skipped: 0, total: productList.length, priceProtected, countryErrors };
   } finally {
@@ -86291,7 +86367,7 @@ async function runScheduledSync() {
 function flagEmoji(code) {
   return [...code.toUpperCase()].map((c) => String.fromCodePoint(127462 - 65 + c.charCodeAt(0))).join("");
 }
-var FIVESIM_TO_ISO, SYNC_INTERVAL_MS, SYNC_LOGS_KEY, LAST_SYNC_KEY, SYNC_STATUS_KEY, MAX_LOG_ENTRIES, SAMPLE_COUNTRIES, CATEGORY_MAP, COLOR_MAP, LOGO_MAP, syncTimer, syncRunning, currentlySyncing, FR_NAMES, POPULAR_ISO_WESTERN, POPULAR_ISO_AFRICAN, POPULAR_ISO;
+var FIVESIM_TO_ISO, SYNC_INTERVAL_MS, SYNC_LOGS_KEY, LAST_SYNC_KEY, SYNC_STATUS_KEY, MAX_LOG_ENTRIES, SAMPLE_COUNTRIES, CATEGORY_MAP, COLOR_MAP, LOGO_MAP, syncTimer, syncRunning, currentlySyncing, AUTO_APPLY_SOCIAL_SLUGS, FR_NAMES, POPULAR_ISO_WESTERN, POPULAR_ISO_AFRICAN, POPULAR_ISO;
 var init_fivesim_sync = __esm({
   "src/lib/fivesim-sync.ts"() {
     "use strict";
@@ -86788,6 +86864,17 @@ var init_fivesim_sync = __esm({
     syncTimer = null;
     syncRunning = false;
     currentlySyncing = false;
+    AUTO_APPLY_SOCIAL_SLUGS = /* @__PURE__ */ new Set([
+      "whatsapp",
+      "telegram",
+      "instagram",
+      "google",
+      "youtube",
+      "facebook",
+      "tiktok",
+      "snapchat",
+      "binance"
+    ]);
     FR_NAMES = {
       AF: "Afghanistan",
       AL: "Albanie",
@@ -112420,8 +112507,9 @@ router6.get("/countries", async (req, res) => {
        LEFT JOIN service_country_availability sca
          ON UPPER(c.code) = sca.country_code
         AND sca.service_slug = $2
-       WHERE (sp.enabled IS NULL OR sp.enabled = true)
-         AND c.numbers_enabled = true
+       WHERE c.numbers_enabled = true
+         AND (sp.enabled IS NULL OR sp.enabled = true)
+         AND (sp.enabled = true OR COALESCE(sca.available, 0) > 0)
        ${searchClause}
        ORDER BY c.sort_order ASC`,
       params
@@ -116560,6 +116648,11 @@ router12.get("/admin/sync/status", requireAdmin2, async (_req, res) => {
   const [priceProtectedRow] = await db.select({ c: sql`count(*)::int` }).from(servicesTable).where(sql`provider_price IS NOT NULL AND ABS(price::numeric - ROUND(provider_price::numeric * (1.0 + margin::numeric / 100.0))) > 10`);
   const [enabledRow] = await db.select({ c: count() }).from(servicesTable).where(eq(servicesTable.enabled, true));
   const [customPricesRow] = await db.select({ c: count() }).from(servicePricesTable);
+  const { serviceCountryAvailabilityTable: serviceCountryAvailabilityTable4 } = await Promise.resolve().then(() => (init_src(), src_exports));
+  const [scaTotalRow] = await db.select({ c: count() }).from(serviceCountryAvailabilityTable4);
+  const [scaAvailRow] = await db.select({ c: sql`count(*)::int` }).from(serviceCountryAvailabilityTable4).where(sql`available > 0`);
+  const [scaSvcRow] = await db.select({ c: sql`count(distinct service_slug)::int` }).from(serviceCountryAvailabilityTable4).where(sql`available > 0`);
+  const [scaCtryRow] = await db.select({ c: sql`count(distinct country_code)::int` }).from(serviceCountryAvailabilityTable4).where(sql`available > 0`);
   const logs = await getSyncLogs2();
   res.json({
     inProgress: isSyncInProgress2(),
@@ -116572,7 +116665,11 @@ router12.get("/admin/sync/status", requireAdmin2, async (_req, res) => {
       enabledServices: Number(enabledRow?.c ?? 0),
       totalCountries: Number(countriesCountRow?.c ?? 0),
       priceProtected: Number(priceProtectedRow?.c ?? 0),
-      customPriceRules: Number(customPricesRow?.c ?? 0)
+      customPriceRules: Number(customPricesRow?.c ?? 0),
+      totalAvailabilityCombos: Number(scaTotalRow?.c ?? 0),
+      availableCombos: Number(scaAvailRow?.c ?? 0),
+      uniqueServicesWithAvail: Number(scaSvcRow?.c ?? 0),
+      uniqueCountriesWithAvail: Number(scaCtryRow?.c ?? 0)
     },
     logs,
     generatedAt: (/* @__PURE__ */ new Date()).toISOString()
@@ -118024,6 +118121,7 @@ function extractCode2(text2) {
 }
 
 // src/routes/admin-fivesim.ts
+init_fivesim_sync();
 var router17 = (0, import_express18.Router)();
 async function get5SimClient() {
   const [provider] = await db.select().from(apiProvidersTable).where(and(eq(apiProvidersTable.slug, "5sim"), eq(apiProvidersTable.active, true))).limit(1);
@@ -118216,99 +118314,15 @@ router17.post("/admin/fivesim/trigger-refund-sweep", requireAdminJwt, async (_re
     res.status(500).json({ error: "Erreur lors du sweep de remboursement" });
   }
 });
-var SOCIAL_SLUGS = /* @__PURE__ */ new Set([
-  "whatsapp",
-  "telegram",
-  "instagram",
-  "google",
-  "youtube",
-  "facebook",
-  "tiktok",
-  "snapchat",
-  "binance"
-]);
-function calcNonSocialPrice(providerFcfa) {
-  if (providerFcfa <= 0) return 350;
-  if (providerFcfa <= 100) return 300;
-  if (providerFcfa <= 200) return 350;
-  if (providerFcfa <= 300) return 400;
-  return 450;
-}
 router17.post("/admin/sync/apply-availability-prices", requireAdminJwt, async (_req, res) => {
   try {
-    const BATCH = 150;
-    const allSCA = await db.select().from(serviceCountryAvailabilityTable);
-    const availableSet = new Set(
-      allSCA.filter((r2) => r2.available > 0).map((r2) => `${r2.serviceSlug.toLowerCase()}::${r2.countryCode.toLowerCase()}`)
-    );
-    const allPrices = await db.select({
-      serviceSlug: servicePricesTable.serviceSlug,
-      countryCode: servicePricesTable.countryCode
-    }).from(servicePricesTable);
-    const toDisable = allPrices.filter(
-      (p) => !availableSet.has(`${p.serviceSlug}::${p.countryCode}`)
-    );
-    let disabled = 0;
-    for (let i2 = 0; i2 < toDisable.length; i2 += BATCH) {
-      for (const row of toDisable.slice(i2, i2 + BATCH)) {
-        await db.update(servicePricesTable).set({ enabled: false, updatedAt: /* @__PURE__ */ new Date() }).where(and(
-          eq(servicePricesTable.serviceSlug, row.serviceSlug),
-          eq(servicePricesTable.countryCode, row.countryCode)
-        ));
-        disabled++;
-      }
-    }
-    const socialRows = allSCA.filter(
-      (r2) => r2.available > 0 && SOCIAL_SLUGS.has(r2.serviceSlug.toLowerCase())
-    );
-    let enabledSocial = 0;
-    for (let i2 = 0; i2 < socialRows.length; i2 += BATCH) {
-      const batch = socialRows.slice(i2, i2 + BATCH).map((r2) => ({
-        serviceSlug: r2.serviceSlug.toLowerCase(),
-        countryCode: r2.countryCode.toLowerCase(),
-        price: Math.max(300, Math.round((r2.providerPriceFcfa || 500) * 1.3)),
-        enabled: true
-      }));
-      await db.insert(servicePricesTable).values(batch).onConflictDoUpdate({
-        target: [servicePricesTable.serviceSlug, servicePricesTable.countryCode],
-        set: { enabled: true, updatedAt: /* @__PURE__ */ new Date() }
-        // price untouched on conflict
-      });
-      enabledSocial += batch.length;
-    }
-    const nonSocialRows = allSCA.filter(
-      (r2) => r2.available > 0 && !SOCIAL_SLUGS.has(r2.serviceSlug.toLowerCase())
-    );
-    let priceFixed = 0;
-    for (let i2 = 0; i2 < nonSocialRows.length; i2 += BATCH) {
-      const batch = nonSocialRows.slice(i2, i2 + BATCH).map((r2) => ({
-        serviceSlug: r2.serviceSlug.toLowerCase(),
-        countryCode: r2.countryCode.toLowerCase(),
-        price: calcNonSocialPrice(r2.providerPriceFcfa),
-        enabled: true
-      }));
-      await db.insert(servicePricesTable).values(batch).onConflictDoUpdate({
-        target: [servicePricesTable.serviceSlug, servicePricesTable.countryCode],
-        set: {
-          enabled: true,
-          price: sql`excluded.price`,
-          updatedAt: /* @__PURE__ */ new Date()
-        }
-      });
-      priceFixed += batch.length;
-    }
-    const totalEnabled = enabledSocial + priceFixed;
-    logger.info(
-      { totalEnabled, disabled, priceFixed, total: allSCA.length },
-      "[admin] apply-availability-prices done"
-    );
+    const result = await applyAvailabilityToServicePrices();
     res.json({
       success: true,
-      message: `Sync termin\xE9e : ${totalEnabled} activ\xE9(s) (dont ${priceFixed} prix corrig\xE9s), ${disabled} d\xE9sactiv\xE9(s).`,
-      enabled: totalEnabled,
-      disabled,
-      priceFixed,
-      total: allSCA.length
+      message: `Sync termin\xE9e : ${result.enabled} activ\xE9(s) (dont ${result.priceFixed} prix corrig\xE9s), ${result.disabled} d\xE9sactiv\xE9(s).`,
+      enabled: result.enabled,
+      disabled: result.disabled,
+      priceFixed: result.priceFixed
     });
   } catch (err) {
     logger.error({ err }, "[admin] Error in apply-availability-prices");

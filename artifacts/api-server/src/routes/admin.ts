@@ -2086,6 +2086,22 @@ router.get("/admin/sync/status", requireAdmin, async (_req, res): Promise<void> 
   const [enabledRow] = await db.select({ c: count() }).from(servicesTable).where(eq(servicesTable.enabled, true));
   const [customPricesRow] = await db.select({ c: count() }).from(servicePricesTable);
 
+  /* SCA (service_country_availability) stats */
+  const { serviceCountryAvailabilityTable } = await import("@workspace/db");
+  const [scaTotalRow] = await db.select({ c: count() }).from(serviceCountryAvailabilityTable);
+  const [scaAvailRow] = await db
+    .select({ c: sql<number>`count(*)::int` })
+    .from(serviceCountryAvailabilityTable)
+    .where(sql`available > 0`);
+  const [scaSvcRow] = await db
+    .select({ c: sql<number>`count(distinct service_slug)::int` })
+    .from(serviceCountryAvailabilityTable)
+    .where(sql`available > 0`);
+  const [scaCtryRow] = await db
+    .select({ c: sql<number>`count(distinct country_code)::int` })
+    .from(serviceCountryAvailabilityTable)
+    .where(sql`available > 0`);
+
   const logs = await getSyncLogs();
 
   res.json({
@@ -2095,11 +2111,15 @@ router.get("/admin/sync/status", requireAdmin, async (_req, res): Promise<void> 
     lastCountriesSync:  settings["fivesim_countries_last_sync"] ?? null,
     lastCountryStatus:  settings["fivesim_countries_sync_status"] ?? null,
     stats: {
-      totalServices:     Number(servicesCountRow?.c ?? 0),
-      enabledServices:   Number(enabledRow?.c ?? 0),
-      totalCountries:    Number(countriesCountRow?.c ?? 0),
-      priceProtected:    Number(priceProtectedRow?.c ?? 0),
-      customPriceRules:  Number(customPricesRow?.c ?? 0),
+      totalServices:              Number(servicesCountRow?.c ?? 0),
+      enabledServices:            Number(enabledRow?.c ?? 0),
+      totalCountries:             Number(countriesCountRow?.c ?? 0),
+      priceProtected:             Number(priceProtectedRow?.c ?? 0),
+      customPriceRules:           Number(customPricesRow?.c ?? 0),
+      totalAvailabilityCombos:    Number(scaTotalRow?.c ?? 0),
+      availableCombos:            Number(scaAvailRow?.c ?? 0),
+      uniqueServicesWithAvail:    Number(scaSvcRow?.c ?? 0),
+      uniqueCountriesWithAvail:   Number(scaCtryRow?.c ?? 0),
     },
     logs,
     generatedAt: new Date().toISOString(),

@@ -786,11 +786,15 @@ export interface SyncStatus {
   lastCountriesSync: string | null;
   lastCountryStatus: string | null;
   stats: {
-    totalServices:    number;
-    enabledServices:  number;
-    totalCountries:   number;
-    priceProtected:   number;
-    customPriceRules: number;
+    totalServices:            number;
+    enabledServices:          number;
+    totalCountries:           number;
+    priceProtected:           number;
+    customPriceRules:         number;
+    totalAvailabilityCombos:  number;
+    availableCombos:          number;
+    uniqueServicesWithAvail:  number;
+    uniqueCountriesWithAvail: number;
   };
   logs: SyncLogEntry[];
   generatedAt: string;

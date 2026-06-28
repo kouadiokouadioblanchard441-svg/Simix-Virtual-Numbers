@@ -85,8 +85,9 @@ router.get("/countries", async (req, res): Promise<void> => {
        LEFT JOIN service_country_availability sca
          ON UPPER(c.code) = sca.country_code
         AND sca.service_slug = $2
-       WHERE (sp.enabled IS NULL OR sp.enabled = true)
-         AND c.numbers_enabled = true
+       WHERE c.numbers_enabled = true
+         AND (sp.enabled IS NULL OR sp.enabled = true)
+         AND (sp.enabled = true OR COALESCE(sca.available, 0) > 0)
        ${searchClause}
        ORDER BY c.sort_order ASC`,
       params,

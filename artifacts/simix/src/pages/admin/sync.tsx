@@ -510,15 +510,38 @@ export default function AdminSync() {
             )}
           </div>
 
-          {/* Stats grid */}
+          {/* Stats grid — catalogue */}
           {status && (
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
-              <StatCard icon={Server} label="Services totaux" value={status.stats.totalServices} color="blue" />
-              <StatCard icon={Activity} label="Services actifs" value={status.stats.enabledServices} color="emerald" />
-              <StatCard icon={Globe} label="Pays" value={status.stats.totalCountries} color="violet" />
-              <StatCard icon={Lock} label="Prix protégés" value={status.stats.priceProtected} sub="Prix admin personnalisés" color="amber" />
-              <StatCard icon={Tag} label="Règles par pays" value={status.stats.customPriceRules} sub="Prix pays-service" color="rose" />
-            </div>
+            <>
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+                <StatCard icon={Server} label="Services totaux" value={status.stats.totalServices} color="blue" />
+                <StatCard icon={Activity} label="Services actifs" value={status.stats.enabledServices} color="emerald" />
+                <StatCard icon={Globe} label="Pays" value={status.stats.totalCountries} color="violet" />
+                <StatCard icon={Lock} label="Prix protégés" value={status.stats.priceProtected} sub="Prix admin personnalisés" color="amber" />
+                <StatCard icon={Tag} label="Règles par pays" value={status.stats.customPriceRules} sub="Prix pays-service" color="rose" />
+              </div>
+              {/* Stats grid — disponibilité 5sim (SCA cache) */}
+              <div>
+                <div className="text-[11px] text-zinc-500 font-semibold uppercase tracking-wide mb-2 flex items-center gap-1.5">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+                  Cache de disponibilité 5sim (service_country_availability)
+                </div>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <StatCard icon={Database} label="Combos total" value={status.stats.totalAvailabilityCombos ?? 0} sub="Lignes dans le cache" color="violet" />
+                  <StatCard icon={CheckCircle2} label="Combos disponibles" value={status.stats.availableCombos ?? 0} sub="Stock > 0 chez 5sim" color="emerald" />
+                  <StatCard icon={Server} label="Services avec stock" value={status.stats.uniqueServicesWithAvail ?? 0} sub="Services distincts" color="blue" />
+                  <StatCard icon={Globe} label="Pays avec stock" value={status.stats.uniqueCountriesWithAvail ?? 0} sub="Pays distincts" color="amber" />
+                </div>
+                {status.stats.availableCombos > 0 && (
+                  <div className="mt-2 text-[11px] text-zinc-500 flex items-center gap-1.5">
+                    <Activity className="w-3 h-3 text-emerald-500" />
+                    <span>
+                      Seuls les pays avec stock chez 5sim sont affichés aux utilisateurs — les pays sans disponibilité sont automatiquement masqués.
+                    </span>
+                  </div>
+                )}
+              </div>
+            </>
           )}
 
           {/* Sync Log History */}

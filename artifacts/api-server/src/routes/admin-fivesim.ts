@@ -23,6 +23,7 @@ import { requireAdminJwt } from "../lib/admin-jwt-middleware";
 import { FiveSimClient, FiveSimError } from "../lib/fivesim";
 import { logger } from "../lib/logger";
 import { triggerAutoRefundSweep } from "../lib/fivesim-poller";
+import { applyAvailabilityToServicePrices } from "../lib/fivesim-sync";
 
 const router: IRouter = Router();
 
@@ -254,101 +255,13 @@ function calcNonSocialPrice(providerFcfa: number): number {
 
 router.post("/admin/sync/apply-availability-prices", requireAdminJwt, async (_req, res): Promise<void> => {
   try {
-    const BATCH = 150;
-
-    /* 1. Source de vérité : toutes les lignes SCA */
-    const allSCA = await db.select().from(serviceCountryAvailabilityTable);
-
-    /* 2. Ensemble des combos disponibles (slug::code en minuscules) */
-    const availableSet = new Set(
-      allSCA
-        .filter(r => r.available > 0)
-        .map(r => `${r.serviceSlug.toLowerCase()}::${r.countryCode.toLowerCase()}`),
-    );
-
-    /* 3. Lire toutes les lignes existantes de service_prices */
-    const allPrices = await db.select({
-      serviceSlug: servicePricesTable.serviceSlug,
-      countryCode: servicePricesTable.countryCode,
-    }).from(servicePricesTable);
-
-    /* 4. Désactiver les combos absents de SCA */
-    const toDisable = allPrices.filter(
-      p => !availableSet.has(`${p.serviceSlug}::${p.countryCode}`),
-    );
-    let disabled = 0;
-    for (let i = 0; i < toDisable.length; i += BATCH) {
-      for (const row of toDisable.slice(i, i + BATCH)) {
-        await db.update(servicePricesTable)
-          .set({ enabled: false, updatedAt: new Date() })
-          .where(and(
-            eq(servicePricesTable.serviceSlug, row.serviceSlug),
-            eq(servicePricesTable.countryCode, row.countryCode),
-          ));
-        disabled++;
-      }
-    }
-
-    /* 5a. Upsert services SOCIAUX (enabled=true, prix existant préservé) */
-    const socialRows = allSCA.filter(
-      r => r.available > 0 && SOCIAL_SLUGS.has(r.serviceSlug.toLowerCase()),
-    );
-    let enabledSocial = 0;
-    for (let i = 0; i < socialRows.length; i += BATCH) {
-      const batch = socialRows.slice(i, i + BATCH).map(r => ({
-        serviceSlug:  r.serviceSlug.toLowerCase(),
-        countryCode:  r.countryCode.toLowerCase(),
-        price:        Math.max(300, Math.round((r.providerPriceFcfa || 500) * 1.3)),
-        enabled:      true as const,
-      }));
-      await db.insert(servicePricesTable)
-        .values(batch)
-        .onConflictDoUpdate({
-          target: [servicePricesTable.serviceSlug, servicePricesTable.countryCode],
-          set: { enabled: true, updatedAt: new Date() },   // price untouched on conflict
-        });
-      enabledSocial += batch.length;
-    }
-
-    /* 5b. Upsert services NON-SOCIAUX (enabled=true, prix fixé 300–450 FCFA) */
-    const nonSocialRows = allSCA.filter(
-      r => r.available > 0 && !SOCIAL_SLUGS.has(r.serviceSlug.toLowerCase()),
-    );
-    let priceFixed = 0;
-    for (let i = 0; i < nonSocialRows.length; i += BATCH) {
-      const batch = nonSocialRows.slice(i, i + BATCH).map(r => ({
-        serviceSlug: r.serviceSlug.toLowerCase(),
-        countryCode: r.countryCode.toLowerCase(),
-        price:       calcNonSocialPrice(r.providerPriceFcfa),
-        enabled:     true as const,
-      }));
-      await db.insert(servicePricesTable)
-        .values(batch)
-        .onConflictDoUpdate({
-          target: [servicePricesTable.serviceSlug, servicePricesTable.countryCode],
-          set: {
-            enabled:    true,
-            price:      sql`excluded.price`,
-            updatedAt:  new Date(),
-          },
-        });
-      priceFixed   += batch.length;
-    }
-
-    const totalEnabled = enabledSocial + priceFixed;
-
-    logger.info(
-      { totalEnabled, disabled, priceFixed, total: allSCA.length },
-      "[admin] apply-availability-prices done",
-    );
-
+    const result = await applyAvailabilityToServicePrices();
     res.json({
       success:    true,
-      message:    `Sync terminée : ${totalEnabled} activé(s) (dont ${priceFixed} prix corrigés), ${disabled} désactivé(s).`,
-      enabled:    totalEnabled,
-      disabled,
-      priceFixed,
-      total:      allSCA.length,
+      message:    `Sync terminée : ${result.enabled} activé(s) (dont ${result.priceFixed} prix corrigés), ${result.disabled} désactivé(s).`,
+      enabled:    result.enabled,
+      disabled:   result.disabled,
+      priceFixed: result.priceFixed,
     });
   } catch (err) {
     logger.error({ err }, "[admin] Error in apply-availability-prices");

@@ -15,7 +15,7 @@
  */
 
 import { sql } from "drizzle-orm";
-import { db, apiProvidersTable, servicesTable, systemSettingsTable, countriesTable, serviceCountryAvailabilityTable } from "@workspace/db";
+import { db, apiProvidersTable, servicesTable, systemSettingsTable, countriesTable, serviceCountryAvailabilityTable, servicePricesTable } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
 import { FiveSimClient, type FiveSimProductsResponse, ISO_TO_5SIM } from "./fivesim";
 import { logger } from "./logger";
@@ -444,6 +444,117 @@ export async function getSyncLogs(): Promise<SyncLogEntry[]> {
   return readSyncLogs();
 }
 
+/* ─── Social service slugs (price preserved on conflict) ─── */
+const AUTO_APPLY_SOCIAL_SLUGS = new Set([
+  "whatsapp", "telegram", "instagram", "google", "youtube",
+  "facebook", "tiktok", "snapchat", "binance",
+]);
+
+function calcAutoApplyPrice(providerFcfa: number): number {
+  if (providerFcfa <= 0)   return 350;
+  if (providerFcfa <= 100) return 300;
+  if (providerFcfa <= 200) return 350;
+  if (providerFcfa <= 300) return 400;
+  return 450;
+}
+
+/**
+ * Apply service_country_availability cache → service_prices.
+ *
+ * Rules:
+ *  - Combos with available > 0 → enabled = true in service_prices
+ *    · Social services: price NOT overwritten on conflict (preserved)
+ *    · Other services:  price set to 300–450 FCFA based on provider cost
+ *  - Combos absent from SCA (or available = 0) → enabled = false
+ *
+ * Safe to call repeatedly (idempotent upserts).
+ * Returns { enabled, disabled, priceFixed } counts.
+ */
+export async function applyAvailabilityToServicePrices(): Promise<{
+  enabled: number; disabled: number; priceFixed: number;
+}> {
+  const BATCH = 150;
+
+  const allSCA = await db.select().from(serviceCountryAvailabilityTable);
+
+  const availableSet = new Set(
+    allSCA
+      .filter(r => r.available > 0)
+      .map(r => `${r.serviceSlug.toLowerCase()}::${r.countryCode.toLowerCase()}`),
+  );
+
+  const allPrices = await db
+    .select({ serviceSlug: servicePricesTable.serviceSlug, countryCode: servicePricesTable.countryCode })
+    .from(servicePricesTable);
+
+  /* 1. Disable combos absent from SCA */
+  const toDisable = allPrices.filter(
+    p => !availableSet.has(`${p.serviceSlug}::${p.countryCode}`),
+  );
+  let disabled = 0;
+  for (let i = 0; i < toDisable.length; i += BATCH) {
+    for (const row of toDisable.slice(i, i + BATCH)) {
+      await db.update(servicePricesTable)
+        .set({ enabled: false, updatedAt: new Date() })
+        .where(and(
+          eq(servicePricesTable.serviceSlug, row.serviceSlug),
+          eq(servicePricesTable.countryCode, row.countryCode),
+        ));
+      disabled++;
+    }
+  }
+
+  /* 2a. Upsert social services (enabled=true, price preserved on conflict) */
+  const socialRows = allSCA.filter(
+    r => r.available > 0 && AUTO_APPLY_SOCIAL_SLUGS.has(r.serviceSlug.toLowerCase()),
+  );
+  let enabledSocial = 0;
+  for (let i = 0; i < socialRows.length; i += BATCH) {
+    const batch = socialRows.slice(i, i + BATCH).map(r => ({
+      serviceSlug: r.serviceSlug.toLowerCase(),
+      countryCode: r.countryCode.toLowerCase(),
+      price:       Math.max(300, Math.round((r.providerPriceFcfa || 500) * 1.3)),
+      enabled:     true as const,
+    }));
+    await db.insert(servicePricesTable)
+      .values(batch)
+      .onConflictDoUpdate({
+        target: [servicePricesTable.serviceSlug, servicePricesTable.countryCode],
+        set: { enabled: true, updatedAt: new Date() },
+      });
+    enabledSocial += batch.length;
+  }
+
+  /* 2b. Upsert non-social services (enabled=true, price 300–450 FCFA) */
+  const nonSocialRows = allSCA.filter(
+    r => r.available > 0 && !AUTO_APPLY_SOCIAL_SLUGS.has(r.serviceSlug.toLowerCase()),
+  );
+  let priceFixed = 0;
+  for (let i = 0; i < nonSocialRows.length; i += BATCH) {
+    const batch = nonSocialRows.slice(i, i + BATCH).map(r => ({
+      serviceSlug: r.serviceSlug.toLowerCase(),
+      countryCode: r.countryCode.toLowerCase(),
+      price:       calcAutoApplyPrice(r.providerPriceFcfa),
+      enabled:     true as const,
+    }));
+    await db.insert(servicePricesTable)
+      .values(batch)
+      .onConflictDoUpdate({
+        target: [servicePricesTable.serviceSlug, servicePricesTable.countryCode],
+        set: {
+          enabled:   true,
+          price:     sql`excluded.price`,
+          updatedAt: new Date(),
+        },
+      });
+    priceFixed += batch.length;
+  }
+
+  const enabled = enabledSocial + priceFixed;
+  logger.info({ enabled, disabled, priceFixed }, "[5sim-sync] applyAvailabilityToServicePrices done");
+  return { enabled, disabled, priceFixed };
+}
+
 /**
  * Sync 5sim products (services) into the local DB.
  *
@@ -682,6 +793,14 @@ export async function syncFiveSimProducts(triggeredBy: "scheduler" | "admin" = "
       errors:      errors.slice(0, 20),
     };
     await writeSyncLog(entry);
+
+    /* ── 7. Auto-apply availability to service_prices ── */
+    try {
+      const applyResult = await applyAvailabilityToServicePrices();
+      logger.info(applyResult, "[5sim-sync] Auto-applied availability to service_prices");
+    } catch (applyErr) {
+      logger.warn({ err: (applyErr as Error).message }, "[5sim-sync] Auto-apply service_prices failed (non-fatal)");
+    }
 
     logger.info({ added, updated, priceProtected, countryErrors, total: productList.length }, "[5sim-sync] Sync complete");
     return { added, updated, skipped: 0, total: productList.length, priceProtected, countryErrors };
