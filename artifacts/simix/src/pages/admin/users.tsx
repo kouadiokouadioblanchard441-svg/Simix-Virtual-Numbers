@@ -5,8 +5,8 @@ import { AdminGuard } from "@/components/admin-guard";
 import { AdminLayout } from "@/components/admin-layout";
 import { formatFCFA } from "@/lib/format";
 import {
-  Loader2, Search, UserX, UserCheck, ShieldCheck, Trash2,
-  ChevronLeft, ChevronRight, Eye, LogOut, Gauge,
+  Loader2, Search, UserX, UserCheck, ShieldCheck, Coins, Trash2,
+  ChevronLeft, ChevronRight, Eye, KeyRound, LogOut, Gauge, Copy,
   CheckCircle2, AlertTriangle, Lock, Download, Filter, X
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -17,7 +17,7 @@ const STATUS_COLORS: Record<string, string> = {
   Bloqué: "bg-red-500/20 text-red-400",
 };
 
-type Panel = "block" | "limits" | null;
+type Panel = "block" | "balance" | "limits" | "reset" | null;
 
 function exportToCsv(filename: string, rows: Record<string, unknown>[]) {
   if (!rows.length) return;
@@ -40,9 +40,12 @@ function exportToCsv(filename: string, rows: Record<string, unknown>[]) {
 function UserRow({ user, onAction }: { user: AdminUser; onAction: () => void }) {
   const [panel, setPanel] = useState<Panel>(null);
   const [blockReason, setBlockReason] = useState("Activité suspecte");
+  const [balanceAmount, setBalanceAmount] = useState("");
+  const [balanceReason, setBalanceReason] = useState("Ajustement manuel");
   const [maxPurchases, setMaxPurchases] = useState(String(user.maxPurchasesPerMin ?? 10));
   const [maxBal, setMaxBal] = useState(String(user.maxBalance ?? 500000));
   const [restricted, setRestricted] = useState(user.isRestricted ?? false);
+  const [newPwd, setNewPwd] = useState<string | null>(null);
   const { toast } = useToast();
   const qc = useQueryClient();
 

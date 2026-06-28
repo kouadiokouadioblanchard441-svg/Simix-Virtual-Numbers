@@ -116647,6 +116647,21 @@ router13.post("/admin/users/:userId/adjust-balance", requireAdmin2, async (req, 
   }
   res.json({ success: true, newBalance });
 });
+router13.post("/admin/users/:userId/reset-password", requireAdmin2, async (req, res) => {
+  const userId = String(req.params.userId);
+  const [user] = await db.select({ id: usersTable.id, fullName: usersTable.fullName }).from(usersTable).where(eq(usersTable.id, userId)).limit(1);
+  if (!user) {
+    res.status(404).json({ error: "Utilisateur introuvable" });
+    return;
+  }
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789@#!";
+  const newPassword = Array.from({ length: 12 }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
+  const passwordHash = await bcryptjs_default.hash(newPassword, 10);
+  await db.update(usersTable).set({ passwordHash }).where(eq(usersTable.id, userId));
+  await logAdminAction(adminId2(req), "reset_password", req.ip, "user", userId, { note: "Password was reset by admin" });
+  logger.warn({ userId, adminId: req.user.id }, "[ADMIN] User password reset");
+  res.json({ success: true, newPassword, message: `Le mot de passe de ${user.fullName} a \xE9t\xE9 r\xE9initialis\xE9` });
+});
 router13.post("/admin/users/:userId/set-limits", requireAdmin2, async (req, res) => {
   const userId = String(req.params.userId);
   const { maxPurchasesPerMin, maxBalance, isRestricted } = req.body;
@@ -116666,21 +116681,6 @@ router13.post("/admin/users/:userId/set-limits", requireAdmin2, async (req, res)
   await db.update(usersTable).set(updates).where(eq(usersTable.id, userId));
   await logAdminAction(adminId2(req), "set_user_limits", req.ip, "user", userId, updates);
   res.json({ success: true, limits: updates });
-});
-router13.post("/admin/users/:userId/reset-password", requireAdmin2, async (req, res) => {
-  const userId = String(req.params.userId);
-  const [user] = await db.select({ id: usersTable.id, fullName: usersTable.fullName }).from(usersTable).where(eq(usersTable.id, userId)).limit(1);
-  if (!user) {
-    res.status(404).json({ error: "Utilisateur introuvable" });
-    return;
-  }
-  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789@#!";
-  const newPassword = Array.from({ length: 12 }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
-  const passwordHash = await bcryptjs_default.hash(newPassword, 10);
-  await db.update(usersTable).set({ passwordHash }).where(eq(usersTable.id, userId));
-  await logAdminAction(adminId2(req), "reset_password", req.ip, "user", userId, { note: "Password was reset by admin" });
-  logger.warn({ userId, adminId: req.user.id }, "[ADMIN] User password reset");
-  res.json({ success: true, newPassword, message: `Le mot de passe de ${user.fullName} a \xE9t\xE9 r\xE9initialis\xE9` });
 });
 router13.post("/admin/users/:userId/force-logout", requireAdmin2, async (req, res) => {
   const userId = String(req.params.userId);
