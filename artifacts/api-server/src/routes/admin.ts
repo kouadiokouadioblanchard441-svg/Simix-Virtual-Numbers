@@ -365,8 +365,14 @@ router.put("/admin/services/:serviceId", requireAdmin, async (req, res): Promise
    * 2. If only margin changed (no explicit price) → fetch existing providerPrice and recompute
    * 3. If only price changed → save it as a fixed price (margin unchanged)
    */
+  /*
+   * adminPriceModified flag logic:
+   *   - margin changed (no explicit price) → price follows formula → flag = false (sync may update)
+   *   - providerPrice + margin both provided → price auto-computed → flag = false
+   *   - price explicitly set (no formula involved) → flag = true (sync must never overwrite)
+   */
   if (updates.margin !== undefined && updates.price === undefined) {
-    // Fetch existing providerPrice from DB to recalculate final price at the new margin
+    // Only margin changed → recompute price from formula → sync can manage price again
     const [existing] = await db
       .select({ providerPrice: servicesTable.providerPrice })
       .from(servicesTable)
@@ -375,10 +381,16 @@ router.put("/admin/services/:serviceId", requireAdmin, async (req, res): Promise
     const pp = Number(existing?.providerPrice ?? 0);
     const m = Number(updates.margin);
     if (pp > 0) updates.price = Math.round(pp * (1 + m / 100));
+    updates.adminPriceModified = false; // price is back to formula-driven
   } else if (updates.providerPrice !== undefined && updates.margin !== undefined) {
+    // Both provided → price computed from formula
     const pp = Number(updates.providerPrice);
     const m = Number(updates.margin);
     if (pp > 0) updates.price = Math.round(pp * (1 + m / 100));
+    updates.adminPriceModified = false; // price is formula-driven
+  } else if (updates.price !== undefined) {
+    // Explicit price set by admin → lock it from sync
+    updates.adminPriceModified = true;
   }
 
   await db.update(servicesTable).set(updates).where(eq(servicesTable.id, serviceId));
@@ -2205,14 +2217,15 @@ router.post("/admin/service-prices/bulk", requireAdmin, async (req, res): Promis
     const [row] = await db
       .insert(servicePricesTable)
       .values({
-        countryCode: countryCode.toLowerCase(),
-        serviceSlug: serviceSlug.toLowerCase(),
-        price: Number(price),
-        enabled: enabled ?? true,
+        countryCode:   countryCode.toLowerCase(),
+        serviceSlug:   serviceSlug.toLowerCase(),
+        price:         Number(price),
+        enabled:       enabled ?? true,
+        adminModified: true,
       })
       .onConflictDoUpdate({
         target: [servicePricesTable.countryCode, servicePricesTable.serviceSlug],
-        set: { price: Number(price), enabled: enabled ?? true, updatedAt: new Date() },
+        set: { price: Number(price), enabled: enabled ?? true, adminModified: true, updatedAt: new Date() },
       })
       .returning();
     if (row) results.push(row);
@@ -2240,10 +2253,10 @@ router.post("/admin/service-prices", requireAdmin, async (req, res): Promise<voi
   }
   const [row] = await db
     .insert(servicePricesTable)
-    .values({ countryCode: countryCode.toLowerCase(), serviceSlug: serviceSlug.toLowerCase(), price: Number(price), enabled: enabled ?? true })
+    .values({ countryCode: countryCode.toLowerCase(), serviceSlug: serviceSlug.toLowerCase(), price: Number(price), enabled: enabled ?? true, adminModified: true })
     .onConflictDoUpdate({
       target: [servicePricesTable.countryCode, servicePricesTable.serviceSlug],
-      set: { price: Number(price), enabled: enabled ?? true, updatedAt: new Date() },
+      set: { price: Number(price), enabled: enabled ?? true, adminModified: true, updatedAt: new Date() },
     })
     .returning();
   await logAdminAction(adminId(req), "service_price_upsert", req.ip, "service_price", row!.id, { countryCode, serviceSlug, price });
@@ -2254,7 +2267,7 @@ router.put("/admin/service-prices/:id", requireAdmin, async (req, res): Promise<
   const { id } = req.params;
   const { price, enabled } = req.body as { price?: number; enabled?: boolean };
   const updates: Record<string, unknown> = { updatedAt: new Date() };
-  if (price != null) updates.price = Number(price);
+  if (price != null) { updates.price = Number(price); updates.adminModified = true; }
   if (enabled != null) updates.enabled = enabled;
   const [row] = await db.update(servicePricesTable).set(updates).where(eq(servicePricesTable.id, id!)).returning();
   if (!row) { res.status(404).json({ error: "Prix introuvable" }); return; }

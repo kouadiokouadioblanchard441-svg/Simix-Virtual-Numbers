@@ -426,13 +426,14 @@ function ServiceRow({ service }: { service: AdminService }) {
         <td className="py-3 px-4">
           <div>
             <span className="text-white text-sm font-bold">{formatFCFA(service.price)}</span>
-            {service.providerPrice > 0 && service.margin !== undefined && (
-              <div className="text-zinc-600 text-[10px]">
-                {Math.round(service.providerPrice * (1 + service.margin / 100)) === service.price
+            <div className="text-[10px] mt-0.5">
+              {service.adminPriceModified
+                ? <span className="text-amber-400 font-medium">🔒 Verrouillé admin</span>
+                : service.providerPrice > 0
                   ? <span className="text-emerald-600">Auto ({service.margin}%)</span>
-                  : <span className="text-amber-500">Override fixe</span>}
-              </div>
-            )}
+                  : <span className="text-zinc-600">Prix fixe</span>
+              }
+            </div>
           </div>
         </td>
         <td className="py-3 px-4">

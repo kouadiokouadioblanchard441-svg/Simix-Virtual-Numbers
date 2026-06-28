@@ -678,6 +678,22 @@ export async function syncFiveSimProducts(triggeredBy: "scheduler" | "admin" = "
       throw new Error("Aucun produit reçu depuis 5sim");
     }
 
+    /* ── 2a. One-time migration: grandfather existing custom prices into the flag ──
+     *
+     * Before we switched to the flag-based approach, custom prices were detected
+     * by a 10 FCFA delta heuristic. Now we use admin_price_modified = true.
+     * This step promotes any existing service whose price deviates from the
+     * auto-formula by more than 10 FCFA so their price is preserved after the switch.
+     * It is idempotent — rows already flagged are untouched.
+     */
+    await db.execute(sql`
+      UPDATE services
+      SET admin_price_modified = true
+      WHERE admin_price_modified = false
+        AND provider_price > 0
+        AND ABS(price::numeric - ROUND(provider_price::numeric * (1.0 + margin::numeric / 100.0))) > 10
+    `);
+
     /* ── 2. Count existing services before upsert ── */
     const [{ existingCount }] = await db
       .select({ existingCount: sql<number>`count(*)::int` })
@@ -694,30 +710,35 @@ export async function syncFiveSimProducts(triggeredBy: "scheduler" | "admin" = "
         const prettyName      = slug.charAt(0).toUpperCase() + slug.slice(1).replace(/_/g, " ");
         const slugLower = slug.toLowerCase();
         return {
-          name:          prettyName,
+          name:               prettyName,
           slug,
-          price:         priceWithMarkup,
-          providerPrice: priceInFcfa,
-          margin:        markup,
-          available:     Math.round(info.qty),
-          category:      CATEGORY_MAP[slugLower] ?? "Autre",
-          color:         COLOR_MAP[slugLower] ?? "#7C3AED",
-          logoUrl:       logoFor(slugLower),
-          enabled:       true as boolean,
-          sortOrder:     200,
+          price:              priceWithMarkup,
+          providerPrice:      priceInFcfa,
+          margin:             markup,
+          available:          Math.round(info.qty),
+          category:           CATEGORY_MAP[slugLower] ?? "Autre",
+          color:              COLOR_MAP[slugLower] ?? "#7C3AED",
+          logoUrl:            logoFor(slugLower),
+          enabled:            true as boolean,
+          sortOrder:          200,
+          adminPriceModified: false as boolean,
         };
       });
 
       /*
-       * Price protection:
-       *   Keep existing `price` when it differs by more than 10 FCFA from the
-       *   auto-calculated value (= providerPrice × (1 + margin/100)).
-       *   This means the admin manually set a custom price → we must not overwrite it.
+       * Price protection — uses the `admin_price_modified` flag (set by admin endpoints).
        *
-       *   Formula stored for reference:
-       *     auto_price = ROUND(services.provider_price * (1.0 + services.margin / 100.0))
-       *     if |services.price - auto_price| <= 10  →  price was auto-calculated, update it
-       *     else                                    →  price was customised, preserve it
+       * Rules enforced here:
+       *   - providerPrice  → ALWAYS updated (raw 5sim cost)
+       *   - available      → ALWAYS updated
+       *   - margin         → NEVER updated (admin-owned field)
+       *   - adminPriceModified → NEVER changed by sync (only admin endpoints may set it)
+       *   - price:
+       *       • admin_price_modified = true  → price is NEVER overwritten (admin fixed price)
+       *       • admin_price_modified = false → price recalculated from new providerPrice
+       *         using the EXISTING margin so "30% margin" stays "30% margin" after sync
+       *   - logoUrl → only updated if sync provides a value (never overwrites with null)
+       *   - enabled → set to true when 5sim reports stock > 0
        */
       await db
         .insert(servicesTable)
@@ -733,28 +754,19 @@ export async function syncFiveSimProducts(triggeredBy: "scheduler" | "admin" = "
             logoUrl: sql`CASE WHEN excluded.logo_url IS NOT NULL THEN excluded.logo_url ELSE services.logo_url END`,
 
             /*
-             * Price protection + Margin preservation:
+             * PRICE PROTECTION — flag-based (reliable, no heuristic):
+             *   admin_price_modified = true  → keep existing price (admin set it explicitly)
+             *   admin_price_modified = false → recalculate from NEW provider cost + EXISTING margin
              *
-             * The `margin` is NEVER overwritten by the sync — it is an admin setting.
-             * When the admin sets margin=30%, the sync must honour that indefinitely.
-             *
-             * The `price` is recalculated only when it still matches the auto-formula
-             * at the CURRENT admin margin (services.margin), meaning the admin hasn't
-             * set a custom fixed price. If the admin typed a specific price, we keep it.
-             *
-             * Detection: auto-price = ROUND(provider_price * (1 + services.margin / 100))
-             * If |current_price - auto_price| <= 10 FCFA → price is auto → update it
-             *                                         else → price is manual → preserve it
-             *
-             * When the price IS auto, we recalculate using the NEW provider_price but the
-             * EXISTING margin (services.margin), so a 30% margin stays 30% after the sync.
+             * `margin` is NEVER overwritten — it stays exactly as the admin configured it.
+             * `admin_price_modified` is intentionally NOT in this set clause — the sync
+             * must never change it. Only admin price-update endpoints may set it to true.
              */
             price: sql`
               CASE
-                WHEN services.provider_price IS NULL
-                  OR ABS(services.price::numeric - ROUND(services.provider_price::numeric * (1.0 + services.margin::numeric / 100.0))) <= 10
-                THEN ROUND(excluded.provider_price::numeric * (1.0 + services.margin::numeric / 100.0))
-                ELSE services.price
+                WHEN services.admin_price_modified = true
+                THEN services.price
+                ELSE ROUND(excluded.provider_price::numeric * (1.0 + services.margin::numeric / 100.0))
               END
             `,
 

@@ -86169,6 +86169,13 @@ async function syncFiveSimProducts(triggeredBy = "scheduler") {
     if (productList.length === 0) {
       throw new Error("Aucun produit re\xE7u depuis 5sim");
     }
+    await db.execute(sql`
+      UPDATE services
+      SET admin_price_modified = true
+      WHERE admin_price_modified = false
+        AND provider_price > 0
+        AND ABS(price::numeric - ROUND(provider_price::numeric * (1.0 + margin::numeric / 100.0))) > 10
+    `);
     const [{ existingCount }] = await db.select({ existingCount: sql`count(*)::int` }).from(servicesTable);
     const BATCH_SIZE = 100;
     for (let i2 = 0; i2 < productList.length; i2 += BATCH_SIZE) {
@@ -86189,7 +86196,8 @@ async function syncFiveSimProducts(triggeredBy = "scheduler") {
           color: COLOR_MAP[slugLower] ?? "#7C3AED",
           logoUrl: logoFor(slugLower),
           enabled: true,
-          sortOrder: 200
+          sortOrder: 200,
+          adminPriceModified: false
         };
       });
       await db.insert(servicesTable).values(rows).onConflictDoUpdate({
@@ -86201,28 +86209,19 @@ async function syncFiveSimProducts(triggeredBy = "scheduler") {
           /* Update logo only when sync provides one (don't overwrite admin-set logos with null) */
           logoUrl: sql`CASE WHEN excluded.logo_url IS NOT NULL THEN excluded.logo_url ELSE services.logo_url END`,
           /*
-           * Price protection + Margin preservation:
+           * PRICE PROTECTION — flag-based (reliable, no heuristic):
+           *   admin_price_modified = true  → keep existing price (admin set it explicitly)
+           *   admin_price_modified = false → recalculate from NEW provider cost + EXISTING margin
            *
-           * The `margin` is NEVER overwritten by the sync — it is an admin setting.
-           * When the admin sets margin=30%, the sync must honour that indefinitely.
-           *
-           * The `price` is recalculated only when it still matches the auto-formula
-           * at the CURRENT admin margin (services.margin), meaning the admin hasn't
-           * set a custom fixed price. If the admin typed a specific price, we keep it.
-           *
-           * Detection: auto-price = ROUND(provider_price * (1 + services.margin / 100))
-           * If |current_price - auto_price| <= 10 FCFA → price is auto → update it
-           *                                         else → price is manual → preserve it
-           *
-           * When the price IS auto, we recalculate using the NEW provider_price but the
-           * EXISTING margin (services.margin), so a 30% margin stays 30% after the sync.
+           * `margin` is NEVER overwritten — it stays exactly as the admin configured it.
+           * `admin_price_modified` is intentionally NOT in this set clause — the sync
+           * must never change it. Only admin price-update endpoints may set it to true.
            */
           price: sql`
               CASE
-                WHEN services.provider_price IS NULL
-                  OR ABS(services.price::numeric - ROUND(services.provider_price::numeric * (1.0 + services.margin::numeric / 100.0))) <= 10
-                THEN ROUND(excluded.provider_price::numeric * (1.0 + services.margin::numeric / 100.0))
-                ELSE services.price
+                WHEN services.admin_price_modified = true
+                THEN services.price
+                ELSE ROUND(excluded.provider_price::numeric * (1.0 + services.margin::numeric / 100.0))
               END
             `,
           /* margin is NEVER updated by the sync — admin owns this field entirely */
@@ -116731,10 +116730,14 @@ router13.put("/admin/services/:serviceId", requireAdmin2, async (req, res) => {
     const pp = Number(existing?.providerPrice ?? 0);
     const m2 = Number(updates.margin);
     if (pp > 0) updates.price = Math.round(pp * (1 + m2 / 100));
+    updates.adminPriceModified = false;
   } else if (updates.providerPrice !== void 0 && updates.margin !== void 0) {
     const pp = Number(updates.providerPrice);
     const m2 = Number(updates.margin);
     if (pp > 0) updates.price = Math.round(pp * (1 + m2 / 100));
+    updates.adminPriceModified = false;
+  } else if (updates.price !== void 0) {
+    updates.adminPriceModified = true;
   }
   await db.update(servicesTable).set(updates).where(eq(servicesTable.id, serviceId));
   await logAdminAction(adminId2(req), "update_service", req.ip, "service", serviceId, updates);
@@ -118237,10 +118240,11 @@ router13.post("/admin/service-prices/bulk", requireAdmin2, async (req, res) => {
       countryCode: countryCode.toLowerCase(),
       serviceSlug: serviceSlug.toLowerCase(),
       price: Number(price),
-      enabled: enabled ?? true
+      enabled: enabled ?? true,
+      adminModified: true
     }).onConflictDoUpdate({
       target: [servicePricesTable.countryCode, servicePricesTable.serviceSlug],
-      set: { price: Number(price), enabled: enabled ?? true, updatedAt: /* @__PURE__ */ new Date() }
+      set: { price: Number(price), enabled: enabled ?? true, adminModified: true, updatedAt: /* @__PURE__ */ new Date() }
     }).returning();
     if (row) results.push(row);
   }
@@ -118259,9 +118263,9 @@ router13.post("/admin/service-prices", requireAdmin2, async (req, res) => {
     res.status(400).json({ error: "countryCode, serviceSlug et price sont requis" });
     return;
   }
-  const [row] = await db.insert(servicePricesTable).values({ countryCode: countryCode.toLowerCase(), serviceSlug: serviceSlug.toLowerCase(), price: Number(price), enabled: enabled ?? true }).onConflictDoUpdate({
+  const [row] = await db.insert(servicePricesTable).values({ countryCode: countryCode.toLowerCase(), serviceSlug: serviceSlug.toLowerCase(), price: Number(price), enabled: enabled ?? true, adminModified: true }).onConflictDoUpdate({
     target: [servicePricesTable.countryCode, servicePricesTable.serviceSlug],
-    set: { price: Number(price), enabled: enabled ?? true, updatedAt: /* @__PURE__ */ new Date() }
+    set: { price: Number(price), enabled: enabled ?? true, adminModified: true, updatedAt: /* @__PURE__ */ new Date() }
   }).returning();
   await logAdminAction(adminId2(req), "service_price_upsert", req.ip, "service_price", row.id, { countryCode, serviceSlug, price });
   res.status(201).json(row);
@@ -118270,7 +118274,10 @@ router13.put("/admin/service-prices/:id", requireAdmin2, async (req, res) => {
   const { id } = req.params;
   const { price, enabled } = req.body;
   const updates = { updatedAt: /* @__PURE__ */ new Date() };
-  if (price != null) updates.price = Number(price);
+  if (price != null) {
+    updates.price = Number(price);
+    updates.adminModified = true;
+  }
   if (enabled != null) updates.enabled = enabled;
   const [row] = await db.update(servicePricesTable).set(updates).where(eq(servicePricesTable.id, id)).returning();
   if (!row) {

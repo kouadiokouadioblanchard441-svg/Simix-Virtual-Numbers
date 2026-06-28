@@ -504,6 +504,8 @@ export interface AdminService {
   popular: boolean;
   enabled: boolean;
   logoUrl?: string | null;
+  /** true = prix verrouillé par l'admin, la sync ne l'écrasera jamais */
+  adminPriceModified: boolean;
 }
 
 export interface AdminCountry {
