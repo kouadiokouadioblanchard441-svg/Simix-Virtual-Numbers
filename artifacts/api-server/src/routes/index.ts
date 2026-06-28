@@ -25,6 +25,7 @@ import bannersRouter from "./banners";
 import otpRouter from "./otp";
 import forgotPasswordRouter from "./forgot-password";
 import referralRouter from "./referral";
+import pushSubscriptionsRouter from "./push-subscriptions";
 
 const router: IRouter = Router();
 
@@ -48,6 +49,7 @@ router.use(bannersRouter);
 router.use(otpRouter);
 router.use(forgotPasswordRouter);
 router.use(referralRouter);
+router.use(pushSubscriptionsRouter);
 router.use(adminRouter);
 router.use(adminSupportRouter);
 router.use(adminNotificationsRouter);

@@ -8,10 +8,11 @@
  * DELETE /notifications/:id
  */
 import { Router, type IRouter, type Request, type Response } from "express";
-import { eq, and, desc, or, isNull, count, not, exists, inArray } from "drizzle-orm";
+import { eq, and, desc, or, isNull, count, not, inArray } from "drizzle-orm";
 import { db, notificationsTable, notificationReadsTable } from "@workspace/db";
 import { requireAuth } from "../lib/auth";
 import { logger } from "../lib/logger";
+import { sendPushToUser } from "../lib/push";
 
 const router: IRouter = Router();
 
@@ -19,26 +20,43 @@ const router: IRouter = Router();
 type SseClient = { userId: string; res: Response };
 const sseClients: SseClient[] = [];
 
-export function broadcastNotification(notification: {
-  id: string;
-  title: string;
-  body: string;
-  type: string;
-  icon?: string | null;
-  link?: string | null;
-  createdAt: Date;
-  isRead: boolean;
-  isGlobal: boolean;
-  userId?: string | null;
-}): void {
+export function broadcastNotification(
+  notification: {
+    id: string;
+    title: string;
+    body: string;
+    type: string;
+    icon?: string | null;
+    link?: string | null;
+    createdAt: Date;
+    isRead: boolean;
+    isGlobal: boolean;
+    userId?: string | null;
+  } | {
+    title: string;
+    body: string;
+    type: string;
+    userId?: string | null;
+  },
+): void {
   const data = JSON.stringify({ event: "notification", data: notification });
+  const isGlobal = "isGlobal" in notification ? notification.isGlobal : false;
   const targets = sseClients.filter(c =>
-    notification.isGlobal || c.userId === notification.userId
+    isGlobal || c.userId === notification.userId
   );
   for (const client of targets) {
     try {
       client.res.write(`data: ${data}\n\n`);
     } catch { /* client disconnected */ }
+  }
+
+  if (notification.userId) {
+    const url = "link" in notification && notification.link ? notification.link : "/dashboard";
+    void sendPushToUser(notification.userId, {
+      title: notification.title,
+      body:  notification.body,
+      url,
+    });
   }
 }
 

@@ -3,11 +3,12 @@ import { AuthGuard } from "@/components/auth-guard";
 import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  ArrowLeft, CheckCheck, Loader2, Bell,
+  ArrowLeft, CheckCheck, Loader2, Bell, BellOff,
   MessageSquare, Wallet, Phone, RefreshCw, Clock,
-  Shield, Gift, Star, Zap, Megaphone, Info,
+  Shield, Gift, Star, Zap, Megaphone, Info, BellRing,
 } from "lucide-react";
 import { useNotifications, type AppNotification } from "@/hooks/use-notifications";
+import { usePushNotifications } from "@/hooks/usePushNotifications";
 import { SimixIcon } from "@/components/simix-logo";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -135,6 +136,60 @@ function NotifItem({ notif, onRead }: { notif: AppNotification; onRead: (id: str
   );
 }
 
+/* ─── Push notification toggle card ──────────────────────────────── */
+
+function PushToggleCard() {
+  const { state, subscribe, unsubscribe } = usePushNotifications();
+
+  if (state === "unsupported") return null;
+
+  const isGranted = state === "granted";
+  const isLoading = state === "loading";
+  const isDenied  = state === "denied";
+
+  return (
+    <div className="mx-4 mt-4 mb-1 rounded-2xl border border-card-border bg-card p-4 flex items-center gap-4">
+      <div className={`w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 ${
+        isGranted ? "bg-violet-600/20 border border-violet-500/30" : "bg-secondary border border-card-border"
+      }`}>
+        {isGranted
+          ? <BellRing className="w-5 h-5 text-violet-400" />
+          : <BellOff  className="w-5 h-5 text-muted-foreground" />
+        }
+      </div>
+
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-bold text-foreground">Notifications push</p>
+        <p className="text-xs text-muted-foreground mt-0.5">
+          {isGranted  ? "Activées — vous serez alerté même hors ligne" :
+           isDenied   ? "Bloquées dans votre navigateur" :
+           "Recevez vos alertes même app fermée"}
+        </p>
+      </div>
+
+      {!isDenied && (
+        <button
+          onClick={isGranted ? unsubscribe : subscribe}
+          disabled={isLoading}
+          className={`relative flex-shrink-0 w-12 h-6 rounded-full transition-all duration-300 ${
+            isGranted ? "bg-violet-600" : "bg-secondary border border-card-border"
+          } ${isLoading ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
+        >
+          <motion.div
+            animate={{ x: isGranted ? 24 : 2 }}
+            transition={{ type: "spring", stiffness: 500, damping: 30 }}
+            className="absolute top-1 w-4 h-4 rounded-full bg-white shadow"
+          />
+        </button>
+      )}
+
+      {isDenied && (
+        <span className="text-[10px] text-red-400 font-semibold flex-shrink-0">Bloquées</span>
+      )}
+    </div>
+  );
+}
+
 /* ─── Page content ────────────────────────────────────────────────── */
 
 function NotificationsContent() {
@@ -143,6 +198,8 @@ function NotificationsContent() {
 
   return (
     <div className="flex-1 flex flex-col w-full bg-background overflow-hidden">
+
+      <PushToggleCard />
 
       {/* ── Header ── */}
       <div
