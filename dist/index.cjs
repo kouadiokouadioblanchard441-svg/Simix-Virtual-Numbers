@@ -42203,6 +42203,12 @@ var init_countries = __esm({
       flag: text("flag").notNull(),
       available: integer("available").notNull().default(0),
       price: integer("price").notNull(),
+      /**
+       * Set to TRUE by admin price-update endpoints.
+       * When TRUE, the sync scheduler NEVER overwrites `price`.
+       * When FALSE (default), the price may be updated during sync.
+       */
+      adminPriceModified: boolean("admin_price_modified").notNull().default(false),
       popular: boolean("popular").notNull().default(false),
       sortOrder: integer("sort_order").notNull().default(100),
       /** When false: country is hidden from registration picker + deposits are blocked */
@@ -86296,14 +86302,29 @@ async function syncFiveSimCountries(triggeredBy = "scheduler") {
     await db.insert(countriesTable).values({ name: nameFr, code: iso, dialCode, flag, available: 1, price: 150, popular, sortOrder }).onConflictDoUpdate({
       target: countriesTable.code,
       set: {
+        /*
+         * SYNC RULES FOR COUNTRIES
+         *
+         * Updated by sync (technical data from 5sim):
+         *   - name     → only if still equal to the ISO code (auto-generated placeholder)
+         *   - dialCode → only if blank (never overwrite admin-corrected dial codes)
+         *   - flag     → always updated (purely technical)
+         *
+         * NEVER overwritten by sync (admin-owned commercial/display params):
+         *   - price        → controlled by admin; protected by admin_price_modified flag
+         *   - popular      → admin decides which countries appear prominently
+         *   - sortOrder    → admin controls display order
+         *   - enabled      → admin enables/disables countries
+         *   - numbersEnabled → admin controls virtual number availability per country
+         */
         name: sql`CASE WHEN excluded.name != countries.name AND countries.name = countries.code THEN excluded.name ELSE countries.name END`,
         /* Preserve existing dialCode — 5sim guest API returns wrong codes for some
            countries (e.g. France → +594/Guyane). Only set it when the row is new
            (dialCode is blank) rather than on every sync. */
         dialCode: sql`CASE WHEN countries.dial_code IS NULL OR countries.dial_code = '' THEN excluded.dial_code ELSE countries.dial_code END`,
-        flag: sql`excluded.flag`,
-        popular: sql`excluded.popular`,
-        sortOrder: sql`excluded.sort_order`
+        flag: sql`excluded.flag`
+        /* popular, sortOrder, price, enabled, numbersEnabled → intentionally NOT here.
+           These are admin-owned parameters. The sync must never overwrite them. */
       }
     });
   }
@@ -116861,7 +116882,10 @@ router13.put("/admin/countries/:countryId", requireAdmin2, async (req, res) => {
   const countryId = String(req.params.countryId);
   const { price, available, popular, enabled, numbersEnabled } = req.body;
   const updates = {};
-  if (price !== void 0) updates.price = Number(price);
+  if (price !== void 0) {
+    updates.price = Number(price);
+    updates.adminPriceModified = true;
+  }
   if (available !== void 0) updates.available = Number(available);
   if (popular !== void 0) updates.popular = Boolean(popular);
   if (enabled !== void 0) updates.enabled = Boolean(enabled);

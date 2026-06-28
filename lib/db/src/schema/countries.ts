@@ -14,6 +14,12 @@ export const countriesTable = pgTable("countries", {
   flag: text("flag").notNull(),
   available: integer("available").notNull().default(0),
   price: integer("price").notNull(),
+  /**
+   * Set to TRUE by admin price-update endpoints.
+   * When TRUE, the sync scheduler NEVER overwrites `price`.
+   * When FALSE (default), the price may be updated during sync.
+   */
+  adminPriceModified: boolean("admin_price_modified").notNull().default(false),
   popular: boolean("popular").notNull().default(false),
   sortOrder: integer("sort_order").notNull().default(100),
   /** When false: country is hidden from registration picker + deposits are blocked */

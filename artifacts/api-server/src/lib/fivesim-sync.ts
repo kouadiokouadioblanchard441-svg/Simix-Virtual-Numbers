@@ -880,14 +880,29 @@ export async function syncFiveSimCountries(triggeredBy: "scheduler" | "admin" = 
       .onConflictDoUpdate({
         target: countriesTable.code,
         set: {
+          /*
+           * SYNC RULES FOR COUNTRIES
+           *
+           * Updated by sync (technical data from 5sim):
+           *   - name     → only if still equal to the ISO code (auto-generated placeholder)
+           *   - dialCode → only if blank (never overwrite admin-corrected dial codes)
+           *   - flag     → always updated (purely technical)
+           *
+           * NEVER overwritten by sync (admin-owned commercial/display params):
+           *   - price        → controlled by admin; protected by admin_price_modified flag
+           *   - popular      → admin decides which countries appear prominently
+           *   - sortOrder    → admin controls display order
+           *   - enabled      → admin enables/disables countries
+           *   - numbersEnabled → admin controls virtual number availability per country
+           */
           name:      sql`CASE WHEN excluded.name != countries.name AND countries.name = countries.code THEN excluded.name ELSE countries.name END`,
           /* Preserve existing dialCode — 5sim guest API returns wrong codes for some
              countries (e.g. France → +594/Guyane). Only set it when the row is new
              (dialCode is blank) rather than on every sync. */
           dialCode:  sql`CASE WHEN countries.dial_code IS NULL OR countries.dial_code = '' THEN excluded.dial_code ELSE countries.dial_code END`,
           flag:      sql`excluded.flag`,
-          popular:   sql`excluded.popular`,
-          sortOrder: sql`excluded.sort_order`,
+          /* popular, sortOrder, price, enabled, numbersEnabled → intentionally NOT here.
+             These are admin-owned parameters. The sync must never overwrite them. */
         },
       });
   }

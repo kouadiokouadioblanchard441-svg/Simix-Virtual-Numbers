@@ -487,7 +487,11 @@ router.put("/admin/countries/:countryId", requireAdmin, async (req, res): Promis
   const { price, available, popular, enabled, numbersEnabled } = req.body;
 
   const updates: Record<string, unknown> = {};
-  if (price !== undefined) updates.price = Number(price);
+  if (price !== undefined) {
+    updates.price = Number(price);
+    /* Mark as admin-modified so the sync scheduler never overwrites this price */
+    updates.adminPriceModified = true;
+  }
   if (available !== undefined) updates.available = Number(available);
   if (popular !== undefined) updates.popular = Boolean(popular);
   if (enabled !== undefined) updates.enabled = Boolean(enabled);
