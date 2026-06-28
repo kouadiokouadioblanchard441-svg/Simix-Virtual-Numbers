@@ -78,6 +78,13 @@
       "when": 1782540000000,
       "tag": "0010_user_api_credentials",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1782650000000,
+      "tag": "0011_country_admin_price_modified",
+      "breakpoints": true
     }
   ]
 }
