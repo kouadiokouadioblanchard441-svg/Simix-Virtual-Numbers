@@ -116127,6 +116127,27 @@ async function getCryptoWebhookUrl() {
   return domain ? `https://${domain}/api/wallet/crypto/webhook` : "https://simix.site/api/wallet/crypto/webhook";
 }
 var CRYPTO_PREFIX = "crypto_";
+async function creditCryptoDeposit(txId, userId, amountFcfa, paymentId, partial = false) {
+  const label = partial ? "partiel" : "confirm\xE9";
+  const [justCompleted] = await db.update(transactionsTable).set({ status: "completed" }).where(
+    and(
+      eq(transactionsTable.id, txId),
+      eq(transactionsTable.status, "pending")
+    )
+  ).returning();
+  if (!justCompleted) return false;
+  await db.update(usersTable).set({ balance: sql`${usersTable.balance} + ${amountFcfa}` }).where(eq(usersTable.id, userId));
+  const body = partial ? `${amountFcfa.toLocaleString("fr-FR")} FCFA cr\xE9dit\xE9s (paiement crypto partiel).` : `${amountFcfa.toLocaleString("fr-FR")} FCFA ont \xE9t\xE9 cr\xE9dit\xE9s via crypto.`;
+  await db.insert(notificationsTable).values({
+    userId,
+    title: `Recharge ${label} \u2713`,
+    body,
+    type: "deposit_success"
+  });
+  broadcastNotification(userId, { title: `Recharge ${label} \u2713`, body, type: "deposit_success" });
+  logger.info({ paymentId, userId, amountFcfa, partial }, "[Crypto] Balance credited");
+  return true;
+}
 router11.post("/wallet/crypto/initiate", requireAuth, async (req, res) => {
   const user = req.user;
   const { amountFcfa, network } = req.body;
@@ -116142,13 +116163,17 @@ router11.post("/wallet/crypto/initiate", requireAuth, async (req, res) => {
   }
   const sdk = await getNowPaymentsSDK(await getCryptoWebhookUrl());
   if (!sdk) {
-    res.status(503).json({ error: "Le d\xE9p\xF4t crypto est temporairement indisponible. Contactez le support." });
+    res.status(503).json({
+      error: "Le d\xE9p\xF4t crypto est temporairement indisponible. Contactez le support."
+    });
     return;
   }
   const rate = await getFcfaToUsdRate();
   const amountUsd = fcfaToUsd(amountFcfa, rate);
-  if (amountUsd < 2) {
-    res.status(400).json({ error: `Montant minimum de d\xE9p\xF4t crypto : ${Math.ceil(2 * rate)} FCFA.` });
+  if (amountUsd < 1) {
+    res.status(400).json({
+      error: `Montant minimum de d\xE9p\xF4t crypto : ${Math.ceil(1 * rate).toLocaleString("fr-FR")} FCFA.`
+    });
     return;
   }
   const orderId = (0, import_node_crypto9.randomUUID)();
@@ -116158,13 +116183,26 @@ router11.post("/wallet/crypto/initiate", requireAuth, async (req, res) => {
       amount: amountUsd,
       currency: "usd",
       payCurrency: netConfig.currency,
+      /* e.g. "usdttrc20" */
       orderId,
-      description: `Recharge Simix ${amountFcfa.toLocaleString("fr-FR")} FCFA`
+      description: `Simix ${amountFcfa.toLocaleString("fr-FR")} FCFA`
     });
   } catch (e2) {
-    const msg = e2.message ?? "Erreur inconnue";
-    logger.error({ error: msg, userId: user.id, amountUsd, net }, "[Crypto] createDirectPayment failed");
-    res.status(502).json({ error: `Impossible de cr\xE9er l'adresse de d\xE9p\xF4t : ${msg}` });
+    const err = e2;
+    logger.error(
+      { error: err.message, code: err.code, userId: user.id, amountUsd, net },
+      "[Crypto] createDirectPayment failed"
+    );
+    if (err.code === "BELOW_MINIMUM_PAYMENT_AMOUNT") {
+      const min2 = err.details?.minimumPayAmount ?? null;
+      const minFcfa = min2 ? Math.ceil(min2 * rate).toLocaleString("fr-FR") : null;
+      res.status(400).json({
+        error: minFcfa ? `Montant trop faible. Minimum requis : \u2248 ${minFcfa} FCFA (${min2} USDT).` : "Montant trop faible pour ce r\xE9seau. Augmentez le montant.",
+        code: "BELOW_MINIMUM"
+      });
+      return;
+    }
+    res.status(502).json({ error: `Impossible de cr\xE9er l'adresse de d\xE9p\xF4t : ${err.message}` });
     return;
   }
   const paymentId = String(payment.payment_id ?? "");
@@ -116193,7 +116231,10 @@ router11.post("/wallet/crypto/initiate", requireAuth, async (req, res) => {
       expiresAt: expiresAt.toISOString()
     })
   }).returning();
-  logger.info({ paymentId, userId: user.id, amountFcfa, amountUsd, net, payAddress }, "[Crypto] Deposit initiated");
+  logger.info(
+    { paymentId, orderId, userId: user.id, amountFcfa, amountUsd, net, payAddress },
+    "[Crypto] Deposit initiated"
+  );
   res.json({
     paymentId,
     orderId,
@@ -116213,16 +116254,18 @@ router11.get("/wallet/crypto/:paymentId/status", requireAuth, async (req, res) =
   const user = req.user;
   const { paymentId } = req.params;
   const externalDepositId = `${CRYPTO_PREFIX}${paymentId}`;
-  const [tx] = await db.select().from(transactionsTable).where(and(
-    eq(transactionsTable.externalDepositId, externalDepositId),
-    eq(transactionsTable.userId, user.id)
-  )).limit(1);
+  const [tx] = await db.select().from(transactionsTable).where(
+    and(
+      eq(transactionsTable.externalDepositId, externalDepositId),
+      eq(transactionsTable.userId, user.id)
+    )
+  ).limit(1);
   if (!tx) {
     res.status(404).json({ error: "Transaction introuvable." });
     return;
   }
   if (tx.status !== "pending") {
-    res.json({ status: tx.status, amountFcfa: tx.amount, paymentId });
+    res.json({ status: tx.status === "completed" ? "paid" : tx.status, amountFcfa: tx.amount, paymentId });
     return;
   }
   const sdk = await getNowPaymentsSDK();
@@ -116235,26 +116278,13 @@ router11.get("/wallet/crypto/:paymentId/status", requireAuth, async (req, res) =
     const p = await sdk.getPaymentStatus(paymentId);
     sdkStatus = p.status;
     if (sdkStatus === "paid") {
-      const [justCompleted] = await db.update(transactionsTable).set({ status: "completed" }).where(and(
-        eq(transactionsTable.id, tx.id),
-        eq(transactionsTable.status, "pending")
-      )).returning();
-      if (justCompleted) {
-        await db.update(usersTable).set({ balance: sql`${usersTable.balance} + ${tx.amount}` }).where(eq(usersTable.id, user.id));
-        await db.insert(notificationsTable).values({
-          userId: user.id,
-          title: "Recharge confirm\xE9e \u2713",
-          body: `${tx.amount.toLocaleString("fr-FR")} FCFA ont \xE9t\xE9 cr\xE9dit\xE9s via crypto.`,
-          type: "deposit_success"
-        });
-        broadcastNotification(user.id, {
-          title: "Recharge confirm\xE9e \u2713",
-          body: `${tx.amount.toLocaleString("fr-FR")} FCFA cr\xE9dit\xE9s.`,
-          type: "deposit_success"
-        });
-        logger.info({ paymentId, userId: user.id, amount: tx.amount }, "[Crypto] Balance credited via polling");
-      }
-    } else if (sdkStatus === "failed" || sdkStatus === "expired" || sdkStatus === "cancelled") {
+      await creditCryptoDeposit(tx.id, user.id, tx.amount, paymentId);
+    } else if (sdkStatus === "partially_paid") {
+      const meta = tx.gatewayMeta ? JSON.parse(tx.gatewayMeta) : {};
+      const fcfaRate = typeof meta.fcfaRate === "number" ? meta.fcfaRate : await getFcfaToUsdRate();
+      const actualPaidFcfa = p.actually_paid ? Math.floor(Number(p.actually_paid) * fcfaRate) : tx.amount;
+      await creditCryptoDeposit(tx.id, user.id, actualPaidFcfa, paymentId, true);
+    } else if (sdkStatus === "failed" || sdkStatus === "expired" || sdkStatus === "cancelled" || sdkStatus === "refunded") {
       await db.update(transactionsTable).set({ status: "failed" }).where(and(eq(transactionsTable.id, tx.id), eq(transactionsTable.status, "pending")));
     }
   } catch (e2) {
@@ -116265,13 +116295,13 @@ router11.get("/wallet/crypto/:paymentId/status", requireAuth, async (req, res) =
 router11.post("/wallet/crypto/webhook", async (req, res) => {
   const sig = req.headers["x-nowpayments-sig"];
   if (!sig) {
-    logger.warn("[Crypto Webhook] Missing signature header");
+    logger.warn("[Crypto Webhook] Missing x-nowpayments-sig header");
     res.status(400).json({ ok: false, error: "Missing signature" });
     return;
   }
   const sdk = await getNowPaymentsSDK();
   if (!sdk) {
-    logger.error("[Crypto Webhook] SDK not configured");
+    logger.error("[Crypto Webhook] SDK not configured \u2014 cannot verify signature");
     res.status(500).json({ ok: false });
     return;
   }
@@ -116279,8 +116309,9 @@ router11.post("/wallet/crypto/webhook", async (req, res) => {
   try {
     event = sdk.parseWebhook(req.body, sig);
   } catch (e2) {
-    logger.warn({ error: e2.message }, "[Crypto Webhook] Invalid signature");
-    res.status(400).json({ ok: false, error: "Invalid signature" });
+    const err = e2;
+    logger.warn({ error: err.message, code: err.code }, "[Crypto Webhook] Signature verification failed");
+    res.status(400).json({ ok: false, error: "Invalid or unverifiable signature" });
     return;
   }
   if (event.type !== "payment.status_changed") {
@@ -116289,47 +116320,26 @@ router11.post("/wallet/crypto/webhook", async (req, res) => {
   }
   const payment = event.payment;
   const paymentId = String(payment.payment_id ?? "");
-  const orderId = String(payment.order_id ?? "");
   const sdkStatus = payment.status;
-  logger.info({ paymentId, orderId, sdkStatus }, "[Crypto Webhook] Status update received");
-  if (sdkStatus !== "paid") {
-    if (sdkStatus === "failed" || sdkStatus === "expired" || sdkStatus === "cancelled") {
-      const externalDepositId2 = `${CRYPTO_PREFIX}${paymentId}`;
-      await db.update(transactionsTable).set({ status: "failed" }).where(and(
-        eq(transactionsTable.externalDepositId, externalDepositId2),
-        eq(transactionsTable.status, "pending")
-      ));
-    }
-    res.json({ ok: true });
-    return;
-  }
+  const orderId = String(payment.order_id ?? "");
+  logger.info({ paymentId, orderId, sdkStatus }, "[Crypto Webhook] Received");
   const externalDepositId = `${CRYPTO_PREFIX}${paymentId}`;
   const [tx] = await db.select().from(transactionsTable).where(eq(transactionsTable.externalDepositId, externalDepositId)).limit(1);
   if (!tx) {
-    logger.warn({ paymentId, externalDepositId }, "[Crypto Webhook] Transaction not found");
+    logger.warn({ paymentId, externalDepositId }, "[Crypto Webhook] Transaction not found \u2014 acknowledging");
     res.json({ ok: true });
     return;
   }
-  const [justCompleted] = await db.update(transactionsTable).set({ status: "completed" }).where(and(
-    eq(transactionsTable.id, tx.id),
-    eq(transactionsTable.status, "pending")
-  )).returning();
-  if (justCompleted) {
-    await db.update(usersTable).set({ balance: sql`${usersTable.balance} + ${tx.amount}` }).where(eq(usersTable.id, tx.userId));
-    await db.insert(notificationsTable).values({
-      userId: tx.userId,
-      title: "Recharge confirm\xE9e \u2713",
-      body: `${tx.amount.toLocaleString("fr-FR")} FCFA ont \xE9t\xE9 cr\xE9dit\xE9s via crypto.`,
-      type: "deposit_success"
-    });
-    broadcastNotification(tx.userId, {
-      title: "Recharge confirm\xE9e \u2713",
-      body: `${tx.amount.toLocaleString("fr-FR")} FCFA cr\xE9dit\xE9s.`,
-      type: "deposit_success"
-    });
-    logger.info({ paymentId, userId: tx.userId, amount: tx.amount }, "[Crypto Webhook] Balance credited via webhook");
-  } else {
-    logger.info({ paymentId }, "[Crypto Webhook] Already processed \u2014 skipping double credit");
+  if (sdkStatus === "paid") {
+    await creditCryptoDeposit(tx.id, tx.userId, tx.amount, paymentId);
+  } else if (sdkStatus === "partially_paid") {
+    const meta = tx.gatewayMeta ? JSON.parse(tx.gatewayMeta) : {};
+    const fcfaRate = typeof meta.fcfaRate === "number" ? meta.fcfaRate : await getFcfaToUsdRate();
+    const actualPaidFcfa = payment.actually_paid ? Math.floor(Number(payment.actually_paid) * fcfaRate) : tx.amount;
+    await creditCryptoDeposit(tx.id, tx.userId, actualPaidFcfa, paymentId, true);
+  } else if (sdkStatus === "failed" || sdkStatus === "expired" || sdkStatus === "cancelled" || sdkStatus === "refunded") {
+    await db.update(transactionsTable).set({ status: "failed" }).where(and(eq(transactionsTable.externalDepositId, externalDepositId), eq(transactionsTable.status, "pending")));
+    logger.info({ paymentId, sdkStatus }, "[Crypto Webhook] Transaction marked as failed");
   }
   res.json({ ok: true });
 });
