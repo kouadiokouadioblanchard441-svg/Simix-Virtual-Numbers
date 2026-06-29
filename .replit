@@ -29,7 +29,7 @@ outputType = "webview"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "node --enable-source-maps dist/index.cjs"
+args = "node --enable-source-maps index.cjs"
 waitForPort = 5000
 
 [agent]
@@ -48,10 +48,6 @@ externalPort = 3000
 [[ports]]
 localPort = 5000
 externalPort = 80
-
-[[ports]]
-localPort = 8081
-externalPort = 8081
 
 [[ports]]
 localPort = 8082

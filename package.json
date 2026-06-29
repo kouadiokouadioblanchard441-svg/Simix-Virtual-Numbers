@@ -6,7 +6,7 @@
     "node": ">=20.0.0"
   },
   "scripts": {
-    "start": "node --enable-source-maps dist/index.cjs",
+    "start": "node --enable-source-maps index.cjs",
     "start:pm2": "pm2 start ecosystem.config.js --env production",
     "stop:pm2": "pm2 stop simix",
     "restart:pm2": "pm2 restart simix",

@@ -5,17 +5,16 @@ import { build as esbuild } from "esbuild";
 import esbuildPluginPino from "esbuild-plugin-pino";
 import { rm, cp } from "node:fs/promises";
 
-// Plugins (e.g. 'esbuild-plugin-pino') may use `require` to resolve dependencies
 globalThis.require = createRequire(import.meta.url);
 
 const artifactDir = path.dirname(fileURLToPath(import.meta.url));
-// Output to workspace root /dist so Plesk can use dist/index.cjs directly
 const rootDir = path.resolve(artifactDir, "..", "..");
-const distDir = path.resolve(rootDir, "dist");
+
+// Output directly to workspace root — Plesk pulls root files reliably
+const outDir = rootDir;
 
 async function buildAll() {
-  // Only clean API-generated files — preserve dist/public/ (Vite frontend build)
-  // so that the dev workflow doesn't wipe out the committed frontend assets.
+  // Clean previous API build files from root
   const apiFiles = [
     "index.cjs",
     "pino-file.cjs",
@@ -25,7 +24,21 @@ async function buildAll() {
     "migrations",
   ];
   await Promise.all(
-    apiFiles.map((f) => rm(path.join(distDir, f), { recursive: true, force: true }))
+    apiFiles.map((f) => rm(path.join(outDir, f), { recursive: true, force: true }))
+  );
+
+  // Also clean old dist/ API files (migration away from dist/)
+  const distDir = path.join(rootDir, "dist");
+  const oldDistFiles = [
+    "index.cjs",
+    "pino-file.cjs",
+    "pino-pretty.cjs",
+    "pino-worker.cjs",
+    "thread-stream-worker.cjs",
+    "migrations",
+  ];
+  await Promise.all(
+    oldDistFiles.map((f) => rm(path.join(distDir, f), { recursive: true, force: true }))
   );
 
   await esbuild({
@@ -33,14 +46,9 @@ async function buildAll() {
     platform: "node",
     bundle: true,
     format: "cjs",
-    outdir: distDir,
+    outdir: outDir,
     outExtension: { ".js": ".cjs" },
     logLevel: "info",
-    // Some packages may not be bundleable, so we externalize them, we can add more here as needed.
-    // Some of the packages below may not be imported or installed, but we're adding them in case they are in the future.
-    // Examples of unbundleable packages:
-    // - uses native modules and loads them dynamically (e.g. sharp)
-    // - use path traversal to read files (e.g. @google-cloud/secret-manager loads sibling .proto files)
     external: [
       "*.node",
       "sharp",
@@ -113,24 +121,18 @@ async function buildAll() {
       "electron",
     ],
     plugins: [
-      // pino relies on workers to handle logging, instead of externalizing it we use a plugin to handle it
       esbuildPluginPino({ transports: ["pino-pretty"] })
     ],
-    // In CJS output, __dirname is a module-scope variable. Expose it on globalThis so
-    // app code can access it without relying on import.meta.url (which is empty in CJS).
     banner: {
       js: "globalThis.__dirname = __dirname;",
     },
   });
 
-  /* ── Copy DB migration SQL files → dist/migrations/ ──────────────
-   * These are read at runtime by drizzle-orm/migrator to apply schema
-   * changes automatically on each server startup (idempotent).
-   * ───────────────────────────────────────────────────────────────── */
+  // Copy DB migrations to root/migrations/ (same dir as index.cjs)
   const migrationsSource = path.resolve(rootDir, "lib/db/drizzle");
-  const migrationsDest   = path.resolve(distDir, "migrations");
+  const migrationsDest   = path.resolve(outDir, "migrations");
   await cp(migrationsSource, migrationsDest, { recursive: true });
-  console.log("✔ Migration files copied → dist/migrations/");
+  console.log("✔ Migration files copied → migrations/");
 }
 
 buildAll().catch((err) => {
