@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
-import { Mail, Phone, ArrowLeft, KeyRound, CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
+import { Mail, Phone, ArrowLeft, CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
+import { Key3DIcon } from "@/components/key-3d-icon";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SimixLogo } from "@/components/simix-logo";
@@ -111,8 +112,8 @@ export default function ForgotPassword() {
           <ArrowLeft className="w-4 h-4" />
         </Link>
         <SimixLogo size={32} />
-        <div className="w-10 h-10 rounded-xl border border-red-500/20 flex items-center justify-center bg-red-500/5">
-          <KeyRound className="w-4 h-4 text-red-400" />
+        <div className="w-10 h-10 rounded-xl border border-amber-500/20 flex items-center justify-center bg-amber-500/5">
+          <Key3DIcon size={22} />
         </div>
       </div>
 
@@ -131,13 +132,13 @@ export default function ForgotPassword() {
               transition={{ delay: 0.1, type: "spring", stiffness: 200 }}
               className="relative"
             >
-              <div className="w-20 h-20 rounded-3xl flex items-center justify-center bg-gradient-to-br from-red-500/10 to-orange-500/10 border border-red-500/20">
-                <KeyRound className="w-9 h-9 text-red-400" />
+              <div className="w-20 h-20 rounded-3xl flex items-center justify-center bg-gradient-to-br from-amber-500/10 to-yellow-500/5 border border-amber-500/20">
+                <Key3DIcon size={48} />
               </div>
               <motion.div
                 animate={{ rotate: 360 }}
                 transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
-                className="absolute -inset-1 rounded-3xl border border-red-500/15 border-dashed"
+                className="absolute -inset-1 rounded-3xl border border-amber-500/20 border-dashed"
               />
             </motion.div>
           </div>
@@ -145,7 +146,7 @@ export default function ForgotPassword() {
           {/* Title */}
           <div className="text-center mb-8">
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.15 }}>
-              <span className="inline-block px-3 py-1 rounded-full text-xs font-semibold mb-3 bg-red-500/10 text-red-400 border border-red-500/20">
+              <span className="inline-block px-3 py-1 rounded-full text-xs font-semibold mb-3 bg-amber-500/10 text-amber-400 border border-amber-500/20">
                 🔑 Mot de passe oublié
               </span>
               <h1 className="text-2xl font-bold text-foreground mb-2">Récupérer mon compte</h1>
