@@ -8,6 +8,7 @@ import { existsSync } from "fs";
 import router from "./routes";
 import { logger } from "./lib/logger";
 import { attachUser } from "./lib/auth";
+import { getAppUrl } from "./lib/app-url";
 import { db } from "@workspace/db";
 import { countriesTable } from "@workspace/db";
 import { eq, and, notInArray } from "drizzle-orm";
