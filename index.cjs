@@ -128271,6 +128271,12 @@ if (process.env.NODE_ENV === "production") {
     }
   }
 }
+app.use(function(err, _req, res, _next) {
+  var status = (err && (err.status || err.statusCode)) || 500;
+  var message = (err && err.message) || "Une erreur interne est survenue.";
+  logger.error({ err }, "[app] Unhandled error");
+  if (!res.headersSent) { res.status(status).json({ error: message }); }
+});
 var app_default = app;
 
 // src/index.ts

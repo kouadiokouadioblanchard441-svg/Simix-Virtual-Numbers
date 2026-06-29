@@ -275,6 +275,22 @@ app.get("/api/public/registration-countries", async (_req, res) => {
 
 app.use("/api", router);
 
+/* ── Global JSON error handler ─────────────────────────────────
+ * Catches any unhandled error thrown in a route or middleware.
+ * Returns JSON instead of Express's default HTML 500 page.    */
+app.use((err: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+  const status = (err as { status?: number; statusCode?: number })?.status
+    ?? (err as { status?: number; statusCode?: number })?.statusCode
+    ?? 500;
+  const message =
+    (err as { message?: string })?.message ??
+    "Une erreur interne est survenue.";
+  logger.error({ err }, "[app] Unhandled error");
+  if (!res.headersSent) {
+    res.status(status).json({ error: message });
+  }
+});
+
 /* ── Production: serve compiled React frontend + SPA fallback ── */
 if (process.env.NODE_ENV === "production") {
   const currentDir = (globalThis as { __dirname?: string }).__dirname;
