@@ -155,3 +155,9 @@ id = "nJx49x_ytgGI-hZpUcNYs"
 uri = "file://attached_assets/avatars/woman-3-large.jpg"
 type = "image"
 title = "Grace (Kenya)"
+
+[[outputs]]
+id = "3TqLsWyonmKmmEGtmcnrb"
+uri = "file://public/opengraph.jpg"
+type = "image"
+title = "Image métagraphe SIMIX (1200×630)"
