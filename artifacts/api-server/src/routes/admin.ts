@@ -30,6 +30,7 @@ import { blockUser, logSecurityEvent } from "../lib/fraud-detection";
 import { sendDepositConfirmationEmail } from "../lib/email";
 import { logger } from "../lib/logger";
 import { clearSettingsCache } from "../lib/settings";
+import { setAppUrl, clearAppUrlCache } from "../lib/app-url";
 import { requireAdminJwt } from "../lib/admin-jwt-middleware";
 
 const router: IRouter = Router();
@@ -1325,6 +1326,13 @@ router.put("/admin/settings", requireAdmin, async (req, res): Promise<void> => {
 
     /* Invalidate settings cache so changes apply within 30s */
     clearSettingsCache();
+
+    /* If app_url was updated, propagate immediately (no restart needed) */
+    if (typeof updates["app_url"] === "string" && updates["app_url"].trim()) {
+      setAppUrl(updates["app_url"].trim());
+    } else {
+      clearAppUrlCache();
+    }
 
     await logAdminAction(adminId(req), "update_settings", req.ip, "settings", undefined, updates);
     res.json({ success: true });

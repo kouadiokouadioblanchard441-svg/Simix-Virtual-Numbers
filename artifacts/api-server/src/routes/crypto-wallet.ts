@@ -11,6 +11,7 @@ import {
   type CryptoNetwork,
 } from "../lib/nowpayments";
 import { getSetting } from "../lib/settings";
+import { getAppUrl } from "../lib/app-url";
 import { broadcastNotification } from "./notifications";
 import { notificationsTable } from "@workspace/db";
 import { randomUUID } from "node:crypto";
@@ -25,7 +26,7 @@ async function getCryptoWebhookUrl(): Promise<string> {
   const domain =
     process.env.REPLIT_DOMAINS?.split(",")[0]?.trim() ||
     process.env.REPLIT_DEV_DOMAIN ||
-    process.env.APP_URL?.replace(/^https?:\/\//, "");
+    getAppUrl().replace(/^https?:\/\//, "");
   return domain
     ? `https://${domain}/api/wallet/crypto/webhook`
     : "https://simix.site/api/wallet/crypto/webhook";

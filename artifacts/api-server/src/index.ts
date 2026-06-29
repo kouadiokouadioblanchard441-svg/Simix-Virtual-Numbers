@@ -1,7 +1,7 @@
 import path from "node:path";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
 import app from "./app";
-import { db } from "@workspace/db";
+import { db, systemSettingsTable } from "@workspace/db";
 import { logger } from "./lib/logger";
 import { startFiveSimPoller } from "./lib/fivesim-poller";
 import { startFiveSimSyncScheduler, syncFiveSimCountries, syncFiveSimProducts } from "./lib/fivesim-sync";
@@ -12,6 +12,8 @@ import { seedPaymentMethods } from "./lib/seed-payment-methods";
 import { seedProvidersFromEnv } from "./lib/seed-providers";
 import { seedRoutingData } from "./lib/seed-routing";
 import { seedCountryPaymentConfigs } from "./lib/seed-country-payment-configs";
+import { setAppUrl, getAppUrl } from "./lib/app-url";
+import { eq } from "drizzle-orm";
 
 const rawPort = process.env["PORT"] ?? "3000";
 const port = Number(rawPort);
@@ -44,6 +46,33 @@ async function start(): Promise<void> {
     } else {
       logger.warn({ err }, "[startup] Migration skipped (schema already up to date)");
     }
+  }
+
+  /* ── Preload app_url from DB (priority: env var > DB > hardcoded) ──
+   * Must happen before any request is served so CORS and emails have
+   * the correct URL from the very first hit.                          */
+  try {
+    const [row] = await db
+      .select()
+      .from(systemSettingsTable)
+      .where(eq(systemSettingsTable.key, "app_url"))
+      .limit(1);
+
+    if (row?.value) {
+      setAppUrl(row.value);
+      logger.info({ url: getAppUrl() }, "[startup] app_url loaded from DB ✓");
+    } else {
+      /* Seed the default into DB so it's visible and editable in admin panel */
+      const defaultUrl = process.env["APP_URL"] ?? "https://simix.site";
+      await db
+        .insert(systemSettingsTable)
+        .values({ key: "app_url", value: defaultUrl, description: "URL publique de l'application (ex: https://simix.site)" })
+        .onConflictDoNothing();
+      setAppUrl(defaultUrl);
+      logger.info({ url: defaultUrl }, "[startup] app_url seeded in DB ✓");
+    }
+  } catch (e) {
+    logger.warn({ err: (e as Error).message }, "[startup] app_url DB load failed — using env/default");
   }
 
   /* ── Seed reference data AFTER migrations complete ─────────────── */

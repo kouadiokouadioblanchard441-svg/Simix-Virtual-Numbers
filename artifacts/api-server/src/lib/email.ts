@@ -20,13 +20,11 @@ async function getResend(): Promise<Resend | null> {
 
 function getFromEmail(): string {
   if (process.env.EMAIL_FROM) return process.env.EMAIL_FROM;
-  if (process.env.APP_URL) {
-    try {
-      const domain = new URL(process.env.APP_URL).hostname;
-      return `Simix <noreply@${domain}>`;
-    } catch {
-      /* ignore malformed APP_URL */
-    }
+  try {
+    const domain = new URL(getAppUrl()).hostname;
+    return `Simix <noreply@${domain}>`;
+  } catch {
+    /* ignore malformed URL */
   }
   return "Simix <noreply@simix.app>";
 }
