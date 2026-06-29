@@ -116670,7 +116670,7 @@ init_src();
 init_drizzle_orm();
 
 // src/lib/app-url.ts
-function getAppUrl() {
+function getAppUrl2() {
   const url2 = process.env["APP_URL"];
   if (url2) return url2.replace(/\/$/, "");
   return "https://simix.site";
@@ -117113,7 +117113,7 @@ function getDepositConfirmationHtml(data) {
                     <table cellpadding="0" cellspacing="0">
                       <tr>
                         <td style="background:linear-gradient(135deg,#7c3aed,#6366f1);border-radius:12px;padding:0;">
-                          <a href="${getAppUrl()}" style="display:block;padding:14px 32px;color:#ffffff;font-size:14px;font-weight:700;text-decoration:none;letter-spacing:0.2px;">
+                          <a href="${getAppUrl2()}" style="display:block;padding:14px 32px;color:#ffffff;font-size:14px;font-weight:700;text-decoration:none;letter-spacing:0.2px;">
                             \u{1F680} Acc\xE9der \xE0 mon compte
                           </a>
                         </td>
@@ -117144,11 +117144,11 @@ function getDepositConfirmationHtml(data) {
               <table cellpadding="0" cellspacing="0" style="margin:16px auto 0;">
                 <tr>
                   <td style="padding:0 8px;">
-                    <a href="${getAppUrl()}/legal/cgu" style="color:#3a3a5a;font-size:10px;text-decoration:none;">CGU</a>
+                    <a href="${getAppUrl2()}/legal/cgu" style="color:#3a3a5a;font-size:10px;text-decoration:none;">CGU</a>
                   </td>
                   <td style="color:#2a2a42;font-size:10px;">\xB7</td>
                   <td style="padding:0 8px;">
-                    <a href="${getAppUrl()}/legal/politique-confidentialite" style="color:#3a3a5a;font-size:10px;text-decoration:none;">Confidentialit\xE9</a>
+                    <a href="${getAppUrl2()}/legal/politique-confidentialite" style="color:#3a3a5a;font-size:10px;text-decoration:none;">Confidentialit\xE9</a>
                   </td>
                   <td style="color:#2a2a42;font-size:10px;">\xB7</td>
                   <td style="padding:0 8px;">
@@ -124422,10 +124422,10 @@ function buildEmailHtml(subject, body, templateType) {
     <div class="body">
       <div class="content">${body}</div>
       <hr class="divider">
-      <a href="${getAppUrl()}" class="cta">Acc\xE9der \xE0 Simix \u2192</a>
+      <a href="${getAppUrl2()}" class="cta">Acc\xE9der \xE0 Simix \u2192</a>
     </div>
     <div class="footer">
-      <p>Vous recevez cet email car vous \xEAtes inscrit sur <a href="${getAppUrl()}">Simix</a>.<br>
+      <p>Vous recevez cet email car vous \xEAtes inscrit sur <a href="${getAppUrl2()}">Simix</a>.<br>
       Plateforme fintech africaine \xB7 Paiements Mobile Money \xB7 <a href="mailto:support@simix.app">support@simix.app</a></p>
     </div>
   </div>
@@ -127963,7 +127963,6 @@ var app = (0, import_express30.default)();
 app.set("trust proxy", 1);
 var buildAllowedOrigins = () => {
   const origins = /* @__PURE__ */ new Set();
-  /* 1. APP_URL env var OR built-in fallback (https://simix.site) */
   const appUrl = getAppUrl();
   if (appUrl) {
     const cleaned = appUrl.replace(/\/$/, "");
@@ -127972,19 +127971,18 @@ var buildAllowedOrigins = () => {
       const u = new URL(cleaned);
       const bare = u.hostname.replace(/^www\./, "");
       for (const scheme of ["http", "https"]) {
-        origins.add(scheme + "://" + bare);
-        origins.add(scheme + "://www." + bare);
+        origins.add(`${scheme}://${bare}`);
+        origins.add(`${scheme}://www.${bare}`);
       }
-    } catch (e) {}
-  }
-  /* 2. CORS_ORIGINS=https://foo.com,https://bar.com */
-  if (process.env.CORS_ORIGINS) {
-    for (const o of process.env.CORS_ORIGINS.split(",")) {
-      const t = o.trim().replace(/\/$/, "");
-      if (t) origins.add(t);
+    } catch {
     }
   }
-  /* 3. Replit-injected domains */
+  if (process.env.CORS_ORIGINS) {
+    for (const o of process.env.CORS_ORIGINS.split(",")) {
+      const trimmed = o.trim().replace(/\/$/, "");
+      if (trimmed) origins.add(trimmed);
+    }
+  }
   if (process.env.REPLIT_DEV_DOMAIN) origins.add(`https://${process.env.REPLIT_DEV_DOMAIN}`);
   if (process.env.REPLIT_DOMAINS) {
     for (const d of process.env.REPLIT_DOMAINS.split(",")) {
@@ -127992,7 +127990,6 @@ var buildAllowedOrigins = () => {
       if (domain) origins.add(`https://${domain}`);
     }
   }
-  /* 4. Localhost variants always allowed */
   origins.add("http://localhost:5000");
   origins.add("http://localhost:3000");
   origins.add("http://localhost:5173");
@@ -128011,7 +128008,7 @@ app.use(
       if (!origin) return callback(null, true);
       if (getAllowedOrigins().has(origin)) return callback(null, true);
       logger.warn({ origin, allowed: [...getAllowedOrigins()] }, "[cors] Rejected cross-origin request");
-      callback(new Error("CORS: origin not allowed (" + origin + ")"));
+      callback(new Error(`CORS: origin not allowed (${origin})`));
     }
   })
 );
@@ -128278,6 +128275,14 @@ app.get("/api/public/registration-countries", async (_req, res) => {
   }
 });
 app.use("/api", routes_default);
+app.use((err, _req, res, _next) => {
+  const status = err?.status ?? err?.statusCode ?? 500;
+  const message = err?.message ?? "Une erreur interne est survenue.";
+  logger.error({ err }, "[app] Unhandled error");
+  if (!res.headersSent) {
+    res.status(status).json({ error: message });
+  }
+});
 if (process.env.NODE_ENV === "production") {
   const currentDir = globalThis.__dirname;
   if (currentDir) {
@@ -128292,12 +128297,6 @@ if (process.env.NODE_ENV === "production") {
     }
   }
 }
-app.use(function(err, _req, res, _next) {
-  var status = (err && (err.status || err.statusCode)) || 500;
-  var message = (err && err.message) || "Une erreur interne est survenue.";
-  logger.error({ err }, "[app] Unhandled error");
-  if (!res.headersSent) { res.status(status).json({ error: message }); }
-});
 var app_default = app;
 
 // src/index.ts

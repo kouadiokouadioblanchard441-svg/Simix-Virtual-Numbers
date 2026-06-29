@@ -2,7 +2,7 @@ module.exports = {
   apps: [
     {
       name: 'simix',
-      script: 'dist/index.cjs',
+      script: 'index.cjs',
       node_args: '--enable-source-maps',
       instances: 1,
       autorestart: true,
@@ -36,10 +36,10 @@ module.exports = {
         // ── Connexion Google OAuth ────────────────────────────────────────
         GOOGLE_CLIENT_ID: 'REMPLACER_PAR_CLIENT_ID_GOOGLE',
         GOOGLE_CLIENT_SECRET: 'REMPLACER_PAR_SECRET_GOOGLE',
-        GOOGLE_REDIRECT_URI: 'https://VOTRE_DOMAINE.com/api/auth/google/callback',
+        GOOGLE_REDIRECT_URI: 'https://www.simix.site/api/auth/google/callback',
 
         // ── URL publique de l'application ────────────────────────────────
-        APP_URL: 'https://VOTRE_DOMAINE.com',
+        APP_URL: 'https://www.simix.site',
       },
     },
   ],
