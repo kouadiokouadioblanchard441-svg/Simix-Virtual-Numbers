@@ -1,13 +1,19 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { adminApi, type ServicePrice, type AdminService, type AdminCountry } from "@/lib/admin-api";
+import {
+  adminApi,
+  type ServicePrice,
+  type AdminService,
+  type AdminCountry,
+  type PricingMatrixCountry,
+} from "@/lib/admin-api";
 import { AdminGuard } from "@/components/admin-guard";
 import { AdminLayout } from "@/components/admin-layout";
 import { ServiceIcon } from "@/components/service-icon";
 import { formatFCFA } from "@/lib/format";
 import {
   Loader2, Save, Search, Tag, Globe, Trash2, CheckCircle2,
-  AlertCircle, RefreshCw, ChevronRight, X, Zap,
+  AlertCircle, X, Zap, Lock, TrendingUp, Info,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -19,8 +25,24 @@ function flag(code: string) {
   );
 }
 
+function marginColor(m: number | null): string {
+  if (m === null) return "text-zinc-500";
+  if (m >= 200) return "text-emerald-400";
+  if (m >= 100) return "text-blue-400";
+  if (m >= 0)   return "text-amber-400";
+  return "text-red-400";
+}
+
+function marginBg(m: number | null): string {
+  if (m === null) return "bg-zinc-800 text-zinc-500";
+  if (m >= 200) return "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20";
+  if (m >= 100) return "bg-blue-500/10 text-blue-400 border border-blue-500/20";
+  if (m >= 0)   return "bg-amber-500/10 text-amber-400 border border-amber-500/20";
+  return "bg-red-500/10 text-red-400 border border-red-500/20";
+}
+
 type LocalEdit = { price: string; enabled: boolean; dirty: boolean };
-type EditsMap  = Record<string, LocalEdit>; // keyed by countryCode (lowercase)
+type EditsMap  = Record<string, LocalEdit>;
 
 /* ────────────────────────────────────────────────────────── main content */
 
@@ -52,6 +74,19 @@ function ServicePricesContent() {
     }
   }, [enabledServices, selectedSlug]);
 
+  /* ── Pricing matrix for selected service (provider price + margin) ── */
+  const { data: matrix, isLoading: loadMatrix } = useQuery({
+    queryKey: ["admin", "pricing-matrix", selectedSlug],
+    queryFn: () => adminApi.getPricingMatrix(selectedSlug),
+    enabled: !!selectedSlug,
+  });
+
+  /* Map country code → matrix row for fast provider-price lookup */
+  const matrixMap = useMemo(() => {
+    if (!matrix) return new Map<string, PricingMatrixCountry>();
+    return new Map(matrix.countries.map(c => [c.code.toLowerCase(), c]));
+  }, [matrix]);
+
   /* ── Local edits for the current service ── */
   const [edits, setEdits] = useState<EditsMap>({});
   const [bulkPrice, setBulkPrice] = useState("");
@@ -67,9 +102,9 @@ function ServicePricesContent() {
         p => p.serviceSlug === selectedSlug && p.countryCode === code
       );
       next[code] = {
-        price: existing ? String(existing.price) : "",
+        price:   existing ? String(existing.price) : "",
         enabled: existing ? existing.enabled : true,
-        dirty: false,
+        dirty:   false,
       };
     });
     setEdits(next);
@@ -83,6 +118,7 @@ function ServicePricesContent() {
       adminApi.bulkUpsertServicePrices(prices),
     onSuccess: (res) => {
       qc.invalidateQueries({ queryKey: ["admin", "service-prices"] });
+      qc.invalidateQueries({ queryKey: ["admin", "pricing-matrix", selectedSlug] });
       toast({ title: `${res.updated} prix enregistrés ✓` });
     },
     onError: (e: Error) => toast({ title: "Erreur", description: e.message, variant: "destructive" }),
@@ -92,7 +128,8 @@ function ServicePricesContent() {
     mutationFn: (id: string) => adminApi.deleteServicePrice(id),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["admin", "service-prices"] });
-      toast({ title: "Prix personnalisé supprimé" });
+      qc.invalidateQueries({ queryKey: ["admin", "pricing-matrix", selectedSlug] });
+      toast({ title: "Exception supprimée — ce pays utilisera désormais le prix global" });
     },
     onError: (e: Error) => toast({ title: "Erreur", description: e.message, variant: "destructive" }),
   });
@@ -144,12 +181,10 @@ function ServicePricesContent() {
   const handleSave = async () => {
     const toSave = dirtyEntries
       .filter(([, v]) => {
-        /* Save entries that have a valid price OR entries being explicitly disabled */
         const hasPrice = v.price.trim() !== "" && Number(v.price) > 0;
         return hasPrice || !v.enabled;
       })
       .map(([countryCode, v]) => {
-        /* For disabled entries without a price, fall back to the existing DB price */
         const existing = allPrices.find(
           p => p.serviceSlug === selectedSlug && p.countryCode === countryCode,
         );
@@ -162,7 +197,7 @@ function ServicePricesContent() {
       });
 
     if (toSave.length === 0) {
-      toast({ title: "Aucun changement à enregistrer", description: "Entrez un prix > 0 FCFA ou désactivez un pays.", variant: "destructive" });
+      toast({ title: "Aucun changement à enregistrer", description: "Entrez un prix > 0 FCFA.", variant: "destructive" });
       return;
     }
     await bulkUpsert.mutateAsync(toSave);
@@ -207,10 +242,10 @@ function ServicePricesContent() {
       <div>
         <h1 className="text-2xl font-bold text-white flex items-center gap-2">
           <Tag className="w-6 h-6 text-violet-400" />
-          Tarification des services
+          Prix par pays
         </h1>
         <p className="text-sm text-zinc-400 mt-1">
-          Fixez votre propre prix pour chaque service et chaque pays — sans marge automatique.
+          Définissez des exceptions par pays. Les pays sans prix personnalisé utilisent automatiquement le prix global du service.
         </p>
       </div>
 
@@ -219,8 +254,8 @@ function ServicePricesContent() {
         {[
           { label: "Services activés",    value: enabledServices.length,                             color: "text-violet-400" },
           { label: "Pays disponibles",    value: allCountries.length,                                color: "text-blue-400"   },
-          { label: "Prix configurés",     value: allPrices.filter(p => p.enabled).length,            color: "text-emerald-400"},
-          { label: "Combinaisons actives",value: `${allPrices.filter(p => p.enabled).length}/${enabledServices.length * allCountries.length}`, color: "text-amber-400"  },
+          { label: "Exceptions actives",  value: allPrices.filter(p => p.enabled).length,            color: "text-emerald-400"},
+          { label: "Prix global service", value: matrix ? formatFCFA(matrix.service.price ?? 0) : "—", color: "text-amber-400" },
         ].map(s => (
           <div key={s.label} className="bg-zinc-900 border border-zinc-800 rounded-xl p-3.5">
             <div className={`text-xl font-bold ${s.color}`}>{s.value}</div>
@@ -250,6 +285,9 @@ function ServicePricesContent() {
               >
                 <ServiceIcon name={svc.name} slug={svc.slug} logoUrl={svc.logoUrl} size={20} rounded="lg" />
                 <span>{svc.name}</span>
+                {svc.adminPriceModified && (
+                  <Lock className={`w-3 h-3 ${isSelected ? "text-violet-200" : "text-zinc-600"}`} />
+                )}
                 {customCount > 0 && (
                   <span className={`text-xs px-1.5 py-0.5 rounded-full ${
                     isSelected ? "bg-violet-500/40 text-violet-200" : "bg-zinc-800 text-zinc-500"
@@ -267,14 +305,18 @@ function ServicePricesContent() {
       {selectedService && (
         <div className="space-y-4">
 
-          {/* Service header */}
+          {/* Service header + global price banner */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-center gap-3">
               <ServiceIcon name={selectedService.name} slug={selectedService.slug} logoUrl={selectedService.logoUrl} size={40} rounded="xl" />
               <div>
                 <h2 className="text-lg font-bold text-white">{selectedService.name}</h2>
                 <p className="text-sm text-zinc-400">
-                  {configuredCount} pays avec prix personnalisé · {allCountries.length} pays disponibles
+                  {configuredCount} exceptions · {allCountries.length} pays · Prix global : {
+                    matrix
+                      ? <span className="text-violet-300 font-semibold">{formatFCFA(matrix.service.price ?? 0)}</span>
+                      : <span className="text-zinc-600">chargement…</span>
+                  }
                 </p>
               </div>
             </div>
@@ -337,108 +379,247 @@ function ServicePricesContent() {
             </div>
           </div>
 
-          {/* Country grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+          {/* Matrix loading indicator */}
+          {loadMatrix && (
+            <div className="flex items-center gap-2 text-xs text-zinc-500">
+              <Loader2 className="w-3 h-3 animate-spin" />
+              Chargement des prix fournisseur…
+            </div>
+          )}
+
+          {/* Column headers */}
+          <div className="hidden lg:grid grid-cols-12 gap-2 px-3 py-1.5 text-[10px] uppercase tracking-wider font-semibold text-zinc-600">
+            <div className="col-span-3">Pays</div>
+            <div className="col-span-2">Prix fournisseur</div>
+            <div className="col-span-3">Prix SIMIX (exception)</div>
+            <div className="col-span-2">Marge</div>
+            <div className="col-span-1">Statut</div>
+            <div className="col-span-1" />
+          </div>
+
+          {/* Country list — table rows on desktop, cards on mobile */}
+          <div className="space-y-2">
             {filteredCountries.map(c => {
-              const code    = c.code.toLowerCase();
-              const edit    = edits[code] ?? { price: "", enabled: true, dirty: false };
-              const existing = allPrices.find(p => p.serviceSlug === selectedSlug && p.countryCode === code);
-              const hasCustom = !!existing;
-              const isActive  = hasCustom && existing.enabled;
-              const isDirty   = edit.dirty;
-              const parsedPrice = Number(edit.price);
-              const validPrice  = edit.price.trim() !== "" && parsedPrice > 0;
+              const code       = c.code.toLowerCase();
+              const edit       = edits[code] ?? { price: "", enabled: true, dirty: false };
+              const existing   = allPrices.find(p => p.serviceSlug === selectedSlug && p.countryCode === code);
+              const matrixRow  = matrixMap.get(code);
+              const hasCustom  = !!existing;
+              const isActive   = hasCustom && existing.enabled;
+              const isDirty    = edit.dirty;
+              const parsedPrice   = Number(edit.price);
+              const validPrice    = edit.price.trim() !== "" && parsedPrice > 0;
+
+              /* Provider price from SCA (via pricing matrix) */
+              const providerPrice = matrixRow?.providerPriceFcfa ?? 0;
+
+              /* Current display price for margin calculation */
+              const displayPrice = validPrice
+                ? parsedPrice
+                : hasCustom
+                  ? existing.price
+                  : (matrix?.service.price ?? 0);
+
+              const margin = providerPrice > 0 && displayPrice > 0
+                ? Math.round(((displayPrice - providerPrice) / providerPrice) * 100)
+                : null;
+
+              const isGlobal = !hasCustom && !isDirty;
 
               return (
                 <div
                   key={c.code}
-                  className={`relative bg-zinc-900 border rounded-xl p-3.5 transition-all ${
+                  className={`relative rounded-xl border transition-all ${
                     isDirty
                       ? "border-amber-500/50 bg-amber-500/5"
                       : hasCustom
-                      ? isActive
-                        ? "border-violet-500/40 bg-violet-500/5"
-                        : "border-zinc-700 opacity-60"
-                      : "border-zinc-800 hover:border-zinc-700"
+                        ? isActive
+                          ? "border-violet-500/30 bg-violet-500/5"
+                          : "border-zinc-700 bg-zinc-900/50 opacity-60"
+                        : "border-zinc-800 bg-zinc-900 hover:border-zinc-700"
                   }`}
                 >
-                  {/* Country header */}
-                  <div className="flex items-center justify-between mb-2.5">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xl leading-none">{c.flag ?? flag(c.code)}</span>
-                      <div>
-                        <p className="text-sm font-medium text-white leading-tight">{c.name}</p>
+                  {/* ── Desktop row layout ── */}
+                  <div className="hidden lg:grid grid-cols-12 items-center gap-2 px-3 py-3">
+                    {/* Country (3 cols) */}
+                    <div className="col-span-3 flex items-center gap-2 min-w-0">
+                      <span className="text-xl leading-none flex-shrink-0">{c.flag ?? flag(c.code)}</span>
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-white truncate">{c.name}</p>
                         <p className="text-[10px] text-zinc-500 font-mono">{c.code.toUpperCase()} · {c.dialCode}</p>
                       </div>
                     </div>
-                    {/* Status badge */}
-                    {hasCustom && !isDirty ? (
-                      <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${
-                        isActive
-                          ? "bg-violet-500/20 text-violet-300"
-                          : "bg-zinc-700 text-zinc-500"
-                      }`}>
-                        {isActive ? "✓ configuré" : "désactivé"}
+
+                    {/* Provider price (2 cols) */}
+                    <div className="col-span-2">
+                      {providerPrice > 0 ? (
+                        <div>
+                          <p className="text-sm font-medium text-zinc-300">{formatFCFA(providerPrice)}</p>
+                          <p className="text-[10px] text-zinc-600">5sim</p>
+                        </div>
+                      ) : (
+                        <p className="text-sm text-zinc-600">—</p>
+                      )}
+                    </div>
+
+                    {/* SIMIX price input (3 cols) */}
+                    <div className="col-span-3">
+                      <div className="relative">
+                        <input
+                          type="number"
+                          min={1}
+                          value={edit.price}
+                          onChange={e => setCountryPrice(code, e.target.value)}
+                          placeholder={
+                            hasCustom
+                              ? String(existing.price)
+                              : matrix
+                                ? String(matrix.service.price ?? "—")
+                                : "prix global"
+                          }
+                          className={`w-full bg-zinc-800 border rounded-lg px-2.5 py-1.5 text-sm text-white placeholder-zinc-500 focus:outline-none focus:ring-1 focus:ring-violet-500 pr-10 ${
+                            isDirty
+                              ? "border-amber-500/50"
+                              : hasCustom
+                                ? "border-violet-500/30"
+                                : "border-zinc-700"
+                          }`}
+                        />
+                        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-zinc-600 pointer-events-none">F</span>
+                      </div>
+                    </div>
+
+                    {/* Margin (2 cols) */}
+                    <div className="col-span-2 flex justify-start">
+                      <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${marginBg(margin)}`}>
+                        {margin !== null ? `+${margin}%` : "—"}
                       </span>
-                    ) : isDirty ? (
-                      <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-amber-500/20 text-amber-300">
-                        modifié
-                      </span>
-                    ) : (
-                      <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-zinc-800 text-zinc-600">
-                        défaut pays
-                      </span>
-                    )}
+                    </div>
+
+                    {/* Status (1 col) */}
+                    <div className="col-span-1">
+                      {hasCustom && !isDirty ? (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-violet-500/20 text-violet-300">
+                          exception
+                        </span>
+                      ) : isGlobal ? (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-zinc-800 text-zinc-600">
+                          global
+                        </span>
+                      ) : (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-amber-500/20 text-amber-300">
+                          modifié
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Actions (1 col) */}
+                    <div className="col-span-1 flex items-center justify-end gap-1.5">
+                      {/* Enable/disable toggle */}
+                      {(hasCustom || (isDirty && validPrice)) && (
+                        <div
+                          onClick={() => setCountryEnabled(code, !edit.enabled)}
+                          title={edit.enabled ? "Désactiver ce pays" : "Activer ce pays"}
+                          className={`relative w-7 h-4 rounded-full transition-colors cursor-pointer flex-shrink-0 ${edit.enabled ? "bg-emerald-600" : "bg-zinc-700"}`}
+                        >
+                          <div className={`absolute top-[2px] w-[12px] h-[12px] bg-white rounded-full shadow transition-transform ${edit.enabled ? "translate-x-[14px]" : "translate-x-[2px]"}`} />
+                        </div>
+                      )}
+                      {/* Delete override */}
+                      {(hasCustom || (isDirty && edit.price !== "")) && (
+                        <button
+                          onClick={() => handleDeleteOverride(c)}
+                          disabled={deletePrice.isPending}
+                          title="Supprimer l'exception (revenir au prix global)"
+                          className="p-1 text-zinc-600 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
                   </div>
 
-                  {/* Price input */}
-                  <div className="flex items-center gap-2 mb-2.5">
-                    <div className="relative flex-1">
+                  {/* ── Mobile card layout ── */}
+                  <div className="lg:hidden p-3.5 space-y-3">
+                    {/* Header */}
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xl leading-none">{c.flag ?? flag(c.code)}</span>
+                        <div>
+                          <p className="text-sm font-medium text-white leading-tight">{c.name}</p>
+                          <p className="text-[10px] text-zinc-500 font-mono">{c.code.toUpperCase()} · {c.dialCode}</p>
+                        </div>
+                      </div>
+                      {hasCustom && !isDirty ? (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-violet-500/20 text-violet-300">exception</span>
+                      ) : isDirty ? (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-amber-500/20 text-amber-300">modifié</span>
+                      ) : (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-zinc-800 text-zinc-600">prix global</span>
+                      )}
+                    </div>
+
+                    {/* Provider + margin info */}
+                    <div className="flex items-center gap-3 text-xs">
+                      <div>
+                        <span className="text-zinc-500">Fournisseur : </span>
+                        <span className="text-zinc-300 font-medium">
+                          {providerPrice > 0 ? formatFCFA(providerPrice) : "—"}
+                        </span>
+                      </div>
+                      {margin !== null && (
+                        <span className={`px-2 py-0.5 rounded-full text-[11px] font-semibold ${marginBg(margin)}`}>
+                          +{margin}%
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Price input */}
+                    <div className="relative">
                       <input
                         type="number"
                         min={1}
                         value={edit.price}
                         onChange={e => setCountryPrice(code, e.target.value)}
-                        placeholder={hasCustom ? String(existing.price) : String(c.price)}
-                        className={`w-full bg-zinc-800 border rounded-lg px-3 py-2 text-sm text-white placeholder-zinc-600 focus:outline-none focus:ring-1 focus:ring-violet-500 pr-14 ${
+                        placeholder={
+                          hasCustom
+                            ? String(existing.price)
+                            : matrix
+                              ? `${matrix.service.price ?? "—"} (global)`
+                              : "prix global"
+                        }
+                        className={`w-full bg-zinc-800 border rounded-lg px-3 py-2 text-sm text-white placeholder-zinc-500 focus:outline-none focus:ring-1 focus:ring-violet-500 pr-14 ${
                           isDirty ? "border-amber-500/50" : hasCustom ? "border-violet-500/30" : "border-zinc-700"
                         }`}
                       />
                       <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] text-zinc-500 pointer-events-none">FCFA</span>
                     </div>
-                  </div>
 
-                  {/* Country default price hint */}
-                  <p className="text-[10px] text-zinc-600 mb-2.5">
-                    Prix par défaut du pays : <span className="text-zinc-500">{formatFCFA(c.price)}</span>
-                  </p>
+                    {/* Footer */}
+                    <div className="flex items-center justify-between">
+                      <label className={`flex items-center gap-2 cursor-pointer ${!validPrice && !hasCustom ? "opacity-30 pointer-events-none" : ""}`}>
+                        <div
+                          onClick={() => setCountryEnabled(code, !edit.enabled)}
+                          className={`relative w-8 h-[18px] rounded-full transition-colors flex-shrink-0 ${edit.enabled ? "bg-emerald-600" : "bg-zinc-700"}`}
+                        >
+                          <div className={`absolute top-[2px] w-[14px] h-[14px] bg-white rounded-full shadow transition-transform ${edit.enabled ? "translate-x-[18px]" : "translate-x-[2px]"}`} />
+                        </div>
+                        <span className={`text-[11px] font-medium ${edit.enabled ? "text-emerald-400" : "text-zinc-500"}`}>
+                          {edit.enabled ? "Actif" : "Inactif"}
+                        </span>
+                      </label>
 
-                  {/* Footer: enable toggle + delete */}
-                  <div className="flex items-center justify-between">
-                    {/* Enable/disable toggle — only meaningful when price exists */}
-                    <label className={`flex items-center gap-2 cursor-pointer ${!validPrice && !hasCustom ? "opacity-30 pointer-events-none" : ""}`}>
-                      <div
-                        onClick={() => setCountryEnabled(code, !edit.enabled)}
-                        className={`relative w-8 h-4.5 h-[18px] rounded-full transition-colors flex-shrink-0 ${edit.enabled ? "bg-emerald-600" : "bg-zinc-700"}`}
-                      >
-                        <div className={`absolute top-[2px] w-[14px] h-[14px] bg-white rounded-full shadow transition-transform ${edit.enabled ? "translate-x-[18px]" : "translate-x-[2px]"}`} />
-                      </div>
-                      <span className={`text-[11px] font-medium ${edit.enabled ? "text-emerald-400" : "text-zinc-500"}`}>
-                        {edit.enabled ? "Actif" : "Inactif"}
-                      </span>
-                    </label>
-
-                    {/* Delete custom price button */}
-                    {(hasCustom || (isDirty && edit.price !== "")) && (
-                      <button
-                        onClick={() => handleDeleteOverride(c)}
-                        disabled={deletePrice.isPending}
-                        title="Supprimer le prix personnalisé (revenir au défaut pays)"
-                        className="p-1 text-zinc-600 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    )}
+                      {(hasCustom || (isDirty && edit.price !== "")) && (
+                        <button
+                          onClick={() => handleDeleteOverride(c)}
+                          disabled={deletePrice.isPending}
+                          title="Supprimer l'exception"
+                          className="p-1 text-zinc-600 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
               );
@@ -454,7 +635,7 @@ function ServicePricesContent() {
             </div>
           )}
 
-          {/* Bottom save bar */}
+          {/* Bottom sticky save bar */}
           {dirtyCount > 0 && (
             <div className="sticky bottom-4 z-10">
               <div className="bg-zinc-900 border border-violet-500/40 rounded-2xl px-5 py-3 flex items-center justify-between shadow-2xl shadow-black/50">
