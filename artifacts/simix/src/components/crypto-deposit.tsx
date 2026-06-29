@@ -167,10 +167,15 @@ export function CryptoDeposit({
 
   const { secs: secsLeft, label: countdown } = useCountdown(deposit?.expiresAt ?? null);
 
-  /* Auto-expire */
+  /* Auto-expire — only when the expiry date is actually in the past,
+   * not on the initial render where secsLeft starts at 0 before
+   * the countdown hook has had a chance to calculate the real value. */
   useEffect(() => {
     if (deposit && secsLeft === 0 && status === "waiting") {
-      setStatus("expired");
+      const expiry = new Date(deposit.expiresAt).getTime();
+      if (expiry <= Date.now()) {
+        setStatus("expired");
+      }
     }
   }, [secsLeft, deposit, status]);
 
