@@ -156,20 +156,47 @@ function FlagImg({ code, size = 20 }: { code: string; size?: number }) {
   );
 }
 
+/* ─── Local logo assets (slug → public path) ─── */
+const LOGO_ASSETS: Record<string, string> = {
+  orange_money:  "/logos/orange-money.svg",
+  mtn_money:     "/logos/mtn-mobile-money.png",
+  wave:          "/logos/wave.svg",
+  moov_money:    "/logos/moov-money.png",
+  free_money:    "/logos/free-money.svg",
+  airtel_money:  "/logos/airtel-money.svg",
+  mpesa:         "/logos/m-pesa.svg",
+  vodacom_mpesa: "/logos/vodacom-mpesa.svg",
+  zamtel:        "/logos/zamtel-kwacha.png",
+  flooz:         "/logos/flooz.svg",
+  tmoney:        "/logos/tmoney.svg",
+  mvola:         "/logos/mvola.png",
+  econet:        "/logos/ecocash.png",
+};
+
 /* ─── Operator logo ─── */
 function MethodLogo({ method, size = 40 }: { method: Pick<DepositMethod, "name" | "color" | "logoUrl" | "slug">; size?: number }) {
-  const [err, setErr] = useState(false);
+  const [primaryErr, setPrimaryErr] = useState(false);
+  const [localErr, setLocalErr]     = useState(false);
 
-  if (method.logoUrl && !err) {
+  const primary = method.logoUrl && !primaryErr ? method.logoUrl : null;
+  const local   = !primary && LOGO_ASSETS[method.slug] && !localErr ? LOGO_ASSETS[method.slug] : null;
+  const src     = primary ?? local;
+
+  const wrapStyle = {
+    width:           size,
+    height:          size,
+    borderRadius:    Math.round(size * 0.28),
+    backgroundColor: `${method.color}22`,
+    flexShrink:      0,
+  } as const;
+
+  if (src) {
     return (
-      <div
-        className="flex items-center justify-center overflow-hidden flex-shrink-0 shadow-sm"
-        style={{ width: size, height: size, borderRadius: Math.round(size * 0.28), backgroundColor: `${method.color}22` }}
-      >
+      <div className="flex items-center justify-center overflow-hidden shadow-sm" style={wrapStyle}>
         <img
-          src={method.logoUrl}
+          src={src}
           alt={method.name}
-          onError={() => setErr(true)}
+          onError={() => primary ? setPrimaryErr(true) : setLocalErr(true)}
           className="object-contain"
           style={{ width: size * 0.85, height: size * 0.85 }}
         />
@@ -177,27 +204,13 @@ function MethodLogo({ method, size = 40 }: { method: Pick<DepositMethod, "name" 
     );
   }
 
-  const BUILTIN: Record<string, { label: string; label2?: string }> = {
-    orange_money: { label: "OM", label2: "Money" },
-    mtn_money: { label: "MTN", label2: "MoMo" },
-    wave: { label: "~", label2: "wave" },
-    moov_money: { label: "M", label2: "Moov" },
-    free_money: { label: "FM" },
-    mpesa: { label: "M-P", label2: "esa" },
-    airtel_money: { label: "Air", label2: "tel" },
-  };
-  const builtin = BUILTIN[method.slug];
-  const initials = builtin?.label ?? method.name.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase();
-
+  const initials = method.name.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase();
   return (
     <div
-      className="flex flex-col items-center justify-center flex-shrink-0 shadow-sm"
-      style={{ width: size, height: size, borderRadius: Math.round(size * 0.28), background: method.color }}
+      className="flex items-center justify-center flex-shrink-0 shadow-sm font-black text-white"
+      style={{ width: size, height: size, borderRadius: Math.round(size * 0.28), background: method.color, fontSize: size * 0.32 }}
     >
-      <span className="text-white font-black leading-none" style={{ fontSize: size * 0.32 }}>{initials}</span>
-      {builtin?.label2 && (
-        <span className="text-white/80 font-semibold leading-none" style={{ fontSize: size * 0.22 }}>{builtin.label2}</span>
-      )}
+      {initials}
     </div>
   );
 }

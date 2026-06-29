@@ -115,21 +115,53 @@ function FlagImg({ code, size = 18 }: { code: string; size?: number }) {
   );
 }
 
+/* ─── Method name → local logo asset ─── */
+function methodLogoAsset(name?: string): string | null {
+  const n = (name ?? "").toLowerCase();
+  if (n.includes("orange"))                       return "/logos/orange-money.svg";
+  if (n.includes("mtn") || n.includes("momo"))   return "/logos/mtn-mobile-money.png";
+  if (n.includes("wave"))                         return "/logos/wave.svg";
+  if (n.includes("moov"))                         return "/logos/moov-money.png";
+  if (n.includes("free"))                         return "/logos/free-money.svg";
+  if (n.includes("airtel"))                       return "/logos/airtel-money.svg";
+  if (n.includes("vodacom"))                      return "/logos/vodacom-mpesa.svg";
+  if (n.includes("mpesa") || n.includes("m-pesa")) return "/logos/m-pesa.svg";
+  if (n.includes("zamtel"))                       return "/logos/zamtel-kwacha.png";
+  if (n.includes("flooz"))                        return "/logos/flooz.svg";
+  if (n.includes("tmoney") || n.includes("t-money")) return "/logos/tmoney.svg";
+  if (n.includes("mvola"))                        return "/logos/mvola.png";
+  if (n.includes("econet") || n.includes("ecocash")) return "/logos/ecocash.png";
+  return null;
+}
+
 /* ─── Operator Logo ─── */
 function OperatorLogo({ name, size = 40 }: { name?: string; size?: number }) {
+  const [imgErr, setImgErr] = useState(false);
+  const logoAsset = methodLogoAsset(name);
   const color = methodColor(name);
+
+  if (logoAsset && !imgErr) {
+    return (
+      <div
+        className="flex items-center justify-center overflow-hidden flex-shrink-0 shadow-sm"
+        style={{ width: size, height: size, borderRadius: Math.round(size * 0.28), backgroundColor: `${color}22` }}
+      >
+        <img
+          src={logoAsset}
+          alt={name ?? ""}
+          onError={() => setImgErr(true)}
+          className="object-contain"
+          style={{ width: size * 0.85, height: size * 0.85 }}
+        />
+      </div>
+    );
+  }
+
   const initials = methodInitials(name);
-  const isLight = ["#10B981"].includes(color);
   return (
     <div
-      className="flex items-center justify-center flex-shrink-0 shadow-sm font-black"
-      style={{
-        width: size, height: size,
-        borderRadius: Math.round(size * 0.28),
-        background: color,
-        color: isLight ? "#111" : "#fff",
-        fontSize: size * 0.32,
-      }}
+      className="flex items-center justify-center flex-shrink-0 shadow-sm font-black text-white"
+      style={{ width: size, height: size, borderRadius: Math.round(size * 0.28), background: color, fontSize: size * 0.32 }}
     >
       {initials}
     </div>

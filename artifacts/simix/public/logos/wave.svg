@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <defs>
+    <linearGradient id="wg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1B6FF0"/>
+      <stop offset="100%" stop-color="#0A4DC4"/>
+    </linearGradient>
+  </defs>
+  <rect width="200" height="200" rx="40" fill="url(#wg)"/>
+  <path d="M30 100 Q60 60 90 95 Q120 130 150 90 Q165 75 175 80" stroke="white" stroke-width="14" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="100" y="160" text-anchor="middle" font-family="'Helvetica Neue', Arial, sans-serif" font-weight="800" font-size="38" fill="white" letter-spacing="-1">wave</text>
+</svg>
