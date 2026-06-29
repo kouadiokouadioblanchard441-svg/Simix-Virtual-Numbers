@@ -31,15 +31,18 @@ app.set("trust proxy", 1);
 const buildAllowedOrigins = (): Set<string> => {
   const origins = new Set<string>();
 
-  /* Primary domain from APP_URL or built-in fallback */
+  /* Primary domain from APP_URL or built-in fallback — add www + non-www + http + https */
   const appUrl = getAppUrl();
   if (appUrl) {
-    origins.add(appUrl.replace(/\/$/, ""));
-    /* Also accept http:// variant in case host proxy strips TLS */
+    const cleaned = appUrl.replace(/\/$/, "");
+    origins.add(cleaned);
     try {
-      const u = new URL(appUrl);
-      origins.add(`http://${u.host}`);
-      origins.add(`https://${u.host}`);
+      const u = new URL(cleaned);
+      const bare = u.hostname.replace(/^www\./, "");
+      for (const scheme of ["http", "https"]) {
+        origins.add(`${scheme}://${bare}`);
+        origins.add(`${scheme}://www.${bare}`);
+      }
     } catch { /* ignore */ }
   }
 

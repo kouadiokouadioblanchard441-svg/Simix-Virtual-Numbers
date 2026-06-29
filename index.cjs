@@ -127970,8 +127970,11 @@ var buildAllowedOrigins = () => {
     origins.add(cleaned);
     try {
       const u = new URL(cleaned);
-      origins.add("http://" + u.host);
-      origins.add("https://" + u.host);
+      const bare = u.hostname.replace(/^www\./, "");
+      for (const scheme of ["http", "https"]) {
+        origins.add(scheme + "://" + bare);
+        origins.add(scheme + "://www." + bare);
+      }
     } catch (e) {}
   }
   /* 2. CORS_ORIGINS=https://foo.com,https://bar.com */
