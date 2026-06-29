@@ -73,7 +73,5 @@ VAPID_PRIVATE_KEY = "ZTms399zzZmgctCuW81L9ZYCAG0qFu9DcwJEFh1JVrQ"
 VAPID_SUBJECT = "mailto:support@simix.site"
 
 [userenv.production]
-GOOGLE_REDIRECT_URI = "https://simix.site/api/auth/google/callback"
 
 [userenv.development]
-GOOGLE_REDIRECT_URI = "https://simix.site/api/auth/google/callback"
