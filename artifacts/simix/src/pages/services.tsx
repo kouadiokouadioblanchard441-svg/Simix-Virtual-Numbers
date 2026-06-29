@@ -1,7 +1,7 @@
 import { AppLayout } from "@/components/layout/app-layout";
 import { AuthGuard } from "@/components/auth-guard";
 import { useListServices, getListServicesQueryKey, useListPopularServices, getListPopularServicesQueryKey } from "@workspace/api-client-react";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { Link, useLocation } from "wouter";
 import { Search, ChevronLeft, Filter, ShieldCheck, ChevronRight, Zap } from "lucide-react";
 import { motion } from "framer-motion";
@@ -47,6 +47,32 @@ function ServicesContent() {
     if (activeCategory === "Tous") return services;
     return services.filter((s: any) => s.category === activeCategory);
   }, [services, activeCategory]);
+
+  const PAGE_SIZE = 30;
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  const sentinelRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setVisibleCount(PAGE_SIZE);
+  }, [filtered]);
+
+  const loadMore = useCallback(() => {
+    setVisibleCount((c) => Math.min(c + PAGE_SIZE, filtered.length));
+  }, [filtered.length]);
+
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      (entries) => { if (entries[0].isIntersecting) loadMore(); },
+      { rootMargin: "200px" }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [loadMore]);
+
+  const visibleServices = filtered.slice(0, visibleCount);
+  const hasMore = visibleCount < filtered.length;
 
   const goToCountries = (serviceId: string) => {
     const qs = countryId ? `?serviceId=${serviceId}&countryId=${countryId}` : `?serviceId=${serviceId}`;
@@ -153,38 +179,53 @@ function ServicesContent() {
                 <div key={i} className="h-20 bg-card border border-card-border rounded-2xl animate-pulse" />
               ))
             ) : (
-              filtered.map((service: any, i: number) => (
-                <motion.button
-                  key={service.id}
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: i * 0.03 }}
-                  onClick={() => goToCountries(service.id)}
-                  className="w-full flex items-center justify-between p-4 bg-card border border-card-border rounded-2xl hover:bg-secondary/50 transition-colors text-left"
-                >
-                  <div className="flex items-center gap-4">
-                    <ServiceIcon name={service.name} slug={service.slug} size={48} rounded="xl" />
-                    <div>
-                      <p className="text-base font-bold text-foreground leading-tight">
-                        {service.name}
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-0.5">
-                        {service.category || service.scope || "Global"}
-                      </p>
-                      <div className="flex items-center gap-1.5 mt-1.5">
-                        <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
-                        <span className="text-[11px] font-medium text-muted-foreground">
-                          {service.available?.toLocaleString("fr-FR") || "—"} disponibles
-                        </span>
+              <>
+                {visibleServices.map((service: any, i: number) => (
+                  <motion.button
+                    key={service.id}
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: Math.min(i, 12) * 0.03 }}
+                    onClick={() => goToCountries(service.id)}
+                    className="w-full flex items-center justify-between p-4 bg-card border border-card-border rounded-2xl hover:bg-secondary/50 transition-colors text-left"
+                  >
+                    <div className="flex items-center gap-4">
+                      <ServiceIcon name={service.name} slug={service.slug} size={48} rounded="xl" />
+                      <div>
+                        <p className="text-base font-bold text-foreground leading-tight">
+                          {service.name}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {service.category || service.scope || "Global"}
+                        </p>
+                        <div className="flex items-center gap-1.5 mt-1.5">
+                          <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
+                          <span className="text-[11px] font-medium text-muted-foreground">
+                            {service.available?.toLocaleString("fr-FR") || "—"} disponibles
+                          </span>
+                        </div>
                       </div>
                     </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span className="text-sm font-bold text-primary">{formatFCFA(service.price)}</span>
+                      <ChevronRight className="w-5 h-5 text-muted-foreground" />
+                    </div>
+                  </motion.button>
+                ))}
+
+                {/* Sentinel — déclenche le chargement de la prochaine page */}
+                <div ref={sentinelRef} className="h-1" />
+
+                {/* Indicateur de chargement supplémentaire */}
+                {hasMore && (
+                  <div className="flex justify-center py-4">
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <div className="w-4 h-4 border-2 border-primary/40 border-t-primary rounded-full animate-spin" />
+                      Chargement…
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <span className="text-sm font-bold text-primary">{formatFCFA(service.price)}</span>
-                    <ChevronRight className="w-5 h-5 text-muted-foreground" />
-                  </div>
-                </motion.button>
-              ))
+                )}
+              </>
             )}
           </div>
         </div>
