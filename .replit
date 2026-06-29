@@ -74,3 +74,6 @@ VAPID_SUBJECT = "mailto:support@simix.site"
 
 [userenv.production]
 GOOGLE_REDIRECT_URI = "https://simix.site/api/auth/google/callback"
+
+[userenv.development]
+GOOGLE_REDIRECT_URI = "https://simix.site/api/auth/google/callback"
