@@ -110,6 +110,45 @@ function NetworkBadge({ network, size = "sm" }: { network: string; size?: "sm" |
   );
 }
 
+/* ─── Chain badge logo per network ─── */
+const CHAIN_BADGE: Record<string, { logo: string; bg: string }> = {
+  trc20: { logo: "/crypto/tron.svg", bg: "#EF0027" },
+  erc20: { logo: "/crypto/eth.svg",  bg: "#6366F1" },
+  bep20: { logo: "/crypto/bnb.svg",  bg: "#F0B90B" },
+};
+
+/* ─── USDT + chain badge icon ─── */
+function CryptoNetworkIcon({ network, size = 40 }: { network: string; size?: number }) {
+  const badgeSize = Math.round(size * 0.42);
+  const badge = CHAIN_BADGE[network];
+  return (
+    <div className="relative flex-shrink-0" style={{ width: size, height: size }}>
+      <div
+        className="flex items-center justify-center overflow-hidden shadow-sm"
+        style={{ width: size, height: size, borderRadius: Math.round(size * 0.28), backgroundColor: "#26A17B22" }}
+      >
+        <img
+          src="/crypto/usdt.svg"
+          alt="USDT"
+          style={{ width: size * 0.82, height: size * 0.82, objectFit: "contain" }}
+        />
+      </div>
+      {badge && (
+        <img
+          src={badge.logo}
+          alt={network}
+          style={{
+            position: "absolute", bottom: -2, right: -2,
+            width: badgeSize, height: badgeSize,
+            borderRadius: "50%", backgroundColor: badge.bg,
+            border: "1.5px solid #111827",
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
 /* ─── Transaction card ─── */
 function CryptoCard({ tx, onClick, liveStatus }: {
   tx: CryptoTx;
@@ -132,13 +171,8 @@ function CryptoCard({ tx, onClick, liveStatus }: {
       {/* Left accent */}
       <div className="w-0.5 h-12 rounded-full flex-shrink-0" style={{ backgroundColor: ns.color }} />
 
-      {/* Network icon */}
-      <div
-        className={cn("w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 font-black text-xs", ns.bg)}
-        style={{ color: ns.color }}
-      >
-        {ns.short.replace("-", "")}
-      </div>
+      {/* USDT + chain badge icon */}
+      <CryptoNetworkIcon network={tx.network} size={40} />
 
       <div className="flex-1 min-w-0">
         <div className="flex items-start justify-between gap-2">
@@ -244,9 +278,7 @@ function CryptoDetailModal({ tx, liveStatus, onClose }: {
           style={{ background: `linear-gradient(135deg, ${ns.color}99, ${ns.color}55)` }}
         >
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center font-black text-sm text-white">
-              {ns.short.replace("-", "")}
-            </div>
+            <CryptoNetworkIcon network={tx.network} size={36} />
             <div>
               <p className="text-white font-bold text-base leading-tight">{tx.networkLabel}</p>
               <p className="text-white/60 text-xs">{tx.chain}</p>

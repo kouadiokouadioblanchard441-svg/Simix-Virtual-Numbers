@@ -131,6 +131,17 @@ function methodLogoAsset(name?: string): string | null {
   if (n.includes("tmoney") || n.includes("t-money")) return "/logos/tmoney.svg";
   if (n.includes("mvola"))                        return "/logos/mvola.png";
   if (n.includes("econet") || n.includes("ecocash")) return "/logos/ecocash.png";
+  if (n.includes("crypto") || n.includes("usdt")) return "/crypto/usdt.svg";
+  return null;
+}
+
+/* ─── Crypto chain badge asset from method name ─── */
+function cryptoChainAsset(name?: string): { logo: string; color: string } | null {
+  const n = (name ?? "").toLowerCase();
+  if (!n.includes("crypto") && !n.includes("usdt")) return null;
+  if (n.includes("tron") || n.includes("trc"))  return { logo: "/crypto/tron.svg",  color: "#EF0027" };
+  if (n.includes("bnb")  || n.includes("bep"))  return { logo: "/crypto/bnb.svg",   color: "#F0B90B" };
+  if (n.includes("eth")  || n.includes("erc"))  return { logo: "/crypto/eth.svg",   color: "#6366F1" };
   return null;
 }
 
@@ -139,20 +150,36 @@ function OperatorLogo({ name, size = 40 }: { name?: string; size?: number }) {
   const [imgErr, setImgErr] = useState(false);
   const logoAsset = methodLogoAsset(name);
   const color = methodColor(name);
+  const chain = cryptoChainAsset(name);
 
   if (logoAsset && !imgErr) {
+    const badgeSize = Math.round(size * 0.42);
     return (
-      <div
-        className="flex items-center justify-center overflow-hidden flex-shrink-0 shadow-sm"
-        style={{ width: size, height: size, borderRadius: Math.round(size * 0.28), backgroundColor: `${color}22` }}
-      >
-        <img
-          src={logoAsset}
-          alt={name ?? ""}
-          onError={() => setImgErr(true)}
-          className="object-contain"
-          style={{ width: size * 0.85, height: size * 0.85 }}
-        />
+      <div className="relative flex-shrink-0" style={{ width: size, height: size }}>
+        <div
+          className="flex items-center justify-center overflow-hidden shadow-sm"
+          style={{ width: size, height: size, borderRadius: Math.round(size * 0.28), backgroundColor: `${color}22` }}
+        >
+          <img
+            src={logoAsset}
+            alt={name ?? ""}
+            onError={() => setImgErr(true)}
+            className="object-contain"
+            style={{ width: size * 0.82, height: size * 0.82 }}
+          />
+        </div>
+        {chain && (
+          <img
+            src={chain.logo}
+            alt=""
+            style={{
+              position: "absolute", bottom: -2, right: -2,
+              width: badgeSize, height: badgeSize,
+              borderRadius: "50%", backgroundColor: chain.color,
+              border: "1.5px solid #0f0f1a",
+            }}
+          />
+        )}
       </div>
     );
   }
