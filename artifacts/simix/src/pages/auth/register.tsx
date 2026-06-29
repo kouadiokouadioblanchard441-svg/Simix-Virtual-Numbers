@@ -360,9 +360,9 @@ export default function Register() {
                     </div>
                     <span className="text-sm text-muted-foreground leading-relaxed">
                       J'accepte les{" "}
-                      <Link href="/legal/terms" className="text-primary hover:underline font-medium">conditions d'utilisation</Link>
+                      <Link href="/legal/cgu" className="text-primary hover:underline font-medium">conditions d'utilisation</Link>
                       {" "}et la{" "}
-                      <Link href="/legal/privacy" className="text-primary hover:underline font-medium">politique de confidentialité</Link>
+                      <Link href="/legal/politique-confidentialite" className="text-primary hover:underline font-medium">politique de confidentialité</Link>
                     </span>
                   </label>
                 </FormControl>
