@@ -75,6 +75,7 @@ const NAV_ITEMS: NavItem[] = [
 
   /* ── Catalogue ── */
   { href: "/admin/services",       label: "Services & Prix",   icon: Globe,       section: "Catalogue" },
+  { href: "/admin/pricing",        label: "Gestion des prix",  icon: Tag,         highlight: true },
   { href: "/admin/service-prices", label: "Prix par pays",     icon: Tag },
   { href: "/admin/live-prices",    label: "Prix live 5sim",    icon: TrendingUp },
   { href: "/admin/sync",           label: "Sync 5sim",         icon: RefreshCw },

@@ -78,6 +78,7 @@ import AdminCurrencies from "@/pages/admin/currencies";
 import AdminFxProfits from "@/pages/admin/fx-profits";
 import AdminDiagnostics from "@/pages/admin/diagnostics";
 import AdminRefunds from "@/pages/admin/refunds";
+import AdminPricing from "@/pages/admin/pricing";
 
 // Toast demo
 import ToastDemo from "@/pages/toast-demo";
@@ -141,6 +142,7 @@ function AdminRoutes() {
         <Route path="/admin/fx-profits" component={AdminFxProfits} />
         <Route path="/admin/diagnostics" component={AdminDiagnostics} />
         <Route path="/admin/refunds" component={AdminRefunds} />
+        <Route path="/admin/pricing" component={AdminPricing} />
       </Switch>
     </AdminSecureGuard>
   );

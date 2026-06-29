@@ -2294,6 +2294,124 @@ router.delete("/admin/service-prices/:id", requireAdmin, async (req, res): Promi
   res.json({ success: true });
 });
 
+/* ─────────────────── PRICING MATRIX (global + per-country) ─────────────── */
+
+/**
+ * GET /admin/pricing/matrix?serviceSlug=whatsapp
+ *
+ * Returns a full pricing matrix for one service:
+ *   - service global price (Level 1 in the admin hierarchy)
+ *   - per-country: provider price (SCA), SIMIX price (override or global), margin, isCustom flag
+ *
+ * This is read-only — writes go through existing /admin/services (global) and
+ * /admin/service-prices (per-country) endpoints.
+ */
+router.get("/admin/pricing/matrix", requireAdmin, async (req, res): Promise<void> => {
+  const { serviceSlug } = req.query;
+  if (!serviceSlug || typeof serviceSlug !== "string") {
+    res.status(400).json({ error: "serviceSlug requis" }); return;
+  }
+  const slug = serviceSlug.toLowerCase();
+
+  const { serviceCountryAvailabilityTable } = await import("@workspace/db");
+
+  const [service] = await db.select().from(servicesTable)
+    .where(eq(servicesTable.slug, slug)).limit(1);
+
+  if (!service) { res.status(404).json({ error: "Service introuvable" }); return; }
+
+  const allCountries = await db.select().from(countriesTable)
+    .orderBy(countriesTable.name);
+
+  const scaRows = await db.select().from(serviceCountryAvailabilityTable)
+    .where(eq(serviceCountryAvailabilityTable.serviceSlug, slug));
+
+  const customPrices = await db.select().from(servicePricesTable)
+    .where(eq(servicePricesTable.serviceSlug, slug));
+
+  const scaMap = new Map(scaRows.map(r => [r.countryCode.toLowerCase(), r]));
+  const customMap = new Map(customPrices.map(r => [r.countryCode.toLowerCase(), r]));
+
+  const globalPrice = service.price ?? 0;
+
+  const countries = allCountries.map(c => {
+    const code = c.code.toLowerCase();
+    const sca = scaMap.get(code);
+    const custom = customMap.get(code);
+    const providerPriceFcfa = sca?.providerPriceFcfa ?? 0;
+    const simixPrice = custom ? custom.price : globalPrice;
+    const isCustom = !!custom;
+    const margin = providerPriceFcfa > 0
+      ? Math.round(((simixPrice - providerPriceFcfa) / providerPriceFcfa) * 100)
+      : null;
+    const globalMargin = providerPriceFcfa > 0
+      ? Math.round(((globalPrice - providerPriceFcfa) / providerPriceFcfa) * 100)
+      : null;
+
+    return {
+      code: c.code,
+      name: c.name,
+      flag: c.flag ?? c.code,
+      dialCode: c.dialCode ?? "",
+      providerPriceFcfa,
+      available: sca?.available ?? 0,
+      simixPrice,
+      isCustom,
+      customPriceId: custom?.id ?? null,
+      customEnabled: custom?.enabled ?? null,
+      adminModified: custom?.adminModified ?? false,
+      globalPrice,
+      margin,
+      globalMargin,
+    };
+  });
+
+  res.json({
+    service: {
+      id:                 service.id,
+      name:               service.name,
+      slug:               service.slug,
+      price:              service.price,
+      providerPrice:      service.providerPrice,
+      adminPriceModified: service.adminPriceModified,
+      margin:             service.margin,
+      logoUrl:            service.logoUrl,
+      color:              service.color,
+    },
+    countries,
+    globalCountries: countries.filter(c => !c.isCustom).length,
+    customCountries:  countries.filter(c =>  c.isCustom).length,
+  });
+});
+
+/**
+ * PUT /admin/pricing/global-price
+ * Body: { serviceSlug: string; price: number }
+ *
+ * Sets the Level-1 global price for a service.
+ * Automatically sets adminPriceModified = true → sync will never overwrite this price.
+ */
+router.put("/admin/pricing/global-price", requireAdmin, async (req, res): Promise<void> => {
+  const { serviceSlug, price } = req.body as { serviceSlug: string; price: number };
+  if (!serviceSlug || price == null || Number(price) <= 0) {
+    res.status(400).json({ error: "serviceSlug et price (> 0) requis" }); return;
+  }
+  const slug = serviceSlug.toLowerCase();
+
+  const [service] = await db.select().from(servicesTable)
+    .where(eq(servicesTable.slug, slug)).limit(1);
+
+  if (!service) { res.status(404).json({ error: "Service introuvable" }); return; }
+
+  await db.update(servicesTable)
+    .set({ price: Number(price), adminPriceModified: true })
+    .where(eq(servicesTable.slug, slug));
+
+  await logAdminAction(adminId(req), "update_global_price", req.ip, "service", service.id, { serviceSlug: slug, price: Number(price) });
+
+  res.json({ success: true, serviceSlug: slug, price: Number(price) });
+});
+
 /* ─────────────────────────────── DIAGNOSTICS ─────────────────────────────── */
 router.get("/admin/diagnostics", requireAdmin, async (_req, res): Promise<void> => {
   const checks: {

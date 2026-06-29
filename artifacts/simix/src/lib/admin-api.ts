@@ -355,6 +355,12 @@ export const adminApi = {
 
   getRefundStats: () => req<RefundStats>("GET", "/admin/fivesim/refund-stats"),
 
+  /* ── Pricing Matrix (global + per-country unified view) ── */
+  getPricingMatrix: (serviceSlug: string) =>
+    req<PricingMatrix>("GET", `/admin/pricing/matrix?serviceSlug=${encodeURIComponent(serviceSlug)}`),
+  updateGlobalPrice: (serviceSlug: string, price: number) =>
+    req<{ success: boolean; serviceSlug: string; price: number }>("PUT", "/admin/pricing/global-price", { serviceSlug, price }),
+
   applyAvailabilityPrices: () => req<{
     success: boolean;
     message: string;
@@ -364,6 +370,41 @@ export const adminApi = {
     total: number;
   }>("POST", "/admin/sync/apply-availability-prices"),
 };
+
+/* ── Pricing Matrix ── */
+export interface PricingMatrixCountry {
+  code: string;
+  name: string;
+  flag: string;
+  dialCode: string;
+  providerPriceFcfa: number;
+  available: number;
+  simixPrice: number;
+  isCustom: boolean;
+  customPriceId: string | null;
+  customEnabled: boolean | null;
+  adminModified: boolean;
+  globalPrice: number;
+  margin: number | null;
+  globalMargin: number | null;
+}
+
+export interface PricingMatrix {
+  service: {
+    id: string;
+    name: string;
+    slug: string;
+    price: number;
+    providerPrice: number;
+    adminPriceModified: boolean;
+    margin: number;
+    logoUrl?: string | null;
+    color?: string;
+  };
+  countries: PricingMatrixCountry[];
+  globalCountries: number;
+  customCountries: number;
+}
 
 export interface RefundStats {
   overview: {
