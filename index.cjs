@@ -117847,17 +117847,16 @@ router5.get("/services", async (req, res) => {
     return;
   }
   const { search, category } = parsed.data;
-  const conditions = [
+  const baseCondition = and(
     eq(servicesTable.enabled, true),
-    lte(servicesTable.sortOrder, 199)
-  ];
-  if (search && search.length > 0) {
-    conditions.push(ilike(servicesTable.name, `%${search}%`));
-  }
-  if (category && category.length > 0) {
-    conditions.push(eq(servicesTable.category, category));
-  }
-  const rows = await db.select().from(servicesTable).where(and(...conditions)).orderBy(asc(servicesTable.sortOrder));
+    or(
+      lt(servicesTable.sortOrder, 200),
+      gt(servicesTable.available, 0)
+    ),
+    ...search ? [ilike(servicesTable.name, `%${search}%`)] : [],
+    ...category ? [eq(servicesTable.category, category)] : []
+  );
+  const rows = await db.select().from(servicesTable).where(baseCondition).orderBy(asc(servicesTable.sortOrder), desc(servicesTable.available));
   res.json(rows.map(toService));
 });
 router5.get("/services/popular", async (_req, res) => {

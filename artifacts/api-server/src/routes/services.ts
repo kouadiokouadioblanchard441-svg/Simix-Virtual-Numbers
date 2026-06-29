@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { and, asc, desc, eq, ilike, lte } from "drizzle-orm";
+import { and, asc, desc, eq, gt, ilike, lt, or } from "drizzle-orm";
 import { db, servicesTable } from "@workspace/db";
 import { ListServicesQueryParams } from "@workspace/api-zod";
 import { toService } from "../lib/serializers";
@@ -14,24 +14,24 @@ router.get("/services", async (req, res): Promise<void> => {
   }
   const { search, category } = parsed.data;
 
-  /* Only return curated main services (sort_order 10–199).
-     5sim-synced catch-all products all have sort_order=200 and are excluded. */
-  const conditions: ReturnType<typeof eq>[] = [
+  /* Curated services (sort_order < 200) are always shown when enabled.
+     5sim-synced services (sort_order = 200) are shown only when they
+     have at least 1 number available, so the list stays meaningful. */
+  const baseCondition = and(
     eq(servicesTable.enabled, true),
-    lte(servicesTable.sortOrder, 199),
-  ];
-  if (search && search.length > 0) {
-    conditions.push(ilike(servicesTable.name, `%${search}%`) as any);
-  }
-  if (category && category.length > 0) {
-    conditions.push(eq(servicesTable.category, category));
-  }
+    or(
+      lt(servicesTable.sortOrder, 200),
+      gt(servicesTable.available, 0),
+    ),
+    ...(search ? [ilike(servicesTable.name, `%${search}%`) as any] : []),
+    ...(category ? [eq(servicesTable.category, category)] : []),
+  );
 
   const rows = await db
     .select()
     .from(servicesTable)
-    .where(and(...conditions))
-    .orderBy(asc(servicesTable.sortOrder));
+    .where(baseCondition)
+    .orderBy(asc(servicesTable.sortOrder), desc(servicesTable.available));
 
   res.json(rows.map(toService));
 });

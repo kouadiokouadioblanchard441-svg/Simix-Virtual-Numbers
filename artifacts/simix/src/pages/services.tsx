@@ -2,7 +2,7 @@ import { AppLayout } from "@/components/layout/app-layout";
 import { AuthGuard } from "@/components/auth-guard";
 import { useListServices, getListServicesQueryKey, useListPopularServices, getListPopularServicesQueryKey } from "@workspace/api-client-react";
 import { useState, useMemo } from "react";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { Search, ChevronLeft, Filter, ShieldCheck, ChevronRight, Zap } from "lucide-react";
 import { motion } from "framer-motion";
 import { formatFCFA } from "@/lib/format";
@@ -21,6 +21,7 @@ export default function Services() {
 
 function ServicesContent() {
   const goBack = useGoBack("/dashboard");
+  const [, setLocation] = useLocation();
   const searchParams = new URLSearchParams(window.location.search);
   const countryId = searchParams.get("countryId") || undefined;
 
@@ -115,19 +116,12 @@ function ServicesContent() {
               </Link>
             </div>
             <div className="flex gap-3 overflow-x-auto pb-4 snap-x hide-scrollbar -mx-5 px-5">
-              {popular?.slice(0, 6).map((s: any, idx: number) => (
+              {popular?.slice(0, 6).map((s: any) => (
                 <button
                   key={s.id}
                   onClick={() => goToCountries(s.id)}
-                  className={`min-w-[140px] bg-card border ${
-                    idx === 0 ? "border-primary shadow-sm shadow-primary/10" : "border-card-border"
-                  } p-4 rounded-2xl flex flex-col items-center justify-center gap-2 snap-start hover:bg-secondary/50 transition-colors relative`}
+                  className="min-w-[140px] bg-card border border-card-border p-4 rounded-2xl flex flex-col items-center justify-center gap-2 snap-start hover:bg-secondary/50 hover:border-primary/40 transition-colors relative"
                 >
-                  {idx === 0 && (
-                    <div className="absolute top-2 right-2 w-5 h-5 bg-primary/20 rounded-full flex items-center justify-center">
-                      <Zap className="w-3 h-3 text-primary fill-primary" />
-                    </div>
-                  )}
                   <ServiceIcon name={s.name} slug={s.slug} size={48} rounded="xl" />
                   <span className="text-sm font-bold text-foreground truncate w-full text-center mt-1">
                     {s.name}
