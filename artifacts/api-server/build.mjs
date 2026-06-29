@@ -27,10 +27,9 @@ async function buildAll() {
     apiFiles.map((f) => rm(path.join(outDir, f), { recursive: true, force: true }))
   );
 
-  // Also clean old dist/ API files (migration away from dist/)
+  // Clean old CJS worker files from dist/ (but keep dist/index.cjs — it's a static Plesk wrapper)
   const distDir = path.join(rootDir, "dist");
   const oldDistFiles = [
-    "index.cjs",
     "pino-file.cjs",
     "pino-pretty.cjs",
     "pino-worker.cjs",
