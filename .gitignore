@@ -54,3 +54,7 @@ Thumbs.db
 # Replit
 .cache/
 .local/
+
+# Uploaded logos/images stored by the server at runtime — not committed
+# (the uploads/ dir is created automatically on startup, no need in git)
+uploads/
