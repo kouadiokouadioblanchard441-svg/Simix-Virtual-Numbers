@@ -58,3 +58,6 @@ Thumbs.db
 # Uploaded logos/images stored by the server at runtime — not committed
 # (the uploads/ dir is created automatically on startup, no need in git)
 uploads/
+
+# PM2 ecosystem file contains secrets — edit only on the server, never commit with real values
+# ecosystem.config.js
