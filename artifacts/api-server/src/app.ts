@@ -21,13 +21,37 @@ const app: Express = express();
  * and req.ip returns the real client IP instead of the proxy IP.       */
 app.set("trust proxy", 1);
 
-/* ── CORS — explicit allowlist, never reflect Origin blindly ──────────────
- * origin: true was a critical vulnerability that allowed any domain to make
- * credentialed cross-origin requests (CSRF vector).
- * We now restrict to known origins only.                                 */
+/* ── CORS — explicit allowlist + env-var overrides ────────────────────────
+ * Allowed origins (in priority order):
+ *   1. APP_URL env var (set this on your host to your public domain)
+ *   2. CORS_ORIGINS env var — comma-separated list of extra origins
+ *   3. REPLIT_DEV_DOMAIN / REPLIT_DOMAINS — auto-injected by Replit
+ *   4. getAppUrl() fallback (https://simix.site by default)
+ *   5. localhost variants for local dev                                   */
 const buildAllowedOrigins = (): Set<string> => {
   const origins = new Set<string>();
-  if (process.env.APP_URL) origins.add(process.env.APP_URL.replace(/\/$/, ""));
+
+  /* Primary domain from APP_URL or built-in fallback */
+  const appUrl = getAppUrl();
+  if (appUrl) {
+    origins.add(appUrl.replace(/\/$/, ""));
+    /* Also accept http:// variant in case host proxy strips TLS */
+    try {
+      const u = new URL(appUrl);
+      origins.add(`http://${u.host}`);
+      origins.add(`https://${u.host}`);
+    } catch { /* ignore */ }
+  }
+
+  /* Extra origins: CORS_ORIGINS=https://foo.com,https://bar.com */
+  if (process.env.CORS_ORIGINS) {
+    for (const o of process.env.CORS_ORIGINS.split(",")) {
+      const trimmed = o.trim().replace(/\/$/, "");
+      if (trimmed) origins.add(trimmed);
+    }
+  }
+
+  /* Replit-injected domains */
   if (process.env.REPLIT_DEV_DOMAIN) origins.add(`https://${process.env.REPLIT_DEV_DOMAIN}`);
   if (process.env.REPLIT_DOMAINS) {
     for (const d of process.env.REPLIT_DOMAINS.split(",")) {
@@ -35,16 +59,17 @@ const buildAllowedOrigins = (): Set<string> => {
       if (domain) origins.add(`https://${domain}`);
     }
   }
+
   /* Always allow same-server origin (frontend served from same process) */
   origins.add("http://localhost:5000");
-  /* Additional local dev origins */
-  if (process.env.NODE_ENV !== "production") {
-    origins.add("http://localhost:3000");
-    origins.add("http://localhost:5173");
-  }
+  origins.add("http://localhost:3000");
+  origins.add("http://localhost:5173");
+
+  logger.info({ origins: [...origins] }, "[cors] Allowed origins");
   return origins;
 };
 
+/* Origins are rebuilt on first request; reset cache with _resetCorsCache() */
 let _allowedOrigins: Set<string> | null = null;
 function getAllowedOrigins(): Set<string> {
   if (!_allowedOrigins) _allowedOrigins = buildAllowedOrigins();
@@ -58,8 +83,8 @@ app.use(
       /* Allow same-origin requests (no Origin header = server-to-server or curl) */
       if (!origin) return callback(null, true);
       if (getAllowedOrigins().has(origin)) return callback(null, true);
-      logger.warn({ origin }, "[cors] Rejected cross-origin request");
-      callback(new Error("CORS: origin not allowed"));
+      logger.warn({ origin, allowed: [...getAllowedOrigins()] }, "[cors] Rejected cross-origin request");
+      callback(new Error(`CORS: origin not allowed (${origin})`));
     },
   }),
 );

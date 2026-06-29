@@ -127963,7 +127963,25 @@ var app = (0, import_express30.default)();
 app.set("trust proxy", 1);
 var buildAllowedOrigins = () => {
   const origins = /* @__PURE__ */ new Set();
-  if (process.env.APP_URL) origins.add(process.env.APP_URL.replace(/\/$/, ""));
+  /* 1. APP_URL env var OR built-in fallback (https://simix.site) */
+  const appUrl = getAppUrl();
+  if (appUrl) {
+    const cleaned = appUrl.replace(/\/$/, "");
+    origins.add(cleaned);
+    try {
+      const u = new URL(cleaned);
+      origins.add("http://" + u.host);
+      origins.add("https://" + u.host);
+    } catch (e) {}
+  }
+  /* 2. CORS_ORIGINS=https://foo.com,https://bar.com */
+  if (process.env.CORS_ORIGINS) {
+    for (const o of process.env.CORS_ORIGINS.split(",")) {
+      const t = o.trim().replace(/\/$/, "");
+      if (t) origins.add(t);
+    }
+  }
+  /* 3. Replit-injected domains */
   if (process.env.REPLIT_DEV_DOMAIN) origins.add(`https://${process.env.REPLIT_DEV_DOMAIN}`);
   if (process.env.REPLIT_DOMAINS) {
     for (const d of process.env.REPLIT_DOMAINS.split(",")) {
@@ -127971,11 +127989,11 @@ var buildAllowedOrigins = () => {
       if (domain) origins.add(`https://${domain}`);
     }
   }
+  /* 4. Localhost variants always allowed */
   origins.add("http://localhost:5000");
-  if (process.env.NODE_ENV !== "production") {
-    origins.add("http://localhost:3000");
-    origins.add("http://localhost:5173");
-  }
+  origins.add("http://localhost:3000");
+  origins.add("http://localhost:5173");
+  logger.info({ origins: [...origins] }, "[cors] Allowed origins");
   return origins;
 };
 var _allowedOrigins = null;
@@ -127989,8 +128007,8 @@ app.use(
     origin: (origin, callback) => {
       if (!origin) return callback(null, true);
       if (getAllowedOrigins().has(origin)) return callback(null, true);
-      logger.warn({ origin }, "[cors] Rejected cross-origin request");
-      callback(new Error("CORS: origin not allowed"));
+      logger.warn({ origin, allowed: [...getAllowedOrigins()] }, "[cors] Rejected cross-origin request");
+      callback(new Error("CORS: origin not allowed (" + origin + ")"));
     }
   })
 );
