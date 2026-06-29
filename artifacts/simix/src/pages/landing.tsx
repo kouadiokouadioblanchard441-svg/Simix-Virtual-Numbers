@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { SimixLogo } from "@/components/simix-logo";
+import { SimixLogo, SimixIcon } from "@/components/simix-logo";
 import { useToast } from "@/hooks/use-toast";
 import { ServiceIcon } from "@/components/service-icon";
 import phone3d from "@/assets/simix_phone_3d.png";
@@ -1274,9 +1274,9 @@ function SimiaSection() {
             <div className="flex items-center gap-3 px-4 py-3.5 border-b border-zinc-800/60"
               style={{ background: "linear-gradient(90deg, #1a0a2e88, #0a0a1288)" }}>
               <div className="relative flex-shrink-0">
-                <div className="w-9 h-9 rounded-full flex items-center justify-center"
-                  style={{ background: "linear-gradient(135deg, #7C3AED, #EC4899)", boxShadow: "0 0 16px rgba(124,58,237,0.5)" }}>
-                  <Bot className="w-5 h-5 text-white" />
+                <div className="w-9 h-9 rounded-full overflow-hidden border-2 border-violet-500/40"
+                  style={{ boxShadow: "0 0 16px rgba(124,58,237,0.5)" }}>
+                  <img src="/support-avatar.png" alt="Simia" className="w-full h-full object-cover" />
                 </div>
                 <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-400 border-2 border-[#0f0a1e]" />
               </div>
@@ -1301,9 +1301,8 @@ function SimiaSection() {
                   className={`flex gap-2 ${msg.role === "user" ? "justify-end" : "justify-start"}`}
                 >
                   {msg.role === "assistant" && (
-                    <div className="w-6 h-6 rounded-full flex-shrink-0 flex items-center justify-center mt-0.5"
-                      style={{ background: "linear-gradient(135deg, #7C3AED, #EC4899)" }}>
-                      <Bot className="w-3.5 h-3.5 text-white" />
+                    <div className="w-6 h-6 rounded-full overflow-hidden flex-shrink-0 mt-0.5 border border-violet-500/30">
+                      <img src="/support-avatar.png" alt="Simia" className="w-full h-full object-cover" />
                     </div>
                   )}
                   <div
