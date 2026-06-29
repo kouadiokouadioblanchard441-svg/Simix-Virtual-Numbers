@@ -11,7 +11,7 @@
     "stop:pm2": "pm2 stop simix",
     "restart:pm2": "pm2 restart simix",
     "logs:pm2": "pm2 logs simix",
-    "build": "pnpm --filter @workspace/api-server run build && NODE_ENV=production pnpm --filter @workspace/simix run build",
+    "build": "node artifacts/api-server/build.mjs && cd artifacts/simix && NODE_ENV=production node_modules/.bin/vite build --config vite.config.ts",
     "dev:api": "cd artifacts/api-server && PORT=3000 NODE_ENV=development pnpm run build && node --enable-source-maps ../../dist/index.cjs",
     "dev:front": "cd artifacts/simix && pnpm run dev"
   },
