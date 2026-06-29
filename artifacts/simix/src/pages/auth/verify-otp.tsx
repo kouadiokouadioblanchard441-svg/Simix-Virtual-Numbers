@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
-import { Shield, Mail, RefreshCw, CheckCircle2, AlertCircle, Lock, ArrowLeft } from "lucide-react";
+import { Shield, RefreshCw, CheckCircle2, AlertCircle, Lock, ArrowLeft } from "lucide-react";
+import { GmailIcon3D } from "@/components/gmail-icon-3d";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { SimixLogo } from "@/components/simix-logo";
@@ -211,13 +212,7 @@ export default function VerifyOtp() {
                 {isInactivity ? (
                   <Shield className="w-9 h-9 text-amber-400" />
                 ) : (
-                  <svg width="44" height="44" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
-                    <path fill="#4CAF50" d="M45 16.2l-5 2.75-5 4.75L35 40h7c1.657 0 3-1.343 3-3V16.2z"/>
-                    <path fill="#1E88E5" d="M3 16.2l3.614 1.71L13 23.7V40H6c-1.657 0-3-1.343-3-3V16.2z"/>
-                    <polygon fill="#E53935" points="35,11.2 24,19.45 13,11.2 12,17 13,23.7 24,31.45 35,23.7 36,17"/>
-                    <path fill="#C62828" d="M3 12.298V16.2l10 7.5V11.2L9.876 8.859C9.132 8.301 8.228 8 7.298 8 4.924 8 3 9.924 3 12.298z"/>
-                    <path fill="#FBC02D" d="M45 12.298V16.2l-10 7.5V11.2l3.124-2.341C38.868 8.301 39.772 8 40.702 8 43.076 8 45 9.924 45 12.298z"/>
-                  </svg>
+                  <GmailIcon3D size={52} />
                 )}
               </div>
               <motion.div
