@@ -1,107 +1,16 @@
-import { useState, useCallback } from "react";
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { adminApi, type AdminPaymentMethod, type PaymentConfig } from "@/lib/admin-api";
 import { AdminGuard } from "@/components/admin-guard";
 import { AdminLayout } from "@/components/admin-layout";
 import { formatFCFA } from "@/lib/format";
+import { LogoUploadCard } from "@/components/image-upload-button";
 import {
   Loader2, ToggleLeft, ToggleRight, Globe, Search, Plus, Pencil, Check, X,
-  Trash2, Image, Link, ExternalLink, Star, ArrowUpDown, CreditCard, MapPin, Upload, RefreshCw,
+  Trash2, Star, ArrowUpDown, CreditCard, MapPin, RefreshCw,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
-function useImageUpload(onUploaded: (url: string) => void) {
-  const [uploading, setUploading] = useState(false);
-  const { toast } = useToast();
-
-  const upload = useCallback(async (file: File) => {
-    if (!file.type.startsWith("image/")) {
-      toast({ title: "Fichier invalide", description: "Veuillez sélectionner une image (PNG, JPG, SVG, WebP).", variant: "destructive" });
-      return;
-    }
-    if (file.size > 2 * 1024 * 1024) {
-      toast({ title: "Fichier trop grand", description: "Taille maximale : 2 MB.", variant: "destructive" });
-      return;
-    }
-    setUploading(true);
-    try {
-      /* 1. Try GCS presigned upload */
-      try {
-        const metaRes = await fetch("/api/storage/uploads/request-url", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify({ name: file.name, size: file.size, contentType: file.type }),
-        });
-        if (metaRes.ok) {
-          const { uploadURL, objectPath } = await metaRes.json();
-          const putRes = await fetch(uploadURL, { method: "PUT", body: file, headers: { "Content-Type": file.type } });
-          if (putRes.ok) {
-            onUploaded(`/api/storage${objectPath}`);
-            toast({ title: "Image uploadée", description: "Le logo a été mis à jour." });
-            return;
-          }
-        }
-      } catch { /* fall through */ }
-
-      /* 2. Fallback: direct server upload */
-      try {
-        const directRes = await fetch("/api/storage/uploads/direct", {
-          method: "POST",
-          body: file,
-          headers: { "Content-Type": file.type },
-          credentials: "include",
-        });
-        if (directRes.ok) {
-          const { url } = await directRes.json();
-          onUploaded(url);
-          toast({ title: "Image uploadée", description: "Le logo a été mis à jour." });
-          return;
-        }
-      } catch { /* fall through */ }
-
-      /* 3. Final fallback: base64 data URI (works everywhere, no storage needed) */
-      await new Promise<void>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => {
-          onUploaded(reader.result as string);
-          toast({ title: "Image uploadée", description: "Le logo a été mis à jour." });
-          resolve();
-        };
-        reader.onerror = () => reject(new Error("Lecture du fichier impossible"));
-        reader.readAsDataURL(file);
-      });
-    } catch (e) {
-      toast({ title: "Upload échoué", description: (e as Error).message || "Vérifiez votre connexion et réessayez.", variant: "destructive" });
-    } finally {
-      setUploading(false);
-    }
-  }, [onUploaded, toast]);
-
-  return { upload, uploading };
-}
-
-function ImageUploadButton({ onUploaded, uploading }: { onUploaded: (url: string) => void; uploading: boolean }) {
-  const { upload, uploading: isUploading } = useImageUpload(onUploaded);
-  const busy = uploading || isUploading;
-  return (
-    <label
-      title="Uploader une image depuis votre appareil (galerie mobile supportée)"
-      className={`flex items-center gap-1 px-2 py-1.5 text-xs bg-violet-600/20 border border-violet-500/30 text-violet-400 rounded-lg hover:bg-violet-600/30 transition-colors cursor-pointer select-none${busy ? " opacity-50 pointer-events-none" : ""}`}
-    >
-      <input
-        type="file"
-        accept="image/*"
-        capture={undefined}
-        className="hidden"
-        disabled={busy}
-        onChange={e => { const f = e.target.files?.[0]; if (f) upload(f); e.target.value = ""; }}
-      />
-      {busy ? <Loader2 className="w-3 h-3 animate-spin" /> : <Upload className="w-3 h-3" />}
-      {busy ? "Upload…" : "Fichier"}
-    </label>
-  );
-}
 
 /* ─── Operator Logo Component ─── */
 function OperatorLogo({ method, size = 32 }: { method: Pick<AdminPaymentMethod, "name" | "color" | "logoUrl">; size?: number }) {
@@ -221,23 +130,14 @@ function MethodRow({ method, onSaved, onDeleted }: { method: AdminPaymentMethod;
         <div className="px-4 pb-4 pt-2 bg-zinc-950/50 space-y-3">
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-xs text-zinc-500 font-medium block mb-1 flex items-center gap-1"><Image className="w-3 h-3" />Logo de l'opérateur</label>
-              <div className="flex gap-1.5">
-                <input
-                  value={logoUrl}
-                  onChange={e => setLogoUrl(e.target.value)}
-                  placeholder="https://... ou uploader un fichier →"
-                  className="flex-1 px-3 py-2 text-xs bg-zinc-900 border border-zinc-700 rounded-lg text-white placeholder:text-zinc-600 focus:outline-none focus:border-violet-500"
-                />
-                <ImageUploadButton onUploaded={url => update.mutate({ logoUrl: url })} uploading={update.isPending} />
-              </div>
-              {logoUrl && (
-                <div className="mt-2 flex items-center gap-2">
-                  <span className="text-xs text-zinc-500">Aperçu :</span>
-                  <OperatorLogo method={{ name, color, logoUrl }} size={28} />
-                  <a href={logoUrl} target="_blank" rel="noopener noreferrer" className="text-zinc-500 hover:text-violet-400 transition-colors"><ExternalLink className="w-3 h-3" /></a>
-                </div>
-              )}
+              <LogoUploadCard
+                label="Logo de l'opérateur"
+                value={logoUrl}
+                onChange={setLogoUrl}
+                busy={update.isPending}
+                previewBg={color}
+                placeholder="https://... URL du logo"
+              />
             </div>
             <div className="space-y-2">
               <div>

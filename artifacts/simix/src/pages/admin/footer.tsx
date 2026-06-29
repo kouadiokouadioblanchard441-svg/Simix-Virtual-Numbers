@@ -1,6 +1,7 @@
 import { useState, useRef, type ChangeEvent } from "react";
 import { AdminLayout } from "@/components/admin-layout";
 import { adminToken } from "@/lib/admin-token";
+import { LogoUploadCard } from "@/components/image-upload-button";
 import {
   Share2, Globe, Plus, Pencil, Trash2, ToggleLeft, ToggleRight,
   Upload, Link, X, Check, ChevronUp, ChevronDown, Image, Loader2,
@@ -314,42 +315,22 @@ function PaymentOperatorsTab() {
 
           {/* Logo upload */}
           <div>
-            <label className="text-xs text-zinc-400 uppercase tracking-wider mb-2 block">Logo</label>
-            <div className="flex items-start gap-4">
-              <div
-                className="w-20 h-20 rounded-xl border-2 border-dashed border-zinc-700 flex items-center justify-center flex-shrink-0 overflow-hidden cursor-pointer hover:border-violet-500/50 transition-colors"
-                style={{ background: form.bgColor }}
-                onClick={() => fileInputRef.current?.click()}
-              >
-                {logoPreview ? (
-                  <img src={logoPreview} alt="Logo" className="w-full h-full object-contain p-1" />
-                ) : (
-                  <div className="text-center">
-                    <Image className="w-6 h-6 text-zinc-600 mx-auto mb-1" />
-                    <span className="text-[10px] text-zinc-600">Cliquer</span>
-                  </div>
-                )}
-              </div>
-              <div className="flex-1 space-y-2">
-                <button onClick={() => fileInputRef.current?.click()} className="flex items-center gap-2 px-3 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-lg text-xs transition-colors w-full justify-center">
-                  <Upload className="w-3.5 h-3.5" /> Uploader une image
-                </button>
-                <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
-                <div className="text-zinc-600 text-center text-[10px]">— ou —</div>
-                <div className="relative">
-                  <Link className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-500" />
-                  <input value={form.logoUrl} onChange={e => { setForm(f => ({ ...f, logoUrl: e.target.value })); if (!logoData) setLogoPreview(e.target.value); }}
-                    className="w-full bg-zinc-800 border border-zinc-700/60 rounded-lg pl-8 pr-3 py-2 text-white text-xs focus:outline-none focus:border-violet-500/60"
-                    placeholder="https://... URL du logo" />
-                </div>
-                {logoPreview && (
-                  <button onClick={() => { setLogoData(null); setLogoPreview(null); setForm(f => ({ ...f, logoUrl: "" })); }}
-                    className="flex items-center gap-1 text-red-400 hover:text-red-300 text-xs">
-                    <X className="w-3 h-3" /> Supprimer le logo
-                  </button>
-                )}
-              </div>
-            </div>
+            <LogoUploadCard
+              label="Logo"
+              value={logoPreview ?? ""}
+              onChange={async (val) => {
+                if (val.startsWith("data:") || val === "") {
+                  setLogoData(val || null);
+                  setLogoPreview(val || null);
+                } else {
+                  setLogoData(null);
+                  setForm(f => ({ ...f, logoUrl: val }));
+                  setLogoPreview(val);
+                }
+              }}
+              previewBg={form.bgColor}
+              placeholder="https://... URL du logo"
+            />
           </div>
 
           <div className="grid grid-cols-2 gap-3">

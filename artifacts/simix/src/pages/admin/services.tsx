@@ -6,7 +6,7 @@ import { AdminLayout } from "@/components/admin-layout";
 import { formatFCFA } from "@/lib/format";
 import { ServiceIcon } from "@/components/service-icon";
 import { useConfirm } from "@/components/ui/confirm-dialog";
-import { ImageUploadButton } from "@/components/image-upload-button";
+import { LogoUploadCard } from "@/components/image-upload-button";
 import {
   Loader2, Pencil, Check, X, TrendingUp, ToggleLeft, ToggleRight,
   Plus, Trash2, Star, Package, Zap, ChevronDown, ChevronUp, Globe,
@@ -593,40 +593,15 @@ function ServiceRow({ service }: { service: AdminService }) {
               </div>
             </div>
 
-            {/* Logo URL row */}
+            {/* Logo upload */}
             <div className="mb-3">
-              <label className="text-xs text-zinc-400 mb-1 block">Logo personnalisé (URL de l'image)</label>
-              <div className="flex gap-2 items-center">
-                <div className="relative flex-1">
-                  <input
-                    value={logoUrl}
-                    onChange={e => setLogoUrl(e.target.value)}
-                    placeholder="https://cdn.example.com/logo.png — laisser vide pour l'icône auto"
-                    className="w-full px-2.5 py-2 text-sm bg-zinc-900 border border-zinc-700 rounded-lg text-white placeholder:text-zinc-600 focus:outline-none focus:border-violet-500 pr-10"
-                  />
-                  {logoUrl && (
-                    <button
-                      type="button"
-                      onClick={() => setLogoUrl("")}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-600 hover:text-zinc-400 transition-colors"
-                    >
-                      <X className="w-3.5 h-3.5" />
-                    </button>
-                  )}
-                </div>
-                <ImageUploadButton
-                  onUploaded={url => setLogoUrl(url)}
-                  busy={update.isPending}
-                  label="Fichier"
-                />
-                {/* Logo preview */}
-                <div className="flex-shrink-0">
-                  <ServiceIcon name={name || service.name} slug={service.slug} logoUrl={logoUrl.trim() || null} size={36} rounded="lg" />
-                </div>
-              </div>
-              <p className="text-[10px] text-zinc-600 mt-1">
-                Exemples : <span className="text-violet-400 font-mono">https://simpleicons.org/icons/whatsapp.svg</span> · <span className="text-violet-400 font-mono">https://logo.clearbit.com/whatsapp.com</span>
-              </p>
+              <LogoUploadCard
+                label="Logo du service"
+                value={logoUrl}
+                onChange={setLogoUrl}
+                busy={update.isPending}
+                placeholder="https://cdn.example.com/logo.png"
+              />
             </div>
 
             <div className="flex gap-2">
