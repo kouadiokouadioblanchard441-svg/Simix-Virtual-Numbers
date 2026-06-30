@@ -117926,9 +117926,8 @@ router6.get("/countries", async (req, res) => {
         AND sca.service_slug = $2
        WHERE c.numbers_enabled = true
          AND (sp.enabled IS NULL OR sp.enabled = true)
-         AND (sp.enabled = true OR COALESCE(sca.available, 0) > 0)
        ${searchClause}
-       ORDER BY c.sort_order ASC`,
+       ORDER BY COALESCE(sca.available, 0) DESC, c.sort_order ASC`,
       params
     );
     res.json(rows2.map((r2) => toCountry({

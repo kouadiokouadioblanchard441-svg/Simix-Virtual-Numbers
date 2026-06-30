@@ -316,48 +316,75 @@ function CountriesContent() {
                   <p className="text-xs text-muted-foreground mt-1">Essayez un autre terme ou région</p>
                 </div>
               )
-              : filteredCountries.map((country: any, i: number) => (
-                  <motion.div
-                    key={country.id}
-                    initial={{ opacity: 0, y: 8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: Math.min(i * 0.03, 0.3) }}
-                  >
-                    <Link
-                      href={`/numbers/new?serviceId=${serviceId}&countryId=${country.id}`}
-                      className="flex items-center justify-between p-4 bg-card border border-card-border rounded-2xl hover:bg-secondary/50 hover:border-primary/20 transition-all active:scale-[0.99]"
+              : filteredCountries.map((country: any, i: number) => {
+                  const isAvailable = (country.available ?? 0) > 0;
+                  return (
+                    <motion.div
+                      key={country.id}
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: Math.min(i * 0.03, 0.3) }}
                     >
-                      <div className="flex items-center gap-3.5">
-                        <div className="w-10 h-10 bg-secondary rounded-full flex items-center justify-center text-xl flex-shrink-0">
-                          {country.flag}
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <p className="text-sm font-bold text-foreground">{country.name}</p>
-                            {country.popular && (
-                              <span className="text-[9px] font-black text-emerald-500 bg-emerald-500/10 px-1.5 py-0.5 rounded-full uppercase tracking-wide">Populaire</span>
-                            )}
+                      {isAvailable ? (
+                        <Link
+                          href={`/numbers/new?serviceId=${serviceId}&countryId=${country.id}`}
+                          className="flex items-center justify-between p-4 bg-card border border-card-border rounded-2xl hover:bg-secondary/50 hover:border-primary/20 transition-all active:scale-[0.99]"
+                        >
+                          <div className="flex items-center gap-3.5">
+                            <div className="w-10 h-10 bg-secondary rounded-full flex items-center justify-center text-xl flex-shrink-0">
+                              {country.flag}
+                            </div>
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <p className="text-sm font-bold text-foreground">{country.name}</p>
+                                {country.popular && (
+                                  <span className="text-[9px] font-black text-emerald-500 bg-emerald-500/10 px-1.5 py-0.5 rounded-full uppercase tracking-wide">Populaire</span>
+                                )}
+                              </div>
+                              <p className="text-xs text-muted-foreground font-mono">
+                                {country.dialCode}
+                                {REGION[country.code] && (
+                                  <span className="ml-2 text-muted-foreground/60">· {REGION[country.code]}</span>
+                                )}
+                              </p>
+                            </div>
                           </div>
-                          <p className="text-xs text-muted-foreground font-mono">
-                            {country.dialCode}
-                            {REGION[country.code] && (
-                              <span className="ml-2 text-muted-foreground/60">· {REGION[country.code]}</span>
-                            )}
-                          </p>
+                          <div className="flex items-center gap-2 flex-shrink-0">
+                            <div className="text-right">
+                              <p className="text-sm font-black text-primary">{formatFCFA(country.price)}</p>
+                              <p className="text-[10px] text-emerald-500 font-medium">{country.available.toLocaleString("fr-FR")} dispo.</p>
+                            </div>
+                            <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                          </div>
+                        </Link>
+                      ) : (
+                        <div className="flex items-center justify-between p-4 bg-card border border-card-border rounded-2xl opacity-45 cursor-not-allowed">
+                          <div className="flex items-center gap-3.5">
+                            <div className="w-10 h-10 bg-secondary rounded-full flex items-center justify-center text-xl flex-shrink-0">
+                              {country.flag}
+                            </div>
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <p className="text-sm font-bold text-foreground">{country.name}</p>
+                              </div>
+                              <p className="text-xs text-muted-foreground font-mono">
+                                {country.dialCode}
+                                {REGION[country.code] && (
+                                  <span className="ml-2 text-muted-foreground/60">· {REGION[country.code]}</span>
+                                )}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2 flex-shrink-0">
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-muted text-muted-foreground border border-card-border">
+                              Indisponible
+                            </span>
+                          </div>
                         </div>
-                      </div>
-                      <div className="flex items-center gap-2 flex-shrink-0">
-                        <div className="text-right">
-                          <p className="text-sm font-black text-primary">{formatFCFA(country.price)}</p>
-                          {country.available > 0 && (
-                            <p className="text-[10px] text-emerald-500 font-medium">{country.available} dispo.</p>
-                          )}
-                        </div>
-                        <ChevronRight className="w-4 h-4 text-muted-foreground" />
-                      </div>
-                    </Link>
-                  </motion.div>
-                ))
+                      )}
+                    </motion.div>
+                  );
+                })
           }
         </div>
 
