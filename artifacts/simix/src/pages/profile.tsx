@@ -6,7 +6,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useLocation, Link } from "wouter";
 import { motion } from "framer-motion";
 import { formatFCFA } from "@/lib/format";
-import { User as UserIcon, Shield, Bell, CreditCard, Lock, HelpCircle, LogOut, ChevronRight, Camera, Crown, Eye, TrendingUp, ShoppingBag, Gift, Code2 } from "lucide-react";
+import { User as UserIcon, Shield, Bell, CreditCard, Lock, HelpCircle, LogOut, ChevronRight, Camera, Crown, Eye, TrendingUp, ShoppingBag, Gift, Code2, Smartphone, Download } from "lucide-react";
 import { useNotifications } from "@/hooks/use-notifications";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
@@ -50,6 +50,116 @@ async function compressImage(file: File, maxSizeKB = 300): Promise<string> {
     img.onerror = reject;
     img.src = url;
   });
+}
+
+/* ─── APK Download Card ─────────────────────────────────────────── */
+
+function ApkDownloadCard() {
+  const [downloading, setDownloading] = useState(false);
+  const [downloaded, setDownloaded] = useState(false);
+
+  const handleDownload = async () => {
+    setDownloading(true);
+    try {
+      const res = await fetch("/downloads/simix.apk", { method: "HEAD" });
+      if (!res.ok) {
+        window.open("https://simix.site/downloads/simix.apk", "_blank");
+      } else {
+        const a = document.createElement("a");
+        a.href = "/downloads/simix.apk";
+        a.download = "simix.apk";
+        a.click();
+      }
+      setDownloaded(true);
+      setTimeout(() => setDownloaded(false), 4000);
+    } catch {
+      window.open("https://simix.site/downloads/simix.apk", "_blank");
+      setDownloaded(true);
+      setTimeout(() => setDownloaded(false), 4000);
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="mb-4 rounded-2xl overflow-hidden"
+      style={{
+        background: "linear-gradient(135deg, rgba(109,40,217,0.15) 0%, rgba(76,29,149,0.12) 50%, rgba(16,4,40,0.2) 100%)",
+        border: "1px solid rgba(139,92,246,0.25)",
+      }}
+    >
+      <div className="flex items-center gap-4 px-4 py-4">
+        {/* Icon */}
+        <div
+          className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0"
+          style={{
+            background: "linear-gradient(135deg, #6D28D9 0%, #4C1D95 100%)",
+            boxShadow: "0 4px 16px rgba(109,40,217,0.4)",
+          }}
+        >
+          <Smartphone className="w-5 h-5 text-white" />
+        </div>
+
+        {/* Text */}
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-bold text-foreground leading-tight">
+            Application Android
+          </p>
+          <p className="text-[11px] text-muted-foreground mt-0.5 leading-snug">
+            Installer Simix directement sur votre téléphone
+          </p>
+          <div className="flex items-center gap-1.5 mt-1">
+            <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md"
+              style={{ background: "rgba(109,40,217,0.2)", color: "#a78bfa" }}>
+              Android APK
+            </span>
+            <span className="text-[10px] text-muted-foreground/60">· Gratuit</span>
+          </div>
+        </div>
+
+        {/* Download button */}
+        <button
+          onClick={handleDownload}
+          disabled={downloading}
+          className="flex-shrink-0 flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-all active:scale-95"
+          style={{
+            background: downloaded
+              ? "rgba(16,185,129,0.15)"
+              : "rgba(109,40,217,0.25)",
+            border: downloaded
+              ? "1px solid rgba(16,185,129,0.4)"
+              : "1px solid rgba(139,92,246,0.5)",
+            color: downloaded ? "#34d399" : "#c4b5fd",
+          }}
+        >
+          {downloading ? (
+            <motion.div
+              animate={{ rotate: 360 }}
+              transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+              className="w-3.5 h-3.5 border-2 border-violet-400/40 border-t-violet-400 rounded-full"
+            />
+          ) : (
+            <Download className="w-3.5 h-3.5" />
+          )}
+          {downloaded ? "OK !" : "Installer"}
+        </button>
+      </div>
+
+      {/* Info bar */}
+      <div
+        className="px-4 py-2.5 border-t flex items-center gap-2"
+        style={{ borderColor: "rgba(139,92,246,0.15)", background: "rgba(0,0,0,0.15)" }}
+      >
+        <div className="w-1.5 h-1.5 rounded-full bg-amber-400 flex-shrink-0" />
+        <p className="text-[10px] text-muted-foreground/70 leading-snug">
+          Activez <span className="text-amber-400 font-semibold">« Sources inconnues »</span> dans Paramètres Android avant d'installer
+        </p>
+      </div>
+    </motion.div>
+  );
 }
 
 function ProfileContent() {
@@ -260,6 +370,9 @@ function ProfileContent() {
             </button>
           ))}
         </div>
+
+        {/* Download APK */}
+        <ApkDownloadCard />
 
         {/* Logout */}
         <button

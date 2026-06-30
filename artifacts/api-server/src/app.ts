@@ -184,6 +184,18 @@ app.use((req, res, next) => {
     res.setHeader("Content-Type", "image/png");
     return next();
   }
+  if (url.startsWith("/downloads/") && url.endsWith(".apk")) {
+    res.setHeader("Content-Type", "application/vnd.android.package-archive");
+    res.setHeader("Content-Disposition", `attachment; filename="simix.apk"`);
+    res.setHeader("Cache-Control", "public, max-age=3600");
+    return next();
+  }
+  if (url === "/.well-known/assetlinks.json") {
+    res.setHeader("Content-Type", "application/json; charset=utf-8");
+    res.setHeader("Cache-Control", "public, max-age=3600");
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    return next();
+  }
   next();
 });
 
