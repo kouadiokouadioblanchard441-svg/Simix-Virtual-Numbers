@@ -52,116 +52,6 @@ async function compressImage(file: File, maxSizeKB = 300): Promise<string> {
   });
 }
 
-/* ─── APK Download Card ─────────────────────────────────────────── */
-
-function ApkDownloadCard() {
-  const [downloading, setDownloading] = useState(false);
-  const [downloaded, setDownloaded] = useState(false);
-
-  const handleDownload = async () => {
-    setDownloading(true);
-    try {
-      const res = await fetch("/downloads/simix.apk", { method: "HEAD" });
-      if (!res.ok) {
-        window.open("https://simix.site/downloads/simix.apk", "_blank");
-      } else {
-        const a = document.createElement("a");
-        a.href = "/downloads/simix.apk";
-        a.download = "simix.apk";
-        a.click();
-      }
-      setDownloaded(true);
-      setTimeout(() => setDownloaded(false), 4000);
-    } catch {
-      window.open("https://simix.site/downloads/simix.apk", "_blank");
-      setDownloaded(true);
-      setTimeout(() => setDownloaded(false), 4000);
-    } finally {
-      setDownloading(false);
-    }
-  };
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="mb-4 rounded-2xl overflow-hidden"
-      style={{
-        background: "linear-gradient(135deg, rgba(109,40,217,0.15) 0%, rgba(76,29,149,0.12) 50%, rgba(16,4,40,0.2) 100%)",
-        border: "1px solid rgba(139,92,246,0.25)",
-      }}
-    >
-      <div className="flex items-center gap-4 px-4 py-4">
-        {/* Icon */}
-        <div
-          className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0"
-          style={{
-            background: "linear-gradient(135deg, #6D28D9 0%, #4C1D95 100%)",
-            boxShadow: "0 4px 16px rgba(109,40,217,0.4)",
-          }}
-        >
-          <Smartphone className="w-5 h-5 text-white" />
-        </div>
-
-        {/* Text */}
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-bold text-foreground leading-tight">
-            Application Android
-          </p>
-          <p className="text-[11px] text-muted-foreground mt-0.5 leading-snug">
-            Installer Simix directement sur votre téléphone
-          </p>
-          <div className="flex items-center gap-1.5 mt-1">
-            <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md"
-              style={{ background: "rgba(109,40,217,0.2)", color: "#a78bfa" }}>
-              Android APK
-            </span>
-            <span className="text-[10px] text-muted-foreground/60">· Gratuit</span>
-          </div>
-        </div>
-
-        {/* Download button */}
-        <button
-          onClick={handleDownload}
-          disabled={downloading}
-          className="flex-shrink-0 flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-all active:scale-95"
-          style={{
-            background: downloaded
-              ? "rgba(16,185,129,0.15)"
-              : "rgba(109,40,217,0.25)",
-            border: downloaded
-              ? "1px solid rgba(16,185,129,0.4)"
-              : "1px solid rgba(139,92,246,0.5)",
-            color: downloaded ? "#34d399" : "#c4b5fd",
-          }}
-        >
-          {downloading ? (
-            <motion.div
-              animate={{ rotate: 360 }}
-              transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-              className="w-3.5 h-3.5 border-2 border-violet-400/40 border-t-violet-400 rounded-full"
-            />
-          ) : (
-            <Download className="w-3.5 h-3.5" />
-          )}
-          {downloaded ? "OK !" : "Installer"}
-        </button>
-      </div>
-
-      {/* Info bar */}
-      <div
-        className="px-4 py-2.5 border-t flex items-center gap-2"
-        style={{ borderColor: "rgba(139,92,246,0.15)", background: "rgba(0,0,0,0.15)" }}
-      >
-        <div className="w-1.5 h-1.5 rounded-full bg-amber-400 flex-shrink-0" />
-        <p className="text-[10px] text-muted-foreground/70 leading-snug">
-          Activez <span className="text-amber-400 font-semibold">« Sources inconnues »</span> dans Paramètres Android avant d'installer
-        </p>
-      </div>
-    </motion.div>
-  );
-}
-
 function ProfileContent() {
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
@@ -170,6 +60,7 @@ function ProfileContent() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const { unreadCount } = useNotifications(true);
+  const [apkState, setApkState] = useState<"idle" | "downloading" | "done">("idle");
 
   const handleLogout = async () => {
     try {
@@ -203,6 +94,19 @@ function ProfileContent() {
     }
   };
 
+  const handleApkDownload = () => {
+    if (apkState === "downloading") return;
+    setApkState("downloading");
+    const a = document.createElement("a");
+    a.href = "/downloads/simix.apk";
+    a.download = "simix.apk";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => setApkState("done"), 800);
+    setTimeout(() => setApkState("idle"), 4000);
+  };
+
   const initials = (user?.fullName ?? user?.username ?? "S")
     .split(" ")
     .map((w: string) => w[0])
@@ -210,15 +114,62 @@ function ProfileContent() {
     .slice(0, 2)
     .toUpperCase();
 
-  const settingsItems = [
-    { icon: UserIcon, label: "Informations personnelles", sub: "Nom, email, téléphone", href: "/profile/informations", color: "text-violet-500", bg: "bg-violet-500/10", badge: 0 },
-    { icon: Shield, label: "Sécurité", sub: "Mot de passe & 2FA", href: "/profile/securite", color: "text-blue-500", bg: "bg-blue-500/10", badge: 0 },
-    { icon: Bell, label: "Notifications", sub: "Historique & alertes", href: "/notifications", color: "text-violet-400", bg: "bg-violet-500/10", badge: unreadCount },
-    { icon: CreditCard, label: "Méthodes de paiement", sub: "Orange Money, Wave, MTN…", href: "/profile/paiement", color: "text-emerald-500", bg: "bg-emerald-500/10", badge: 0 },
-    { icon: Gift, label: "Parrainage", sub: "Invitez & gagnez des commissions", href: "/profile/parrainage", color: "text-amber-500", bg: "bg-amber-500/10", badge: 0 },
-    { icon: Lock, label: "Confidentialité", sub: "Données & politique", href: "/profile/confidentialite", color: "text-rose-500", bg: "bg-rose-500/10", badge: 0 },
-    { icon: Code2, label: "Documentation API", sub: "Intégration & endpoints", href: "/profile/api-docs", color: "text-violet-400", bg: "bg-violet-500/10", badge: 0 },
-    { icon: HelpCircle, label: "Aide et support", sub: "FAQ & assistance", href: "/profile/aide", color: "text-sky-500", bg: "bg-sky-500/10", badge: 0 },
+  type SettingsItem = {
+    icon: React.ElementType;
+    label: string;
+    sub: string;
+    href?: string;
+    action?: () => void;
+    color: string;
+    bg: string;
+    badge?: number;
+    rightEl?: React.ReactNode;
+  };
+
+  const settingsItems: SettingsItem[] = [
+    { icon: UserIcon,   label: "Informations personnelles", sub: "Nom, email, téléphone",           href: "/profile/informations", color: "text-violet-500",  bg: "bg-violet-500/10",  badge: 0 },
+    { icon: Shield,     label: "Sécurité",                  sub: "Mot de passe & 2FA",              href: "/profile/securite",     color: "text-blue-500",    bg: "bg-blue-500/10",    badge: 0 },
+    { icon: Bell,       label: "Notifications",             sub: "Historique & alertes",            href: "/notifications",        color: "text-violet-400",  bg: "bg-violet-500/10",  badge: unreadCount },
+    { icon: CreditCard, label: "Méthodes de paiement",      sub: "Orange Money, Wave, MTN…",        href: "/profile/paiement",     color: "text-emerald-500", bg: "bg-emerald-500/10", badge: 0 },
+    { icon: Gift,       label: "Parrainage",                sub: "Invitez & gagnez des commissions",href: "/profile/parrainage",   color: "text-amber-500",   bg: "bg-amber-500/10",   badge: 0 },
+    { icon: Lock,       label: "Confidentialité",           sub: "Données & politique",             href: "/profile/confidentialite", color: "text-rose-500",  bg: "bg-rose-500/10",   badge: 0 },
+    { icon: Code2,      label: "Documentation API",         sub: "Intégration & endpoints",         href: "/profile/api-docs",     color: "text-violet-400",  bg: "bg-violet-500/10",  badge: 0 },
+    {
+      icon: Smartphone,
+      label: "Application Android",
+      sub: "Télécharger l'APK Simix",
+      action: handleApkDownload,
+      color: "text-green-400",
+      bg: "bg-green-500/10",
+      badge: 0,
+      rightEl: (
+        <span
+          className="flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full flex-shrink-0"
+          style={{
+            background: apkState === "done"
+              ? "rgba(16,185,129,0.15)"
+              : "rgba(109,40,217,0.15)",
+            color: apkState === "done" ? "#34d399" : "#a78bfa",
+            border: apkState === "done"
+              ? "1px solid rgba(16,185,129,0.3)"
+              : "1px solid rgba(139,92,246,0.3)",
+          }}
+        >
+          {apkState === "downloading" ? (
+            <motion.span
+              animate={{ rotate: 360 }}
+              transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+              className="inline-block w-3 h-3 border-2 border-violet-400/30 border-t-violet-400 rounded-full"
+            />
+          ) : apkState === "done" ? (
+            "✓ OK"
+          ) : (
+            <><Download className="w-2.5 h-2.5" /> APK</>
+          )}
+        </span>
+      ),
+    },
+    { icon: HelpCircle, label: "Aide et support",           sub: "FAQ & assistance",                href: "/profile/aide",         color: "text-sky-500",     bg: "bg-sky-500/10",     badge: 0 },
   ];
 
   return (
@@ -350,7 +301,7 @@ function ProfileContent() {
           {settingsItems.map((item, i) => (
             <button
               key={i}
-              onClick={() => setLocation(item.href)}
+              onClick={() => item.action ? item.action() : item.href ? setLocation(item.href) : undefined}
               className="w-full flex items-center gap-4 px-4 py-3.5 hover:bg-secondary/40 transition-colors text-left"
             >
               <div className={`w-9 h-9 rounded-xl ${item.bg} flex items-center justify-center flex-shrink-0`}>
@@ -360,9 +311,11 @@ function ProfileContent() {
                 <p className="text-sm font-bold text-foreground truncate">{item.label}</p>
                 <p className="text-[11px] text-muted-foreground truncate">{item.sub}</p>
               </div>
-              {item.badge > 0 ? (
+              {item.rightEl ? (
+                item.rightEl
+              ) : (item.badge ?? 0) > 0 ? (
                 <span className="min-w-[20px] h-[20px] bg-red-500 rounded-full text-[10px] font-bold text-white flex items-center justify-center px-1.5 flex-shrink-0">
-                  {item.badge > 99 ? "99+" : item.badge}
+                  {(item.badge ?? 0) > 99 ? "99+" : item.badge}
                 </span>
               ) : (
                 <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0" />
@@ -370,9 +323,6 @@ function ProfileContent() {
             </button>
           ))}
         </div>
-
-        {/* Download APK */}
-        <ApkDownloadCard />
 
         {/* Logout */}
         <button
