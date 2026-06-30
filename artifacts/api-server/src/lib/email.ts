@@ -26,7 +26,7 @@ function getFromEmail(): string {
   } catch {
     /* ignore malformed URL */
   }
-  return "Simix <noreply@simix.app>";
+  return "Simix <noreply@simix.site>";
 }
 const FROM_EMAIL = getFromEmail();
 
@@ -478,7 +478,7 @@ function getDepositConfirmationHtml(data: DepositEmailData): string {
                     </table>
                     <p style="margin:12px 0 0;color:#4a4a6a;font-size:12px;">
                       Besoin d'aide ?
-                      <a href="mailto:support@simix.app" style="color:#7c3aed;text-decoration:none;font-weight:600;">support@simix.app</a>
+                      <a href="mailto:support@simix.site" style="color:#7c3aed;text-decoration:none;font-weight:600;">support@simix.site</a>
                     </p>
                   </td>
                 </tr>
@@ -509,7 +509,7 @@ function getDepositConfirmationHtml(data: DepositEmailData): string {
                   </td>
                   <td style="color:#2a2a42;font-size:10px;">·</td>
                   <td style="padding:0 8px;">
-                    <a href="mailto:support@simix.app" style="color:#3a3a5a;font-size:10px;text-decoration:none;">Support</a>
+                    <a href="mailto:support@simix.site" style="color:#3a3a5a;font-size:10px;text-decoration:none;">Support</a>
                   </td>
                 </tr>
               </table>

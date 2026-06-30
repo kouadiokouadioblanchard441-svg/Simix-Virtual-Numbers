@@ -92,7 +92,7 @@ router.post("/auth/register", requireTurnstile, async (req, res): Promise<void> 
   const passwordHash = await bcrypt.hash(password, 10);
   const username = `user_${normalizedPhone.replace(/[^0-9]/g, "").slice(-6)}`;
   const safeEmail =
-    email && email.trim().length > 0 ? email.trim() : `${username}@simix.app`;
+    email && email.trim().length > 0 ? email.trim() : `${username}@simix.site`;
 
   const newReferralCode = await uniqueReferralCode();
 

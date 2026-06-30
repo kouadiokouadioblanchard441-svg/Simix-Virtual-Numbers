@@ -129,7 +129,7 @@ async function buildSystemPrompt(
 
   const aiName        = cfg["ai_name"]          ?? "Simia";
   const companyName   = cfg["company_name"]      ?? "Simix";
-  const companyEmail  = cfg["company_email"]     ?? "support@simix.app";
+  const companyEmail  = cfg["company_email"]     ?? "support@simix.site";
   const companyWA     = cfg["company_whatsapp"]  ?? "";
   const companyTG     = cfg["company_telegram"]  ?? "";
   const companyPhone  = cfg["company_phone"]     ?? "";
@@ -645,7 +645,7 @@ router.post("/support/chat", async (req, res): Promise<void> => {
         headers: {
           "Authorization": `Bearer ${openrouterApiKey}`,
           "Content-Type": "application/json",
-          "HTTP-Referer": "https://simix.app",
+          "HTTP-Referer": "https://simix.site",
           "X-Title": "Simix Support",
         },
         body: JSON.stringify({
@@ -750,7 +750,7 @@ router.post("/support/chat", async (req, res): Promise<void> => {
         {
           test: m => /bloqu[eé]|suspendu|suspended|blocked/.test(m),
           responses: [
-            "Si votre compte est bloqué ou suspendu, cela nécessite l'intervention de notre équipe. Contactez-nous directement à support@simix.app ou via notre Telegram https://t.me/simixafrica pour débloquer votre situation rapidement.",
+            "Si votre compte est bloqué ou suspendu, cela nécessite l'intervention de notre équipe. Contactez-nous directement à support@simix.site ou via notre Telegram https://t.me/simixafrica pour débloquer votre situation rapidement.",
           ],
         },
         /* Services spécifiques */

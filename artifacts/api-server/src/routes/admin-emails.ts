@@ -39,7 +39,7 @@ async function getResend(): Promise<Resend | null> {
 }
 
 function getFromEmail(): string {
-  return process.env["EMAIL_FROM"] || "Simix <noreply@simix.app>";
+  return process.env["EMAIL_FROM"] || "Simix <noreply@simix.site>";
 }
 
 /* ── Build beautiful HTML template ───────────────────────── */
@@ -93,7 +93,7 @@ function buildEmailHtml(subject: string, body: string, templateType: string): st
     </div>
     <div class="footer">
       <p>Vous recevez cet email car vous êtes inscrit sur <a href="${getAppUrl()}">Simix</a>.<br>
-      Plateforme fintech africaine · Paiements Mobile Money · <a href="mailto:support@simix.app">support@simix.app</a></p>
+      Plateforme fintech africaine · Paiements Mobile Money · <a href="mailto:support@simix.site">support@simix.site</a></p>
     </div>
   </div>
 </div>
@@ -133,11 +133,11 @@ router.post("/admin/emails/send", requireAdmin, async (req: Request, res: Respon
 
   const finalHtml = htmlContent?.trim() || buildEmailHtml(subject, body!.replace(/\n/g, "<br>"), templateType);
 
-  /* ── Filtre des emails réels (exclure les placeholders @simix.app) ── */
+  /* ── Filtre des emails réels (exclure les placeholders @simix.site) ── */
   function isRealEmail(email: string | null | undefined): boolean {
     if (!email || !email.includes("@")) return false;
     const trimmed = email.trim().toLowerCase();
-    if (trimmed.endsWith("@simix.app")) return false;
+    if (trimmed.endsWith("@simix.site")) return false;
     if (trimmed.endsWith("@example.com") || trimmed.endsWith("@test.com")) return false;
     return true;
   }
@@ -159,7 +159,7 @@ router.post("/admin/emails/send", requireAdmin, async (req: Request, res: Respon
   }
 
   if (recipients.length === 0) {
-    res.status(400).json({ error: "Aucun destinataire avec une adresse email réelle. Les emails placeholder (@simix.app) sont exclus." });
+    res.status(400).json({ error: "Aucun destinataire avec une adresse email réelle. Les emails placeholder (@simix.site) sont exclus." });
     return;
   }
 
@@ -407,7 +407,7 @@ router.post("/admin/emails/test", requireAdmin, async (req: Request, res: Respon
           <div style="background:rgba(6,182,212,0.08);border:1px solid rgba(6,182,212,0.2);border-radius:12px;padding:16px 20px;">
             <p style="color:#22d3ee;font-size:13px;font-weight:600;margin:0 0 6px;">✅ Resend opérationnel</p>
             <p style="color:#64748b;font-size:12px;line-height:1.6;margin:0;">
-              Envoyé depuis : <strong style="color:#94a3b8;">noreply@simix.app</strong><br/>
+              Envoyé depuis : <strong style="color:#94a3b8;">noreply@simix.site</strong><br/>
               Destinataire de test : <strong style="color:#94a3b8;">${email}</strong>
             </p>
           </div>
@@ -424,7 +424,7 @@ router.post("/admin/emails/test", requireAdmin, async (req: Request, res: Respon
   const start = Date.now();
   try {
     const result = await resendClient.emails.send({
-      from: "Simix <noreply@simix.app>",
+      from: "Simix <noreply@simix.site>",
       to: [email],
       subject: "🧪 Test Resend — Simix Admin",
       html,
@@ -470,11 +470,11 @@ router.get("/admin/emails/recipients", requireAdmin, async (req: Request, res: R
     )
     .limit(limit);
 
-  /* Exclure les emails placeholder @simix.app et domaines de test */
+  /* Exclure les emails placeholder @simix.site et domaines de test */
   const eligible = rows.filter(r => {
     if (!r.email?.includes("@")) return false;
     const e = r.email.trim().toLowerCase();
-    return !e.endsWith("@simix.app") && !e.endsWith("@example.com") && !e.endsWith("@test.com");
+    return !e.endsWith("@simix.site") && !e.endsWith("@example.com") && !e.endsWith("@test.com");
   });
 
   res.json({ recipients: eligible, total: eligible.length });

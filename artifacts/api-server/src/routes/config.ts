@@ -33,7 +33,7 @@ router.get("/config", async (_req, res): Promise<void> => {
     legalHostingInfra,
   ] = await Promise.all([
     getSetting("platform_name", "Simix"),
-    getSetting("support_email", "support@simix.app"),
+    getSetting("support_email", "support@simix.site"),
     getSetting("support_phone", ""),
     getSetting("support_whatsapp", ""),
     getSetting("social_telegram_url", ""),
