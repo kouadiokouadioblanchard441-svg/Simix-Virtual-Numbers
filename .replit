@@ -1,4 +1,4 @@
-modules = ["nodejs-20", "web", "postgresql-16", "python-3.11"]
+modules = ["nodejs-20", "web", "bash"]
 
 [deployment]
 router = "application"
@@ -63,6 +63,7 @@ PORT = "5000"
 VAPID_PUBLIC_KEY = "BPy-4QOhhUbnX3apfyA2LBL8YohvcFVV-av01mEzhI9tzfJBjzXX1Eu5UREKtOnd6W37HGZrOFwmlbYIttLATgc"
 VAPID_PRIVATE_KEY = "ZTms399zzZmgctCuW81L9ZYCAG0qFu9DcwJEFh1JVrQ"
 VAPID_SUBJECT = "mailto:support@simix.site"
+APP_URL = "https://simix.site"
 
 [userenv.production]
 

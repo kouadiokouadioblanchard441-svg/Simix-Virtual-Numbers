@@ -117913,21 +117913,21 @@ router6.get("/countries", async (req, res) => {
     }
     const { rows: rows2 } = await pool.query(
       `SELECT c.id, c.code, c.name, c.dial_code, c.flag,
-              COALESCE(sca.available, c.available, 0) AS available,
+              COALESCE(sca.available, 0) AS available,
               COALESCE(sp.price, c.price) AS price,
               c.popular, c.sort_order,
               c.enabled, c.numbers_enabled
-       FROM countries c
+       FROM service_country_availability sca
+       JOIN countries c
+         ON UPPER(c.code) = sca.country_code
        LEFT JOIN service_prices sp
          ON LOWER(c.code) = sp.country_code
         AND sp.service_slug = $1
-       LEFT JOIN service_country_availability sca
-         ON UPPER(c.code) = sca.country_code
-        AND sca.service_slug = $2
-       WHERE c.numbers_enabled = true
+       WHERE sca.service_slug = $2
+         AND c.enabled = true
          AND (sp.enabled IS NULL OR sp.enabled = true)
        ${searchClause}
-       ORDER BY COALESCE(sca.available, 0) DESC, c.sort_order ASC`,
+       ORDER BY sca.available DESC, c.sort_order ASC`,
       params
     );
     res.json(rows2.map((r2) => toCountry({
