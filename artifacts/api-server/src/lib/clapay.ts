@@ -6,25 +6,25 @@
  * Base URL: configurable — defaults to https://api.clapay.net
  *
  * Documented endpoints (used by this client):
- *  POST /nowallet/api/init/payment            ← initiate payment
- *  POST /nowallet/api/destroyer/signature     ← cancel payment
+ *  POST /nowallet/api/init/payment                                   ← initiate payment
+ *  POST /nowallet/api/destroy/signature                              ← cancel payment
  *  GET  /nowallet/api/check/transactions/single/balances/{country}  ← merchant balance
  *  GET  /nowallet/api/check/transactions/global/balances/{currency} ← global balance
- *  GET  /nowallet/api/pays/données            ← supported countries  (query: pays)
- *  GET  /nowallet/api/opérateurs/données      ← operators by country (query: pays)
- *  GET  /nowallet/api/fees/by/country         ← fees by country      (query: pays)
- *  GET  /nowallet/api/limitation/paiement     ← payment limits       (query: pays)
+ *  GET  /nowallet/api/countries/data                                 ← supported countries  (query: country)
+ *  GET  /nowallet/api/operators/data                                 ← operators by country (query: country)
+ *  GET  /nowallet/api/fees/by/country                                ← fees by country      (query: country)
+ *  GET  /nowallet/api/limitation/paiement                            ← payment limits       (query: country)
  *
  * NOTE: There is NO transaction status polling endpoint in the official V3 API.
  *  Payment confirmation is done exclusively via webhook callbacks (callback_url).
  *  If a webhook is missed, the only recovery is contacting Clapay support.
  *
  * IMPORTANT:
- *  - All GET endpoints use the query parameter "pays" (French) for country code.
+ *  - All GET endpoints use the query parameter "country" for country code.
+ *  - operators_code[] must contain the operator's `code.MERCHANT` value (from
+ *    GET /operators/data), NOT the `codeoperator` short code.
  *  - The signature returned on payment init MUST be stored — it is the primary
  *    key for any future reconciliation or cancellation.
- *  - operators_code takes the `codeoperator` short code (e.g. "OM", "MTN"),
- *    NOT the code.MERCHANT internal value.
  */
 
 export interface ClapayPaymentRequest {
@@ -39,7 +39,7 @@ export interface ClapayPaymentRequest {
   callback_url: string;               // Our webhook URL
   return_url: string;                 // Redirect after payment
   country_code: string;               // ISO alpha-2 (CI, CM, SN…)
-  operators_code: string[];           // ["OM"], ["MTN"], ["WAVE"], etc. (codeoperator values)
+  operators_code: string[];           // code.MERCHANT values from GET /operators/data (e.g. ["WAVECI"], ["MTNCI"])
   method: "MERCHANT" | "CASHIN";
   tunnel: "CHECKOUTPAGE" | "DIRECT";
   operator_otp?: string;
@@ -66,14 +66,14 @@ export interface ClapayWebhookPayload {
   };
   amount: number | string;            // LOCAL currency amount — do NOT use to credit (use stored tx.amount in XOF)
   currency: string;
-  fee_percentage: number | string;
+  fee_percent: number | string;
   fee_value: number | string;
   balance: number | string;
   balance_before: number | string;
   balance_after: number | string;
   transaction_method: string;
   transaction_phone_number: string;
-  transaction_dial_code: string;
+  transaction_dialcode: string;
   signature: string;                  // Clapay signature
   transaction_date: string;
   transaction_country_code: string;
@@ -91,10 +91,10 @@ export interface ClapayCountry {
 
 export interface ClapayOperator {
   name: string;
-  codeoperator: string;               // Short code used in operators_code[] (e.g. "OM", "MTN")
+  codeoperator: string;               // Short identifier (e.g. "MTN", "OM") — for display/matching only
   logo: string;
   code: {
-    MERCHANT: string;                 // Internal merchant code (NOT used in operators_code)
+    MERCHANT: string;                 // ← use this in operators_code[] for MERCHANT payments
     CASHIN: string;
     CASHOUT: string;
   };
@@ -317,10 +317,10 @@ export class ClapayClient {
 
   /**
    * Cancel a pending payment by signature.
-   * Docs: POST /nowallet/api/destroyer/signature
+   * Docs: POST /nowallet/api/destroy/signature
    */
   async cancelPayment(signature: string): Promise<{ success: boolean }> {
-    return this.request<{ success: boolean }>("/nowallet/api/destroyer/signature", "POST", { signature });
+    return this.request<{ success: boolean }>("/nowallet/api/destroy/signature", "POST", { signature });
   }
 
   /**
@@ -345,25 +345,25 @@ export class ClapayClient {
 
   /**
    * Get all countries supported by Clapay.
-   * Docs: GET /nowallet/api/pays/données — query param: "pays"
+   * Docs: GET /nowallet/api/countries/data — query param: "country"
    */
   async getCountries(country?: string): Promise<ClapayCountry[]> {
     const params: Record<string, string> = {};
-    if (country) params.pays = country;     // ← official API uses "pays" not "country"
+    if (country) params.country = country;
     const result = await this.request<ClapayCountry | ClapayCountry[]>(
-      "/nowallet/api/pays/données", "GET", undefined, params,
+      "/nowallet/api/countries/data", "GET", undefined, params,
     );
     return Array.isArray(result) ? result : [result];
   }
 
   /**
    * Get available operators for a country.
-   * Docs: GET /nowallet/api/opérateurs/données — query param: "pays"
-   * Returns the list of operators with their codeoperator (short code) and code.MERCHANT.
+   * Docs: GET /nowallet/api/operators/data — query param: "country"
+   * Returns operators with code.MERCHANT — this is what goes in operators_code[].
    */
   async getOperators(country: string): Promise<ClapayOperator[]> {
     const result = await this.request<ClapayOperator | ClapayOperator[]>(
-      "/nowallet/api/opérateurs/données", "GET", undefined, { pays: country },
+      "/nowallet/api/operators/data", "GET", undefined, { country },
     );
     return Array.isArray(result) ? result : [result];
   }
@@ -381,13 +381,17 @@ export class ClapayClient {
       const operators = await this.getOperators(country);
       const slug = methodSlug.toLowerCase();
 
-      /* Try exact codeoperator match first (e.g. slug "om" → codeoperator "OM") */
+      /* Helper: return code.MERCHANT (what operators_code[] expects) */
+      const merchantCode = (op: ClapayOperator): string =>
+        op.code?.MERCHANT && op.code.MERCHANT !== "none" ? op.code.MERCHANT : op.codeoperator;
+
+      /* 1. Exact codeoperator match (e.g. "wave" → codeoperator "WAVE") */
       const exactMatch = operators.find(op =>
         op.active && op.codeoperator.toLowerCase() === slug,
       );
-      if (exactMatch) return exactMatch.codeoperator;
+      if (exactMatch) return merchantCode(exactMatch);
 
-      /* Try name match (case-insensitive, partial) */
+      /* 2. Name match (e.g. "orange" matches "ORANGE MONEY") */
       const nameMatch = operators.find(op =>
         op.active && (
           op.name.toLowerCase().includes(slug) ||
@@ -395,48 +399,48 @@ export class ClapayClient {
           op.codeoperator.toLowerCase().includes(slug)
         ),
       );
-      if (nameMatch) return nameMatch.codeoperator;
+      if (nameMatch) return merchantCode(nameMatch);
 
-      /* Try keyword match against operator name */
-      for (const [keyword, code] of Object.entries(METHOD_TO_CLAPAY_OPERATOR)) {
+      /* 3. Keyword match via hardcoded map (codeoperator lookup) */
+      for (const [keyword, codeop] of Object.entries(METHOD_TO_CLAPAY_OPERATOR)) {
         if (slug.includes(keyword) || keyword.includes(slug)) {
           const kwMatch = operators.find(op =>
-            op.active && op.codeoperator === code,
+            op.active && op.codeoperator === codeop,
           );
-          if (kwMatch) return kwMatch.codeoperator;
+          if (kwMatch) return merchantCode(kwMatch);
         }
       }
 
       /* Log available operators for debugging */
       console.warn(
-        `[Clapay] No operator match for "${methodSlug}" in ${country}. Available: ${operators.map(o => `${o.codeoperator}(${o.name})`).join(", ")}`,
+        `[Clapay] No operator match for "${methodSlug}" in ${country}. Available: ${operators.map(o => `${o.codeoperator}(${o.name}) merchant=${o.code?.MERCHANT}`).join(", ")}`,
       );
     } catch (e) {
       console.warn(`[Clapay] resolveOperatorCode fetch failed — falling back to hardcoded map: ${(e as Error).message}`);
     }
 
-    /* Fallback to hardcoded mapping */
+    /* Fallback to hardcoded mapping (codeoperator values — last resort) */
     return getOperatorCodeForMethod(methodSlug);
   }
 
   /**
    * Get transaction fees for a country.
-   * Docs: GET /nowallet/api/fees/by/country — query param: "pays"
+   * Docs: GET /nowallet/api/fees/by/country — query param: "country"
    */
   async getFees(country: string): Promise<ClapayFees[]> {
     const result = await this.request<ClapayFees | ClapayFees[]>(
-      "/nowallet/api/fees/by/country", "GET", undefined, { pays: country },
+      "/nowallet/api/fees/by/country", "GET", undefined, { country },
     );
     return Array.isArray(result) ? result : [result];
   }
 
   /**
    * Get payment limits for a country.
-   * Docs: GET /nowallet/api/limitation/paiement — query param: "pays"
+   * Docs: GET /nowallet/api/limitation/paiement — query param: "country"
    */
   async getPaymentLimits(country: string): Promise<ClapayPaymentLimit[]> {
     const result = await this.request<ClapayPaymentLimit | ClapayPaymentLimit[]>(
-      "/nowallet/api/limitation/paiement", "GET", undefined, { pays: country },
+      "/nowallet/api/limitation/paiement", "GET", undefined, { country },
     );
     return Array.isArray(result) ? result : [result];
   }
