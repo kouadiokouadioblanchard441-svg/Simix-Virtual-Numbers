@@ -118246,7 +118246,18 @@ router8.get("/numbers/quote", async (req, res) => {
     res.status(404).json({ error: "Service ou pays introuvable" });
     return;
   }
-  let availableQty = country.available;
+  let availableQty = 0;
+  try {
+    const scaRows = await db.select({ available: serviceCountryAvailabilityTable.available }).from(serviceCountryAvailabilityTable).where(
+      and(
+        eq(serviceCountryAvailabilityTable.serviceSlug, service.slug.toLowerCase()),
+        eq(serviceCountryAvailabilityTable.countryCode, country.code.toUpperCase())
+      )
+    );
+    availableQty = scaRows.reduce((sum2, r2) => sum2 + (r2.available ?? 0), 0);
+  } catch (e2) {
+    logger.debug({ err: e2.message }, "[quote] SCA lookup skipped");
+  }
   try {
     const fiveSimClient = await getActive5SimClient();
     if (fiveSimClient) {
@@ -118257,10 +118268,8 @@ router8.get("/numbers/quote", async (req, res) => {
           fiveSimClient.checkAvailability(countrySlug, productSlug),
           new Promise((resolve) => setTimeout(() => resolve(null), 3e3))
         ]);
-        if (info !== null) {
+        if (info !== null && info.qty > 0) {
           availableQty = info.qty;
-          void db.update(countriesTable).set({ available: info.qty }).where(eq(countriesTable.id, countryId)).catch(() => {
-          });
         }
       }
     }

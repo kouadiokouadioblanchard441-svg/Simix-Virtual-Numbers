@@ -89,8 +89,22 @@ router.get("/numbers/quote", async (req, res): Promise<void> => {
     return;
   }
 
-  /* availableQty = number of available numbers (from DB as default) */
-  let availableQty: number = country.available;
+  /* availableQty — primary source: SCA (per-service, per-country aggregate) */
+  let availableQty = 0;
+  try {
+    const scaRows = await db
+      .select({ available: serviceCountryAvailabilityTable.available })
+      .from(serviceCountryAvailabilityTable)
+      .where(
+        and(
+          eq(serviceCountryAvailabilityTable.serviceSlug, service.slug.toLowerCase()),
+          eq(serviceCountryAvailabilityTable.countryCode, country.code.toUpperCase()),
+        ),
+      );
+    availableQty = scaRows.reduce((sum, r) => sum + (r.available ?? 0), 0);
+  } catch (e) {
+    logger.debug({ err: (e as Error).message }, "[quote] SCA lookup skipped");
+  }
 
   /* Try to get real-time availability from 5sim (non-blocking, 3s max) */
   try {
@@ -103,13 +117,8 @@ router.get("/numbers/quote", async (req, res): Promise<void> => {
           fiveSimClient.checkAvailability(countrySlug, productSlug),
           new Promise<null>(resolve => setTimeout(() => resolve(null), 3_000)),
         ]);
-        if (info !== null) {
+        if (info !== null && info.qty > 0) {
           availableQty = info.qty;
-          /* Update DB cache for next time */
-          void db.update(countriesTable)
-            .set({ available: info.qty })
-            .where(eq(countriesTable.id, countryId))
-            .catch(() => {});
         }
       }
     }
