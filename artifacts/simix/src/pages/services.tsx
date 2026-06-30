@@ -186,8 +186,14 @@ function ServicesContent() {
                     initial={{ opacity: 0, y: 8 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: Math.min(i, 12) * 0.03 }}
-                    onClick={() => goToCountries(service.id)}
-                    className="w-full flex items-center justify-between p-4 bg-card border border-card-border rounded-2xl hover:bg-secondary/50 transition-colors text-left"
+                    onClick={() => (service.available ?? 0) > 0 ? goToCountries(service.id) : undefined}
+                    disabled={(service.available ?? 0) === 0}
+                    className={[
+                      "w-full flex items-center justify-between p-4 bg-card border rounded-2xl transition-colors text-left",
+                      (service.available ?? 0) > 0
+                        ? "border-card-border hover:bg-secondary/50 cursor-pointer"
+                        : "border-card-border opacity-50 cursor-not-allowed",
+                    ].join(" ")}
                   >
                     <div className="flex items-center gap-4">
                       <ServiceIcon name={service.name} slug={service.slug} logoUrl={service.logoUrl} size={48} rounded="xl" />
@@ -199,15 +205,25 @@ function ServicesContent() {
                           {service.category || service.scope || "Global"}
                         </p>
                         <div className="flex items-center gap-1.5 mt-1.5">
-                          <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
-                          <span className="text-[11px] font-medium text-muted-foreground">
-                            {service.available?.toLocaleString("fr-FR") || "—"} disponibles
-                          </span>
+                          {(service.available ?? 0) > 0 ? (
+                            <>
+                              <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
+                              <span className="text-[11px] font-medium text-muted-foreground">
+                                {service.available!.toLocaleString("fr-FR")} disponibles
+                              </span>
+                            </>
+                          ) : (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-muted text-muted-foreground border border-card-border">
+                              Indisponible
+                            </span>
+                          )}
                         </div>
                       </div>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
-                      <span className="text-sm font-bold text-primary">{formatFCFA(service.price)}</span>
+                      {(service.available ?? 0) > 0 && (
+                        <span className="text-sm font-bold text-primary">{formatFCFA(service.price)}</span>
+                      )}
                       <ChevronRight className="w-5 h-5 text-muted-foreground" />
                     </div>
                   </motion.button>
