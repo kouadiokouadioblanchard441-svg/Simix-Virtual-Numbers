@@ -93,7 +93,7 @@ function buildEmailHtml(subject: string, body: string, templateType: string): st
     </div>
     <div class="footer">
       <p>Vous recevez cet email car vous êtes inscrit sur <a href="${getAppUrl()}">Simix</a>.<br>
-      Plateforme fintech africaine · Paiements Mobile Money · <a href="mailto:support@simix.site">support@simix.site</a></p>
+      Plateforme fintech africaine · Paiements Mobile Money · <a href="mailto:simixsupport@gmail.com">simixsupport@gmail.com</a></p>
     </div>
   </div>
 </div>
@@ -407,7 +407,7 @@ router.post("/admin/emails/test", requireAdmin, async (req: Request, res: Respon
           <div style="background:rgba(6,182,212,0.08);border:1px solid rgba(6,182,212,0.2);border-radius:12px;padding:16px 20px;">
             <p style="color:#22d3ee;font-size:13px;font-weight:600;margin:0 0 6px;">✅ Resend opérationnel</p>
             <p style="color:#64748b;font-size:12px;line-height:1.6;margin:0;">
-              Envoyé depuis : <strong style="color:#94a3b8;">noreply@simix.site</strong><br/>
+              Envoyé depuis : <strong style="color:#94a3b8;">simixsupport@gmail.com</strong><br/>
               Destinataire de test : <strong style="color:#94a3b8;">${email}</strong>
             </p>
           </div>

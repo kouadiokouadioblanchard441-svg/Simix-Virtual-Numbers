@@ -117183,7 +117183,7 @@ function getDepositConfirmationHtml(data) {
                     </table>
                     <p style="margin:12px 0 0;color:#4a4a6a;font-size:12px;">
                       Besoin d'aide ?
-                      <a href="mailto:support@simix.site" style="color:#7c3aed;text-decoration:none;font-weight:600;">support@simix.site</a>
+                      <a href="mailto:simixsupport@gmail.com" style="color:#7c3aed;text-decoration:none;font-weight:600;">simixsupport@gmail.com</a>
                     </p>
                   </td>
                 </tr>
@@ -117214,7 +117214,7 @@ function getDepositConfirmationHtml(data) {
                   </td>
                   <td style="color:#2a2a42;font-size:10px;">\xB7</td>
                   <td style="padding:0 8px;">
-                    <a href="mailto:support@simix.site" style="color:#3a3a5a;font-size:10px;text-decoration:none;">Support</a>
+                    <a href="mailto:simixsupport@gmail.com" style="color:#3a3a5a;font-size:10px;text-decoration:none;">Support</a>
                   </td>
                 </tr>
               </table>
@@ -124061,7 +124061,7 @@ var DEFAULT_AI_CONFIG = [
   { key: "ai_language_mode", value: "auto", label: "Langue (auto / fr / en)", group: "comportement" },
   { key: "ai_greeting_fr", value: "\u{1F44B} Bonjour ! Je suis Simia, votre assistante Simix. Comment puis-je vous aider aujourd'hui ? \u{1F60A}", label: "Message d'accueil (FR)", group: "messages" },
   { key: "ai_greeting_en", value: "\u{1F44B} Hello! I'm Simia, your Simix assistant. How can I help you today? \u{1F60A}", label: "Message d'accueil (EN)", group: "messages" },
-  { key: "ai_escalation_message", value: "Je vais transf\xE9rer votre demande \xE0 un agent humain. Veuillez patienter ou contacter support@simix.site", label: "Message d'escalade", group: "messages" },
+  { key: "ai_escalation_message", value: "Je vais transf\xE9rer votre demande \xE0 un agent humain. Veuillez patienter ou contacter simixsupport@gmail.com", label: "Message d'escalade", group: "messages" },
   { key: "ai_offline_message", value: "Notre \xE9quipe est actuellement hors ligne. Laissez votre message et nous r\xE9pondrons d\xE8s que possible.", label: "Message hors ligne", group: "messages" },
   { key: "ai_business_hours", value: "Lun-Ven 08h-18h (UTC+0)", label: "Horaires de support", group: "horaires" },
   { key: "ai_response_style", value: "concise", label: "Style de r\xE9ponse (concise / detailed)", group: "comportement" },
@@ -124071,7 +124071,7 @@ var DEFAULT_AI_CONFIG = [
   { key: "ai_quick_replies_fr", value: "Comment recharger ?|Num\xE9ro pas re\xE7u|SMS non re\xE7u|Mon solde|Contacter le support", label: "R\xE9ponses rapides (FR, s\xE9par\xE9es par |)", group: "messages" },
   { key: "ai_quick_replies_en", value: "How to top up?|Number not received|SMS not received|My balance|Contact support", label: "R\xE9ponses rapides (EN, s\xE9par\xE9es par |)", group: "messages" },
   { key: "company_name", value: "Simix", label: "Nom de l'entreprise", group: "entreprise" },
-  { key: "company_email", value: "support@simix.site", label: "Email support", group: "entreprise" },
+  { key: "company_email", value: "simixsupport@gmail.com", label: "Email support", group: "entreprise" },
   { key: "company_whatsapp", value: "", label: "Num\xE9ro WhatsApp support", group: "entreprise" },
   { key: "company_telegram", value: "", label: "Lien Telegram support", group: "entreprise" },
   { key: "company_phone", value: "", label: "T\xE9l\xE9phone support", group: "entreprise" }
@@ -124594,7 +124594,7 @@ function buildEmailHtml(subject, body, templateType) {
     </div>
     <div class="footer">
       <p>Vous recevez cet email car vous \xEAtes inscrit sur <a href="${getAppUrl()}">Simix</a>.<br>
-      Plateforme fintech africaine \xB7 Paiements Mobile Money \xB7 <a href="mailto:support@simix.site">support@simix.site</a></p>
+      Plateforme fintech africaine \xB7 Paiements Mobile Money \xB7 <a href="mailto:simixsupport@gmail.com">simixsupport@gmail.com</a></p>
     </div>
   </div>
 </div>
@@ -124831,7 +124831,7 @@ router17.post("/admin/emails/test", requireAdmin5, async (req, res) => {
           <div style="background:rgba(6,182,212,0.08);border:1px solid rgba(6,182,212,0.2);border-radius:12px;padding:16px 20px;">
             <p style="color:#22d3ee;font-size:13px;font-weight:600;margin:0 0 6px;">\u2705 Resend op\xE9rationnel</p>
             <p style="color:#64748b;font-size:12px;line-height:1.6;margin:0;">
-              Envoy\xE9 depuis : <strong style="color:#94a3b8;">noreply@simix.site</strong><br/>
+              Envoy\xE9 depuis : <strong style="color:#94a3b8;">simixsupport@gmail.com</strong><br/>
               Destinataire de test : <strong style="color:#94a3b8;">${email}</strong>
             </p>
           </div>
@@ -127002,7 +127002,7 @@ async function buildSystemPrompt(language, userContext, isFirstMessageOfDay = tr
   const cfg = Object.fromEntries(configEntries.map((e2) => [e2.key, e2.value]));
   const aiName = cfg["ai_name"] ?? "Simia";
   const companyName = cfg["company_name"] ?? "Simix";
-  const companyEmail = cfg["company_email"] ?? "support@simix.site";
+  const companyEmail = cfg["company_email"] ?? "simixsupport@gmail.com";
   const companyWA = cfg["company_whatsapp"] ?? "";
   const companyTG = cfg["company_telegram"] ?? "";
   const companyPhone = cfg["company_phone"] ?? "";
@@ -127492,7 +127492,7 @@ router22.post("/support/chat", async (req, res) => {
         {
           test: (m2) => /bloqu[eé]|suspendu|suspended|blocked/.test(m2),
           responses: [
-            "Si votre compte est bloqu\xE9 ou suspendu, cela n\xE9cessite l'intervention de notre \xE9quipe. Contactez-nous directement \xE0 support@simix.site ou via notre Telegram https://t.me/simixafrica pour d\xE9bloquer votre situation rapidement."
+            "Si votre compte est bloqu\xE9 ou suspendu, cela n\xE9cessite l'intervention de notre \xE9quipe. Contactez-nous directement \xE0 simixsupport@gmail.com ou via notre Telegram https://t.me/simixafrica pour d\xE9bloquer votre situation rapidement."
           ]
         },
         /* Services spécifiques */
