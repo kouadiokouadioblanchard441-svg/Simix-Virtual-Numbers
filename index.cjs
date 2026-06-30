@@ -111423,7 +111423,8 @@ function toService(s2) {
     available: s2.available,
     color: s2.color,
     category: s2.category,
-    popular: s2.popular
+    popular: s2.popular,
+    logoUrl: s2.logoUrl ?? null
   };
 }
 function toCountry(c) {

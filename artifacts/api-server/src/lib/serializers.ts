@@ -45,6 +45,7 @@ export function toService(s: Service) {
     color: s.color,
     category: s.category,
     popular: s.popular,
+    logoUrl: s.logoUrl ?? null,
   };
 }
 
