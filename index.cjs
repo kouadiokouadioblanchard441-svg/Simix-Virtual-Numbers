@@ -119590,16 +119590,18 @@ async function getPawaPayClient() {
   return { client: new PawaPayClient(token, env), env };
 }
 async function getClapayClient() {
-  let token = process.env.CLAPAY_API_TOKEN ?? null;
+  let token = null;
   let baseUrl2 = process.env.CLAPAY_BASE_URL ?? null;
-  if (!token) {
+  try {
     const rows = await db.select().from(systemSettingsTable).where(eq(systemSettingsTable.key, "clapay_api_token")).limit(1);
     token = rows[0]?.value?.trim() || null;
-    if (token && !baseUrl2) {
+    if (!baseUrl2) {
       const urlRows = await db.select().from(systemSettingsTable).where(eq(systemSettingsTable.key, "clapay_base_url")).limit(1);
       baseUrl2 = urlRows[0]?.value?.trim() || null;
     }
+  } catch {
   }
+  if (!token) token = process.env.CLAPAY_API_TOKEN ?? null;
   if (!token) return null;
   return { client: new ClapayClient(token, baseUrl2 ?? void 0) };
 }
@@ -128408,19 +128410,18 @@ var RECONCILE_INTERVAL_MS = 5 * 60 * 1e3;
 var FAIL_AFTER_MS = 2 * 60 * 60 * 1e3;
 var HEALTH_CHECK_COUNTRY = "CI";
 async function getClapayClientForReconcile() {
-  let token = process.env.CLAPAY_API_TOKEN ?? null;
+  let token = null;
   let baseUrl2 = process.env.CLAPAY_BASE_URL ?? null;
-  if (!token) {
-    try {
-      const rows = await db.select().from(systemSettingsTable).where(eq(systemSettingsTable.key, "clapay_api_token")).limit(1);
-      token = rows[0]?.value?.trim() || null;
-      if (token && !baseUrl2) {
-        const urlRows = await db.select().from(systemSettingsTable).where(eq(systemSettingsTable.key, "clapay_base_url")).limit(1);
-        baseUrl2 = urlRows[0]?.value?.trim() || null;
-      }
-    } catch {
+  try {
+    const rows = await db.select().from(systemSettingsTable).where(eq(systemSettingsTable.key, "clapay_api_token")).limit(1);
+    token = rows[0]?.value?.trim() || null;
+    if (!baseUrl2) {
+      const urlRows = await db.select().from(systemSettingsTable).where(eq(systemSettingsTable.key, "clapay_base_url")).limit(1);
+      baseUrl2 = urlRows[0]?.value?.trim() || null;
     }
+  } catch {
   }
+  if (!token) token = process.env.CLAPAY_API_TOKEN ?? null;
   if (!token) return null;
   return new ClapayClient(token, baseUrl2 ?? void 0);
 }

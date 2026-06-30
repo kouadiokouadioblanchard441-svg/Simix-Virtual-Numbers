@@ -69,22 +69,26 @@ async function getPawaPayClient(): Promise<{ client: PawaPayClient; env: string 
   return { client: new PawaPayClient(token, env), env };
 }
 
-/* ── Load Clapay client from env or DB ── */
+/* ── Load Clapay client — DB takes priority over env var (allows live key rotation) ── */
 async function getClapayClient(): Promise<{ client: ClapayClient } | null> {
-  let token = process.env.CLAPAY_API_TOKEN ?? null;
-  let baseUrl = process.env.CLAPAY_BASE_URL ?? null;
+  let token: string | null = null;
+  let baseUrl: string | null = process.env.CLAPAY_BASE_URL ?? null;
 
-  if (!token) {
+  // DB first: allows updating the key without redeploying
+  try {
     const rows = await db.select().from(systemSettingsTable)
       .where(eq(systemSettingsTable.key, "clapay_api_token")).limit(1);
     token = rows[0]?.value?.trim() || null;
 
-    if (token && !baseUrl) {
+    if (!baseUrl) {
       const urlRows = await db.select().from(systemSettingsTable)
         .where(eq(systemSettingsTable.key, "clapay_base_url")).limit(1);
       baseUrl = urlRows[0]?.value?.trim() || null;
     }
-  }
+  } catch { /* non-fatal — fall through to env */ }
+
+  // Env var as fallback
+  if (!token) token = process.env.CLAPAY_API_TOKEN ?? null;
 
   if (!token) return null;
   return { client: new ClapayClient(token, baseUrl ?? undefined) };

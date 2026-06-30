@@ -32,24 +32,26 @@ const RECONCILE_INTERVAL_MS = 5 * 60 * 1000;      // run every 5 minutes
 const FAIL_AFTER_MS          = 2 * 60 * 60 * 1000; // mark as failed after 2 hours pending
 const HEALTH_CHECK_COUNTRY   = "CI";               // country used for balance health check
 
-/* ── Load Clapay client from env or DB ── */
+/* ── Load Clapay client — DB takes priority over env var (allows live key rotation) ── */
 async function getClapayClientForReconcile(): Promise<ClapayClient | null> {
-  let token = process.env.CLAPAY_API_TOKEN ?? null;
-  let baseUrl = process.env.CLAPAY_BASE_URL ?? null;
+  let token: string | null = null;
+  let baseUrl: string | null = process.env.CLAPAY_BASE_URL ?? null;
 
-  if (!token) {
-    try {
-      const rows = await db.select().from(systemSettingsTable)
-        .where(eq(systemSettingsTable.key, "clapay_api_token")).limit(1);
-      token = rows[0]?.value?.trim() || null;
+  // DB first: allows updating the key without redeploying
+  try {
+    const rows = await db.select().from(systemSettingsTable)
+      .where(eq(systemSettingsTable.key, "clapay_api_token")).limit(1);
+    token = rows[0]?.value?.trim() || null;
 
-      if (token && !baseUrl) {
-        const urlRows = await db.select().from(systemSettingsTable)
-          .where(eq(systemSettingsTable.key, "clapay_base_url")).limit(1);
-        baseUrl = urlRows[0]?.value?.trim() || null;
-      }
-    } catch { /* non-fatal */ }
-  }
+    if (!baseUrl) {
+      const urlRows = await db.select().from(systemSettingsTable)
+        .where(eq(systemSettingsTable.key, "clapay_base_url")).limit(1);
+      baseUrl = urlRows[0]?.value?.trim() || null;
+    }
+  } catch { /* non-fatal */ }
+
+  // Env var as fallback
+  if (!token) token = process.env.CLAPAY_API_TOKEN ?? null;
 
   if (!token) return null;
   return new ClapayClient(token, baseUrl ?? undefined);
