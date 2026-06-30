@@ -27,8 +27,9 @@ const FROM_EMAIL = getFromEmail();
 /* ─────────────────────────────────────────────────────────────────
    OTP EMAIL  (inscription + inactivité)
 ───────────────────────────────────────────────────────────────── */
-function getOtpEmailHtml(code: string, purpose: "register" | "inactivity"): string {
+function getOtpEmailHtml(code: string, purpose: "register" | "inactivity", fullName: string): string {
   const isInactivity = purpose === "inactivity";
+  const firstName = fullName.split(" ")[0] ?? fullName;
   const title    = isInactivity ? "Vérification de sécurité" : "Vérifiez votre adresse email";
   const subtitle = isInactivity
     ? "Connexion après une longue période d'inactivité détectée"
@@ -85,6 +86,7 @@ function getOtpEmailHtml(code: string, purpose: "register" | "inactivity"): stri
                   <td style="padding:36px 40px 28px;">
 
                     <!-- Title -->
+                    <p style="margin:0 0 6px;color:#7c3aed;font-size:15px;font-weight:700;">Bonjour ${firstName} 👋</p>
                     <h1 style="margin:0 0 8px;color:#1a1a2e;font-size:22px;font-weight:700;line-height:1.3;">${title}</h1>
                     <p style="margin:0 0 20px;color:#6b6b8a;font-size:14px;line-height:1.5;">${subtitle}</p>
                     <p style="margin:0 0 28px;color:#44445a;font-size:14px;line-height:1.7;">${bodyText}</p>
@@ -453,6 +455,7 @@ export async function sendOtpEmail(
   to: string,
   code: string,
   purpose: "register" | "inactivity",
+  fullName = "Utilisateur",
 ): Promise<void> {
   const resend = await getResend();
   if (!resend) {
@@ -467,7 +470,7 @@ export async function sendOtpEmail(
     from: FROM_EMAIL,
     to,
     subject,
-    html: getOtpEmailHtml(code, purpose),
+    html: getOtpEmailHtml(code, purpose, fullName),
   });
   if (error) {
     throw new Error(`Échec envoi email OTP: ${error.message}`);

@@ -130,7 +130,7 @@ router.post("/auth/register", requireTurnstile, async (req, res): Promise<void> 
 
   try {
     const otpCode = await createOtp(user.id, "email_verification");
-    await sendOtpEmail(safeEmail, otpCode, "register");
+    await sendOtpEmail(safeEmail, otpCode, "register", user.fullName);
   } catch (emailErr) {
     console.error("Failed to send registration OTP email:", emailErr);
   }
@@ -239,7 +239,7 @@ router.post("/auth/login", requireTurnstile, async (req, res): Promise<void> => 
     }
     try {
       const otpCode = await createOtp(user.id, "email_verification");
-      await sendOtpEmail(user.email, otpCode, "register");
+      await sendOtpEmail(user.email, otpCode, "register", user.fullName);
     } catch (emailErr) {
       console.error("Failed to send email verification OTP:", emailErr);
     }
@@ -251,7 +251,7 @@ router.post("/auth/login", requireTurnstile, async (req, res): Promise<void> => 
   if (otpEnabled && isUserInactive(user.lastLoginAt ?? null)) {
     try {
       const otpCode = await createOtp(user.id, "inactivity_check");
-      await sendOtpEmail(user.email, otpCode, "inactivity");
+      await sendOtpEmail(user.email, otpCode, "inactivity", user.fullName);
     } catch (emailErr) {
       console.error("Failed to send inactivity OTP:", emailErr);
     }

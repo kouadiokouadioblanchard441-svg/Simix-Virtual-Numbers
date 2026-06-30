@@ -116758,8 +116758,9 @@ function getFromEmail() {
   return "Simix <simixsupport@gmail.com>";
 }
 var FROM_EMAIL = getFromEmail();
-function getOtpEmailHtml(code, purpose) {
+function getOtpEmailHtml(code, purpose, fullName) {
   const isInactivity = purpose === "inactivity";
+  const firstName = fullName.split(" ")[0] ?? fullName;
   const title = isInactivity ? "V\xE9rification de s\xE9curit\xE9" : "V\xE9rifiez votre adresse email";
   const subtitle = isInactivity ? "Connexion apr\xE8s une longue p\xE9riode d'inactivit\xE9 d\xE9tect\xE9e" : "Bienvenue sur Simix \u2014 une derni\xE8re \xE9tape pour activer votre compte";
   const bodyText = isInactivity ? "Nous avons d\xE9tect\xE9 que vous ne vous \xEAtes pas connect\xE9 depuis plus de 10 jours. Pour prot\xE9ger votre compte, veuillez confirmer votre identit\xE9 avec le code ci-dessous." : "Merci de vous \xEAtre inscrit sur Simix, la plateforme fintech 100% africaine. Pour activer votre compte, entrez le code de v\xE9rification ci-dessous dans l'application.";
@@ -116811,6 +116812,7 @@ function getOtpEmailHtml(code, purpose) {
                   <td style="padding:36px 40px 28px;">
 
                     <!-- Title -->
+                    <p style="margin:0 0 6px;color:#7c3aed;font-size:15px;font-weight:700;">Bonjour ${firstName} \u{1F44B}</p>
                     <h1 style="margin:0 0 8px;color:#1a1a2e;font-size:22px;font-weight:700;line-height:1.3;">${title}</h1>
                     <p style="margin:0 0 20px;color:#6b6b8a;font-size:14px;line-height:1.5;">${subtitle}</p>
                     <p style="margin:0 0 28px;color:#44445a;font-size:14px;line-height:1.7;">${bodyText}</p>
@@ -117139,7 +117141,7 @@ async function sendPasswordResetEmail(to, code, fullName) {
     throw new Error(`\xC9chec envoi email reset: ${error.message}`);
   }
 }
-async function sendOtpEmail(to, code, purpose) {
+async function sendOtpEmail(to, code, purpose, fullName = "Utilisateur") {
   const resend = await getResend();
   if (!resend) {
     console.warn("[email] RESEND_API_KEY not set \u2014 skipping OTP email");
@@ -117150,7 +117152,7 @@ async function sendOtpEmail(to, code, purpose) {
     from: FROM_EMAIL,
     to,
     subject,
-    html: getOtpEmailHtml(code, purpose)
+    html: getOtpEmailHtml(code, purpose, fullName)
   });
   if (error) {
     throw new Error(`\xC9chec envoi email OTP: ${error.message}`);
@@ -117283,7 +117285,7 @@ router3.post("/auth/register", requireTurnstile, async (req, res) => {
   }
   try {
     const otpCode = await createOtp(user.id, "email_verification");
-    await sendOtpEmail(safeEmail, otpCode, "register");
+    await sendOtpEmail(safeEmail, otpCode, "register", user.fullName);
   } catch (emailErr) {
     console.error("Failed to send registration OTP email:", emailErr);
   }
@@ -117367,7 +117369,7 @@ router3.post("/auth/login", requireTurnstile, async (req, res) => {
     }
     try {
       const otpCode = await createOtp(user.id, "email_verification");
-      await sendOtpEmail(user.email, otpCode, "register");
+      await sendOtpEmail(user.email, otpCode, "register", user.fullName);
     } catch (emailErr) {
       console.error("Failed to send email verification OTP:", emailErr);
     }
@@ -117377,7 +117379,7 @@ router3.post("/auth/login", requireTurnstile, async (req, res) => {
   if (otpEnabled && isUserInactive(user.lastLoginAt ?? null)) {
     try {
       const otpCode = await createOtp(user.id, "inactivity_check");
-      await sendOtpEmail(user.email, otpCode, "inactivity");
+      await sendOtpEmail(user.email, otpCode, "inactivity", user.fullName);
     } catch (emailErr) {
       console.error("Failed to send inactivity OTP:", emailErr);
     }
@@ -127663,7 +127665,7 @@ router24.post("/auth/otp/send", requireAuth, async (req, res) => {
   }
   try {
     const code = await createOtp(user.id, purpose);
-    await sendOtpEmail(user.email, code, purpose === "email_verification" ? "register" : "inactivity");
+    await sendOtpEmail(user.email, code, purpose === "email_verification" ? "register" : "inactivity", user.fullName);
     res.json({ success: true, message: `Code envoy\xE9 \xE0 ${user.email}` });
   } catch (err) {
     console.error("OTP send error:", err);
@@ -127708,7 +127710,7 @@ router24.post("/auth/otp/resend", requireAuth, async (req, res) => {
   try {
     const purpose = user.emailVerified ? "inactivity_check" : "email_verification";
     const code = await createOtp(user.id, purpose);
-    await sendOtpEmail(user.email, code, purpose === "email_verification" ? "register" : "inactivity");
+    await sendOtpEmail(user.email, code, purpose === "email_verification" ? "register" : "inactivity", user.fullName);
     res.json({ success: true, message: `Nouveau code envoy\xE9 \xE0 ${user.email}` });
   } catch (err) {
     console.error("OTP resend error:", err);

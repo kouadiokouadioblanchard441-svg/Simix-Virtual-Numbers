@@ -26,7 +26,7 @@ router.post("/auth/otp/send", requireAuth, async (req, res): Promise<void> => {
 
   try {
     const code = await createOtp(user.id, purpose);
-    await sendOtpEmail(user.email, code, purpose === "email_verification" ? "register" : "inactivity");
+    await sendOtpEmail(user.email, code, purpose === "email_verification" ? "register" : "inactivity", user.fullName);
     res.json({ success: true, message: `Code envoyé à ${user.email}` });
   } catch (err) {
     console.error("OTP send error:", err);
@@ -85,7 +85,7 @@ router.post("/auth/otp/resend", requireAuth, async (req, res): Promise<void> => 
   try {
     const purpose = user.emailVerified ? "inactivity_check" : "email_verification";
     const code = await createOtp(user.id, purpose);
-    await sendOtpEmail(user.email, code, purpose === "email_verification" ? "register" : "inactivity");
+    await sendOtpEmail(user.email, code, purpose === "email_verification" ? "register" : "inactivity", user.fullName);
     res.json({ success: true, message: `Nouveau code envoyé à ${user.email}` });
   } catch (err) {
     console.error("OTP resend error:", err);
