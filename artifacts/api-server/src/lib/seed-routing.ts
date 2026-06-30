@@ -139,10 +139,10 @@ interface RouteSpec {
 
 const AFRICA_ROUTES: RouteSpec[] = [
   /* ── Ivory Coast (CI) ── */
-  { cc:"CI", op:"orange",   viaClapay:true,  viaPawaPay:true,  preferClapay:true  },
+  { cc:"CI", op:"orange",   viaClapay:true,  viaPawaPay:true,  preferClapay:false },
   { cc:"CI", op:"mtn",      viaClapay:true,  viaPawaPay:true,  preferClapay:false },
   { cc:"CI", op:"wave",     viaClapay:true,  viaPawaPay:false, preferClapay:true  },
-  { cc:"CI", op:"moov",     viaClapay:true,  viaPawaPay:true,  preferClapay:true  },
+  { cc:"CI", op:"moov",     viaClapay:true,  viaPawaPay:false, preferClapay:true  },
 
   /* ── Senegal (SN) ── */
   { cc:"SN", op:"orange",   viaClapay:true,  viaPawaPay:true,  preferClapay:true  },

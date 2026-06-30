@@ -106,13 +106,16 @@ async function getGatewayPreference(): Promise<GatewayPref> {
   return (rows[0]?.value as GatewayPref) ?? "pawapay";
 }
 
-/* ── Clapay callback URL (set in admin settings or Plesk env) ── */
+/* ── Clapay callback URL (set in admin settings or env) ── */
 async function getClapayCallbackUrl(): Promise<string> {
   if (process.env.CLAPAY_CALLBACK_URL) return process.env.CLAPAY_CALLBACK_URL;
 
   const rows = await db.select().from(systemSettingsTable)
     .where(eq(systemSettingsTable.key, "clapay_callback_url")).limit(1);
-  return rows[0]?.value?.trim() || "https://simix.site/api/wallet/clapay/webhook";
+  if (rows[0]?.value?.trim()) return rows[0].value.trim();
+
+  const appUrl = process.env.APP_URL?.replace(/\/$/, "") ?? "https://simix.site";
+  return `${appUrl}/api/wallet/clapay/webhook`;
 }
 
 /* ── Clapay return URL (user is sent here after checkout page) ── */
@@ -121,7 +124,10 @@ async function getClapayReturnUrl(): Promise<string> {
 
   const rows = await db.select().from(systemSettingsTable)
     .where(eq(systemSettingsTable.key, "clapay_return_url")).limit(1);
-  return rows[0]?.value?.trim() || "https://simix.site/wallet";
+  if (rows[0]?.value?.trim()) return rows[0].value.trim();
+
+  const appUrl = process.env.APP_URL?.replace(/\/$/, "") ?? "https://simix.site";
+  return `${appUrl}/wallet`;
 }
 
 /* ── Mobile money operator keyword detection ── */
