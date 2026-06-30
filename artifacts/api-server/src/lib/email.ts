@@ -120,6 +120,7 @@ function getOtpEmailHtml(code: string, purpose: "register" | "inactivity"): stri
           <!-- Footer -->
           <tr>
             <td style="padding:20px 0 0;text-align:center;">
+              <img src="${getAppUrl()}/logo.svg" alt="Simix" width="90" height="19" style="display:block;margin:0 auto 12px;opacity:0.7;" />
               <p style="margin:0 0 6px;color:#9999b8;font-size:11px;line-height:1.7;">
                 Si vous n'avez pas demandé ce code, ignorez cet email.<br/>
                 Ce code est valable 10 minutes et ne peut être utilisé qu'une seule fois.
@@ -226,6 +227,7 @@ function getPasswordResetEmailHtml(code: string, fullName: string): string {
           <!-- Footer -->
           <tr>
             <td style="padding:20px 0 0;text-align:center;">
+              <img src="${getAppUrl()}/logo.svg" alt="Simix" width="90" height="19" style="display:block;margin:0 auto 12px;opacity:0.7;" />
               <p style="margin:0;color:#c4c4d4;font-size:11px;">
                 © ${new Date().getFullYear()} Simix · <a href="mailto:simixsupport@gmail.com" style="color:#7c3aed;text-decoration:none;">simixsupport@gmail.com</a>
               </p>
@@ -388,6 +390,7 @@ function getDepositConfirmationHtml(data: DepositEmailData): string {
           <!-- Footer -->
           <tr>
             <td style="padding:20px 0 0;text-align:center;">
+              <img src="${getAppUrl()}/logo.svg" alt="Simix" width="90" height="19" style="display:block;margin:0 auto 12px;opacity:0.7;" />
               <p style="margin:0 0 4px;color:#9999b8;font-size:11px;line-height:1.7;">
                 Vous recevez cet email car vous avez effectué un rechargement sur Simix.<br/>
                 Si vous n'êtes pas à l'origine de cette opération, contactez-nous immédiatement.

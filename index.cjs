@@ -116846,6 +116846,7 @@ function getOtpEmailHtml(code, purpose) {
           <!-- Footer -->
           <tr>
             <td style="padding:20px 0 0;text-align:center;">
+              <img src="${getAppUrl()}/logo.svg" alt="Simix" width="90" height="19" style="display:block;margin:0 auto 12px;opacity:0.7;" />
               <p style="margin:0 0 6px;color:#9999b8;font-size:11px;line-height:1.7;">
                 Si vous n'avez pas demand\xE9 ce code, ignorez cet email.<br/>
                 Ce code est valable 10 minutes et ne peut \xEAtre utilis\xE9 qu'une seule fois.
@@ -116947,6 +116948,7 @@ function getPasswordResetEmailHtml(code, fullName) {
           <!-- Footer -->
           <tr>
             <td style="padding:20px 0 0;text-align:center;">
+              <img src="${getAppUrl()}/logo.svg" alt="Simix" width="90" height="19" style="display:block;margin:0 auto 12px;opacity:0.7;" />
               <p style="margin:0;color:#c4c4d4;font-size:11px;">
                 \xA9 ${(/* @__PURE__ */ new Date()).getFullYear()} Simix \xB7 <a href="mailto:simixsupport@gmail.com" style="color:#7c3aed;text-decoration:none;">simixsupport@gmail.com</a>
               </p>
@@ -117087,6 +117089,7 @@ function getDepositConfirmationHtml(data) {
           <!-- Footer -->
           <tr>
             <td style="padding:20px 0 0;text-align:center;">
+              <img src="${getAppUrl()}/logo.svg" alt="Simix" width="90" height="19" style="display:block;margin:0 auto 12px;opacity:0.7;" />
               <p style="margin:0 0 4px;color:#9999b8;font-size:11px;line-height:1.7;">
                 Vous recevez cet email car vous avez effectu\xE9 un rechargement sur Simix.<br/>
                 Si vous n'\xEAtes pas \xE0 l'origine de cette op\xE9ration, contactez-nous imm\xE9diatement.
@@ -124511,6 +124514,7 @@ function buildEmailHtml(subject, body, templateType) {
           <!-- Bottom footer -->
           <tr>
             <td style="padding:16px 0 0;text-align:center;">
+              <img src="${getAppUrl()}/logo.svg" alt="Simix" width="90" height="19" style="display:block;margin:0 auto 10px;opacity:0.7;" />
               <p style="margin:0;color:#c4c4d4;font-size:11px;">\xA9 ${(/* @__PURE__ */ new Date()).getFullYear()} Simix \xB7 Fintech 100% Africaine</p>
             </td>
           </tr>
