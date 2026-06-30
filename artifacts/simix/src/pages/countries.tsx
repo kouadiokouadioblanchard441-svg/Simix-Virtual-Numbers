@@ -59,17 +59,17 @@ const REGION: Record<string, string> = {
   TG:"Afrique", TN:"Afrique", ZM:"Afrique", ZW:"Afrique",
 };
 
-type RegionTab = "Populaires" | "Europe" | "Amériques" | "Asie-Pacifique" | "Moyen-Orient" | "Afrique" | "Tous";
-const TABS: RegionTab[] = ["Populaires", "Europe", "Amériques", "Asie-Pacifique", "Moyen-Orient", "Afrique", "Tous"];
+type RegionTab = "Tous" | "Populaires" | "Europe" | "Amériques" | "Asie-Pacifique" | "Moyen-Orient" | "Afrique";
+const TABS: RegionTab[] = ["Tous", "Populaires", "Europe", "Amériques", "Asie-Pacifique", "Moyen-Orient", "Afrique"];
 
 const TAB_META: Record<RegionTab, { label: string; color: string }> = {
-  "Populaires":     { label: "★", color: "#10B981" },
+  "Tous":           { label: "🌍", color: "#7C3AED" },
+  "Populaires":     { label: "★",  color: "#10B981" },
   "Europe":         { label: "EU", color: "#3B82F6" },
   "Amériques":      { label: "AM", color: "#10B981" },
   "Asie-Pacifique": { label: "AS", color: "#8B5CF6" },
   "Moyen-Orient":   { label: "ME", color: "#F97316" },
   "Afrique":        { label: "AF", color: "#EC4899" },
-  "Tous":           { label: "...", color: "#6B7280" },
 };
 
 export default function Countries() {
@@ -89,7 +89,7 @@ function CountriesContent() {
   const serviceId = searchParams.get("serviceId") || undefined;
 
   const [search, setSearch] = useState("");
-  const [activeTab, setActiveTab] = useState<RegionTab>("Populaires");
+  const [activeTab, setActiveTab] = useState<RegionTab>("Tous");
 
   const { data: popularCountries, isLoading: loadingPopular } = useListPopularCountries({
     query: { queryKey: getListPopularCountriesQueryKey() },
