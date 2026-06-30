@@ -119854,8 +119854,16 @@ router10.post(
       }
       if (activeGateway === "clapay") {
         const { client } = clapayCtx;
+        const clapayT0 = Date.now();
         const operatorCode = await client.resolveOperatorCode(countryCode.toUpperCase(), methodSlug);
         if (!operatorCode) {
+          await db.insert(paymentRouteLogsTable).values({
+            eventType: "payment",
+            status: "error",
+            errorMessage: `Op\xE9rateur Clapay introuvable pour ${countryCode} / ${methodSlug}`,
+            metadata: { gateway: "clapay", country: countryCode, methodSlug, amountXof }
+          }).catch(() => {
+          });
           res.status(422).json({
             error: `Op\xE9rateur Mobile Money non support\xE9 via Clapay pour ce pays (${countryCode}). Essayez un autre mode de paiement.`
           });
@@ -119908,6 +119916,25 @@ router10.post(
         } catch (e2) {
           const errMsg = e2.message ?? "Erreur inconnue";
           logger.error({ error: errMsg, trackingId, userId: user.id }, "[Clapay] Payment initiation failed");
+          await db.insert(paymentRouteLogsTable).values({
+            eventType: "payment",
+            status: "error",
+            transactionId: externalDepositId,
+            responseTimeMs: Date.now() - clapayT0,
+            errorMessage: errMsg,
+            metadata: {
+              gateway: "clapay",
+              country: countryCode,
+              methodSlug,
+              operatorCode,
+              amountLocal: localAmount,
+              amountXof,
+              phone: `${dialCode ?? ""}${phoneNumber}`,
+              trackingId,
+              routingSource
+            }
+          }).catch(() => {
+          });
           const isClapayApiError = /^Clapay\s+\d+/.test(errMsg);
           if (isClapayApiError) {
             await db.update(transactionsTable).set({ status: "failed" }).where(eq(transactionsTable.id, pendingTx.id));
@@ -119926,6 +119953,27 @@ router10.post(
           { trackingId, userId: user.id, amount: localAmount, amountXof, operatorCode, signature: clapayRes.signature, currency: clapayRes.currency },
           "[Clapay] Payment initiated"
         );
+        await db.insert(paymentRouteLogsTable).values({
+          eventType: "payment",
+          status: "success",
+          transactionId: externalDepositId,
+          responseTimeMs: Date.now() - clapayT0,
+          metadata: {
+            gateway: "clapay",
+            country: countryCode,
+            methodSlug,
+            operatorCode,
+            amountLocal: localAmount,
+            amountXof,
+            phone: `${dialCode ?? ""}${phoneNumber}`,
+            trackingId,
+            signature: clapayRes.signature,
+            payment_url: clapayRes.payment_url ?? null,
+            currency: clapayRes.currency,
+            routingSource
+          }
+        }).catch(() => {
+        });
         const gatewayMeta = serializeClapayMeta({
           clapaySignature: clapayRes.signature,
           clapayCurrency: clapayRes.currency,

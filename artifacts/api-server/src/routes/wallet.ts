@@ -10,6 +10,7 @@ import {
   systemSettingsTable,
   currenciesTable,
   fxProfitsTable,
+  paymentRouteLogsTable,
 } from "@workspace/db";
 import { RechargeWalletBody } from "@workspace/api-zod";
 import { requireAuth } from "../lib/auth";
@@ -426,8 +427,14 @@ router.post(
         /* Resolve operator code: try dynamic API lookup first, fall back to hardcoded map.
          * Dynamic resolution calls GET /nowallet/api/opérateurs/données?pays=CC to get
          * the exact codeoperator for this country, avoiding hardcoding mismatches. */
+        const clapayT0 = Date.now();
         const operatorCode = await client.resolveOperatorCode(countryCode.toUpperCase(), methodSlug);
         if (!operatorCode) {
+          await db.insert(paymentRouteLogsTable).values({
+            eventType: "payment", status: "error",
+            errorMessage: `Opérateur Clapay introuvable pour ${countryCode} / ${methodSlug}`,
+            metadata: { gateway: "clapay", country: countryCode, methodSlug, amountXof },
+          }).catch(() => {});
           res.status(422).json({
             error: `Opérateur Mobile Money non supporté via Clapay pour ce pays (${countryCode}). Essayez un autre mode de paiement.`,
           });
@@ -484,6 +491,25 @@ router.post(
           const errMsg = (e as Error).message ?? "Erreur inconnue";
           logger.error({ error: errMsg, trackingId, userId: user.id }, "[Clapay] Payment initiation failed");
 
+          /* Log failed attempt */
+          await db.insert(paymentRouteLogsTable).values({
+            eventType: "payment", status: "error",
+            transactionId: externalDepositId,
+            responseTimeMs: Date.now() - clapayT0,
+            errorMessage: errMsg,
+            metadata: {
+              gateway: "clapay",
+              country: countryCode,
+              methodSlug,
+              operatorCode,
+              amountLocal: localAmount,
+              amountXof,
+              phone: `${dialCode ?? ""}${phoneNumber}`,
+              trackingId,
+              routingSource,
+            },
+          }).catch(() => {});
+
           /* Distinguish API rejection (Clapay returned 4xx/5xx) vs true network error.
            * The ClapayClient throws errors prefixed "Clapay {status}: ..." for API errors.
            * API rejections mean the payment never started → mark transaction as failed.
@@ -506,6 +532,27 @@ router.post(
           { trackingId, userId: user.id, amount: localAmount, amountXof, operatorCode, signature: clapayRes.signature, currency: clapayRes.currency },
           "[Clapay] Payment initiated",
         );
+
+        /* Log successful initiation */
+        await db.insert(paymentRouteLogsTable).values({
+          eventType: "payment", status: "success",
+          transactionId: externalDepositId,
+          responseTimeMs: Date.now() - clapayT0,
+          metadata: {
+            gateway: "clapay",
+            country: countryCode,
+            methodSlug,
+            operatorCode,
+            amountLocal: localAmount,
+            amountXof,
+            phone: `${dialCode ?? ""}${phoneNumber}`,
+            trackingId,
+            signature: clapayRes.signature,
+            payment_url: clapayRes.payment_url ?? null,
+            currency: clapayRes.currency,
+            routingSource,
+          },
+        }).catch(() => {});
 
         /* Store Clapay signature in gateway_meta — required for official reconciliation
          * endpoint GET /nowallet/api/check/transactions/single/signature/:sig */

@@ -49,6 +49,7 @@ interface RouteLog {
   id: string; eventType: string; status: string; responseTimeMs: number | null;
   errorMessage: string | null; adminId: string | null; createdAt: string;
   metadata: Record<string, unknown> | null; gatewayId: string | null;
+  transactionId: string | null;
 }
 
 /* ─── Toast ─────────────────────────────────────────────── */
@@ -990,32 +991,99 @@ function OperatorsSection({ toast }: { toast: ReturnType<typeof useToast> }) {
 /* ═══════════════════════════════════════════════════════════════
    SECTION 4 — LOGS
    ═══════════════════════════════════════════════════════════════ */
+
+/* Metadata badge shown inline for payment events */
+function PaymentMetaBadges({ meta }: { meta: Record<string, unknown> }) {
+  const gateway = meta.gateway as string | undefined;
+  const country = meta.country as string | undefined;
+  const op = meta.operatorCode as string | undefined;
+  const amtXof = meta.amountXof as number | undefined;
+  const amtLocal = meta.amountLocal as number | undefined;
+  const currency = meta.currency as string | undefined;
+  const phone = meta.phone as string | undefined;
+  const sig = meta.signature as string | undefined;
+  const payUrl = meta.payment_url as string | undefined;
+  const routeSrc = meta.routingSource as string | undefined;
+
+  return (
+    <div className="flex flex-wrap gap-1.5 mt-1.5">
+      {gateway && (
+        <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${gateway === "clapay" ? "bg-violet-500/15 text-violet-300" : "bg-blue-500/15 text-blue-300"}`}>
+          {gateway === "clapay" ? "Clapay" : "PawaPay"}
+        </span>
+      )}
+      {country && <span className="text-[10px] px-1.5 py-0.5 rounded bg-zinc-700/50 text-zinc-300">{country}</span>}
+      {op && <span className="text-[10px] px-1.5 py-0.5 rounded bg-zinc-700/50 text-zinc-300 font-mono">{op}</span>}
+      {amtXof != null && (
+        <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 font-medium">
+          {amtLocal != null && currency && currency !== "XOF" ? `${amtLocal.toLocaleString("fr-FR")} ${currency} → ` : ""}
+          {amtXof.toLocaleString("fr-FR")} XOF
+        </span>
+      )}
+      {phone && <span className="text-[10px] px-1.5 py-0.5 rounded bg-zinc-700/50 text-zinc-400 font-mono">{phone}</span>}
+      {routeSrc === "dynamic" && <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400">routage DB</span>}
+      {sig && (
+        <span className="text-[10px] px-1.5 py-0.5 rounded bg-zinc-700/50 text-zinc-500 font-mono" title={sig}>
+          sig: {sig.slice(0, 12)}…
+        </span>
+      )}
+      {payUrl && (
+        <a href={payUrl} target="_blank" rel="noopener noreferrer"
+          className="text-[10px] px-1.5 py-0.5 rounded bg-violet-500/10 text-violet-400 underline underline-offset-2">
+          Page paiement ↗
+        </a>
+      )}
+    </div>
+  );
+}
+
 function LogsSection() {
   const [logs, setLogs] = useState<RouteLog[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [filterType, setFilterType] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
+  const [filterGateway, setFilterGateway] = useState("");
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+
+  const toggleExpand = (id: string) =>
+    setExpanded(prev => { const s = new Set(prev); s.has(id) ? s.delete(id) : s.add(id); return s; });
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const params = new URLSearchParams({ limit: "100" });
+      const params = new URLSearchParams({ limit: "200" });
       if (filterType) params.set("eventType", filterType);
       if (filterStatus) params.set("status", filterStatus);
       const r = await apiFetch(`${BASE()}/admin/payment-routing/logs?${params}`, { headers: H() });
       const d = await r.json();
-      setLogs(d.logs ?? []);
+      let rows: RouteLog[] = d.logs ?? [];
+      /* client-side gateway filter on metadata.gateway */
+      if (filterGateway) rows = rows.filter(l => (l.metadata as Record<string, unknown> | null)?.gateway === filterGateway);
+      setLogs(rows);
       setTotal(d.total ?? 0);
     } finally { setLoading(false); }
-  }, [filterType, filterStatus]);
+  }, [filterType, filterStatus, filterGateway]);
 
   useEffect(() => { void load(); }, [load]);
+
+  /* Auto-refresh every 15 s when "payment" filter is active */
+  useEffect(() => {
+    if (filterType !== "payment") return;
+    const id = setInterval(() => { void load(); }, 15_000);
+    return () => clearInterval(id);
+  }, [filterType, load]);
 
   const EVENT_COLORS: Record<string, string> = {
     payment: "text-blue-400", test: "text-violet-400", route_created: "text-emerald-400",
     route_updated: "text-amber-400", gateway_switch: "text-orange-400",
     maintenance_on: "text-red-400", maintenance_off: "text-emerald-400",
+  };
+
+  const EVENT_LABELS: Record<string, string> = {
+    payment: "paiement", test: "test API", route_created: "route créée",
+    route_updated: "route modifiée", gateway_switch: "bascule",
+    maintenance_on: "maintenance ON", maintenance_off: "maintenance OFF",
   };
 
   return (
@@ -1031,14 +1099,22 @@ function LogsSection() {
           <option value="maintenance_on">Maintenance ON</option>
           <option value="maintenance_off">Maintenance OFF</option>
         </select>
+        <select value={filterGateway} onChange={e => setFilterGateway(e.target.value)} className="bg-zinc-800/60 border border-zinc-700/60 rounded-xl px-3 py-2 text-sm text-white focus:outline-none">
+          <option value="">Toutes les passerelles</option>
+          <option value="clapay">Clapay</option>
+          <option value="pawapay">PawaPay</option>
+        </select>
         <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} className="bg-zinc-800/60 border border-zinc-700/60 rounded-xl px-3 py-2 text-sm text-white focus:outline-none">
           <option value="">Tous les statuts</option>
           <option value="success">Succès</option>
           <option value="error">Erreur</option>
           <option value="timeout">Timeout</option>
         </select>
-        <button onClick={load} className="p-2 text-zinc-500 hover:text-white transition-colors"><RefreshCw className="w-4 h-4" /></button>
-        <span className="ml-auto text-xs text-zinc-500">{total} événements</span>
+        <button onClick={load} className="p-2 text-zinc-500 hover:text-white transition-colors" title="Rafraîchir">
+          <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin text-violet-400" : ""}`} />
+        </button>
+        <span className="ml-auto text-xs text-zinc-500">{logs.length} / {total} événements</span>
+        {filterType === "payment" && <span className="text-[10px] text-zinc-600 animate-pulse">↻ auto-refresh 15s</span>}
       </div>
 
       {loading ? (
@@ -1049,22 +1125,62 @@ function LogsSection() {
             <div className="text-center py-12 text-zinc-500">Aucun journal pour ces filtres</div>
           ) : (
             <div className="divide-y divide-zinc-800/40">
-              {logs.map(log => (
-                <div key={log.id} className="flex items-start gap-3 px-4 py-3 hover:bg-zinc-800/20 transition-colors">
-                  <div className={`w-2 h-2 rounded-full mt-1.5 flex-shrink-0 ${log.status === "success" ? "bg-emerald-400" : log.status === "timeout" ? "bg-amber-400" : "bg-red-400"}`} />
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className={`text-xs font-bold ${EVENT_COLORS[log.eventType] ?? "text-zinc-400"}`}>{log.eventType}</span>
-                      <span className={`text-[10px] px-1.5 py-0.5 rounded ${log.status === "success" ? "bg-emerald-500/15 text-emerald-400" : log.status === "timeout" ? "bg-amber-500/15 text-amber-400" : "bg-red-500/15 text-red-400"}`}>{log.status}</span>
-                      {log.responseTimeMs != null && <span className="text-[10px] text-zinc-600">{log.responseTimeMs}ms</span>}
+              {logs.map(log => {
+                const meta = (log.metadata ?? {}) as Record<string, unknown>;
+                const isPayment = log.eventType === "payment";
+                const isOpen = expanded.has(log.id);
+                return (
+                  <div key={log.id}
+                    className={`px-4 py-3 transition-colors ${isPayment ? "cursor-pointer hover:bg-zinc-800/30" : "hover:bg-zinc-800/20"}`}
+                    onClick={isPayment ? () => toggleExpand(log.id) : undefined}>
+                    <div className="flex items-start gap-3">
+                      <div className={`w-2 h-2 rounded-full mt-1.5 flex-shrink-0 ${log.status === "success" ? "bg-emerald-400" : log.status === "timeout" ? "bg-amber-400" : "bg-red-400"}`} />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className={`text-xs font-bold ${EVENT_COLORS[log.eventType] ?? "text-zinc-400"}`}>
+                            {EVENT_LABELS[log.eventType] ?? log.eventType}
+                          </span>
+                          <span className={`text-[10px] px-1.5 py-0.5 rounded ${log.status === "success" ? "bg-emerald-500/15 text-emerald-400" : log.status === "timeout" ? "bg-amber-500/15 text-amber-400" : "bg-red-500/15 text-red-400"}`}>
+                            {log.status}
+                          </span>
+                          {log.responseTimeMs != null && <span className="text-[10px] text-zinc-600">{log.responseTimeMs}ms</span>}
+                          {log.transactionId && <span className="text-[10px] text-zinc-600 font-mono truncate max-w-[120px]" title={log.transactionId}>{log.transactionId}</span>}
+                          {isPayment && <span className="text-[10px] text-zinc-600 ml-auto">{isOpen ? "▲" : "▼"}</span>}
+                        </div>
+
+                        {/* Inline payment summary */}
+                        {isPayment && Object.keys(meta).length > 0 && (
+                          <PaymentMetaBadges meta={meta} />
+                        )}
+
+                        {log.errorMessage && <p className="text-xs text-red-400/70 mt-1">{log.errorMessage}</p>}
+
+                        {/* Expanded raw metadata */}
+                        {isOpen && (
+                          <div className="mt-2 rounded-lg bg-zinc-900/60 border border-zinc-700/40 p-3">
+                            <p className="text-[10px] text-zinc-500 mb-1.5 font-medium uppercase tracking-wide">Détails Clapay</p>
+                            <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+                              {Object.entries(meta).map(([k, v]) => (
+                                <div key={k} className="contents">
+                                  <span className="text-[10px] text-zinc-500 font-mono">{k}</span>
+                                  <span className="text-[10px] text-zinc-300 font-mono break-all">
+                                    {k === "payment_url" && typeof v === "string"
+                                      ? <a href={v} target="_blank" rel="noopener noreferrer" className="text-violet-400 underline underline-offset-2" onClick={e => e.stopPropagation()}>ouvrir ↗</a>
+                                      : String(v ?? "—")}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                      <time className="text-[10px] text-zinc-600 flex-shrink-0 mt-0.5">
+                        {new Date(log.createdAt).toLocaleString("fr-FR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+                      </time>
                     </div>
-                    {log.errorMessage && <p className="text-xs text-red-400/70 mt-0.5">{log.errorMessage}</p>}
                   </div>
-                  <time className="text-[10px] text-zinc-600 flex-shrink-0">
-                    {new Date(log.createdAt).toLocaleString("fr-FR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}
-                  </time>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </Card>
