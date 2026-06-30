@@ -28,18 +28,25 @@
   ],
   "screenshots": [
     {
-      "src": "/assets/screen-dashboard-BOnC17fn.png",
+      "src": "/screenshots/screen-dashboard.png",
       "sizes": "390x844",
       "type": "image/png",
       "form_factor": "narrow",
       "label": "Tableau de bord SIMIX"
     },
     {
-      "src": "/assets/screen-wallet-R3e24bqY.png",
+      "src": "/screenshots/screen-wallet.png",
       "sizes": "390x844",
       "type": "image/png",
       "form_factor": "narrow",
       "label": "Portefeuille SIMIX"
+    },
+    {
+      "src": "/screenshots/screen-countries.png",
+      "sizes": "390x844",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Choisir un pays SIMIX"
     }
   ],
   "shortcuts": [

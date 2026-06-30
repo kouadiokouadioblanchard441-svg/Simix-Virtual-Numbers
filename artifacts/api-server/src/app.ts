@@ -156,12 +156,14 @@ app.use((req, res, next) => {
 
   if (url === "/sw.js" || url === "/sw.ts") {
     res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+    res.setHeader("Content-Type", "application/javascript; charset=utf-8");
     res.setHeader("Service-Worker-Allowed", "/");
+    res.setHeader("X-Content-Type-Options", "nosniff");
     return next();
   }
   if (url === "/manifest.webmanifest" || url === "/manifest.json") {
-    res.setHeader("Cache-Control", "public, max-age=86400");
-    res.setHeader("Content-Type", "application/manifest+json");
+    res.setHeader("Cache-Control", "no-cache, must-revalidate");
+    res.setHeader("Content-Type", "application/manifest+json; charset=utf-8");
     return next();
   }
   if (url.startsWith("/assets/")) {
@@ -175,6 +177,11 @@ app.use((req, res, next) => {
   }
   if (url.startsWith("/icons/")) {
     res.setHeader("Cache-Control", "public, max-age=2592000");
+    return next();
+  }
+  if (url.startsWith("/screenshots/")) {
+    res.setHeader("Cache-Control", "public, max-age=2592000");
+    res.setHeader("Content-Type", "image/png");
     return next();
   }
   next();
@@ -321,7 +328,7 @@ app.use((err: unknown, _req: express.Request, res: express.Response, _next: expr
 });
 
 /* ── Production: serve compiled React frontend + SPA fallback ── */
-if (process.env.NODE_ENV === "production") {
+if (process.env.NODE_ENV !== "development") {
   const currentDir = (globalThis as { __dirname?: string }).__dirname;
   if (currentDir) {
     const publicDir = path.join(currentDir, "public");

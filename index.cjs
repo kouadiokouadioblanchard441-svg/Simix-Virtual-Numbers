@@ -128284,12 +128284,14 @@ app.use((req, res, next) => {
   const url2 = req.path;
   if (url2 === "/sw.js" || url2 === "/sw.ts") {
     res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+    res.setHeader("Content-Type", "application/javascript; charset=utf-8");
     res.setHeader("Service-Worker-Allowed", "/");
+    res.setHeader("X-Content-Type-Options", "nosniff");
     return next();
   }
   if (url2 === "/manifest.webmanifest" || url2 === "/manifest.json") {
-    res.setHeader("Cache-Control", "public, max-age=86400");
-    res.setHeader("Content-Type", "application/manifest+json");
+    res.setHeader("Cache-Control", "no-cache, must-revalidate");
+    res.setHeader("Content-Type", "application/manifest+json; charset=utf-8");
     return next();
   }
   if (url2.startsWith("/assets/")) {
@@ -128303,6 +128305,11 @@ app.use((req, res, next) => {
   }
   if (url2.startsWith("/icons/")) {
     res.setHeader("Cache-Control", "public, max-age=2592000");
+    return next();
+  }
+  if (url2.startsWith("/screenshots/")) {
+    res.setHeader("Cache-Control", "public, max-age=2592000");
+    res.setHeader("Content-Type", "image/png");
     return next();
   }
   next();
@@ -128503,7 +128510,7 @@ app.use((err, _req, res, _next) => {
     res.status(status).json({ error: message });
   }
 });
-if (process.env.NODE_ENV === "production") {
+if (process.env.NODE_ENV !== "development") {
   const currentDir = globalThis.__dirname;
   if (currentDir) {
     const publicDir = import_path2.default.join(currentDir, "public");
