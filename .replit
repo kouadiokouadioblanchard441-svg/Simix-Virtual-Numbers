@@ -39,7 +39,7 @@ channel = "stable-25_05"
 [userenv.shared]
 NODE_ENV = "production"
 LOG_LEVEL = "info"
-MOBILE_MONEY_GATEWAY = "pawapay"
+MOBILE_MONEY_GATEWAY = "auto_clapay_first"
 PAWAPAY_ENV = "production"
 PORT = "5000"
 VAPID_PUBLIC_KEY = "BPy-4QOhhUbnX3apfyA2LBL8YohvcFVV-av01mEzhI9tzfJBjzXX1Eu5UREKtOnd6W37HGZrOFwmlbYIttLATgc"
