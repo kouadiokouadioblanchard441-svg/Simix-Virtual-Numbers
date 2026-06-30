@@ -1,4 +1,4 @@
-modules = ["nodejs-20", "web", "bash", "postgresql-16"]
+modules = ["nodejs-20", "web", "bash"]
 
 [deployment]
 router = "application"
@@ -24,13 +24,13 @@ args = "Start application"
 name = "Start application"
 author = "agent"
 
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "cd artifacts/simix && PORT=5000 pnpm run dev"
-waitForPort = 5000
-
 [workflows.workflow.metadata]
 outputType = "webview"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "node startup.js"
+waitForPort = 5000
 
 [agent]
 stack = "BEST_EFFORT_FALLBACK"
@@ -48,10 +48,6 @@ externalPort = 3000
 [[ports]]
 localPort = 5000
 externalPort = 80
-
-[[ports]]
-localPort = 8080
-externalPort = 8080
 
 [[ports]]
 localPort = 8081
@@ -75,7 +71,7 @@ PORT = "5000"
 VAPID_PUBLIC_KEY = "BPy-4QOhhUbnX3apfyA2LBL8YohvcFVV-av01mEzhI9tzfJBjzXX1Eu5UREKtOnd6W37HGZrOFwmlbYIttLATgc"
 VAPID_PRIVATE_KEY = "ZTms399zzZmgctCuW81L9ZYCAG0qFu9DcwJEFh1JVrQ"
 VAPID_SUBJECT = "mailto:support@simix.site"
-APP_URL = "https://35fabf2d-0b77-43c9-8e31-26449c250a58-00-293gin9zyascy.riker.replit.dev"
+APP_URL = "https://5bff136c-16f2-44a8-882a-5d32f9923330-00-2q0yq614ryai3.picard.replit.dev"
 
 [userenv.production]
 
