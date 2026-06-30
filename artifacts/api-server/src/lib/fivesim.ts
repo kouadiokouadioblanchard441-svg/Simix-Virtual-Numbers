@@ -161,9 +161,10 @@ export class FiveSimClient {
     method: "GET" | "POST" = "GET",
     auth = true,
     body?: unknown,
+    timeoutMs = DEFAULT_TIMEOUT_MS,
   ): Promise<T> {
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), DEFAULT_TIMEOUT_MS);
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
 
     const headers: Record<string, string> = { Accept: "application/json" };
     if (auth) headers["Authorization"] = `Bearer ${this.apiKey}`;
@@ -336,6 +337,15 @@ export class FiveSimClient {
     if (product) params.product = product;
     const qs = Object.keys(params).length ? "?" + new URLSearchParams(params).toString() : "";
     return this.request<FiveSimPricesResponse>(`/guest/prices${qs}`, "GET", false);
+  }
+
+  /**
+   * Récupère TOUS les prix (tous pays × tous services × tous opérateurs) en un seul appel.
+   * Utilisé par la sync complète pour éviter 138+ appels séquentiels.
+   * Timeout étendu à 90s car la réponse est volumineuse.
+   */
+  async getPricesAll(): Promise<FiveSimPricesResponse> {
+    return this.request<FiveSimPricesResponse>("/guest/prices", "GET", false, undefined, 90_000);
   }
 
   /**

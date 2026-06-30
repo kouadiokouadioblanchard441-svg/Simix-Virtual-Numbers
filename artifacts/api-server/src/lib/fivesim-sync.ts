@@ -609,44 +609,108 @@ export async function syncFiveSimProducts(triggeredBy: "scheduler" | "admin" = "
     const client = new FiveSimClient(provider.apiKey);
     const markup  = provider.markup;
 
-    /* ── 1. Collect products across all sample countries ── */
+    /* ── 1. Collect products — single bulk call to /guest/prices ──────────────────
+     *
+     * A single GET /guest/prices returns ALL countries × ALL services × operators.
+     * This replaces 138+ sequential per-country API calls and covers the full 5sim
+     * catalogue automatically — including countries added after the last deploy.
+     *
+     * Fallback: if the bulk call fails (timeout, 5sim outage), we fall back to the
+     * original per-country loop over SAMPLE_COUNTRIES.
+     * ─────────────────────────────────────────────────────────────────────────── */
     const merged: Record<string, { category: string; qty: number; price: number }> = {};
-    /* Per-country per-product availability cache rows */
     const availRows: Array<{ serviceSlug: string; countryCode: string; available: number; providerPriceFcfa: number }> = [];
 
-    for (const country of SAMPLE_COUNTRIES) {
-      const isoCode = FIVESIM_TO_ISO[country]?.toUpperCase();
-      try {
-        const products: FiveSimProductsResponse = await client.getProducts(country, "any");
-        for (const [name, info] of Object.entries(products)) {
-          if (!info) continue;
-          const existing = merged[name];
-          if (!existing || info.Price < existing.price) {
-            merged[name] = {
-              category: info.Category ?? "Autre",
-              qty:   Math.max(existing?.qty ?? 0, info.Qty),
-              price: info.Price,
+    let usedBulkPrices = false;
+    try {
+      logger.info("[5sim-sync] Fetching all prices via /guest/prices (bulk mode)");
+      const allPrices = await client.getPricesAll();
+      usedBulkPrices = true;
+
+      for (const [countrySlug, productMap] of Object.entries(allPrices)) {
+        if (!productMap || typeof productMap !== "object") continue;
+        const isoCode = FIVESIM_TO_ISO[countrySlug]?.toUpperCase();
+
+        for (const [productName, operatorMap] of Object.entries(productMap)) {
+          if (!operatorMap || typeof operatorMap !== "object") continue;
+
+          /* Aggregate across operators: sum qty, use minimum cost */
+          let totalQty = 0;
+          let minCost  = Infinity;
+          for (const op of Object.values(operatorMap)) {
+            if (!op || typeof op !== "object") continue;
+            const opData = op as { cost?: number; count?: number };
+            totalQty += opData.count ?? 0;
+            if ((opData.cost ?? Infinity) < minCost) minCost = opData.cost ?? Infinity;
+          }
+          if (minCost === Infinity) minCost = 0;
+
+          /* Update global service catalogue (cheapest price, max qty) */
+          const existing = merged[productName];
+          if (!existing || minCost < existing.price) {
+            merged[productName] = {
+              category: "Autre",
+              qty:      Math.max(existing?.qty ?? 0, totalQty),
+              price:    minCost,
             };
           } else {
-            merged[name].qty = Math.max(merged[name].qty, info.Qty);
+            merged[productName].qty = Math.max(merged[productName].qty, totalQty);
           }
-          /* Store per-country availability if we have a valid ISO code */
-          if (isoCode && info.Qty > 0) {
+
+          /* Per-country availability cache — only store when we have an ISO mapping */
+          if (isoCode && totalQty > 0) {
             availRows.push({
-              serviceSlug:      name.toLowerCase(),
-              countryCode:      isoCode,
-              available:        info.Qty,
-              providerPriceFcfa: Math.round(info.Price * 655),
+              serviceSlug:       productName.toLowerCase(),
+              countryCode:       isoCode,
+              available:         totalQty,
+              providerPriceFcfa: Math.round(minCost * 655),
             });
           }
         }
-      } catch (e) {
-        const msg = `Pays "${country}": ${(e as Error).message}`;
-        errors.push(msg);
-        countryErrors++;
-        logger.warn({ country, err: (e as Error).message }, "[5sim-sync] Skipping country");
+      }
+      logger.info(
+        { countries: Object.keys(allPrices).length, services: Object.keys(merged).length, availRows: availRows.length },
+        "[5sim-sync] Bulk prices processed",
+      );
+    } catch (bulkErr) {
+      /* ── Fallback: per-country fetch using SAMPLE_COUNTRIES ── */
+      logger.warn({ err: (bulkErr as Error).message }, "[5sim-sync] Bulk /guest/prices failed — falling back to per-country fetch");
+
+      for (const country of SAMPLE_COUNTRIES) {
+        const isoCode = FIVESIM_TO_ISO[country]?.toUpperCase();
+        try {
+          const products: FiveSimProductsResponse = await client.getProducts(country, "any");
+          for (const [name, info] of Object.entries(products)) {
+            if (!info) continue;
+            const existing = merged[name];
+            if (!existing || info.Price < existing.price) {
+              merged[name] = {
+                category: info.Category ?? "Autre",
+                qty:      Math.max(existing?.qty ?? 0, info.Qty),
+                price:    info.Price,
+              };
+            } else {
+              merged[name].qty = Math.max(merged[name].qty, info.Qty);
+            }
+            if (isoCode && info.Qty > 0) {
+              availRows.push({
+                serviceSlug:       name.toLowerCase(),
+                countryCode:       isoCode,
+                available:         info.Qty,
+                providerPriceFcfa: Math.round(info.Price * 655),
+              });
+            }
+          }
+        } catch (e) {
+          const msg = `Pays "${country}": ${(e as Error).message}`;
+          errors.push(msg);
+          countryErrors++;
+          logger.warn({ country, err: (e as Error).message }, "[5sim-sync] Skipping country");
+        }
       }
     }
+
+    logger.info({ usedBulkPrices, services: Object.keys(merged).length }, "[5sim-sync] Collection phase complete");
 
     /* ── 1b. Upsert per-country availability cache (batched, non-blocking) ── */
     if (availRows.length > 0) {
