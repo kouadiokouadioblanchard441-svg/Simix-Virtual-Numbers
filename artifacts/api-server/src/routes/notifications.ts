@@ -12,7 +12,7 @@ import { eq, and, desc, or, isNull, count, not, inArray } from "drizzle-orm";
 import { db, notificationsTable, notificationReadsTable } from "@workspace/db";
 import { requireAuth } from "../lib/auth";
 import { logger } from "../lib/logger";
-import { sendPushToUser } from "../lib/push";
+import { sendPushToUser, sendPushToAll } from "../lib/push";
 
 const router: IRouter = Router();
 
@@ -50,8 +50,14 @@ export function broadcastNotification(
     } catch { /* client disconnected */ }
   }
 
-  if (notification.userId) {
-    const url = "link" in notification && notification.link ? notification.link : "/dashboard";
+  const url = "link" in notification && notification.link ? notification.link : "/dashboard";
+  if (isGlobal) {
+    void sendPushToAll({
+      title: notification.title,
+      body:  notification.body,
+      url,
+    });
+  } else if (notification.userId) {
     void sendPushToUser(notification.userId, {
       title: notification.title,
       body:  notification.body,

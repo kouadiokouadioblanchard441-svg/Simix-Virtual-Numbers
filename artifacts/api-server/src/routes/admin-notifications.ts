@@ -7,9 +7,10 @@
  */
 import { Router, type IRouter, type Request, type Response } from "express";
 import { eq, desc, count, and, isNull } from "drizzle-orm";
-import { db, notificationsTable, usersTable } from "@workspace/db";
+import { db, notificationsTable, usersTable, pushSubscriptionsTable } from "@workspace/db";
 import { requireAdminJwt } from "../lib/admin-jwt-middleware";
 import { broadcastNotification } from "./notifications";
+import { sendPushToUser, sendPushToAll } from "../lib/push";
 import { logger } from "../lib/logger";
 
 const router: IRouter = Router();
@@ -125,6 +126,64 @@ router.delete("/admin/notifications/:id", requireAdmin, async (req: Request, res
   const { id } = req.params;
   await db.delete(notificationsTable).where(eq(notificationsTable.id, id));
   res.json({ success: true });
+});
+
+/* ── POST /admin/push/test ───────────────────────────────
+ * Envoie une notification push de test.
+ * Body: { userId?: string }  — si userId absent → broadcast à tous  */
+router.post("/admin/push/test", requireAdmin, async (req: Request, res: Response): Promise<void> => {
+  const { userId } = req.body as { userId?: string };
+
+  const subCount = await db.select().from(pushSubscriptionsTable);
+
+  if (subCount.length === 0) {
+    res.status(200).json({
+      success: false,
+      message: "Aucun abonnement push enregistré en base de données. Activez d'abord les notifications dans l'application.",
+      subscriptions: 0,
+    });
+    return;
+  }
+
+  const payload = {
+    title: "🔔 Test Simix",
+    body: "Les notifications push fonctionnent correctement !",
+    url: "/dashboard",
+  };
+
+  if (userId) {
+    const userSubs = subCount.filter(s => s.userId === userId);
+    if (userSubs.length === 0) {
+      res.status(200).json({
+        success: false,
+        message: `Aucun abonnement push pour l'utilisateur ${userId}.`,
+        subscriptions: 0,
+      });
+      return;
+    }
+    await sendPushToUser(userId, payload);
+    logger.info({ userId }, "[admin-push] Test push sent to user");
+    res.json({ success: true, message: `Notification test envoyée à l'utilisateur ${userId}.`, subscriptions: userSubs.length });
+  } else {
+    await sendPushToAll(payload);
+    logger.info({ count: subCount.length }, "[admin-push] Test push broadcast to all");
+    res.json({ success: true, message: `Notification test broadcastée à ${subCount.length} abonnement(s).`, subscriptions: subCount.length });
+  }
+});
+
+/* ── GET /admin/push/subscriptions ──────────────────────
+ * Retourne le nombre d'abonnements push actifs             */
+router.get("/admin/push/subscriptions", requireAdmin, async (_req: Request, res: Response): Promise<void> => {
+  const subs = await db.select().from(pushSubscriptionsTable);
+  const byUser: Record<string, number> = {};
+  for (const sub of subs) {
+    byUser[sub.userId] = (byUser[sub.userId] ?? 0) + 1;
+  }
+  res.json({
+    total: subs.length,
+    uniqueUsers: Object.keys(byUser).length,
+    byUser,
+  });
 });
 
 export default router;

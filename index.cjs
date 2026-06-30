@@ -34398,10 +34398,10 @@ var init_subquery = __esm({
     init_entity();
     Subquery = class {
       static [entityKind] = "Subquery";
-      constructor(sql5, fields, alias, isWith = false, usedTables = []) {
+      constructor(sql6, fields, alias, isWith = false, usedTables = []) {
         this._ = {
           brand: "Subquery",
-          sql: sql5,
+          sql: sql6,
           selectedFields: fields,
           alias,
           isWith,
@@ -41121,10 +41121,10 @@ var init_raw = __esm({
     init_entity();
     init_query_promise();
     PgRaw = class extends QueryPromise {
-      constructor(execute, sql5, query, mapBatchResult) {
+      constructor(execute, sql6, query, mapBatchResult) {
         super();
         this.execute = execute;
-        this.sql = sql5;
+        this.sql = sql6;
         this.query = query;
         this.mapBatchResult = mapBatchResult;
       }
@@ -41444,8 +41444,8 @@ var init_db = __esm({
 });
 
 // ../../node_modules/.pnpm/drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0/node_modules/drizzle-orm/cache/core/cache.js
-async function hashQuery(sql5, params) {
-  const dataToHash = `${sql5}-${JSON.stringify(params)}`;
+async function hashQuery(sql6, params) {
+  const dataToHash = `${sql6}-${JSON.stringify(params)}`;
   const encoder = new TextEncoder();
   const data = encoder.encode(dataToHash);
   const hashBuffer = await crypto.subtle.digest("SHA-256", data);
@@ -117937,6 +117937,17 @@ async function sendPushToUser(userId, payload) {
   if (!ok) return;
   const subs = await db.select().from(pushSubscriptionsTable).where(eq(pushSubscriptionsTable.userId, userId));
   if (subs.length === 0) return;
+  await _dispatchPush(subs, payload, userId);
+}
+async function sendPushToAll(payload) {
+  const ok = await configurePush();
+  if (!ok) return;
+  const subs = await db.select().from(pushSubscriptionsTable);
+  if (subs.length === 0) return;
+  logger.info({ count: subs.length }, "[push] Broadcasting to all subscribers");
+  await _dispatchPush(subs, payload, void 0);
+}
+async function _dispatchPush(subs, payload, userId) {
   const json2 = JSON.stringify({
     title: payload.title,
     body: payload.body,
@@ -117957,7 +117968,7 @@ async function sendPushToUser(userId, payload) {
         if (status === 410 || status === 404) {
           stale.push(sub.endpoint);
         } else {
-          logger.warn({ err, userId, endpoint: sub.endpoint }, "[push] Send failed");
+          logger.warn({ err, userId: userId ?? "all", endpoint: sub.endpoint }, "[push] Send failed");
         }
       }
     })
@@ -117968,7 +117979,7 @@ async function sendPushToUser(userId, payload) {
         (endpoint) => db.delete(pushSubscriptionsTable).where(eq(pushSubscriptionsTable.endpoint, endpoint))
       )
     );
-    logger.info({ count: stale.length, userId }, "[push] Stale subscriptions removed");
+    logger.info({ count: stale.length }, "[push] Stale subscriptions removed");
   }
 }
 
@@ -117989,8 +118000,14 @@ function broadcastNotification(notification) {
     } catch {
     }
   }
-  if (notification.userId) {
-    const url2 = "link" in notification && notification.link ? notification.link : "/dashboard";
+  const url2 = "link" in notification && notification.link ? notification.link : "/dashboard";
+  if (isGlobal) {
+    void sendPushToAll({
+      title: notification.title,
+      body: notification.body,
+      url: url2
+    });
+  } else if (notification.userId) {
     void sendPushToUser(notification.userId, {
       title: notification.title,
       body: notification.body,
@@ -124514,6 +124531,53 @@ router16.delete("/admin/notifications/:id", requireAdmin4, async (req, res) => {
   const { id } = req.params;
   await db.delete(notificationsTable).where(eq(notificationsTable.id, id));
   res.json({ success: true });
+});
+router16.post("/admin/push/test", requireAdmin4, async (req, res) => {
+  const { userId } = req.body;
+  const subCount = await db.select().from(pushSubscriptionsTable);
+  if (subCount.length === 0) {
+    res.status(200).json({
+      success: false,
+      message: "Aucun abonnement push enregistr\xE9 en base de donn\xE9es. Activez d'abord les notifications dans l'application.",
+      subscriptions: 0
+    });
+    return;
+  }
+  const payload = {
+    title: "\u{1F514} Test Simix",
+    body: "Les notifications push fonctionnent correctement !",
+    url: "/dashboard"
+  };
+  if (userId) {
+    const userSubs = subCount.filter((s2) => s2.userId === userId);
+    if (userSubs.length === 0) {
+      res.status(200).json({
+        success: false,
+        message: `Aucun abonnement push pour l'utilisateur ${userId}.`,
+        subscriptions: 0
+      });
+      return;
+    }
+    await sendPushToUser(userId, payload);
+    logger.info({ userId }, "[admin-push] Test push sent to user");
+    res.json({ success: true, message: `Notification test envoy\xE9e \xE0 l'utilisateur ${userId}.`, subscriptions: userSubs.length });
+  } else {
+    await sendPushToAll(payload);
+    logger.info({ count: subCount.length }, "[admin-push] Test push broadcast to all");
+    res.json({ success: true, message: `Notification test broadcast\xE9e \xE0 ${subCount.length} abonnement(s).`, subscriptions: subCount.length });
+  }
+});
+router16.get("/admin/push/subscriptions", requireAdmin4, async (_req, res) => {
+  const subs = await db.select().from(pushSubscriptionsTable);
+  const byUser = {};
+  for (const sub of subs) {
+    byUser[sub.userId] = (byUser[sub.userId] ?? 0) + 1;
+  }
+  res.json({
+    total: subs.length,
+    uniqueUsers: Object.keys(byUser).length,
+    byUser
+  });
 });
 var admin_notifications_default = router16;
 
