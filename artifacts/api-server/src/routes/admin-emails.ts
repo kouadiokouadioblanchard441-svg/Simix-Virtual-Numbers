@@ -46,8 +46,14 @@ function getFromEmail(): string {
 function buildEmailHtml(subject: string, body: string, templateType: string): string {
   const accentColor = templateType === "security" ? "#ef4444"
     : templateType === "promotion" ? "#f59e0b"
-    : templateType === "bonus" ? "#22c55e"
+    : templateType === "bonus" ? "#059669"
     : "#7c3aed";
+
+  const badgeLabel = templateType === "security" ? "🔐 Sécurité"
+    : templateType === "promotion" ? "🎁 Promotion"
+    : templateType === "bonus" ? "💰 Bonus"
+    : templateType === "info" ? "ℹ️ Information"
+    : "📢 Annonce";
 
   return `<!DOCTYPE html>
 <html lang="fr">
@@ -55,48 +61,92 @@ function buildEmailHtml(subject: string, body: string, templateType: string): st
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>${subject}</title>
-<style>
-  * { margin:0; padding:0; box-sizing:border-box; }
-  body { background:#0f0a1e; font-family: -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; color:#e2e8f0; }
-  .wrapper { max-width:600px; margin:0 auto; padding:24px 16px; }
-  .card { background:linear-gradient(160deg,rgba(25,15,50,0.98),rgba(15,10,30,0.98)); border:1px solid rgba(124,58,237,0.3); border-radius:24px; overflow:hidden; }
-  .header { background:linear-gradient(135deg,${accentColor}22,${accentColor}11); padding:32px 32px 24px; border-bottom:1px solid rgba(124,58,237,0.2); text-align:center; }
-  .logo { display:inline-flex; align-items:center; gap:10px; margin-bottom:20px; }
-  .logo-icon { width:40px; height:40px; background:linear-gradient(135deg,#7c3aed,#a855f7); border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:20px; }
-  .logo-text { font-size:22px; font-weight:800; color:#fff; letter-spacing:-0.5px; }
-  .badge { display:inline-block; background:${accentColor}22; border:1px solid ${accentColor}44; color:${accentColor}; padding:4px 12px; border-radius:99px; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1px; margin-bottom:12px; }
-  .header h1 { font-size:22px; font-weight:800; color:#fff; line-height:1.3; }
-  .body { padding:32px; }
-  .content { font-size:15px; line-height:1.7; color:#cbd5e1; }
-  .divider { border:none; border-top:1px solid rgba(124,58,237,0.2); margin:24px 0; }
-  .footer { background:rgba(0,0,0,0.3); padding:20px 32px; text-align:center; }
-  .footer p { font-size:12px; color:#64748b; line-height:1.6; }
-  .footer a { color:#7c3aed; text-decoration:none; }
-  .cta { display:inline-block; background:linear-gradient(135deg,#7c3aed,#a855f7); color:#fff; padding:13px 28px; border-radius:12px; font-weight:700; font-size:14px; text-decoration:none; margin-top:20px; }
-</style>
 </head>
-<body>
-<div class="wrapper">
-  <div class="card">
-    <div class="header">
-      <div class="logo">
-        <div class="logo-icon">S</div>
-        <span class="logo-text">Simix</span>
-      </div>
-      <div class="badge">${templateType === "security" ? "🔐 Sécurité" : templateType === "promotion" ? "🎁 Promotion" : templateType === "bonus" ? "💰 Bonus" : templateType === "info" ? "ℹ️ Information" : "📢 Annonce"}</div>
-      <h1>${subject}</h1>
-    </div>
-    <div class="body">
-      <div class="content">${body}</div>
-      <hr class="divider">
-      <a href="${getAppUrl()}" class="cta">Accéder à Simix →</a>
-    </div>
-    <div class="footer">
-      <p>Vous recevez cet email car vous êtes inscrit sur <a href="${getAppUrl()}">Simix</a>.<br>
-      Plateforme fintech africaine · Paiements Mobile Money · <a href="mailto:simixsupport@gmail.com">simixsupport@gmail.com</a></p>
-    </div>
-  </div>
-</div>
+<body style="margin:0;padding:0;background:#f4f4f7;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f7;padding:32px 16px;">
+    <tr>
+      <td align="center">
+        <table width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;">
+
+          <!-- Logo -->
+          <tr>
+            <td align="center" style="padding:0 0 24px;">
+              <table cellpadding="0" cellspacing="0">
+                <tr>
+                  <td valign="middle">
+                    <table cellpadding="0" cellspacing="0" style="background:linear-gradient(135deg,#7c3aed,#6366f1);border-radius:10px;width:36px;height:36px;">
+                      <tr><td align="center" valign="middle" style="color:#ffffff;font-size:20px;font-weight:900;">S</td></tr>
+                    </table>
+                  </td>
+                  <td valign="middle" style="padding-left:8px;">
+                    <span style="color:#1a1a2e;font-size:20px;font-weight:800;letter-spacing:-0.5px;">Simix</span>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Card -->
+          <tr>
+            <td style="background:#ffffff;border-radius:16px;border:1px solid #e2e2ea;overflow:hidden;">
+
+              <!-- Top accent bar -->
+              <table width="100%" cellpadding="0" cellspacing="0">
+                <tr><td style="height:4px;background:${accentColor};"></td></tr>
+              </table>
+
+              <!-- Header -->
+              <table width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td style="padding:28px 32px 0;text-align:center;">
+                    <span style="display:inline-block;background:${accentColor}18;border:1px solid ${accentColor}44;color:${accentColor};padding:4px 14px;border-radius:99px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:14px;">${badgeLabel}</span>
+                    <h1 style="margin:0;color:#1a1a2e;font-size:20px;font-weight:700;line-height:1.3;">${subject}</h1>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Body -->
+              <table width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td style="padding:24px 32px 28px;">
+                    <div style="font-size:15px;line-height:1.75;color:#374151;">${body}</div>
+                    <table cellpadding="0" cellspacing="0" style="margin:24px auto 0;">
+                      <tr>
+                        <td style="background:${accentColor};border-radius:10px;">
+                          <a href="${getAppUrl()}" style="display:block;padding:13px 28px;color:#ffffff;font-size:14px;font-weight:700;text-decoration:none;">Accéder à Simix →</a>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Footer card -->
+              <table width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td style="padding:18px 32px;border-top:1px solid #f0f0f5;text-align:center;">
+                    <p style="margin:0;font-size:12px;color:#9999b8;line-height:1.6;">
+                      Vous recevez cet email car vous êtes inscrit sur <a href="${getAppUrl()}" style="color:#7c3aed;text-decoration:none;">Simix</a>.<br>
+                      <a href="mailto:simixsupport@gmail.com" style="color:#7c3aed;text-decoration:none;">simixsupport@gmail.com</a>
+                    </p>
+                  </td>
+                </tr>
+              </table>
+
+            </td>
+          </tr>
+
+          <!-- Bottom footer -->
+          <tr>
+            <td style="padding:16px 0 0;text-align:center;">
+              <p style="margin:0;color:#c4c4d4;font-size:11px;">© ${new Date().getFullYear()} Simix · Fintech 100% Africaine</p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
 </body>
 </html>`;
 }
