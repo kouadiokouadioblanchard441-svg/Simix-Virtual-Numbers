@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { and, asc, desc, eq, gt, ilike, lt, or } from "drizzle-orm";
+import { and, asc, desc, eq, ilike } from "drizzle-orm";
 import { db, servicesTable } from "@workspace/db";
 import { ListServicesQueryParams } from "@workspace/api-zod";
 import { toService } from "../lib/serializers";
@@ -14,15 +14,11 @@ router.get("/services", async (req, res): Promise<void> => {
   }
   const { search, category } = parsed.data;
 
-  /* Curated services (sort_order < 200) are always shown when enabled.
-     5sim-synced services (sort_order = 200) are shown only when they
-     have at least 1 number available, so the list stays meaningful. */
+  /* All enabled services are shown (curated + 5sim synced).
+     Services with 0 availability are still listed so users can see
+     the full catalogue — the frontend marks them as unavailable. */
   const baseCondition = and(
     eq(servicesTable.enabled, true),
-    or(
-      lt(servicesTable.sortOrder, 200),
-      gt(servicesTable.available, 0),
-    ),
     ...(search ? [ilike(servicesTable.name, `%${search}%`) as any] : []),
     ...(category ? [eq(servicesTable.category, category)] : []),
   );

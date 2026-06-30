@@ -26,7 +26,7 @@ const FIVESIM_TO_ISO: Record<string, string> = Object.fromEntries(
 );
 
 /* ─── Config ─── */
-const SYNC_INTERVAL_MS  = 6 * 60 * 60 * 1000;   // 6 hours
+const SYNC_INTERVAL_MS  = 30 * 60 * 1000;        // 30 minutes
 const SYNC_LOGS_KEY     = "fivesim_sync_logs";
 const LAST_SYNC_KEY     = "fivesim_last_sync";
 const SYNC_STATUS_KEY   = "fivesim_sync_status";

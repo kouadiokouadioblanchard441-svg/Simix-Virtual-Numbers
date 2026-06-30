@@ -190,7 +190,7 @@ function ServicesContent() {
                     className="w-full flex items-center justify-between p-4 bg-card border border-card-border rounded-2xl hover:bg-secondary/50 transition-colors text-left"
                   >
                     <div className="flex items-center gap-4">
-                      <ServiceIcon name={service.name} slug={service.slug} size={48} rounded="xl" />
+                      <ServiceIcon name={service.name} slug={service.slug} logoUrl={service.logoUrl} size={48} rounded="xl" />
                       <div>
                         <p className="text-base font-bold text-foreground leading-tight">
                           {service.name}

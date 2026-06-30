@@ -675,20 +675,17 @@ export function ServiceIcon({
   const k = keyFor(name, slug);
   const entry = k ? brands[k] : undefined;
 
-  /* 2. Fallback lettre si aucune entrée dans le registry */
+  /* 2. Fallback favicon Clearbit/Google pour les services non-référencés */
   if (!entry) {
+    const domain = slug ? `${slug.toLowerCase().replace(/[^a-z0-9-]/g, "")}.com` : `${name.toLowerCase().replace(/\s+/g, "")}.com`;
     return (
-      <div
-        className="flex items-center justify-center shrink-0 shadow-sm"
-        style={{
-          width: size, height: size, borderRadius: radius,
-          background: "linear-gradient(135deg,#A855F7,#6366F1)",
-        }}
-      >
-        <span className="text-white font-bold select-none" style={{ fontSize: size * 0.42 }}>
-          {name.charAt(0).toUpperCase()}
-        </span>
-      </div>
+      <FaviconBrandIcon
+        domain={domain}
+        name={name}
+        bg="linear-gradient(135deg,#A855F7,#6366F1)"
+        size={size}
+        radius={radius}
+      />
     );
   }
 
