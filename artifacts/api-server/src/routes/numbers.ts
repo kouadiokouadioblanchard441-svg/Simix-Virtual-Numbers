@@ -4,6 +4,7 @@ import {
   db,
   countriesTable,
   servicesTable,
+  serviceCountryAvailabilityTable,
   smsMessagesTable,
   transactionsTable,
   usersTable,
@@ -117,17 +118,23 @@ router.get("/numbers/quote", async (req, res): Promise<void> => {
   }
 
   /* Check for a service+country price override */
-  const [priceOverride] = await db
-    .select()
-    .from(servicePricesTable)
-    .where(
-      and(
-        eq(servicePricesTable.countryCode, country.code.toLowerCase()),
-        eq(servicePricesTable.serviceSlug, service.slug.toLowerCase()),
-        eq(servicePricesTable.enabled, true),
-      ),
-    )
-    .limit(1);
+  let priceOverride: { price: number } | undefined;
+  try {
+    const [row] = await db
+      .select({ price: servicePricesTable.price })
+      .from(servicePricesTable)
+      .where(
+        and(
+          eq(servicePricesTable.countryCode, country.code.toLowerCase()),
+          eq(servicePricesTable.serviceSlug, service.slug.toLowerCase()),
+          eq(servicePricesTable.enabled, true),
+        ),
+      )
+      .limit(1);
+    if (row) priceOverride = row;
+  } catch (e) {
+    logger.debug({ err: (e as Error).message }, "[quote] service_prices lookup skipped");
+  }
 
   /* Price hierarchy: service_prices override → services.price → country.price */
   const price = priceOverride?.price ?? service.price ?? country.price;
@@ -238,24 +245,45 @@ router.post("/numbers", requireAuth, async (req, res): Promise<void> => {
     return;
   }
 
-  /* Check if country is available (available is a count — 0 means no numbers) */
-  if (country.available <= 0) {
-    res.status(400).json({ error: `Le pays ${country.name} n'est pas disponible pour le moment.` });
-    return;
+  /* Check availability via service_country_availability (per-service per-country).
+   * Replaces the old country.available check which was a generic counter defaulting
+   * to 0 — real availability is tracked in SCA after the 5sim bulk sync. */
+  try {
+    const [scaRow] = await db
+      .select({ available: serviceCountryAvailabilityTable.available })
+      .from(serviceCountryAvailabilityTable)
+      .where(and(
+        eq(serviceCountryAvailabilityTable.serviceSlug, service.slug.toLowerCase()),
+        eq(serviceCountryAvailabilityTable.countryCode, country.code.toUpperCase()),
+      ))
+      .limit(1);
+    if (scaRow !== undefined && scaRow.available <= 0) {
+      res.status(400).json({ error: `Le service ${service.name} n'est pas disponible pour ${country.name} pour le moment.` });
+      return;
+    }
+    /* No SCA row = country not indexed yet; let 5sim decide */
+  } catch (e) {
+    logger.debug({ err: (e as Error).message }, "[purchase] SCA check skipped");
   }
 
   /* Check for a service+country price override */
-  const [purchasePriceOverride] = await db
-    .select()
-    .from(servicePricesTable)
-    .where(
-      and(
-        eq(servicePricesTable.countryCode, country.code.toLowerCase()),
-        eq(servicePricesTable.serviceSlug, service.slug.toLowerCase()),
-        eq(servicePricesTable.enabled, true),
-      ),
-    )
-    .limit(1);
+  let purchasePriceOverride: { price: number } | undefined;
+  try {
+    const [row] = await db
+      .select({ price: servicePricesTable.price })
+      .from(servicePricesTable)
+      .where(
+        and(
+          eq(servicePricesTable.countryCode, country.code.toLowerCase()),
+          eq(servicePricesTable.serviceSlug, service.slug.toLowerCase()),
+          eq(servicePricesTable.enabled, true),
+        ),
+      )
+      .limit(1);
+    if (row) purchasePriceOverride = row;
+  } catch (e) {
+    logger.debug({ err: (e as Error).message }, "[purchase] service_prices lookup skipped");
+  }
 
   /* Price hierarchy: service_prices override → services.price → country.price */
   const price = purchasePriceOverride?.price ?? service.price ?? country.price;

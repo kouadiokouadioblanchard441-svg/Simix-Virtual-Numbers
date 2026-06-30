@@ -118267,13 +118267,19 @@ router8.get("/numbers/quote", async (req, res) => {
   } catch (e2) {
     logger.debug({ err: e2.message }, "[quote] 5sim availability check skipped");
   }
-  const [priceOverride] = await db.select().from(servicePricesTable).where(
-    and(
-      eq(servicePricesTable.countryCode, country.code.toLowerCase()),
-      eq(servicePricesTable.serviceSlug, service.slug.toLowerCase()),
-      eq(servicePricesTable.enabled, true)
-    )
-  ).limit(1);
+  let priceOverride;
+  try {
+    const [row] = await db.select({ price: servicePricesTable.price }).from(servicePricesTable).where(
+      and(
+        eq(servicePricesTable.countryCode, country.code.toLowerCase()),
+        eq(servicePricesTable.serviceSlug, service.slug.toLowerCase()),
+        eq(servicePricesTable.enabled, true)
+      )
+    ).limit(1);
+    if (row) priceOverride = row;
+  } catch (e2) {
+    logger.debug({ err: e2.message }, "[quote] service_prices lookup skipped");
+  }
   const price = priceOverride?.price ?? service.price ?? country.price;
   const validityMinutes = await getNumberValidityMinutes();
   res.json({
@@ -118376,17 +118382,31 @@ router8.post("/numbers", requireAuth, async (req, res) => {
     res.status(400).json({ error: `Les num\xE9ros virtuels ne sont pas disponibles pour ${country.name}.` });
     return;
   }
-  if (country.available <= 0) {
-    res.status(400).json({ error: `Le pays ${country.name} n'est pas disponible pour le moment.` });
-    return;
+  try {
+    const [scaRow] = await db.select({ available: serviceCountryAvailabilityTable.available }).from(serviceCountryAvailabilityTable).where(and(
+      eq(serviceCountryAvailabilityTable.serviceSlug, service.slug.toLowerCase()),
+      eq(serviceCountryAvailabilityTable.countryCode, country.code.toUpperCase())
+    )).limit(1);
+    if (scaRow !== void 0 && scaRow.available <= 0) {
+      res.status(400).json({ error: `Le service ${service.name} n'est pas disponible pour ${country.name} pour le moment.` });
+      return;
+    }
+  } catch (e2) {
+    logger.debug({ err: e2.message }, "[purchase] SCA check skipped");
   }
-  const [purchasePriceOverride] = await db.select().from(servicePricesTable).where(
-    and(
-      eq(servicePricesTable.countryCode, country.code.toLowerCase()),
-      eq(servicePricesTable.serviceSlug, service.slug.toLowerCase()),
-      eq(servicePricesTable.enabled, true)
-    )
-  ).limit(1);
+  let purchasePriceOverride;
+  try {
+    const [row] = await db.select({ price: servicePricesTable.price }).from(servicePricesTable).where(
+      and(
+        eq(servicePricesTable.countryCode, country.code.toLowerCase()),
+        eq(servicePricesTable.serviceSlug, service.slug.toLowerCase()),
+        eq(servicePricesTable.enabled, true)
+      )
+    ).limit(1);
+    if (row) purchasePriceOverride = row;
+  } catch (e2) {
+    logger.debug({ err: e2.message }, "[purchase] service_prices lookup skipped");
+  }
   const price = purchasePriceOverride?.price ?? service.price ?? country.price;
   if (user.balance < price) {
     res.status(402).json({ error: "Solde insuffisant. Rechargez votre portefeuille." });
