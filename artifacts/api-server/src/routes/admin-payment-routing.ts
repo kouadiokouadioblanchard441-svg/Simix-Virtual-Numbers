@@ -3,7 +3,7 @@
  * All routes: /api/admin/payment-routing/*
  */
 import { Router, type IRouter, type Request, type Response } from "express";
-import { eq, desc, and, asc, count } from "drizzle-orm";
+import { eq, desc, and, asc, count, gte, sql } from "drizzle-orm";
 import {
   db,
   mobileOperatorsTable,
@@ -12,6 +12,7 @@ import {
   paymentRouteLogsTable,
   countriesTable,
   systemSettingsTable,
+  transactionsTable,
 } from "@workspace/db";
 import { requireAdminJwt } from "../lib/admin-jwt-middleware";
 import { logger } from "../lib/logger";
@@ -902,6 +903,103 @@ router.get("/admin/payment-routing/stats", requireAdmin, async (_req: Request, r
     operators: { total: Number(totalOperators.count) },
     routes: { total: Number(totalRoutes.count), active: Number(activeRoutes.count), maintenance: Number(maintenanceRoutes.count) },
   });
+});
+
+/* ═══════════════════════════════════════════════════════════════
+   PAYMENT GATEWAY STATS — real-time dashboard data
+   ═══════════════════════════════════════════════════════════════ */
+router.get("/admin/payment-routing/gateway-stats", requireAdminJwt, async (_req, res): Promise<void> => {
+  const now = new Date();
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+
+  /* ── 7-day logs breakdown by gateway + status + day ─────────── */
+  const logsRaw = await db.execute(sql`
+    SELECT
+      metadata->>'gateway'  AS gateway,
+      status,
+      DATE(created_at AT TIME ZONE 'UTC') AS day,
+      COUNT(*)::int                        AS attempts,
+      ROUND(AVG(response_time_ms))::int    AS avg_latency_ms,
+      SUM(CASE WHEN metadata->>'amountXof' IS NOT NULL
+               THEN (metadata->>'amountXof')::numeric ELSE 0 END)::int AS total_xof
+    FROM payment_route_logs
+    WHERE event_type = 'payment'
+      AND created_at >= ${sevenDaysAgo}
+      AND metadata->>'gateway' IN ('clapay','pawapay')
+    GROUP BY 1, 2, 3
+    ORDER BY 3 DESC
+  `);
+
+  /* ── Pending deposits by gateway ─────────────────────────────── */
+  const pendingRaw = await db.execute(sql`
+    SELECT
+      CASE WHEN external_deposit_id LIKE 'clapay:%' THEN 'clapay' ELSE 'pawapay' END AS gateway,
+      COUNT(*)::int AS pending_count
+    FROM transactions
+    WHERE type = 'recharge' AND status = 'pending'
+    GROUP BY 1
+  `);
+
+  /* ── Build structured response ────────────────────────────────── */
+  type DayEntry = {
+    day: string;
+    success: number; error: number; timeout: number;
+    avgLatencyMs: number; totalXof: number;
+  };
+  type GatewayData = {
+    today: { success: number; error: number; timeout: number; avgLatencyMs: number; totalXof: number };
+    pending: number;
+    days: DayEntry[];
+  };
+
+  const gateways: Record<string, GatewayData> = {
+    clapay:  { today: { success: 0, error: 0, timeout: 0, avgLatencyMs: 0, totalXof: 0 }, pending: 0, days: [] },
+    pawapay: { today: { success: 0, error: 0, timeout: 0, avgLatencyMs: 0, totalXof: 0 }, pending: 0, days: [] },
+  };
+
+  /* Map logs into structure */
+  const dayMap: Record<string, Record<string, DayEntry>> = { clapay: {}, pawapay: {} };
+  for (const row of (logsRaw as { rows: Record<string, unknown>[] }).rows ?? logsRaw as Record<string, unknown>[]) {
+    const gw = String(row.gateway ?? "");
+    if (!(gw in gateways)) continue;
+    const day = String(row.day ?? "").slice(0, 10);
+    const status = String(row.status ?? "");
+    const attempts = Number(row.attempts ?? 0);
+    const latency = Number(row.avg_latency_ms ?? 0);
+    const xof = Number(row.total_xof ?? 0);
+
+    if (!dayMap[gw][day]) dayMap[gw][day] = { day, success: 0, error: 0, timeout: 0, avgLatencyMs: 0, totalXof: 0 };
+    if (status === "success") { dayMap[gw][day].success += attempts; dayMap[gw][day].totalXof += xof; }
+    else if (status === "error") dayMap[gw][day].error += attempts;
+    else if (status === "timeout") dayMap[gw][day].timeout += attempts;
+    dayMap[gw][day].avgLatencyMs = Math.max(dayMap[gw][day].avgLatencyMs, latency);
+
+    /* Today's aggregates */
+    if (day === todayStart.toISOString().slice(0, 10)) {
+      if (status === "success") { gateways[gw].today.success += attempts; gateways[gw].today.totalXof += xof; }
+      else if (status === "error") gateways[gw].today.error += attempts;
+      else if (status === "timeout") gateways[gw].today.timeout += attempts;
+      gateways[gw].today.avgLatencyMs = Math.max(gateways[gw].today.avgLatencyMs, latency);
+    }
+  }
+
+  /* Fill 7-day arrays */
+  const dayLabels = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(Date.now() - (6 - i) * 24 * 60 * 60 * 1000);
+    return d.toISOString().slice(0, 10);
+  });
+  for (const gw of ["clapay", "pawapay"]) {
+    gateways[gw].days = dayLabels.map(d => dayMap[gw][d] ?? { day: d, success: 0, error: 0, timeout: 0, avgLatencyMs: 0, totalXof: 0 });
+  }
+
+  /* Pending counts */
+  for (const row of (pendingRaw as { rows: Record<string, unknown>[] }).rows ?? pendingRaw as Record<string, unknown>[]) {
+    const gw = String(row.gateway ?? "");
+    if (gw in gateways) gateways[gw].pending = Number(row.pending_count ?? 0);
+  }
+
+  res.json({ gateways, generatedAt: now.toISOString() });
 });
 
 export default router;

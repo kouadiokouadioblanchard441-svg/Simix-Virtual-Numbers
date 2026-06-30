@@ -69,6 +69,7 @@ const NAV_ITEMS: NavItem[] = [
     highlight: true,
     section: "Paiements",
   },
+  { href: "/admin/payment-stats",  label: "Stats Passerelles",    icon: Activity, highlight: true },
   { href: "/admin/payment-config", label: "Disponibilité / Pays", icon: MapPin },
   { href: "/admin/currencies",     label: "Devises & Taux FX",   icon: DollarSign },
   { href: "/admin/fx-profits",     label: "Profits FX",           icon: TrendingUp },

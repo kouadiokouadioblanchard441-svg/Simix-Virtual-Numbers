@@ -87805,7 +87805,7 @@ var require_bn = __commonJS({
       BN.prototype.gten = function gten(num) {
         return this.cmpn(num) >= 0;
       };
-      BN.prototype.gte = function gte2(num) {
+      BN.prototype.gte = function gte3(num) {
         return this.cmp(num) >= 0;
       };
       BN.prototype.ltn = function ltn(num) {
@@ -119453,6 +119453,76 @@ router9.get("/admin/payment-routing/stats", requireAdmin, async (_req, res) => {
     operators: { total: Number(totalOperators.count) },
     routes: { total: Number(totalRoutes.count), active: Number(activeRoutes.count), maintenance: Number(maintenanceRoutes.count) }
   });
+});
+router9.get("/admin/payment-routing/gateway-stats", requireAdminJwt, async (_req, res) => {
+  const now = /* @__PURE__ */ new Date();
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1e3);
+  const logsRaw = await db.execute(sql`
+    SELECT
+      metadata->>'gateway'  AS gateway,
+      status,
+      DATE(created_at AT TIME ZONE 'UTC') AS day,
+      COUNT(*)::int                        AS attempts,
+      ROUND(AVG(response_time_ms))::int    AS avg_latency_ms,
+      SUM(CASE WHEN metadata->>'amountXof' IS NOT NULL
+               THEN (metadata->>'amountXof')::numeric ELSE 0 END)::int AS total_xof
+    FROM payment_route_logs
+    WHERE event_type = 'payment'
+      AND created_at >= ${sevenDaysAgo}
+      AND metadata->>'gateway' IN ('clapay','pawapay')
+    GROUP BY 1, 2, 3
+    ORDER BY 3 DESC
+  `);
+  const pendingRaw = await db.execute(sql`
+    SELECT
+      CASE WHEN external_deposit_id LIKE 'clapay:%' THEN 'clapay' ELSE 'pawapay' END AS gateway,
+      COUNT(*)::int AS pending_count
+    FROM transactions
+    WHERE type = 'recharge' AND status = 'pending'
+    GROUP BY 1
+  `);
+  const gateways = {
+    clapay: { today: { success: 0, error: 0, timeout: 0, avgLatencyMs: 0, totalXof: 0 }, pending: 0, days: [] },
+    pawapay: { today: { success: 0, error: 0, timeout: 0, avgLatencyMs: 0, totalXof: 0 }, pending: 0, days: [] }
+  };
+  const dayMap = { clapay: {}, pawapay: {} };
+  for (const row of logsRaw.rows ?? logsRaw) {
+    const gw = String(row.gateway ?? "");
+    if (!(gw in gateways)) continue;
+    const day = String(row.day ?? "").slice(0, 10);
+    const status = String(row.status ?? "");
+    const attempts = Number(row.attempts ?? 0);
+    const latency = Number(row.avg_latency_ms ?? 0);
+    const xof = Number(row.total_xof ?? 0);
+    if (!dayMap[gw][day]) dayMap[gw][day] = { day, success: 0, error: 0, timeout: 0, avgLatencyMs: 0, totalXof: 0 };
+    if (status === "success") {
+      dayMap[gw][day].success += attempts;
+      dayMap[gw][day].totalXof += xof;
+    } else if (status === "error") dayMap[gw][day].error += attempts;
+    else if (status === "timeout") dayMap[gw][day].timeout += attempts;
+    dayMap[gw][day].avgLatencyMs = Math.max(dayMap[gw][day].avgLatencyMs, latency);
+    if (day === todayStart.toISOString().slice(0, 10)) {
+      if (status === "success") {
+        gateways[gw].today.success += attempts;
+        gateways[gw].today.totalXof += xof;
+      } else if (status === "error") gateways[gw].today.error += attempts;
+      else if (status === "timeout") gateways[gw].today.timeout += attempts;
+      gateways[gw].today.avgLatencyMs = Math.max(gateways[gw].today.avgLatencyMs, latency);
+    }
+  }
+  const dayLabels = Array.from({ length: 7 }, (_, i2) => {
+    const d = new Date(Date.now() - (6 - i2) * 24 * 60 * 60 * 1e3);
+    return d.toISOString().slice(0, 10);
+  });
+  for (const gw of ["clapay", "pawapay"]) {
+    gateways[gw].days = dayLabels.map((d) => dayMap[gw][d] ?? { day: d, success: 0, error: 0, timeout: 0, avgLatencyMs: 0, totalXof: 0 });
+  }
+  for (const row of pendingRaw.rows ?? pendingRaw) {
+    const gw = String(row.gateway ?? "");
+    if (gw in gateways) gateways[gw].pending = Number(row.pending_count ?? 0);
+  }
+  res.json({ gateways, generatedAt: now.toISOString() });
 });
 var admin_payment_routing_default = router9;
 
