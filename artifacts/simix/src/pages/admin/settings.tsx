@@ -125,7 +125,7 @@ const SETTINGS_SCHEMA = [
     group: "Clapay — Mobile Money",
     fields: [
       { key: "clapay_api_token", label: "Token API Clapay", placeholder: "Bearer ...", type: "password", hint: "Votre clé API Clapay (NoWallet V3) — obtenue sur le portail Clapay" },
-      { key: "clapay_base_url", label: "URL de base Clapay", placeholder: "https://api.clapay.africa", type: "text", hint: "URL de l'API Clapay — laisser vide pour la valeur par défaut" },
+      { key: "clapay_base_url", label: "URL de base Clapay", placeholder: "https://nw-api.clapay.app/nowallet/api", type: "text", hint: "URL de l'API Clapay — laisser vide pour la valeur par défaut" },
       { key: "clapay_callback_url", label: "URL webhook (callback)", placeholder: "https://simix.site/api/wallet/clapay/webhook", type: "url", hint: "URL que Clapay appellera après chaque paiement" },
       { key: "clapay_return_url", label: "URL de retour client", placeholder: "https://simix.site/wallet", type: "url", hint: "Page vers laquelle l'utilisateur est redirigé après la page de paiement Clapay" },
     ],
