@@ -8,6 +8,7 @@ import { motion } from "framer-motion";
 import { formatFCFA } from "@/lib/format";
 import { User as UserIcon, Shield, Bell, CreditCard, Lock, HelpCircle, LogOut, ChevronRight, Camera, Crown, Eye, TrendingUp, ShoppingBag, Gift, Code2, Smartphone, Download } from "lucide-react";
 import { useNotifications } from "@/hooks/use-notifications";
+import { usePWAInstall } from "@/hooks/usePWA";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
@@ -60,7 +61,8 @@ function ProfileContent() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const { unreadCount } = useNotifications(true);
-  const [apkState, setApkState] = useState<"idle" | "downloading" | "done">("idle");
+  const { canInstall, isInstalled, promptInstall } = usePWAInstall();
+  const [apkState, setApkState] = useState<"idle" | "installing" | "done">("idle");
 
   const handleLogout = async () => {
     try {
@@ -94,17 +96,29 @@ function ProfileContent() {
     }
   };
 
-  const handleApkDownload = () => {
-    if (apkState === "downloading") return;
-    setApkState("downloading");
-    const a = document.createElement("a");
-    a.href = "/downloads/simix.apk";
-    a.download = "simix.apk";
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    setTimeout(() => setApkState("done"), 800);
-    setTimeout(() => setApkState("idle"), 4000);
+  const handleAppInstall = async () => {
+    if (apkState === "installing") return;
+    if (isInstalled) {
+      setApkState("done");
+      setTimeout(() => setApkState("idle"), 3000);
+      return;
+    }
+    if (canInstall) {
+      setApkState("installing");
+      await promptInstall();
+      setApkState("done");
+      setTimeout(() => setApkState("idle"), 3000);
+    } else {
+      setApkState("installing");
+      const a = document.createElement("a");
+      a.href = "/downloads/simix.apk";
+      a.download = "simix.apk";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => setApkState("done"), 800);
+      setTimeout(() => setApkState("idle"), 3000);
+    }
   };
 
   const initials = (user?.fullName ?? user?.username ?? "S")
@@ -137,34 +151,34 @@ function ProfileContent() {
     {
       icon: Smartphone,
       label: "Application Android",
-      sub: "Télécharger l'APK Simix",
-      action: handleApkDownload,
-      color: "text-green-400",
-      bg: "bg-green-500/10",
+      sub: isInstalled ? "Déjà installée sur cet appareil" : canInstall ? "Appuyez pour installer l'app" : "Télécharger l'APK Simix",
+      action: handleAppInstall,
+      color: isInstalled ? "text-emerald-400" : "text-green-400",
+      bg: isInstalled ? "bg-emerald-500/10" : "bg-green-500/10",
       badge: 0,
       rightEl: (
         <span
           className="flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full flex-shrink-0"
           style={{
-            background: apkState === "done"
+            background: isInstalled || apkState === "done"
               ? "rgba(16,185,129,0.15)"
               : "rgba(109,40,217,0.15)",
-            color: apkState === "done" ? "#34d399" : "#a78bfa",
-            border: apkState === "done"
+            color: isInstalled || apkState === "done" ? "#34d399" : "#a78bfa",
+            border: isInstalled || apkState === "done"
               ? "1px solid rgba(16,185,129,0.3)"
               : "1px solid rgba(139,92,246,0.3)",
           }}
         >
-          {apkState === "downloading" ? (
+          {apkState === "installing" ? (
             <motion.span
               animate={{ rotate: 360 }}
               transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
               className="inline-block w-3 h-3 border-2 border-violet-400/30 border-t-violet-400 rounded-full"
             />
-          ) : apkState === "done" ? (
-            "✓ OK"
+          ) : isInstalled || apkState === "done" ? (
+            "✓ Installée"
           ) : (
-            <><Download className="w-2.5 h-2.5" /> APK</>
+            <><Download className="w-2.5 h-2.5" /> Installer</>
           )}
         </span>
       ),
