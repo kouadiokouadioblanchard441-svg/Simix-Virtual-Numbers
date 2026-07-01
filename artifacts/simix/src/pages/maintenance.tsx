@@ -85,10 +85,8 @@ export default function MaintenancePage() {
             lineHeight: 1.6,
           }}
         >
-          Nous effectuons actuellement une intervention technique afin d'améliorer
-          la stabilité, les performances et la sécurité de notre plateforme.
-          Nos équipes travaillent activement pour rétablir tous les services
-          dans les meilleurs délais. Merci de votre patience et de votre compréhension.
+          Nous travaillons à améliorer votre expérience.{" "}
+          Veuillez réessayer dans quelques instants.
         </p>
 
         {/* Divider */}
@@ -116,7 +114,7 @@ export default function MaintenancePage() {
               textTransform: "uppercase",
             }}
           >
-            Maintenance en cours
+            Maintenance
           </span>
         </div>
 
@@ -147,7 +145,7 @@ export default function MaintenancePage() {
             </svg>
           </span>
           <span style={{ color: "#374151", fontSize: 14 }}>
-            Disponibilité estimée :{" "}
+            Temps estimé :{" "}
             <strong style={{ color: "#DC2626", fontWeight: 700 }}>Bientôt disponible</strong>
           </span>
         </div>
@@ -188,7 +186,7 @@ export default function MaintenancePage() {
               Pour toute information, contactez-nous :
             </div>
             <a
-              href="mailto:simixsupport@gmail.com"
+              href="mailto:support@simix.site"
               style={{
                 color: "#2563EB",
                 fontWeight: 700,
@@ -196,7 +194,7 @@ export default function MaintenancePage() {
                 textDecoration: "none",
               }}
             >
-              simixsupport@gmail.com
+              support@simix.site
             </a>
           </div>
         </div>
@@ -242,7 +240,7 @@ export default function MaintenancePage() {
             <polyline points="23 20 23 14 17 14" />
             <path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15" />
           </svg>
-          {retrying ? "Vérification…" : "Réessayer"}
+          {retrying ? "Vérification…" : "Réessayer plus tard"}
         </button>
       </div>
 
