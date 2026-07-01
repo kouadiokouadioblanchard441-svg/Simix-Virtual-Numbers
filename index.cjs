@@ -117614,6 +117614,20 @@ function oauthStateCookieOptions(secure) {
     path: "/"
   };
 }
+router4.get("/auth/google/debug-redirect", (req, res) => {
+  const redirectUri = getRedirectUri(req);
+  res.json({
+    redirectUri,
+    source: process.env.GOOGLE_REDIRECT_URI ? "GOOGLE_REDIRECT_URI env var" : process.env.REPLIT_DEV_DOMAIN ? "REPLIT_DEV_DOMAIN env var" : "derived from request headers",
+    headers: {
+      host: req.headers.host,
+      "x-forwarded-host": req.headers["x-forwarded-host"],
+      "x-forwarded-proto": req.headers["x-forwarded-proto"]
+    },
+    GOOGLE_REDIRECT_URI_set: !!process.env.GOOGLE_REDIRECT_URI,
+    REPLIT_DEV_DOMAIN_set: !!process.env.REPLIT_DEV_DOMAIN
+  });
+});
 router4.get("/auth/google", (req, res) => {
   const clientId = process.env.GOOGLE_CLIENT_ID;
   const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
