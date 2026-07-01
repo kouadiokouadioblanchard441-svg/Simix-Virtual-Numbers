@@ -26,9 +26,11 @@ import otpRouter from "./otp";
 import forgotPasswordRouter from "./forgot-password";
 import referralRouter from "./referral";
 import pushSubscriptionsRouter from "./push-subscriptions";
+import maintenanceRouter from "./maintenance";
 
 const router: IRouter = Router();
 
+router.use(maintenanceRouter);
 router.use(healthRouter);
 router.use(storageRouter);
 router.use(configRouter);

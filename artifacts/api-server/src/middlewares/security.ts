@@ -53,6 +53,7 @@ export async function checkMaintenanceMode(req: Request, res: Response, next: Ne
     req.path.startsWith("/api/admin") ||
     req.path === "/api/health" ||
     req.path === "/api/healthz" ||
+    req.path === "/api/maintenance/status" ||
     isWebhookPath(req.path)
   ) {
     next();

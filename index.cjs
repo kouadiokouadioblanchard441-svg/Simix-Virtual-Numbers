@@ -20477,27 +20477,27 @@ var require_router = __commonJS({
     var slice = Array.prototype.slice;
     var flatten = Array.prototype.flat;
     var methods = METHODS.map((method) => method.toLowerCase());
-    module2.exports = Router29;
+    module2.exports = Router30;
     module2.exports.Route = Route;
-    function Router29(options) {
-      if (!(this instanceof Router29)) {
-        return new Router29(options);
+    function Router30(options) {
+      if (!(this instanceof Router30)) {
+        return new Router30(options);
       }
       const opts = options || {};
-      function router29(req, res, next) {
-        router29.handle(req, res, next);
+      function router30(req, res, next) {
+        router30.handle(req, res, next);
       }
-      Object.setPrototypeOf(router29, this);
-      router29.caseSensitive = opts.caseSensitive;
-      router29.mergeParams = opts.mergeParams;
-      router29.params = {};
-      router29.strict = opts.strict;
-      router29.stack = [];
-      return router29;
+      Object.setPrototypeOf(router30, this);
+      router30.caseSensitive = opts.caseSensitive;
+      router30.mergeParams = opts.mergeParams;
+      router30.params = {};
+      router30.strict = opts.strict;
+      router30.stack = [];
+      return router30;
     }
-    Router29.prototype = function() {
+    Router30.prototype = function() {
     };
-    Router29.prototype.param = function param2(name2, fn) {
+    Router30.prototype.param = function param2(name2, fn) {
       if (!name2) {
         throw new TypeError("argument name is required");
       }
@@ -20517,7 +20517,7 @@ var require_router = __commonJS({
       params.push(fn);
       return this;
     };
-    Router29.prototype.handle = function handle(req, res, callback) {
+    Router30.prototype.handle = function handle(req, res, callback) {
       if (!callback) {
         throw new TypeError("argument callback is required");
       }
@@ -20644,7 +20644,7 @@ var require_router = __commonJS({
         }
       }
     };
-    Router29.prototype.use = function use(handler) {
+    Router30.prototype.use = function use(handler) {
       let offset = 0;
       let path5 = "/";
       if (typeof handler !== "function") {
@@ -20677,7 +20677,7 @@ var require_router = __commonJS({
       }
       return this;
     };
-    Router29.prototype.route = function route(path5) {
+    Router30.prototype.route = function route(path5) {
       const route2 = new Route(path5);
       const layer = new Layer(path5, {
         sensitive: this.caseSensitive,
@@ -20692,7 +20692,7 @@ var require_router = __commonJS({
       return route2;
     };
     methods.concat("all").forEach(function(method) {
-      Router29.prototype[method] = function(path5) {
+      Router30.prototype[method] = function(path5) {
         const route = this.route(path5);
         route[method].apply(route, slice.call(arguments, 1));
         return this;
@@ -20875,13 +20875,13 @@ var require_application = __commonJS({
     var compileTrust = require_utils3().compileTrust;
     var resolve = require("node:path").resolve;
     var once = require_once();
-    var Router29 = require_router();
+    var Router30 = require_router();
     var slice = Array.prototype.slice;
     var flatten = Array.prototype.flat;
     var app2 = exports2 = module2.exports = {};
     var trustProxyDefaultSymbol = "@@symbol:trust_proxy_default";
     app2.init = function init() {
-      var router29 = null;
+      var router30 = null;
       this.cache = /* @__PURE__ */ Object.create(null);
       this.engines = /* @__PURE__ */ Object.create(null);
       this.settings = /* @__PURE__ */ Object.create(null);
@@ -20890,13 +20890,13 @@ var require_application = __commonJS({
         configurable: true,
         enumerable: true,
         get: function getrouter() {
-          if (router29 === null) {
-            router29 = new Router29({
+          if (router30 === null) {
+            router30 = new Router30({
               caseSensitive: this.enabled("case sensitive routing"),
               strict: this.enabled("strict routing")
             });
           }
-          return router29;
+          return router30;
         }
       });
     };
@@ -20967,15 +20967,15 @@ var require_application = __commonJS({
       if (fns.length === 0) {
         throw new TypeError("app.use() requires a middleware function");
       }
-      var router29 = this.router;
+      var router30 = this.router;
       fns.forEach(function(fn2) {
         if (!fn2 || !fn2.handle || !fn2.set) {
-          return router29.use(path5, fn2);
+          return router30.use(path5, fn2);
         }
         debug(".use app under %s", path5);
         fn2.mountpath = path5;
         fn2.parent = this;
-        router29.use(path5, function mounted_app(req, res, next) {
+        router30.use(path5, function mounted_app(req, res, next) {
           var orig = req.app;
           fn2.handle(req, res, function(err) {
             Object.setPrototypeOf(req, orig.request);
@@ -23502,7 +23502,7 @@ var require_express = __commonJS({
     var EventEmitter3 = require("node:events").EventEmitter;
     var mixin = require_merge_descriptors();
     var proto = require_application();
-    var Router29 = require_router();
+    var Router30 = require_router();
     var req = require_request();
     var res = require_response();
     exports2 = module2.exports = createApplication;
@@ -23524,8 +23524,8 @@ var require_express = __commonJS({
     exports2.application = proto;
     exports2.request = req;
     exports2.response = res;
-    exports2.Route = Router29.Route;
-    exports2.Router = Router29;
+    exports2.Route = Router30.Route;
+    exports2.Router = Router30;
     exports2.json = bodyParser.json;
     exports2.raw = bodyParser.raw;
     exports2.static = require_serve_static();
@@ -92587,7 +92587,7 @@ async function migrate(db2, config) {
 }
 
 // src/app.ts
-var import_express30 = __toESM(require_express2(), 1);
+var import_express31 = __toESM(require_express2(), 1);
 var import_cors = __toESM(require_lib3(), 1);
 var import_cookie_parser = __toESM(require_cookie_parser(), 1);
 var import_pino_http = __toESM(require_logger(), 1);
@@ -93139,7 +93139,7 @@ var import_path2 = __toESM(require("path"), 1);
 var import_fs3 = require("fs");
 
 // src/routes/index.ts
-var import_express29 = __toESM(require_express2(), 1);
+var import_express30 = __toESM(require_express2(), 1);
 
 // src/routes/health.ts
 var import_express = __toESM(require_express2(), 1);
@@ -128182,36 +128182,47 @@ router27.delete("/push/unsubscribe", requireAuth, async (req, res) => {
 });
 var push_subscriptions_default = router27;
 
-// src/routes/index.ts
+// src/routes/maintenance.ts
+var import_express29 = __toESM(require_express2(), 1);
 var router28 = (0, import_express29.Router)();
-router28.use(health_default);
-router28.use(storage_default);
-router28.use(config_default);
-router28.use(auth_default);
-router28.use(google_auth_default);
-router28.use(services_default);
-router28.use(countries_default);
-router28.use(numbers_default);
-router28.use(wallet_default);
-router28.use(crypto_wallet_default);
-router28.use(dashboard_default);
-router28.use(currencies_default);
-router28.use(admin_auth_default);
-router28.use(footer_default);
-router28.use(support_default);
-router28.use(notifications_default);
-router28.use(banners_default);
-router28.use(otp_default);
-router28.use(forgot_password_default);
-router28.use(referral_default);
-router28.use(push_subscriptions_default);
-router28.use(admin_default);
-router28.use(admin_support_default);
-router28.use(admin_notifications_default);
-router28.use(admin_emails_default);
-router28.use(admin_payment_routing_default);
-router28.use(admin_fivesim_default);
-var routes_default = router28;
+router28.get("/maintenance/status", async (_req, res) => {
+  const value = await getSetting("maintenance_mode", "false");
+  const active = value === "true" || value === "1";
+  res.json({ active });
+});
+var maintenance_default = router28;
+
+// src/routes/index.ts
+var router29 = (0, import_express30.Router)();
+router29.use(maintenance_default);
+router29.use(health_default);
+router29.use(storage_default);
+router29.use(config_default);
+router29.use(auth_default);
+router29.use(google_auth_default);
+router29.use(services_default);
+router29.use(countries_default);
+router29.use(numbers_default);
+router29.use(wallet_default);
+router29.use(crypto_wallet_default);
+router29.use(dashboard_default);
+router29.use(currencies_default);
+router29.use(admin_auth_default);
+router29.use(footer_default);
+router29.use(support_default);
+router29.use(notifications_default);
+router29.use(banners_default);
+router29.use(otp_default);
+router29.use(forgot_password_default);
+router29.use(referral_default);
+router29.use(push_subscriptions_default);
+router29.use(admin_default);
+router29.use(admin_support_default);
+router29.use(admin_notifications_default);
+router29.use(admin_emails_default);
+router29.use(admin_payment_routing_default);
+router29.use(admin_fivesim_default);
+var routes_default = router29;
 
 // src/app.ts
 init_logger2();
@@ -128248,7 +128259,7 @@ function isWebhookPath(path5) {
   return WEBHOOK_PATHS.some((p) => path5 === p || path5.startsWith(p));
 }
 async function checkMaintenanceMode(req, res, next) {
-  if (req.path.startsWith("/api/admin") || req.path === "/api/health" || req.path === "/api/healthz" || isWebhookPath(req.path)) {
+  if (req.path.startsWith("/api/admin") || req.path === "/api/health" || req.path === "/api/healthz" || req.path === "/api/maintenance/status" || isWebhookPath(req.path)) {
     next();
     return;
   }
@@ -128313,7 +128324,7 @@ function checkUserBlocked(req, res, next) {
 }
 
 // src/app.ts
-var app = (0, import_express30.default)();
+var app = (0, import_express31.default)();
 app.set("trust proxy", 1);
 var buildAllowedOrigins = () => {
   const origins = /* @__PURE__ */ new Set();
@@ -128484,19 +128495,19 @@ var rawBodyCapture = (req, _res, buf) => {
 };
 app.use((req, res, next) => {
   if (WEBHOOK_PATHS_SET.has(req.path)) {
-    import_express30.default.json({ limit: "1mb", verify: rawBodyCapture })(req, res, next);
+    import_express31.default.json({ limit: "1mb", verify: rawBodyCapture })(req, res, next);
   } else {
     next();
   }
 });
 app.use((req, res, next) => {
   if (!WEBHOOK_PATHS_SET.has(req.path)) {
-    import_express30.default.json({ limit: "256kb", verify: rawBodyCapture })(req, res, next);
+    import_express31.default.json({ limit: "256kb", verify: rawBodyCapture })(req, res, next);
   } else {
     next();
   }
 });
-app.use(import_express30.default.urlencoded({ extended: true, limit: "64kb" }));
+app.use(import_express31.default.urlencoded({ extended: true, limit: "64kb" }));
 app.use((0, import_cookie_parser.default)());
 app.use(globalRateLimit);
 app.use(checkMaintenanceMode);
@@ -128662,7 +128673,7 @@ if (process.env.NODE_ENV !== "development") {
   if (currentDir) {
     const publicDir = import_path2.default.join(currentDir, "public");
     if ((0, import_fs3.existsSync)(publicDir)) {
-      app.use(import_express30.default.static(publicDir));
+      app.use(import_express31.default.static(publicDir));
       app.use((_req, res) => {
         res.sendFile(import_path2.default.join(publicDir, "index.html"));
       });

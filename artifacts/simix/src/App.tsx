@@ -14,6 +14,8 @@ import { PinLockProvider } from "@/context/PinLockContext";
 import { PWAInstallProvider } from "@/context/PWAInstallContext";
 import NotFound from "@/pages/not-found";
 import { AdminSecureGuard } from "@/components/admin-secure-guard";
+import { MaintenanceGuard } from "@/components/maintenance-guard";
+import MaintenancePage from "@/pages/maintenance";
 
 // Landing
 import Landing from "@/pages/landing";
@@ -157,6 +159,9 @@ function InnerRouter() {
   const isLanding = location === "/";
   const isSecurePage = location === "/console" || location === "/admin-login";
 
+  /* ── Maintenance page (standalone — no AppLayout, white bg) ── */
+  if (location === "/maintenance") return <MaintenancePage />;
+
   /* ── Secure admin entry points (no wrapper, no mobile container) ── */
   if (location === "/console") return <Console />;
   if (location === "/admin-login") return <SecureLogin />;
@@ -232,7 +237,9 @@ function AppShell() {
   const hideChat = location.startsWith("/admin") || location === "/console" || location === "/admin-login";
   return (
     <PinLockProvider>
-      <InnerRouter />
+      <MaintenanceGuard>
+        <InnerRouter />
+      </MaintenanceGuard>
       <Toaster />
       {!hideChat && <SupportChat />}
       <NotificationToast />
