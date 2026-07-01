@@ -66,5 +66,6 @@ APP_URL = "https://5bff136c-16f2-44a8-882a-5d32f9923330-00-2q0yq614ryai3.picard.
 PORT = "8080"
 
 [userenv.production]
+GOOGLE_REDIRECT_URI = "https://simix.site/api/auth/google/callback"
 
 [userenv.development]
