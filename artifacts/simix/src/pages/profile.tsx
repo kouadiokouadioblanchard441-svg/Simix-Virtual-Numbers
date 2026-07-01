@@ -6,7 +6,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useLocation, Link } from "wouter";
 import { motion } from "framer-motion";
 import { formatFCFA } from "@/lib/format";
-import { User as UserIcon, Shield, Bell, CreditCard, Lock, HelpCircle, LogOut, ChevronRight, Camera, Crown, Eye, TrendingUp, ShoppingBag, Gift, Code2, Smartphone, Download } from "lucide-react";
+import { User as UserIcon, Shield, Bell, CreditCard, Lock, HelpCircle, LogOut, ChevronRight, Camera, Crown, Eye, TrendingUp, ShoppingBag, Gift, Code2, Smartphone } from "lucide-react";
 import { useNotifications } from "@/hooks/use-notifications";
 import { usePWAInstall } from "@/hooks/usePWA";
 
@@ -97,28 +97,12 @@ function ProfileContent() {
   };
 
   const handleAppInstall = async () => {
-    if (apkState === "installing") return;
-    if (isInstalled) {
-      setApkState("done");
-      setTimeout(() => setApkState("idle"), 3000);
-      return;
-    }
-    if (canInstall) {
-      setApkState("installing");
-      await promptInstall();
-      setApkState("done");
-      setTimeout(() => setApkState("idle"), 3000);
-    } else {
-      setApkState("installing");
-      const a = document.createElement("a");
-      a.href = "/downloads/simix.apk";
-      a.download = "simix.apk";
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      setTimeout(() => setApkState("done"), 800);
-      setTimeout(() => setApkState("idle"), 3000);
-    }
+    if (apkState === "installing" || isInstalled) return;
+    if (!canInstall) return;
+    setApkState("installing");
+    await promptInstall();
+    setApkState("done");
+    setTimeout(() => setApkState("idle"), 3000);
   };
 
   const initials = (user?.fullName ?? user?.username ?? "S")
@@ -151,7 +135,11 @@ function ProfileContent() {
     {
       icon: Smartphone,
       label: "Application Android",
-      sub: isInstalled ? "Déjà installée sur cet appareil" : canInstall ? "Appuyez pour installer l'app" : "Télécharger l'APK Simix",
+      sub: isInstalled
+        ? "Déjà installée sur cet appareil"
+        : canInstall
+        ? "Appuyez pour installer l'application"
+        : "Ouvrez dans Chrome Android pour installer",
       action: handleAppInstall,
       color: isInstalled ? "text-emerald-400" : "text-green-400",
       bg: isInstalled ? "bg-emerald-500/10" : "bg-green-500/10",
@@ -162,11 +150,19 @@ function ProfileContent() {
           style={{
             background: isInstalled || apkState === "done"
               ? "rgba(16,185,129,0.15)"
-              : "rgba(109,40,217,0.15)",
-            color: isInstalled || apkState === "done" ? "#34d399" : "#a78bfa",
+              : canInstall
+              ? "rgba(109,40,217,0.15)"
+              : "rgba(100,100,100,0.15)",
+            color: isInstalled || apkState === "done"
+              ? "#34d399"
+              : canInstall
+              ? "#a78bfa"
+              : "#888",
             border: isInstalled || apkState === "done"
               ? "1px solid rgba(16,185,129,0.3)"
-              : "1px solid rgba(139,92,246,0.3)",
+              : canInstall
+              ? "1px solid rgba(139,92,246,0.3)"
+              : "1px solid rgba(100,100,100,0.2)",
           }}
         >
           {apkState === "installing" ? (
@@ -177,8 +173,10 @@ function ProfileContent() {
             />
           ) : isInstalled || apkState === "done" ? (
             "✓ Installée"
+          ) : canInstall ? (
+            "Installer"
           ) : (
-            <><Download className="w-2.5 h-2.5" /> Installer</>
+            "Non dispo"
           )}
         </span>
       ),
