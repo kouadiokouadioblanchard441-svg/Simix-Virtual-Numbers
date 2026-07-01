@@ -193,16 +193,25 @@ export const METHOD_TO_CLAPAY_OPERATOR: Record<string, string> = {
  *
  * Rule applied here:
  *  1. If the number already starts with the country digits → already E.164, return as-is.
- *  2. Else if country is in KEEP_LEADING_ZERO_COUNTRIES → prepend country code, keep the 0.
- *  3. Else → strip a single leading trunk "0" (if present) before prepending the country code.
+ *  2. Else if country is in LOCAL_FORMAT_ONLY_COUNTRIES → return the local number as-is
+ *     (with leading 0 preserved). Clapay CI/BJ rejects E.164 format and expects
+ *     the raw 10-digit local number (e.g. "0595857098"), confirmed by live testing.
+ *  3. Else if country is in KEEP_LEADING_ZERO_COUNTRIES → prepend country code, keep the 0.
+ *  4. Else → strip a single leading trunk "0" (if present) before prepending the country code.
  *
  * Examples:
- *   formatClapayPhone("0701234567",    "+225", "CI") → "+2250701234567"  (CI — 0 is kept)
+ *   formatClapayPhone("0595857098",    "+225", "CI") → "0595857098"      (CI — local only, no prefix)
  *   formatClapayPhone("0691234567",    "+237", "CM") → "+237691234567"   (CM — trunk 0 stripped)
  *   formatClapayPhone("691234567",     "+237", "CM") → "+237691234567"   (no leading 0)
  *   formatClapayPhone("2250701234567", "+225")        → "+2250701234567" (already E.164)
  *   formatClapayPhone("+2250701234567","+225")        → "+2250701234567" (already E.164 with +)
  */
+
+/* Countries where Clapay expects the raw local number (no country code prefix).
+ * Confirmed live: CI rejects +2250595857098 with ERROR_PHONE_NUMBER_LENGTH_IS_TOO_SHORT
+ * but accepts 0595857098 (10-digit local format). */
+const LOCAL_FORMAT_ONLY_COUNTRIES = new Set(["CI", "BJ"]);
+
 const KEEP_LEADING_ZERO_COUNTRIES = new Set(["CI", "BJ"]);
 
 export function formatClapayPhone(phoneNumber: string, dialCode?: string, countryCode?: string): string {
@@ -211,12 +220,27 @@ export function formatClapayPhone(phoneNumber: string, dialCode?: string, countr
 
   if (!countryDigits) return `+${localDigits}`;
 
+  // If the number already includes the country code prefix, strip it back to local
+  // for countries that want local format only.
+  const cc = (countryCode ?? "").toUpperCase();
+
+  if (LOCAL_FORMAT_ONLY_COUNTRIES.has(cc)) {
+    // Strip country prefix if accidentally included, then return local with leading 0.
+    if (localDigits.startsWith(countryDigits)) {
+      localDigits = localDigits.slice(countryDigits.length);
+    }
+    // Ensure leading 0 is present
+    if (!localDigits.startsWith("0")) {
+      localDigits = "0" + localDigits;
+    }
+    return localDigits;
+  }
+
   // If the number already includes the country code prefix, avoid doubling it.
   if (localDigits.startsWith(countryDigits)) {
     return `+${localDigits}`;
   }
 
-  const cc = (countryCode ?? "").toUpperCase();
   const keepZero = KEEP_LEADING_ZERO_COUNTRIES.has(cc);
 
   // Strip a single leading trunk "0" for countries where it is NOT part of the
