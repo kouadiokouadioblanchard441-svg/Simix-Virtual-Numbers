@@ -3,7 +3,7 @@
  * Docs: NoWallet V3 / Clapay API (OAS 3.0)
  *
  * Auth: Bearer token (API key from Clapay dashboard)
- * Base URL: configurable — defaults to https://api.clapay.net
+ * Base URL: configurable — defaults to https://nw-api.clapay.app
  *
  * Documented endpoints (used by this client):
  *  POST /nowallet/api/init/payment                                   ← initiate payment
@@ -230,9 +230,10 @@ export class ClapayClient {
   private token: string;
   private baseUrl: string;
 
-  constructor(token: string, baseUrl = "https://api.clapay.net") {
+  constructor(token: string, baseUrl = "https://nw-api.clapay.app") {
     this.token = token;
-    this.baseUrl = baseUrl.replace(/\/$/, "");
+    // Normalize: strip trailing slash AND /nowallet/api suffix if accidentally included
+    this.baseUrl = baseUrl.replace(/\/$/, "").replace(/\/nowallet\/api$/, "");
   }
 
   private buildUrl(path: string, params?: Record<string, string>): string {

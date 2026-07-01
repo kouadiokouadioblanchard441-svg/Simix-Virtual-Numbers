@@ -91195,9 +91195,9 @@ var init_clapay = __esm({
     ClapayClient = class {
       token;
       baseUrl;
-      constructor(token, baseUrl2 = "https://api.clapay.net") {
+      constructor(token, baseUrl2 = "https://nw-api.clapay.app") {
         this.token = token;
-        this.baseUrl = baseUrl2.replace(/\/$/, "");
+        this.baseUrl = baseUrl2.replace(/\/$/, "").replace(/\/nowallet\/api$/, "");
       }
       buildUrl(path5, params) {
         const encoded = path5.split("/").map((seg) => encodeURIComponent(decodeURIComponent(seg))).join("/");
@@ -129257,7 +129257,7 @@ async function seedRoutingData() {
       slug: "clapay",
       name: "Clapay",
       logoUrl: "https://clapay.net/favicon.ico",
-      apiUrl: process.env.CLAPAY_BASE_URL ?? "https://api.clapay.net",
+      apiUrl: process.env.CLAPAY_BASE_URL ?? "https://nw-api.clapay.app",
       apiKey: process.env.CLAPAY_API_TOKEN ?? null,
       type: "deposit",
       supportedCountries: ["CI", "SN", "CM", "BF", "BJ", "ML", "GN", "NE", "TG"],

@@ -67,5 +67,6 @@ PORT = "8080"
 
 [userenv.production]
 GOOGLE_REDIRECT_URI = "https://simix.site/api/auth/google/callback"
+CLAPAY_BASE_URL = "https://nw-api.clapay.app"
 
 [userenv.development]

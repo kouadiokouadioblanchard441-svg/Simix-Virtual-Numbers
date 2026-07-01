@@ -386,7 +386,7 @@ export async function seedRoutingData(): Promise<void> {
       slug: "clapay",
       name: "Clapay",
       logoUrl: "https://clapay.net/favicon.ico",
-      apiUrl:  process.env.CLAPAY_BASE_URL ?? "https://api.clapay.net",
+      apiUrl:  process.env.CLAPAY_BASE_URL ?? "https://nw-api.clapay.app",
       apiKey:  process.env.CLAPAY_API_TOKEN ?? null,
       type:    "deposit",
       supportedCountries: ["CI","SN","CM","BF","BJ","ML","GN","NE","TG"],
