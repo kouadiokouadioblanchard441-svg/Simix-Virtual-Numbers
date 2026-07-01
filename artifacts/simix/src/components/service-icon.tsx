@@ -635,7 +635,11 @@ function CustomLogoIcon({
           const parent = el.parentElement;
           if (parent) {
             parent.style.background = "linear-gradient(135deg,#A855F7,#6366F1)";
-            parent.innerHTML = `<span style="color:white;font-weight:700;font-size:${Math.round(size * 0.42)}px;user-select:none">${name.charAt(0).toUpperCase()}</span>`;
+            const span = document.createElement("span");
+            span.style.cssText = `color:white;font-weight:700;font-size:${Math.round(size * 0.42)}px;user-select:none`;
+            span.textContent = name.charAt(0).toUpperCase();
+            parent.innerHTML = "";
+            parent.appendChild(span);
           }
         }}
       />

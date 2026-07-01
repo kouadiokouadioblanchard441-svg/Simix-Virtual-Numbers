@@ -60,11 +60,9 @@ LOG_LEVEL = "info"
 MOBILE_MONEY_GATEWAY = "auto_clapay_first"
 PAWAPAY_ENV = "production"
 VAPID_PUBLIC_KEY = "BPy-4QOhhUbnX3apfyA2LBL8YohvcFVV-av01mEzhI9tzfJBjzXX1Eu5UREKtOnd6W37HGZrOFwmlbYIttLATgc"
-VAPID_PRIVATE_KEY = "ZTms399zzZmgctCuW81L9ZYCAG0qFu9DcwJEFh1JVrQ"
 VAPID_SUBJECT = "mailto:support@simix.site"
 APP_URL = "https://81bb0add-565f-40cd-bca2-6d3e8197cf42-00-15pmv5q2igxl0.spock.replit.dev"
 PORT = "8080"
-ADMIN_JWT_SECRET = "9415eec8160fcda42fe79c0e9b76ddc60cd7c515d5847c01c3aabaafba64d6c154fa70acb96b49b5bc4fd2a4f0007306"
 
 [userenv.production]
 GOOGLE_REDIRECT_URI = "https://simix.site/api/auth/google/callback"

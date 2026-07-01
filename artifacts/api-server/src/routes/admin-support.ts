@@ -32,7 +32,7 @@ function requireAdmin(req: Request, res: Response, next: NextFunction): void {
 /* ─── DEFAULT AI CONFIG SEED ─────────────────────────────── */
 const DEFAULT_AI_CONFIG: Array<{ key: string; value: string; label: string; group: string }> = [
   { key: "ai_provider", value: "gemini", label: "Fournisseur IA (gemini / groq / openrouter / openai)", group: "api" },
-  { key: "gemini_api_key", value: "AIzaSyAs5r-WZ-lRaJi-B3qOEYfxEjfoZexqzOI", label: "Clé API Gemini", group: "api" },
+  { key: "gemini_api_key", value: process.env["GEMINI_API_KEY"] ?? "", label: "Clé API Gemini", group: "api" },
   { key: "gemini_model", value: "gemini-2.0-flash", label: "Modèle Gemini (gemini-2.0-flash / gemini-1.5-pro / gemini-1.5-flash)", group: "api" },
   { key: "groq_api_key", value: "", label: "Clé API Groq (gratuit — console.groq.com)", group: "api" },
   { key: "groq_model", value: "llama-3.3-70b-versatile", label: "Modèle Groq (llama-3.3-70b-versatile / llama-3.1-8b-instant / mixtral-8x7b-32768)", group: "api" },
