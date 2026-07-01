@@ -166,6 +166,21 @@ function needsBuild() {
   const bundle = path.join(root, "index.cjs");
   if (!fs.existsSync(bundle)) return true;
 
+  // Frontend assets must exist — if icons or index.html are missing, rebuild
+  const requiredFrontendFiles = [
+    path.join(root, "public", "index.html"),
+    path.join(root, "public", "icons", "icon-192x192.png"),
+    path.join(root, "public", "icons", "icon-512x512.png"),
+    path.join(root, "public", "sw.js"),
+    path.join(root, "public", "manifest.webmanifest"),
+  ];
+  for (const f of requiredFrontendFiles) {
+    if (!fs.existsSync(f)) {
+      console.log(`[build] Fichier frontend manquant: ${path.relative(root, f)} — rebuild forcé`);
+      return true;
+    }
+  }
+
   const bundleMtime = fs.statSync(bundle).mtimeMs;
   const sourceDirs = [
     path.join(root, "artifacts/api-server/src"),

@@ -1,7 +1,36 @@
 import { Router } from "express";
+import { readFileSync, existsSync } from "fs";
+import path from "path";
 import { getAppUrl } from "../lib/app-url";
 
 const router = Router();
+
+/* ── GET /manifest.webmanifest — correct MIME type for PWA ──────────────
+ * Express static middleware may serve .webmanifest as application/octet-stream
+ * on servers whose mime DB doesn't know the extension.
+ * This explicit route always returns application/manifest+json so Chrome
+ * recognises the manifest and shows the PWA install prompt.              */
+router.get("/manifest.webmanifest", (req, res) => {
+  const currentDir = (globalThis as { __dirname?: string }).__dirname ?? __dirname;
+  const manifestPath = path.join(currentDir, "public", "manifest.webmanifest");
+  const fallback = path.join(currentDir, "public", "manifest.json");
+
+  const filePath = existsSync(manifestPath) ? manifestPath : existsSync(fallback) ? fallback : null;
+
+  if (!filePath) {
+    res.status(404).send("manifest not found");
+    return;
+  }
+
+  try {
+    const content = readFileSync(filePath, "utf-8");
+    res.setHeader("Content-Type", "application/manifest+json; charset=utf-8");
+    res.setHeader("Cache-Control", "public, max-age=3600, stale-while-revalidate=86400");
+    res.status(200).send(content);
+  } catch {
+    res.status(500).send("error reading manifest");
+  }
+});
 
 /* ── Public pages included in the sitemap ── */
 const SITEMAP_PAGES = [
