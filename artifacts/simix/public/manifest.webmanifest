@@ -29,21 +29,21 @@
   "screenshots": [
     {
       "src": "/screenshots/screen-dashboard.png",
-      "sizes": "390x844",
+      "sizes": "720x1600",
       "type": "image/png",
       "form_factor": "narrow",
       "label": "Tableau de bord SIMIX"
     },
     {
       "src": "/screenshots/screen-wallet.png",
-      "sizes": "390x844",
+      "sizes": "720x1600",
       "type": "image/png",
       "form_factor": "narrow",
       "label": "Portefeuille SIMIX"
     },
     {
       "src": "/screenshots/screen-countries.png",
-      "sizes": "390x844",
+      "sizes": "720x1600",
       "type": "image/png",
       "form_factor": "narrow",
       "label": "Choisir un pays SIMIX"
