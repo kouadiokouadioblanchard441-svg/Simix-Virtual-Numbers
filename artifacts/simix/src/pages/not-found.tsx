@@ -2,12 +2,19 @@ import { motion } from "framer-motion";
 import { Home, ArrowLeft, SearchX } from "lucide-react";
 import { useGoBack } from "@/hooks/use-go-back";
 import { useLocation } from "wouter";
+import { SeoMeta } from "@/components/seo/SeoMeta";
 
 export default function NotFound() {
   const [, setLocation] = useLocation();
   const goBack = useGoBack("/dashboard");
   return (
     <div className="min-h-[100dvh] w-full flex items-center justify-center bg-background px-5">
+      <SeoMeta
+        title="Page introuvable"
+        description="La page que vous recherchez n'existe pas ou a été déplacée."
+        path="/404"
+        noIndex={true}
+      />
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}

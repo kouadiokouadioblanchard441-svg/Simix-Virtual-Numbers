@@ -20477,27 +20477,27 @@ var require_router = __commonJS({
     var slice = Array.prototype.slice;
     var flatten = Array.prototype.flat;
     var methods = METHODS.map((method) => method.toLowerCase());
-    module2.exports = Router30;
+    module2.exports = Router31;
     module2.exports.Route = Route;
-    function Router30(options) {
-      if (!(this instanceof Router30)) {
-        return new Router30(options);
+    function Router31(options) {
+      if (!(this instanceof Router31)) {
+        return new Router31(options);
       }
       const opts = options || {};
-      function router30(req, res, next) {
-        router30.handle(req, res, next);
+      function router31(req, res, next) {
+        router31.handle(req, res, next);
       }
-      Object.setPrototypeOf(router30, this);
-      router30.caseSensitive = opts.caseSensitive;
-      router30.mergeParams = opts.mergeParams;
-      router30.params = {};
-      router30.strict = opts.strict;
-      router30.stack = [];
-      return router30;
+      Object.setPrototypeOf(router31, this);
+      router31.caseSensitive = opts.caseSensitive;
+      router31.mergeParams = opts.mergeParams;
+      router31.params = {};
+      router31.strict = opts.strict;
+      router31.stack = [];
+      return router31;
     }
-    Router30.prototype = function() {
+    Router31.prototype = function() {
     };
-    Router30.prototype.param = function param2(name2, fn) {
+    Router31.prototype.param = function param2(name2, fn) {
       if (!name2) {
         throw new TypeError("argument name is required");
       }
@@ -20517,7 +20517,7 @@ var require_router = __commonJS({
       params.push(fn);
       return this;
     };
-    Router30.prototype.handle = function handle(req, res, callback) {
+    Router31.prototype.handle = function handle(req, res, callback) {
       if (!callback) {
         throw new TypeError("argument callback is required");
       }
@@ -20644,7 +20644,7 @@ var require_router = __commonJS({
         }
       }
     };
-    Router30.prototype.use = function use(handler) {
+    Router31.prototype.use = function use(handler) {
       let offset = 0;
       let path5 = "/";
       if (typeof handler !== "function") {
@@ -20677,7 +20677,7 @@ var require_router = __commonJS({
       }
       return this;
     };
-    Router30.prototype.route = function route(path5) {
+    Router31.prototype.route = function route(path5) {
       const route2 = new Route(path5);
       const layer = new Layer(path5, {
         sensitive: this.caseSensitive,
@@ -20692,7 +20692,7 @@ var require_router = __commonJS({
       return route2;
     };
     methods.concat("all").forEach(function(method) {
-      Router30.prototype[method] = function(path5) {
+      Router31.prototype[method] = function(path5) {
         const route = this.route(path5);
         route[method].apply(route, slice.call(arguments, 1));
         return this;
@@ -20875,13 +20875,13 @@ var require_application = __commonJS({
     var compileTrust = require_utils3().compileTrust;
     var resolve = require("node:path").resolve;
     var once = require_once();
-    var Router30 = require_router();
+    var Router31 = require_router();
     var slice = Array.prototype.slice;
     var flatten = Array.prototype.flat;
     var app2 = exports2 = module2.exports = {};
     var trustProxyDefaultSymbol = "@@symbol:trust_proxy_default";
     app2.init = function init() {
-      var router30 = null;
+      var router31 = null;
       this.cache = /* @__PURE__ */ Object.create(null);
       this.engines = /* @__PURE__ */ Object.create(null);
       this.settings = /* @__PURE__ */ Object.create(null);
@@ -20890,13 +20890,13 @@ var require_application = __commonJS({
         configurable: true,
         enumerable: true,
         get: function getrouter() {
-          if (router30 === null) {
-            router30 = new Router30({
+          if (router31 === null) {
+            router31 = new Router31({
               caseSensitive: this.enabled("case sensitive routing"),
               strict: this.enabled("strict routing")
             });
           }
-          return router30;
+          return router31;
         }
       });
     };
@@ -20967,15 +20967,15 @@ var require_application = __commonJS({
       if (fns.length === 0) {
         throw new TypeError("app.use() requires a middleware function");
       }
-      var router30 = this.router;
+      var router31 = this.router;
       fns.forEach(function(fn2) {
         if (!fn2 || !fn2.handle || !fn2.set) {
-          return router30.use(path5, fn2);
+          return router31.use(path5, fn2);
         }
         debug(".use app under %s", path5);
         fn2.mountpath = path5;
         fn2.parent = this;
-        router30.use(path5, function mounted_app(req, res, next) {
+        router31.use(path5, function mounted_app(req, res, next) {
           var orig = req.app;
           fn2.handle(req, res, function(err) {
             Object.setPrototypeOf(req, orig.request);
@@ -23502,7 +23502,7 @@ var require_express = __commonJS({
     var EventEmitter3 = require("node:events").EventEmitter;
     var mixin = require_merge_descriptors();
     var proto = require_application();
-    var Router30 = require_router();
+    var Router31 = require_router();
     var req = require_request();
     var res = require_response();
     exports2 = module2.exports = createApplication;
@@ -23524,8 +23524,8 @@ var require_express = __commonJS({
     exports2.application = proto;
     exports2.request = req;
     exports2.response = res;
-    exports2.Route = Router30.Route;
-    exports2.Router = Router30;
+    exports2.Route = Router31.Route;
+    exports2.Router = Router31;
     exports2.json = bodyParser.json;
     exports2.raw = bodyParser.raw;
     exports2.static = require_serve_static();
@@ -93815,7 +93815,7 @@ async function migrate(db2, config) {
 }
 
 // src/app.ts
-var import_express31 = __toESM(require_express2(), 1);
+var import_express32 = __toESM(require_express2(), 1);
 var import_compression = __toESM(require_compression(), 1);
 var import_cors = __toESM(require_lib3(), 1);
 var import_cookie_parser = __toESM(require_cookie_parser(), 1);
@@ -129453,6 +129453,95 @@ router29.use(admin_payment_routing_default);
 router29.use(admin_fivesim_default);
 var routes_default = router29;
 
+// src/routes/seo.ts
+var import_express31 = __toESM(require_express2(), 1);
+var router30 = (0, import_express31.Router)();
+var SITEMAP_PAGES = [
+  { path: "/", priority: "1.0", changefreq: "weekly" },
+  { path: "/register", priority: "0.9", changefreq: "monthly" },
+  { path: "/login", priority: "0.8", changefreq: "monthly" },
+  { path: "/forgot-password", priority: "0.3", changefreq: "yearly" },
+  { path: "/legal/cgu", priority: "0.5", changefreq: "yearly" },
+  { path: "/legal/politique-confidentialite", priority: "0.5", changefreq: "yearly" },
+  { path: "/legal/mentions-legales", priority: "0.5", changefreq: "yearly" },
+  { path: "/legal/cookies", priority: "0.4", changefreq: "yearly" }
+];
+function buildSitemap(baseUrl2) {
+  const today = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
+  const urls = SITEMAP_PAGES.map(({ path: path5, priority, changefreq }) => {
+    const loc = `${baseUrl2}${path5}`;
+    return [
+      "  <url>",
+      `    <loc>${loc}</loc>`,
+      `    <lastmod>${today}</lastmod>`,
+      `    <changefreq>${changefreq}</changefreq>`,
+      `    <priority>${priority}</priority>`,
+      "  </url>"
+    ].join("\n");
+  }).join("\n");
+  return [
+    '<?xml version="1.0" encoding="UTF-8"?>',
+    '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"',
+    '        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"',
+    '        xsi:schemaLocation="http://www.sitemaps.org/schemas/sitemap/0.9',
+    '          http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd">',
+    urls,
+    "</urlset>"
+  ].join("\n");
+}
+router30.get("/sitemap.xml", (_req, res) => {
+  const baseUrl2 = getAppUrl();
+  const xml = buildSitemap(baseUrl2);
+  res.setHeader("Content-Type", "application/xml; charset=utf-8");
+  res.setHeader("Cache-Control", "public, max-age=3600, stale-while-revalidate=86400");
+  res.status(200).send(xml);
+});
+router30.get("/robots.txt", (_req, res) => {
+  const baseUrl2 = getAppUrl();
+  const content = [
+    "User-agent: *",
+    "",
+    "# Pages publiques indexables",
+    "Allow: /$",
+    "Allow: /register$",
+    "Allow: /login$",
+    "Allow: /forgot-password$",
+    "Allow: /legal/",
+    "",
+    "# Pages priv\xE9es \u2014 espace utilisateur",
+    "Disallow: /dashboard",
+    "Disallow: /profile",
+    "Disallow: /wallet",
+    "Disallow: /history",
+    "Disallow: /numbers",
+    "Disallow: /services",
+    "Disallow: /countries",
+    "Disallow: /notifications",
+    "Disallow: /pin",
+    "Disallow: /verify-email",
+    "Disallow: /reset-password",
+    "Disallow: /splash",
+    "Disallow: /bienvenue",
+    "Disallow: /crypto-history",
+    "",
+    "# Pages admin \u2014 acc\xE8s interdit",
+    "Disallow: /admin",
+    "Disallow: /console",
+    "Disallow: /admin-login",
+    "Disallow: /admin/secure-login",
+    "Disallow: /toast-demo",
+    "",
+    "# API",
+    "Disallow: /api/",
+    "",
+    `Sitemap: ${baseUrl2}/sitemap.xml`
+  ].join("\n");
+  res.setHeader("Content-Type", "text/plain; charset=utf-8");
+  res.setHeader("Cache-Control", "public, max-age=86400");
+  res.status(200).send(content);
+});
+var seo_default = router30;
+
 // src/app.ts
 init_logger2();
 init_src();
@@ -129642,7 +129731,7 @@ function checkUserBlocked(req, res, next) {
 }
 
 // src/app.ts
-var app = (0, import_express31.default)();
+var app = (0, import_express32.default)();
 app.set("trust proxy", 1);
 app.use((0, import_compression.default)({
   level: 6,
@@ -129821,20 +129910,21 @@ var rawBodyCapture = (req, _res, buf) => {
 };
 app.use((req, res, next) => {
   if (WEBHOOK_PATHS_SET.has(req.path)) {
-    import_express31.default.json({ limit: "1mb", verify: rawBodyCapture })(req, res, next);
+    import_express32.default.json({ limit: "1mb", verify: rawBodyCapture })(req, res, next);
   } else {
     next();
   }
 });
 app.use((req, res, next) => {
   if (!WEBHOOK_PATHS_SET.has(req.path)) {
-    import_express31.default.json({ limit: "256kb", verify: rawBodyCapture })(req, res, next);
+    import_express32.default.json({ limit: "256kb", verify: rawBodyCapture })(req, res, next);
   } else {
     next();
   }
 });
-app.use(import_express31.default.urlencoded({ extended: true, limit: "64kb" }));
+app.use(import_express32.default.urlencoded({ extended: true, limit: "64kb" }));
 app.use((0, import_cookie_parser.default)());
+app.use(seo_default);
 app.use(globalRateLimit);
 app.use(checkMaintenanceMode);
 app.use(checkIpBlacklist);
@@ -129999,7 +130089,7 @@ if (process.env.NODE_ENV !== "development") {
   if (currentDir) {
     const publicDir = import_path2.default.join(currentDir, "public");
     if ((0, import_fs3.existsSync)(publicDir)) {
-      app.use(import_express31.default.static(publicDir));
+      app.use(import_express32.default.static(publicDir));
       app.use(async (_req, res) => {
         if (await isMaintenanceMode()) {
           res.status(503).send(MAINTENANCE_HTML);

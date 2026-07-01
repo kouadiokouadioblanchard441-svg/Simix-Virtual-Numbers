@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { SeoMeta } from "@/components/seo/SeoMeta";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
@@ -24,6 +25,12 @@ export default function MaintenancePage() {
         overflowX: "hidden",
       }}
     >
+      <SeoMeta
+        title="Maintenance en cours"
+        description="SIMIX est temporairement indisponible pour maintenance. Revenez dans quelques instants."
+        path="/maintenance"
+        noIndex={true}
+      />
       {/* ── Hero illustration ── */}
       <div
         style={{

@@ -7,6 +7,7 @@ import helmet from "helmet";
 import path from "path";
 import { existsSync } from "fs";
 import router from "./routes";
+import seoRouter from "./routes/seo";
 import { logger } from "./lib/logger";
 import { attachUser } from "./lib/auth";
 import { getAppUrl } from "./lib/app-url";
@@ -271,6 +272,9 @@ app.use((req, res, next) => {
 
 app.use(express.urlencoded({ extended: true, limit: "64kb" }));
 app.use(cookieParser());
+
+/* ── SEO: sitemap.xml + robots.txt (always accessible, before maintenance) ── */
+app.use(seoRouter);
 
 /* ── Global rate limit (200 req/min per IP) ── */
 app.use(globalRateLimit);
