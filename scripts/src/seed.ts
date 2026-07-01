@@ -1,9 +1,8 @@
 /**
  * Seed Simix reference data: services, countries, payment methods,
- * API providers (5sim, PawaPay), and a demo user.
+ * API providers (5sim, PawaPay).
  * Target: Supabase (SUPABASE_DATABASE_URL)
  */
-import bcrypt from "bcryptjs";
 import { drizzle } from "drizzle-orm/node-postgres";
 import pg from "pg";
 import * as schema from "@workspace/db/schema";
@@ -11,13 +10,11 @@ import {
   countriesTable,
   paymentMethodsTable,
   servicesTable,
-  transactionsTable,
-  usersTable,
   apiProvidersTable,
   systemSettingsTable,
   countryPaymentConfigsTable,
 } from "@workspace/db/schema";
-import { eq, sql } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 
 const { Pool } = pg;
 
@@ -290,46 +287,6 @@ async function upsertSystemSettings() {
   console.log(`  ✓ ${settings.length} system settings`);
 }
 
-async function ensureDemoUser() {
-  console.log("→ Seeding demo user...");
-  const phone = "+2250701234567";
-  const [existing] = await db.select().from(usersTable).where(eq(usersTable.phone, phone)).limit(1);
-  if (existing) {
-    await db.update(usersTable).set({
-      balance: sql`GREATEST(${usersTable.balance}, 12450)`,
-      isAdmin: true,
-      emailVerified: true,
-    }).where(eq(usersTable.id, existing.id));
-    console.log("  ✓ Demo user already exists (promoted to admin, balance updated)");
-    return existing.id;
-  }
-  const passwordHash = await bcrypt.hash("simix2026", 10);
-  const [user] = await db.insert(usersTable).values({
-    fullName: "Kouassi David",
-    phone,
-    countryCode: "+225",
-    username: "kouassi_david",
-    email: "kouassidavid@gmail.com",
-    passwordHash,
-    balance: 12_450,
-    verified: true,
-    emailVerified: true,
-    status: "Standard",
-    isAdmin: true,
-  }).returning();
-  if (!user) return null;
-
-  const seedTx = [
-    { type: "recharge", amount: 5000, method: "Orange Money", description: "Recharge Orange Money" },
-    { type: "purchase", amount: 150, method: "wallet", description: "Numéro WhatsApp - Côte d'Ivoire" },
-    { type: "recharge", amount: 10000, method: "MTN Mobile Money", description: "Recharge MTN" },
-  ] as const;
-  for (const t of seedTx) {
-    await db.insert(transactionsTable).values({ userId: user.id, type: t.type, amount: t.amount, status: "completed", method: t.method, description: t.description });
-  }
-  console.log("  ✓ Demo user created");
-  return user.id;
-}
 
 async function main() {
   console.log("🚀 Seeding database...\n");
@@ -345,7 +302,6 @@ async function main() {
   await upsertApiProviders();
   await upsertCountryPaymentConfigs();
   await upsertSystemSettings();
-  await ensureDemoUser();
   console.log("\n✅ Seed completed successfully!");
   console.log("\n📝 Next steps:");
   console.log("  1. Add your 5sim API key via the admin panel → Fournisseurs → 5sim → Modifier");

@@ -12,7 +12,7 @@ Monorepo (pnpm workspaces) with the following workspace pieces:
 - `lib/api-zod/src/generated/api.ts` — Zod schemas generated from the OpenAPI spec (used for request/response validation on the server).
 - `lib/api-client-react/src/generated/api.ts` — React Query hooks generated from the OpenAPI spec (used by the frontend).
 - `lib/db` — Drizzle ORM schema + Postgres client.
-- `scripts/src/seed.ts` — Seeds reference data (services, countries, payment methods) and a demo user.
+- `scripts/src/seed.ts` — Seeds reference data (services, countries, payment methods).
 
 ## Domain model
 
@@ -35,12 +35,6 @@ Monorepo (pnpm workspaces) with the following workspace pieces:
 ## Mock SMS provider
 
 `artifacts/api-server/src/lib/sms-simulator.ts` schedules a synthetic verification SMS to be inserted 8–20s after a number is requested. In production this is the seam where a real provider (PawaPay / SMS-Activate / etc.) would plug in.
-
-## Demo account
-
-- Phone: `+2250701234567`
-- Password: `simix2026`
-- Starts with 12 450 FCFA balance and 3 sample transactions.
 
 ## Development
 

@@ -7,7 +7,6 @@ import { startFiveSimPoller } from "./lib/fivesim-poller";
 import { startFiveSimSyncScheduler, syncFiveSimCountries, syncFiveSimProducts } from "./lib/fivesim-sync";
 import { startClapayReconciliation } from "./lib/clapay-reconciliation";
 import { startPawaPayReconciliation } from "./lib/pawapay-reconciliation";
-import { seedDemoUser } from "./lib/seed-demo-user";
 import { seedPaymentMethods } from "./lib/seed-payment-methods";
 import { seedProvidersFromEnv } from "./lib/seed-providers";
 import { seedRoutingData } from "./lib/seed-routing";
@@ -76,7 +75,6 @@ async function start(): Promise<void> {
   }
 
   /* ── Seed reference data AFTER migrations complete ─────────────── */
-  void seedDemoUser();
   void seedPaymentMethods();
   void seedCountryPaymentConfigs();
   void seedRoutingData();
