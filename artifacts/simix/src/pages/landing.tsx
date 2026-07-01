@@ -193,7 +193,7 @@ const SERVICES = [
   { name: "YouTube",    slug: "youtube",   color: "#FF0000", icon3d: "/3d/services/youtube.png" },
   { name: "Apple",      slug: "apple",     color: "#555555", icon3d: "/3d/services/apple.png" },
   { name: "Signal",     slug: "signal",    color: "#3A76F0", icon3d: "/3d/services/signal.png" },
-  { name: "+500 autres",slug: "",          color: "#7C3AED", icon3d: "" },
+  { name: "+500 autres",slug: "",          color: "#7C3AED", icon3d: "/3d/services/more.png" },
 ];
 
 const STEPS = [
