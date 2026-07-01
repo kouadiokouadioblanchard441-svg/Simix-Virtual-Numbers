@@ -568,11 +568,37 @@ function SuccessOverlay({ amountXof, localAmount, currencyCode }: {
 }
 
 /* ─── Pending Overlay ─── */
+/* ── Session storage key for pending Clapay deposits (survives page navigation) ── */
+const PENDING_KEY = "simix_pending_deposit";
+interface StoredPending {
+  depositId: string;
+  paymentUrl: string | null;
+  methodSlug: string;
+  methodName: string;
+  methodColor: string;
+  localAmount: number;
+  currencyCode: string;
+}
+
+function savePendingDeposit(data: StoredPending) {
+  try { sessionStorage.setItem(PENDING_KEY, JSON.stringify(data)); } catch { /* ignore */ }
+}
+function loadPendingDeposit(): StoredPending | null {
+  try {
+    const raw = sessionStorage.getItem(PENDING_KEY);
+    return raw ? (JSON.parse(raw) as StoredPending) : null;
+  } catch { return null; }
+}
+function clearPendingDeposit() {
+  try { sessionStorage.removeItem(PENDING_KEY); } catch { /* ignore */ }
+}
+
 function PendingOverlay({
   localAmount,
   currencyCode,
   methodName,
   methodColor,
+  paymentUrl,
   onCancel,
   onSuccess,
   onFailed,
@@ -582,6 +608,7 @@ function PendingOverlay({
   currencyCode: string;
   methodName: string;
   methodColor: string;
+  paymentUrl: string | null;
   onCancel: () => void;
   onSuccess: () => void;
   onFailed: () => void;
@@ -590,6 +617,7 @@ function PendingOverlay({
   const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
   const [dots, setDots] = useState(".");
   const [elapsed, setElapsed] = useState(0);
+  const isCheckout = !!paymentUrl;
 
   useEffect(() => {
     const iv = setInterval(() => setDots(d => d.length >= 3 ? "." : d + "."), 600);
@@ -611,8 +639,8 @@ function PendingOverlay({
           const res = await fetch(`${BASE}/api/wallet/deposit/${depositId}/status`, { credentials: "include" });
           if (!res.ok) continue;
           const data = await res.json() as { status: string };
-          if (data.status === "completed") { onSuccess(); return; }
-          if (data.status === "failed") { onFailed(); return; }
+          if (data.status === "completed") { clearPendingDeposit(); onSuccess(); return; }
+          if (data.status === "failed")    { clearPendingDeposit(); onFailed(); return; }
         } catch { /* ignore */ }
       }
     }
@@ -652,29 +680,62 @@ function PendingOverlay({
           />
         </div>
 
-        <p className="text-xl font-black text-white mb-2">En attente{dots}</p>
-        <p className="text-sm text-muted-foreground mb-1">
-          Validez{" "}
-          <span className="font-bold text-white">
-            {currencyCode === "XOF" || currencyCode === "XAF"
-              ? formatFCFA(localAmount)
-              : `${localAmount.toLocaleString("fr-FR")} ${currencyCode}`}
-          </span>{" "}
-          sur votre téléphone
-        </p>
-        <p className="text-sm font-medium mb-1" style={{ color: methodColor }}>{methodName}</p>
-        <p className="text-xs text-muted-foreground/50 mt-3">Temps écoulé : {timeStr}</p>
+        {isCheckout ? (
+          <>
+            <p className="text-xl font-black text-white mb-2">Paiement en cours{dots}</p>
+            <p className="text-sm text-muted-foreground mb-1">
+              Retournez sur la page{" "}
+              <span className="font-bold" style={{ color: methodColor }}>{methodName}</span>{" "}
+              pour finaliser le paiement de{" "}
+              <span className="font-bold text-white">
+                {currencyCode === "XOF" || currencyCode === "XAF"
+                  ? formatFCFA(localAmount)
+                  : `${localAmount.toLocaleString("fr-FR")} ${currencyCode}`}
+              </span>
+            </p>
+            <p className="text-xs text-muted-foreground/50 mt-2">Temps écoulé : {timeStr}</p>
+            <a
+              href={paymentUrl!}
+              className="mt-5 flex items-center justify-center gap-2 w-full py-3 rounded-2xl font-bold text-white text-sm transition-opacity hover:opacity-90"
+              style={{ backgroundColor: methodColor }}
+            >
+              Ouvrir la page de paiement
+            </a>
+            <div className="mt-4 p-3 bg-white/5 border border-white/10 rounded-2xl text-left">
+              <p className="text-xs font-bold text-muted-foreground uppercase tracking-wide mb-1.5">En attente de confirmation</p>
+              <ul className="space-y-1 text-xs text-muted-foreground">
+                <li>• Complétez le paiement sur la page {methodName}</li>
+                <li>• Votre solde sera crédité automatiquement</li>
+                <li>• Ne fermez pas cette page après paiement</li>
+              </ul>
+            </div>
+          </>
+        ) : (
+          <>
+            <p className="text-xl font-black text-white mb-2">En attente{dots}</p>
+            <p className="text-sm text-muted-foreground mb-1">
+              Validez{" "}
+              <span className="font-bold text-white">
+                {currencyCode === "XOF" || currencyCode === "XAF"
+                  ? formatFCFA(localAmount)
+                  : `${localAmount.toLocaleString("fr-FR")} ${currencyCode}`}
+              </span>{" "}
+              sur votre téléphone
+            </p>
+            <p className="text-sm font-medium mb-1" style={{ color: methodColor }}>{methodName}</p>
+            <p className="text-xs text-muted-foreground/50 mt-3">Temps écoulé : {timeStr}</p>
+            <div className="mt-5 p-4 bg-white/5 border border-white/10 rounded-2xl text-left">
+              <p className="text-xs font-bold text-muted-foreground uppercase tracking-wide mb-2">Instructions</p>
+              <ul className="space-y-1.5 text-xs text-muted-foreground">
+                <li>• Vérifiez votre téléphone pour la notification</li>
+                <li>• Entrez votre code secret pour confirmer</li>
+                <li>• Ne fermez pas cette page</li>
+              </ul>
+            </div>
+          </>
+        )}
 
-        <div className="mt-5 p-4 bg-white/5 border border-white/10 rounded-2xl text-left">
-          <p className="text-xs font-bold text-muted-foreground uppercase tracking-wide mb-2">Instructions</p>
-          <ul className="space-y-1.5 text-xs text-muted-foreground">
-            <li>• Vérifiez votre téléphone pour la notification</li>
-            <li>• Entrez votre code secret pour confirmer</li>
-            <li>• Ne fermez pas cette page</li>
-          </ul>
-        </div>
-
-        <button onClick={onCancel} className="mt-5 text-xs text-muted-foreground/60 underline underline-offset-2">
+        <button onClick={() => { clearPendingDeposit(); onCancel(); }} className="mt-5 text-xs text-muted-foreground/60 underline underline-offset-2">
           Annuler et revenir
         </button>
       </motion.div>
@@ -713,7 +774,17 @@ function DepositContent() {
   const [showSuccess, setShowSuccess] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [pendingDepositId, setPendingDepositId] = useState<string | null>(null);
+  const [pendingPaymentUrl, setPendingPaymentUrl] = useState<string | null>(null);
   const [currencyInfo, setCurrencyInfo] = useState<CurrencyInfo | null>(null);
+
+  /* Restore pending Clapay checkout if user navigated back from payment page */
+  useEffect(() => {
+    const stored = loadPendingDeposit();
+    if (stored) {
+      setPendingDepositId(stored.depositId);
+      setPendingPaymentUrl(stored.paymentUrl);
+    }
+  }, []);
 
   const { data: wallet, isLoading: loadingWallet } = useGetWallet({ query: { queryKey: getGetWalletQueryKey() } });
 
@@ -766,7 +837,9 @@ function DepositContent() {
   const currentStep: 1 | 2 | 3 = !selectedCountry ? 1 : !selectedMethod ? 2 : 3;
 
   const handleDepositSuccess = useCallback(() => {
+    clearPendingDeposit();
     setPendingDepositId(null);
+    setPendingPaymentUrl(null);
     setShowSuccess(true);
     queryClient.invalidateQueries({ queryKey: getGetWalletQueryKey() });
     queryClient.invalidateQueries({ queryKey: getGetMeQueryKey() });
@@ -776,7 +849,9 @@ function DepositContent() {
   }, [queryClient, setLocation]);
 
   const handleDepositFailed = useCallback(() => {
+    clearPendingDeposit();
     setPendingDepositId(null);
+    setPendingPaymentUrl(null);
     toast({ variant: "destructive", title: "Paiement échoué", description: "Le paiement n'a pas pu être confirmé. Veuillez réessayer." });
   }, [toast]);
 
@@ -793,10 +868,26 @@ function DepositContent() {
           dialCode: selectedCountry.dialCode,
           currencyCode: currencyCode !== "XOF" ? currencyCode : undefined,
         },
-      }) as { pending?: boolean; depositId?: string; status?: string };
+      }) as { pending?: boolean; depositId?: string; status?: string; payment_url?: string | null };
 
       if (result.pending && result.depositId) {
+        const payUrl = result.payment_url ?? null;
+        /* Save to sessionStorage so the overlay survives a page redirect */
+        savePendingDeposit({
+          depositId: result.depositId,
+          paymentUrl: payUrl,
+          methodSlug: selectedMethod.slug,
+          methodName: selectedMethod.name,
+          methodColor: selectedMethod.color,
+          localAmount: parsedAmount,
+          currencyCode,
+        });
+        setPendingPaymentUrl(payUrl);
         setPendingDepositId(result.depositId);
+        /* For Clapay CHECKOUTPAGE: redirect immediately to the payment page */
+        if (payUrl) {
+          window.location.href = payUrl;
+        }
         return;
       }
 
@@ -864,16 +955,17 @@ function DepositContent() {
         </motion.div>
       )}
 
-      {pendingDepositId && selectedMethod && (
+      {pendingDepositId && (
         <PendingOverlay
-          localAmount={parsedAmount}
-          currencyCode={currencyCode}
-          methodName={selectedMethod.name}
-          methodColor={selectedMethod.color}
+          localAmount={(() => { const s = loadPendingDeposit(); return s?.localAmount ?? parsedAmount; })()}
+          currencyCode={(() => { const s = loadPendingDeposit(); return s?.currencyCode ?? currencyCode; })()}
+          methodName={(() => { const s = loadPendingDeposit(); return s?.methodName ?? selectedMethod?.name ?? ""; })()}
+          methodColor={(() => { const s = loadPendingDeposit(); return s?.methodColor ?? selectedMethod?.color ?? "#7C3AED"; })()}
+          paymentUrl={pendingPaymentUrl}
           depositId={pendingDepositId}
           onSuccess={handleDepositSuccess}
           onFailed={handleDepositFailed}
-          onCancel={() => setPendingDepositId(null)}
+          onCancel={() => { clearPendingDeposit(); setPendingDepositId(null); setPendingPaymentUrl(null); }}
         />
       )}
 
