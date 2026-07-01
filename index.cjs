@@ -125367,7 +125367,7 @@ function requireAdmin3(req, res, next) {
 }
 var DEFAULT_AI_CONFIG = [
   { key: "ai_provider", value: "gemini", label: "Fournisseur IA (gemini / groq / openrouter / openai)", group: "api" },
-  { key: "gemini_api_key", value: "AIzaSyAs5r-WZ-lRaJi-B3qOEYfxEjfoZexqzOI", label: "Cl\xE9 API Gemini", group: "api" },
+  { key: "gemini_api_key", value: process.env["GEMINI_API_KEY"] ?? "", label: "Cl\xE9 API Gemini", group: "api" },
   { key: "gemini_model", value: "gemini-2.0-flash", label: "Mod\xE8le Gemini (gemini-2.0-flash / gemini-1.5-pro / gemini-1.5-flash)", group: "api" },
   { key: "groq_api_key", value: "", label: "Cl\xE9 API Groq (gratuit \u2014 console.groq.com)", group: "api" },
   { key: "groq_model", value: "llama-3.3-70b-versatile", label: "Mod\xE8le Groq (llama-3.3-70b-versatile / llama-3.1-8b-instant / mixtral-8x7b-32768)", group: "api" },
