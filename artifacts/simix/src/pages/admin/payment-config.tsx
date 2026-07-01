@@ -133,7 +133,7 @@ function MethodRow({ method, onSaved, onDeleted }: { method: AdminPaymentMethod;
               <LogoUploadCard
                 label="Logo de l'opérateur"
                 value={logoUrl}
-                onChange={setLogoUrl}
+                onChange={(url) => { setLogoUrl(url); update.mutate({ logoUrl: url }); }}
                 busy={update.isPending}
                 previewBg={color}
                 placeholder="https://... URL du logo"

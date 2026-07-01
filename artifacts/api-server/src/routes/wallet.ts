@@ -3,6 +3,7 @@ import { asc, desc, eq, sql, and, inArray } from "drizzle-orm";
 import {
   db,
   paymentMethodsTable,
+  mobileOperatorsTable,
   transactionsTable,
   usersTable,
   countryPaymentConfigsTable,
@@ -1123,7 +1124,7 @@ router.get(
           slug: paymentMethodsTable.slug,
           description: paymentMethodsTable.description,
           color: paymentMethodsTable.color,
-          logoUrl: paymentMethodsTable.logoUrl,
+          logoUrl: sql<string | null>`COALESCE(${paymentMethodsTable.logoUrl}, ${mobileOperatorsTable.logoUrl})`,
           recommended: paymentMethodsTable.recommended,
           sortOrder: paymentMethodsTable.sortOrder,
           minDeposit: countryPaymentConfigsTable.minDeposit,
@@ -1138,6 +1139,10 @@ router.get(
             eq(countryPaymentConfigsTable.enabled, true),
           ),
         )
+        .leftJoin(
+          mobileOperatorsTable,
+          eq(mobileOperatorsTable.slug, paymentMethodsTable.slug),
+        )
         .orderBy(asc(paymentMethodsTable.sortOrder));
 
       res.json(rows.map(r => ({
@@ -1149,8 +1154,21 @@ router.get(
     }
 
     const rows = await db
-      .select()
+      .select({
+        id: paymentMethodsTable.id,
+        name: paymentMethodsTable.name,
+        slug: paymentMethodsTable.slug,
+        description: paymentMethodsTable.description,
+        color: paymentMethodsTable.color,
+        logoUrl: sql<string | null>`COALESCE(${paymentMethodsTable.logoUrl}, ${mobileOperatorsTable.logoUrl})`,
+        recommended: paymentMethodsTable.recommended,
+        sortOrder: paymentMethodsTable.sortOrder,
+      })
       .from(paymentMethodsTable)
+      .leftJoin(
+        mobileOperatorsTable,
+        eq(mobileOperatorsTable.slug, paymentMethodsTable.slug),
+      )
       .orderBy(asc(paymentMethodsTable.sortOrder));
     res.json(rows.map(toPaymentMethod));
   },
