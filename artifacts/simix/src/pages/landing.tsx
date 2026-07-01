@@ -6,6 +6,7 @@ import { motion } from "framer-motion";
 import { SimixLogo, SimixIcon } from "@/components/simix-logo";
 import { useToast } from "@/hooks/use-toast";
 import { ServiceIcon } from "@/components/service-icon";
+import { usePWAInstallContext } from "@/context/PWAInstallContext";
 import phone3d from "@/assets/simix_phone_3d.png";
 import wallet3d from "@/assets/simix_wallet_3d.png";
 import screenDash from "@/assets/screen-dashboard.png";
@@ -13,6 +14,7 @@ import screenWallet from "@/assets/screen-wallet.png";
 import screenCountries from "@/assets/screen-countries.png";
 import {
   ArrowRight, ChevronRight, CheckCircle, MessageCircle, Sparkles, Bot, Zap, Clock, BookOpen, ThumbsUp,
+  Download, Smartphone,
 } from "lucide-react";
 import {
   FaTelegram, FaWhatsapp, FaFacebook,
@@ -504,6 +506,75 @@ function Navbar() {
 }
 
 /* ─── Hero ─── */
+function PWAInstallBanner() {
+  const { canInstall, isInstalled, isStandalone, promptInstall } = usePWAInstallContext();
+  const [installing, setInstalling] = useState(false);
+  const [done, setDone] = useState(false);
+
+  const isIos = typeof navigator !== "undefined" &&
+    /iphone|ipad|ipod/i.test(navigator.userAgent) &&
+    !(window.navigator as Navigator & { standalone?: boolean }).standalone;
+
+  const handleInstall = async () => {
+    setInstalling(true);
+    const result = await promptInstall();
+    setInstalling(false);
+    if (result === "accepted") setDone(true);
+  };
+
+  if (isInstalled || isStandalone || done) return null;
+
+  if (canInstall) {
+    return (
+      <motion.button
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.5, duration: 0.4 }}
+        onClick={handleInstall}
+        disabled={installing}
+        className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-violet-500/40 bg-violet-600/10 hover:bg-violet-600/20 text-violet-300 hover:text-violet-200 text-sm font-medium transition-all group"
+      >
+        <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-violet-500 to-purple-700 flex items-center justify-center shrink-0">
+          <img src="/icons/icon-72x72.png" alt="SIMIX" className="w-4 h-4 rounded-md" onError={(e) => { (e.target as HTMLImageElement).style.display='none'; }} />
+        </div>
+        {installing ? (
+          <span className="flex items-center gap-1.5">
+            <span className="w-3.5 h-3.5 border-2 border-violet-400/40 border-t-violet-400 rounded-full animate-spin" />
+            Installation…
+          </span>
+        ) : (
+          <span className="flex items-center gap-1.5">
+            <Download className="w-3.5 h-3.5" />
+            Installer l'app SIMIX
+          </span>
+        )}
+        <span className="text-[10px] text-violet-500/70 font-normal hidden sm:inline">Gratuit · sans navigateur</span>
+      </motion.button>
+    );
+  }
+
+  if (isIos) {
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.5, duration: 0.4 }}
+        className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-zinc-700/60 bg-zinc-800/40 text-zinc-400 text-sm"
+      >
+        <Smartphone className="w-3.5 h-3.5 text-violet-400 shrink-0" />
+        <span>
+          Installer sur iPhone :{" "}
+          <span className="text-zinc-300 font-medium">Partager</span>
+          {" → "}
+          <span className="text-zinc-300 font-medium">Sur l'écran d'accueil</span>
+        </span>
+      </motion.div>
+    );
+  }
+
+  return null;
+}
+
 function Hero() {
   const [, setLocation] = useLocation();
   return (
@@ -529,7 +600,7 @@ function Hero() {
               payés en <strong className="text-white">FCFA via Orange Money, MTN, Wave</strong> et tous les opérateurs Mobile Money du continent.
             </p>
 
-            <div className="flex flex-wrap gap-3 mb-5">
+            <div className="flex flex-wrap gap-3 mb-4">
               <button
                 onClick={() => setLocation("/register")}
                 className="flex items-center gap-2 px-7 py-3.5 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500 text-white font-semibold rounded-xl transition-all shadow-xl shadow-violet-600/30 text-base"
@@ -542,6 +613,10 @@ function Hero() {
               >
                 Se connecter <ChevronRight className="w-4 h-4" />
               </button>
+            </div>
+
+            <div className="mb-5">
+              <PWAInstallBanner />
             </div>
 
             <div className="flex items-center gap-3 mb-6">
