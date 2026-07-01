@@ -29,7 +29,7 @@ outputType = "webview"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "cd artifacts/simix && PORT=5000 pnpm run dev"
+args = "bash start-replit.sh"
 waitForPort = 5000
 
 [agent]
@@ -48,10 +48,6 @@ externalPort = 3000
 [[ports]]
 localPort = 5000
 externalPort = 80
-
-[[ports]]
-localPort = 8080
-externalPort = 8080
 
 [nix]
 channel = "stable-25_05"
