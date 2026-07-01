@@ -96,6 +96,24 @@ uri = "file://artifacts/simix/public/icons/plus-3d.png"
 type = "image"
 title = "3d violet plus icon"
 
+[[generated]]
+id = "kTBBkS18VeuHGj9Qg3GSx"
+uri = "file://artifacts/simix/public/logos/orange-money.png"
+type = "image"
+title = "orange money logo"
+
+[[generated]]
+id = "4H06NszCqCWZXcBerRKGv"
+uri = "file://artifacts/simix/public/logos/mtn-momo.png"
+type = "image"
+title = "mtn momo logo"
+
+[[generated]]
+id = "TWmy4r8qpkOf1Io1TxPy3"
+uri = "file://artifacts/simix/public/logos/wave.png"
+type = "image"
+title = "wave money logo"
+
 [[outputs]]
 id = "FCS2ekuXvLzokQS_vzl7F"
 uri = "file://attached_assets/avatars/man-1.jpg"

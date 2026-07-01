@@ -976,17 +976,20 @@ function Security() {
       >
         <p className="text-center text-xs text-zinc-600 uppercase tracking-widest font-semibold mb-6">Certifié & approuvé par</p>
         <div className="flex flex-wrap items-center justify-center gap-6 sm:gap-10">
-          {[
-            { label: "SSL 256-bit", icon: "🔒", desc: "Chiffrement bancaire" },
-            { label: "RGPD", icon: "🇪🇺", desc: "Conformité européenne" },
-            { label: "Orange Money", icon: "🟠", desc: "Partenaire officiel" },
-            { label: "MTN MoMo", icon: "🟡", desc: "Réseau certifié" },
-            { label: "Wave", icon: "🌊", desc: "Intégration directe" },
-            { label: "2FA", icon: "🛡️", desc: "Double authentification" },
-          ].map(({ label, icon, desc }) => (
+          {([
+            { label: "SSL 256-bit", img: null, emoji: "🔒", desc: "Chiffrement bancaire" },
+            { label: "RGPD", img: null, emoji: "🇪🇺", desc: "Conformité européenne" },
+            { label: "Orange Money", img: "/logos/orange-money.png", emoji: null, desc: "Partenaire officiel" },
+            { label: "MTN MoMo", img: "/logos/mtn-momo.png", emoji: null, desc: "Réseau certifié" },
+            { label: "Wave", img: "/logos/wave.png", emoji: null, desc: "Intégration directe" },
+            { label: "2FA", img: null, emoji: "🛡️", desc: "Double authentification" },
+          ] as { label: string; img: string | null; emoji: string | null; desc: string }[]).map(({ label, img, emoji, desc }) => (
             <div key={label} className="flex flex-col items-center gap-1.5 group">
-              <div className="w-12 h-12 rounded-2xl bg-zinc-900 border border-zinc-800 group-hover:border-zinc-600 transition-colors flex items-center justify-center text-2xl shadow-lg">
-                {icon}
+              <div className="w-12 h-12 rounded-2xl bg-zinc-900 border border-zinc-800 group-hover:border-zinc-600 transition-colors flex items-center justify-center overflow-hidden shadow-lg">
+                {img
+                  ? <img src={img} alt={label} className="w-full h-full object-cover rounded-2xl" />
+                  : <span className="text-2xl">{emoji}</span>
+                }
               </div>
               <div className="text-center">
                 <div className="text-xs font-bold text-white">{label}</div>
