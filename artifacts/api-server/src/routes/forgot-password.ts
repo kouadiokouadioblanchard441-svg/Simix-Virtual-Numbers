@@ -6,6 +6,7 @@ import { isRateLimited } from "../lib/rate-limiter";
 import { createOtp, verifyOtp, hasRecentOtp } from "../lib/otp";
 import { sendPasswordResetEmail } from "../lib/email";
 import { requireTurnstile } from "../middlewares/turnstile";
+import { logger } from "../lib/logger";
 
 const router: IRouter = Router();
 
@@ -53,10 +54,10 @@ router.post("/auth/forgot-password", requireTurnstile, async (req, res): Promise
     const code = await createOtp(user.id, "password_reset");
     await sendPasswordResetEmail(user.email, code, user.fullName);
   } catch (err) {
-    console.error("Failed to send password reset email:", err);
+    logger.error({ err }, "[forgot-password] send email error");
   }
 
-  res.json({ success: true, message: "Si un compte correspond, un email a été envoyé.", userId: user.id });
+  res.json({ success: true, message: "Si un compte correspond, un email a été envoyé." });
 });
 
 /* ── Step 2: Verify OTP (no auth needed) ── */
@@ -157,7 +158,7 @@ router.post("/auth/forgot-password/resend", async (req, res): Promise<void> => {
     await sendPasswordResetEmail(user.email, code, user.fullName);
     res.json({ success: true });
   } catch (err) {
-    console.error("Resend reset email failed:", err);
+    logger.error({ err }, "[forgot-password] resend email error");
     res.status(500).json({ error: "Impossible d'envoyer l'email." });
   }
 });

@@ -1,3 +1,5 @@
+import { logger } from "./logger";
+
 /**
  * Clapay / NoWallet V3 — Payment API Client
  * Docs: NoWallet V3 / Clapay API (OAS 3.0)
@@ -263,8 +265,8 @@ export class ClapayClient {
   ): Promise<T> {
     const url = this.buildUrl(path, params);
 
-    /* Log outgoing request (body redacted in prod if sensitive) */
-    console.log(`[Clapay] → ${method} ${url}${body ? ` body=${JSON.stringify(body).slice(0, 500)}` : ""}`);
+    /* Log outgoing request — body redacted to avoid leaking payment data */
+    logger.debug({ method, path }, "[Clapay] → outgoing request");
 
     const start = Date.now();
     const res = await fetch(url, {
@@ -284,19 +286,18 @@ export class ClapayClient {
     try { json = JSON.parse(text); } catch { json = text; }
 
     if (!res.ok) {
-      /* Log the full raw response so the error is visible in server logs */
-      console.error(`[Clapay] ✗ HTTP ${res.status} on ${method} ${path} (${elapsed}ms) — body: ${text.slice(0, 2000)}`);
       const errData = (typeof json === "object" && json !== null) ? json as Record<string, unknown> : {};
-      const errMsg = String(errData.message ?? errData.error ?? text).slice(0, 500);
+      const errMsg = String(errData.message ?? errData.error ?? text).slice(0, 200);
+      logger.error({ method, path, status: res.status, elapsed, errMsg }, "[Clapay] ✗ HTTP error");
       const err = new Error(`Clapay ${res.status}: ${errMsg}`);
       (err as NodeJS.ErrnoException).code = String(res.status);
       throw err;
     }
 
-    console.log(`[Clapay] ✓ ${method} ${path} — ${res.status} (${elapsed}ms)`);
+    logger.info({ method, path, status: res.status, elapsed }, "[Clapay] ✓ request complete");
 
     if (elapsed > 5000) {
-      console.warn(`[Clapay] Slow response: ${method} ${path} took ${elapsed}ms`);
+      logger.warn({ method, path, elapsed }, "[Clapay] slow response");
     }
 
     return json as T;
@@ -414,11 +415,11 @@ export class ClapayClient {
       }
 
       /* Log available operators for debugging */
-      console.warn(
+      logger.warn(
         `[Clapay] No operator match for "${methodSlug}" in ${country}. Available: ${operators.map(o => `${o.codeoperator}(${o.name}) merchant=${o.code?.MERCHANT}`).join(", ")}`,
       );
     } catch (e) {
-      console.warn(`[Clapay] resolveOperatorCode fetch failed — falling back to hardcoded map: ${(e as Error).message}`);
+      logger.warn({ err: (e as Error).message }, "[Clapay] resolveOperatorCode fetch failed — falling back to hardcoded map");
     }
 
     /* Fallback to hardcoded mapping (codeoperator values — last resort) */

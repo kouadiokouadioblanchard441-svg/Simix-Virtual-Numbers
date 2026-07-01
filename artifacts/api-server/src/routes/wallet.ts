@@ -107,6 +107,16 @@ async function getGatewayPreference(): Promise<GatewayPref> {
   return (rows[0]?.value as GatewayPref) ?? "pawapay";
 }
 
+/* ── Clapay webhook secret — derived from CLAPAY_PRIVATE_KEY ──────────────
+ * Appended as ?whs=<token> to the callback URL so only Clapay (who received
+ * the URL) can trigger the webhook. Verification is timing-safe.            */
+function getClapayWebhookSecret(): string | null {
+  const key = process.env.CLAPAY_PRIVATE_KEY?.trim();
+  if (!key) return null;
+  const { createHash } = require("node:crypto") as typeof import("node:crypto");
+  return createHash("sha256").update(`clapay-whs:${key}`).digest("hex").slice(0, 40);
+}
+
 /* ── Clapay callback URL (set in admin settings or env) ── */
 async function getClapayCallbackUrl(): Promise<string> {
   if (process.env.CLAPAY_CALLBACK_URL) return process.env.CLAPAY_CALLBACK_URL;
@@ -116,7 +126,9 @@ async function getClapayCallbackUrl(): Promise<string> {
   if (rows[0]?.value?.trim()) return rows[0].value.trim();
 
   const appUrl = process.env.APP_URL?.replace(/\/$/, "") ?? "https://simix.site";
-  return `${appUrl}/api/wallet/clapay/webhook`;
+  const base = `${appUrl}/api/wallet/clapay/webhook`;
+  const secret = getClapayWebhookSecret();
+  return secret ? `${base}?whs=${secret}` : base;
 }
 
 /* ── Clapay return URL (user is sent here after checkout page) ── */
@@ -828,6 +840,27 @@ router.post("/wallet/pawapay/refund-webhook", async (req: Request, res: Response
  * IMPORTANT: Respond 200 immediately.
  * ──────────────────────────────────────────────────────────────── */
 router.post("/wallet/clapay/webhook", async (req: Request, res: Response): Promise<void> => {
+  /* ── Webhook token verification (timing-safe) ──────────────────────────
+   * When CLAPAY_PRIVATE_KEY is set, callback URLs include ?whs=<token>.
+   * We reject any webhook that doesn't carry the correct token.
+   * This prevents unauthorized actors from crediting arbitrary balances. */
+  const expectedSecret = getClapayWebhookSecret();
+  if (expectedSecret) {
+    const { timingSafeEqual } = require("node:crypto") as typeof import("node:crypto");
+    const received = String(req.query["whs"] ?? "");
+    let valid = false;
+    try {
+      const a = Buffer.from(received.padEnd(expectedSecret.length, "\0"));
+      const b = Buffer.from(expectedSecret);
+      valid = a.length === b.length && timingSafeEqual(a, b);
+    } catch { valid = false; }
+    if (!valid) {
+      logger.warn({ ip: req.ip, receivedToken: received.slice(0, 8) }, "[Clapay Webhook] Invalid or missing webhook token — rejected");
+      res.status(401).json({ error: "Unauthorized" });
+      return;
+    }
+  }
+
   /* Respond 200 immediately — Clapay requires a fast ACK */
   res.status(200).json({ received: true });
 

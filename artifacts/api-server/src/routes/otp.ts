@@ -5,6 +5,7 @@ import { requireAuth } from "../lib/auth";
 import { isRateLimited } from "../lib/rate-limiter";
 import { createOtp, verifyOtp, hasRecentOtp, isUserInactive } from "../lib/otp";
 import { sendOtpEmail } from "../lib/email";
+import { logger } from "../lib/logger";
 
 const router: IRouter = Router();
 
@@ -29,7 +30,7 @@ router.post("/auth/otp/send", requireAuth, async (req, res): Promise<void> => {
     await sendOtpEmail(user.email, code, purpose === "email_verification" ? "register" : "inactivity", user.fullName);
     res.json({ success: true, message: `Code envoyé à ${user.email}` });
   } catch (err) {
-    console.error("OTP send error:", err);
+    logger.error({ err }, "[otp] send error");
     res.status(500).json({ error: "Impossible d'envoyer l'email. Vérifiez votre adresse email." });
   }
 });
@@ -88,7 +89,7 @@ router.post("/auth/otp/resend", requireAuth, async (req, res): Promise<void> => 
     await sendOtpEmail(user.email, code, purpose === "email_verification" ? "register" : "inactivity", user.fullName);
     res.json({ success: true, message: `Nouveau code envoyé à ${user.email}` });
   } catch (err) {
-    console.error("OTP resend error:", err);
+    logger.error({ err }, "[otp] resend error");
     res.status(500).json({ error: "Impossible d'envoyer l'email." });
   }
 });

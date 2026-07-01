@@ -23,7 +23,6 @@ export function toUser(
     emailVerified: user.emailVerified,
     status: user.status,
     isAdmin: user.isAdmin,
-    riskScore: user.riskScore,
     authProvider: user.authProvider,
     avatar: user.avatar ?? undefined,
     createdAt: user.createdAt.toISOString(),

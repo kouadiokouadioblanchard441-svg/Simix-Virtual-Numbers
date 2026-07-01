@@ -12,6 +12,7 @@ import {
   requireAuth,
 } from "../lib/auth";
 import { toUser } from "../lib/serializers";
+import { logger } from "../lib/logger";
 import { isRateLimited, resetKey } from "../lib/rate-limiter";
 import { assessLoginRisk, logSecurityEvent } from "../lib/fraud-detection";
 import { isRegistrationEnabled, isEmailOtpEnabled } from "../lib/settings";
@@ -132,7 +133,7 @@ router.post("/auth/register", requireTurnstile, async (req, res): Promise<void> 
     const otpCode = await createOtp(user.id, "email_verification");
     await sendOtpEmail(safeEmail, otpCode, "register", user.fullName);
   } catch (emailErr) {
-    console.error("Failed to send registration OTP email:", emailErr);
+    logger.error({ err: emailErr }, "[auth] registration OTP email error");
   }
 
   res.json({ user: toUser(user), token: session.id, requiresEmailVerification: true });
@@ -241,7 +242,7 @@ router.post("/auth/login", requireTurnstile, async (req, res): Promise<void> => 
       const otpCode = await createOtp(user.id, "email_verification");
       await sendOtpEmail(user.email, otpCode, "register", user.fullName);
     } catch (emailErr) {
-      console.error("Failed to send email verification OTP:", emailErr);
+      logger.error({ err: emailErr }, "[auth] email verification OTP error");
     }
     res.json({ user: toUser(user), token: session.id, requiresEmailVerification: true });
     return;
@@ -253,7 +254,7 @@ router.post("/auth/login", requireTurnstile, async (req, res): Promise<void> => 
       const otpCode = await createOtp(user.id, "inactivity_check");
       await sendOtpEmail(user.email, otpCode, "inactivity", user.fullName);
     } catch (emailErr) {
-      console.error("Failed to send inactivity OTP:", emailErr);
+      logger.error({ err: emailErr }, "[auth] inactivity OTP email error");
     }
     res.json({ user: toUser(user), token: session.id, requiresInactivityCheck: true });
     return;

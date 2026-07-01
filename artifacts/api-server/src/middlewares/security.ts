@@ -102,6 +102,7 @@ export function globalRateLimit(req: Request, res: Response, next: NextFunction)
       details: { path: req.path },
       riskScore: 40,
     });
+    res.setHeader("Retry-After", "60");
     res.status(429).json({ error: "Trop de requêtes. Veuillez patienter." });
     return;
   }

@@ -30,7 +30,6 @@ export async function requireTurnstile(
       res.status(403).json({
         error: "Vérification de sécurité échouée. Veuillez réessayer.",
         code: "TURNSTILE_FAILED",
-        errorCodes: result.errorCodes,
       });
       return;
     }

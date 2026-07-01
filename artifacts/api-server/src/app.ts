@@ -119,6 +119,7 @@ app.use(
         objectSrc: ["'none'"],
         baseUri: ["'self'"],
         formAction: ["'self'"],
+        scriptSrcAttr: ["'none'"],
       },
     },
 
