@@ -1,19 +1,31 @@
 import { useEffect } from "react";
 import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
+import MaintenancePage from "@/pages/maintenance";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
 async function fetchMaintenanceStatus(): Promise<{ active: boolean }> {
-  const res = await fetch(`${BASE}/api/maintenance/status`);
-  if (!res.ok) return { active: false };
-  return res.json();
+  try {
+    const res = await fetch(`${BASE}/api/maintenance/status`, {
+      cache: "no-store",
+      headers: { "Cache-Control": "no-cache" },
+    });
+    if (!res.ok) return { active: false };
+    return res.json();
+  } catch {
+    return { active: false };
+  }
 }
 
 async function fetchMe(): Promise<{ isAdmin?: boolean } | null> {
-  const res = await fetch(`${BASE}/api/auth/me`, { credentials: "include" });
-  if (!res.ok) return null;
-  return res.json();
+  try {
+    const res = await fetch(`${BASE}/api/auth/me`, { credentials: "include" });
+    if (!res.ok) return null;
+    return res.json();
+  } catch {
+    return null;
+  }
 }
 
 export function MaintenanceGuard({ children }: { children: React.ReactNode }) {
@@ -22,13 +34,13 @@ export function MaintenanceGuard({ children }: { children: React.ReactNode }) {
   const { data: status } = useQuery({
     queryKey: ["maintenance-status"],
     queryFn: fetchMaintenanceStatus,
-    refetchInterval: 30_000,
-    staleTime: 10_000,
+    refetchInterval: 15_000,
+    staleTime: 0,
+    gcTime: 0,
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
   });
 
-  /* Re-use the same cache key as the rest of the app so we don't fire
-     a duplicate /api/auth/me request.  isFetched tells us when the
-     first response (success OR error) has arrived. */
   const { data: me, isFetched: meFetched } = useQuery({
     queryKey: ["me"],
     queryFn: fetchMe,
@@ -41,29 +53,26 @@ export function MaintenanceGuard({ children }: { children: React.ReactNode }) {
     location === "/console" ||
     location === "/admin-login";
 
-  const isMaintenancePage = location === "/maintenance";
   const isAdmin = me?.isAdmin === true;
-
-  /* Redirect to /maintenance — but only after we know if user is admin */
-  useEffect(() => {
-    if (!status) return;           // status not yet loaded
-    if (!meFetched) return;        // wait for auth check before deciding
-    if (isMaintenancePage) return;
-    if (isAdminPath) return;
-    if (isAdmin) return;
-    if (status.active) {
-      setLocation("/maintenance");
-    }
-  }, [status, meFetched, isAdmin, isAdminPath, isMaintenancePage, setLocation]);
+  const maintenanceActive = status?.active === true;
 
   /* Auto-redirect away from /maintenance when maintenance is lifted */
   useEffect(() => {
     if (!status) return;
-    if (!isMaintenancePage) return;
+    if (location !== "/maintenance") return;
     if (!status.active) {
       setLocation("/");
     }
-  }, [status, isMaintenancePage, setLocation]);
+  }, [status, location, setLocation]);
+
+  /* Block non-admin users during maintenance.
+   * We render the maintenance page IN PLACE (no redirect) so:
+   *  - No flash of real content before the redirect
+   *  - Works even when the service worker serves a cached SPA shell
+   *  - Admin paths remain accessible — admins see the real page */
+  if (maintenanceActive && meFetched && !isAdmin && !isAdminPath) {
+    return <MaintenancePage />;
+  }
 
   return <>{children}</>;
 }

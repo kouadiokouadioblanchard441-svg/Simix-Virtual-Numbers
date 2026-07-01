@@ -11,6 +11,7 @@ import { db, ipBlacklistTable } from "@workspace/db";
 import { isRateLimited } from "../lib/rate-limiter";
 import { logSecurityEvent } from "../lib/fraud-detection";
 import { isMaintenanceMode } from "../lib/settings";
+import { MAINTENANCE_HTML } from "../lib/maintenance-html";
 
 /* In-memory cache for blacklisted IPs — avoids DB hit on every request */
 const BLACKLIST_CACHE = new Set<string>();
@@ -47,7 +48,18 @@ function isWebhookPath(path: string): boolean {
   return WEBHOOK_PATHS.some(p => path === p || path.startsWith(p));
 }
 
-/** Return 503 on all non-admin, non-health routes when maintenance_mode=true */
+/** Return 503 on all non-admin, non-health routes when maintenance_mode=true.
+ *
+ * Routing logic:
+ *  - Exempt paths (admin, health, status, webhooks) → always pass through
+ *  - /api/* routes → JSON 503  (API clients need structured errors)
+ *  - All other routes (HTML pages, assets) → HTML 503 maintenance page
+ *    so that users see the branded maintenance page instead of raw JSON
+ *    regardless of whether Node.js or Nginx serves the static files.
+ *
+ *  The /maintenance-hero.png image is exempt so the maintenance page
+ *  can display its hero illustration correctly.
+ */
 export async function checkMaintenanceMode(req: Request, res: Response, next: NextFunction): Promise<void> {
   if (
     req.path.startsWith("/api/admin") ||
@@ -55,18 +67,25 @@ export async function checkMaintenanceMode(req: Request, res: Response, next: Ne
     req.path === "/api/healthz" ||
     req.path === "/api/maintenance/status" ||
     req.path === "/api/auth/me" ||
+    req.path === "/maintenance-hero.png" ||
     isWebhookPath(req.path)
   ) {
     next();
     return;
   }
+
   if (await isMaintenanceMode()) {
-    res.status(503).json({
-      error: "La plateforme est en maintenance. Revenez dans quelques instants.",
-      maintenance: true,
-    });
+    if (req.path.startsWith("/api/")) {
+      res.status(503).json({
+        error: "La plateforme est en maintenance. Revenez dans quelques instants.",
+        maintenance: true,
+      });
+    } else {
+      res.status(503).set("Content-Type", "text/html; charset=utf-8").send(MAINTENANCE_HTML);
+    }
     return;
   }
+
   next();
 }
 
