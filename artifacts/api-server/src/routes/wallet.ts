@@ -33,6 +33,7 @@ import {
   serializeClapayMeta,
   parseClapayMeta,
   mapClapayStatusToDb,
+  formatClapayPhone,
   CLAPAY_TERMINAL_FAILURE,
   type ClapayWebhookPayload,
 } from "../lib/clapay";
@@ -487,7 +488,7 @@ router.post(
           clapayRes = await client.initiatePayment({
             transaction_id: trackingId,
             additional_infos: {
-              customer_phone: `${dialCode ?? ""}${phoneNumber}`,
+              customer_phone: formatClapayPhone(phoneNumber, dialCode),
               customer_firstname: user.fullName?.split(" ")[0] ?? undefined,
               customer_lastname: user.fullName?.split(" ").slice(1).join(" ") ?? undefined,
               customer_email: user.email ?? undefined,

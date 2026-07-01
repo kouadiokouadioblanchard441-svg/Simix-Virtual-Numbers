@@ -174,6 +174,39 @@ export const METHOD_TO_CLAPAY_OPERATOR: Record<string, string> = {
   "mobile": "MTN",
 };
 
+/**
+ * Format a local phone number + dial code into the E.164-style string
+ * Clapay expects for `customer_phone`.
+ *
+ * BUG FIXED: the caller used to do `${dialCode}${phoneNumber}` directly.
+ * African local numbers are entered WITH their leading 0 (e.g. Ivory
+ * Coast: "0701234567"), so naively concatenating produced an invalid
+ * number like "+2250701234567" (dial code + a local number that still
+ * has its own leading 0) — Clapay rejects this with
+ * "Phone number is not valid". The leading 0 must be dropped once the
+ * country's dial code is prepended.
+ *
+ * Examples:
+ *   formatClapayPhone("0701234567", "+225") → "+225701234567"
+ *   formatClapayPhone("701234567",  "+225") → "+225701234567"
+ *   formatClapayPhone("2250701234567", "+225") → "+225701234567"
+ */
+export function formatClapayPhone(phoneNumber: string, dialCode?: string): string {
+  const countryDigits = (dialCode ?? "").replace(/\D/g, "");
+  let localDigits = phoneNumber.replace(/\D/g, "");
+
+  // If the number already includes the country code prefix, strip it first
+  // so we don't double it up (e.g. "2250701234567" with dialCode "+225").
+  if (countryDigits && localDigits.startsWith(countryDigits)) {
+    localDigits = localDigits.slice(countryDigits.length);
+  }
+
+  // Drop the local trunk "0" prefix — invalid once the dial code is prepended.
+  localDigits = localDigits.replace(/^0+/, "");
+
+  return countryDigits ? `+${countryDigits}${localDigits}` : `+${localDigits}`;
+}
+
 export function getOperatorCodeForMethod(methodSlug: string): string | null {
   const slug = methodSlug.toLowerCase();
   for (const [keyword, code] of Object.entries(METHOD_TO_CLAPAY_OPERATOR)) {
