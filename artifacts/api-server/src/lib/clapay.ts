@@ -178,24 +178,36 @@ export const METHOD_TO_CLAPAY_OPERATOR: Record<string, string> = {
  * Format a local phone number + dial code into the E.164-style string
  * Clapay expects for `customer_phone`.
  *
- * Many African countries (e.g. Ivory Coast since 2021, Senegal) have 10-digit
- * local numbers where the leading 0 is part of the subscriber number — NOT a
- * trunk prefix to be stripped. Stripping it produces an invalid number one
- * digit too short (e.g. "+225701234567" instead of "+2250701234567").
+ * Some African countries (Ivory Coast since 2021, Benin since 2021) have
+ * 10-digit local numbers where the leading 0 IS part of the subscriber
+ * number — NOT a trunk prefix. Stripping it there produces an invalid
+ * number one digit too short (e.g. "+225701234567" instead of
+ * "+2250701234567").
+ *
+ * Most OTHER countries (Cameroon, Senegal, Burkina Faso, Mali, Togo,
+ * Guinea, Niger…) use a classic trunk prefix "0" that must be REMOVED
+ * before prepending the country code — keeping it produces a number one
+ * digit too LONG, which Clapay rejects with "Phone number is not valid."
+ * (e.g. "0691234567" + "+237" must become "+237691234567", not
+ * "+2370691234567").
  *
  * Rule applied here:
  *  1. If the number already starts with the country digits → already E.164, return as-is.
- *  2. Otherwise, prepend the country code without stripping any leading 0.
+ *  2. Else if country is in KEEP_LEADING_ZERO_COUNTRIES → prepend country code, keep the 0.
+ *  3. Else → strip a single leading trunk "0" (if present) before prepending the country code.
  *
  * Examples:
- *   formatClapayPhone("0701234567",    "+225") → "+2250701234567"  (CI — 0 is kept)
- *   formatClapayPhone("701234567",     "+225") → "+225701234567"   (no leading 0)
- *   formatClapayPhone("2250701234567", "+225") → "+2250701234567"  (already E.164)
- *   formatClapayPhone("+2250701234567","+225") → "+2250701234567"  (already E.164 with +)
+ *   formatClapayPhone("0701234567",    "+225", "CI") → "+2250701234567"  (CI — 0 is kept)
+ *   formatClapayPhone("0691234567",    "+237", "CM") → "+237691234567"   (CM — trunk 0 stripped)
+ *   formatClapayPhone("691234567",     "+237", "CM") → "+237691234567"   (no leading 0)
+ *   formatClapayPhone("2250701234567", "+225")        → "+2250701234567" (already E.164)
+ *   formatClapayPhone("+2250701234567","+225")        → "+2250701234567" (already E.164 with +)
  */
-export function formatClapayPhone(phoneNumber: string, dialCode?: string): string {
+const KEEP_LEADING_ZERO_COUNTRIES = new Set(["CI", "BJ"]);
+
+export function formatClapayPhone(phoneNumber: string, dialCode?: string, countryCode?: string): string {
   const countryDigits = (dialCode ?? "").replace(/\D/g, "");
-  const localDigits = phoneNumber.replace(/\D/g, "");
+  let localDigits = phoneNumber.replace(/\D/g, "");
 
   if (!countryDigits) return `+${localDigits}`;
 
@@ -204,7 +216,16 @@ export function formatClapayPhone(phoneNumber: string, dialCode?: string): strin
     return `+${localDigits}`;
   }
 
-  // Prepend country code — do NOT strip leading 0, it may be part of the subscriber number.
+  const cc = (countryCode ?? "").toUpperCase();
+  const keepZero = KEEP_LEADING_ZERO_COUNTRIES.has(cc);
+
+  // Strip a single leading trunk "0" for countries where it is NOT part of the
+  // subscriber number (default behaviour — safest for the majority of Clapay's
+  // West/Central Africa coverage).
+  if (!keepZero && localDigits.startsWith("0")) {
+    localDigits = localDigits.slice(1);
+  }
+
   return `+${countryDigits}${localDigits}`;
 }
 

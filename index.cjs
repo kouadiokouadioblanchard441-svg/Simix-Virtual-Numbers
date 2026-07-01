@@ -92350,12 +92350,17 @@ __export(clapay_exports, {
   parseClapayMeta: () => parseClapayMeta,
   serializeClapayMeta: () => serializeClapayMeta
 });
-function formatClapayPhone(phoneNumber, dialCode) {
+function formatClapayPhone(phoneNumber, dialCode, countryCode) {
   const countryDigits = (dialCode ?? "").replace(/\D/g, "");
-  const localDigits = phoneNumber.replace(/\D/g, "");
+  let localDigits = phoneNumber.replace(/\D/g, "");
   if (!countryDigits) return `+${localDigits}`;
   if (localDigits.startsWith(countryDigits)) {
     return `+${localDigits}`;
+  }
+  const cc = (countryCode ?? "").toUpperCase();
+  const keepZero = KEEP_LEADING_ZERO_COUNTRIES.has(cc);
+  if (!keepZero && localDigits.startsWith("0")) {
+    localDigits = localDigits.slice(1);
   }
   return `+${countryDigits}${localDigits}`;
 }
@@ -92396,7 +92401,7 @@ function isClapayDeposit(externalDepositId) {
 function extractClapayTransactionId(externalDepositId) {
   return externalDepositId.slice(CLAPAY_PREFIX.length);
 }
-var METHOD_TO_CLAPAY_OPERATOR, CLAPAY_TERMINAL_SUCCESS, CLAPAY_TERMINAL_FAILURE, ClapayClient, CLAPAY_PREFIX;
+var METHOD_TO_CLAPAY_OPERATOR, KEEP_LEADING_ZERO_COUNTRIES, CLAPAY_TERMINAL_SUCCESS, CLAPAY_TERMINAL_FAILURE, ClapayClient, CLAPAY_PREFIX;
 var init_clapay = __esm({
   "src/lib/clapay.ts"() {
     "use strict";
@@ -92423,6 +92428,7 @@ var init_clapay = __esm({
       "mobile money": "MTN",
       "mobile": "MTN"
     };
+    KEEP_LEADING_ZERO_COUNTRIES = /* @__PURE__ */ new Set(["CI", "BJ"]);
     CLAPAY_TERMINAL_SUCCESS = /* @__PURE__ */ new Set(["COMPLETED"]);
     CLAPAY_TERMINAL_FAILURE = /* @__PURE__ */ new Set([
       "FAILED",
@@ -121249,7 +121255,7 @@ router10.post(
           clapayRes = await client.initiatePayment({
             transaction_id: trackingId,
             additional_infos: {
-              customer_phone: formatClapayPhone(phoneNumber, dialCode),
+              customer_phone: formatClapayPhone(phoneNumber, dialCode, countryCode),
               customer_firstname: user.fullName?.split(" ")[0] ?? void 0,
               customer_lastname: user.fullName?.split(" ").slice(1).join(" ") ?? void 0,
               customer_email: user.email ?? void 0
