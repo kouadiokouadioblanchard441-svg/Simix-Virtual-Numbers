@@ -128259,7 +128259,7 @@ function isWebhookPath(path5) {
   return WEBHOOK_PATHS.some((p) => path5 === p || path5.startsWith(p));
 }
 async function checkMaintenanceMode(req, res, next) {
-  if (req.path.startsWith("/api/admin") || req.path === "/api/health" || req.path === "/api/healthz" || req.path === "/api/maintenance/status" || isWebhookPath(req.path)) {
+  if (req.path.startsWith("/api/admin") || req.path === "/api/health" || req.path === "/api/healthz" || req.path === "/api/maintenance/status" || req.path === "/api/auth/me" || isWebhookPath(req.path)) {
     next();
     return;
   }

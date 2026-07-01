@@ -26,8 +26,11 @@ export function MaintenanceGuard({ children }: { children: React.ReactNode }) {
     staleTime: 10_000,
   });
 
-  const { data: me } = useQuery({
-    queryKey: ["me-maintenance-check"],
+  /* Re-use the same cache key as the rest of the app so we don't fire
+     a duplicate /api/auth/me request.  isFetched tells us when the
+     first response (success OR error) has arrived. */
+  const { data: me, isFetched: meFetched } = useQuery({
+    queryKey: ["me"],
     queryFn: fetchMe,
     staleTime: 30_000,
     retry: false,
@@ -41,16 +44,19 @@ export function MaintenanceGuard({ children }: { children: React.ReactNode }) {
   const isMaintenancePage = location === "/maintenance";
   const isAdmin = me?.isAdmin === true;
 
+  /* Redirect to /maintenance — but only after we know if user is admin */
   useEffect(() => {
-    if (!status) return;
+    if (!status) return;           // status not yet loaded
+    if (!meFetched) return;        // wait for auth check before deciding
     if (isMaintenancePage) return;
     if (isAdminPath) return;
     if (isAdmin) return;
     if (status.active) {
       setLocation("/maintenance");
     }
-  }, [status, isAdmin, isAdminPath, isMaintenancePage, setLocation]);
+  }, [status, meFetched, isAdmin, isAdminPath, isMaintenancePage, setLocation]);
 
+  /* Auto-redirect away from /maintenance when maintenance is lifted */
   useEffect(() => {
     if (!status) return;
     if (!isMaintenancePage) return;
