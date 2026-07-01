@@ -362,7 +362,7 @@ function FlagImg({ code, size = 24 }: { code: string; size?: number }) {
 function LandingServiceIcon({ service }: { service: typeof SERVICES[0] }) {
   const [err, setErr] = useState(false);
 
-  if (!service.slug || !service.icon3d) {
+  if (!service.icon3d) {
     return (
       <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-white font-bold text-xl shadow-lg" style={{ background: "linear-gradient(135deg,#7C3AED,#6366F1)" }}>
         <span className="text-2xl">+</span>

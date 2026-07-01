@@ -90,6 +90,12 @@ uri = "file://public/3d/services/more.png"
 type = "image"
 title = "3D violet plus icon"
 
+[[generated]]
+id = "8FvAbZUu1LEdt5SYvjNwU"
+uri = "file://artifacts/simix/public/icons/plus-3d.png"
+type = "image"
+title = "3d violet plus icon"
+
 [[outputs]]
 id = "FCS2ekuXvLzokQS_vzl7F"
 uri = "file://attached_assets/avatars/man-1.jpg"
