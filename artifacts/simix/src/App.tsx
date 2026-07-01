@@ -11,6 +11,7 @@ import { PWAUpdateBanner } from "@/components/pwa/PWAUpdateBanner";
 import { PWAInstallPrompt } from "@/components/pwa/PWAInstallPrompt";
 import { OfflineIndicator } from "@/components/pwa/OfflineIndicator";
 import { PinLockProvider } from "@/context/PinLockContext";
+import { PWAInstallProvider } from "@/context/PWAInstallContext";
 import NotFound from "@/pages/not-found";
 import { AdminSecureGuard } from "@/components/admin-secure-guard";
 
@@ -249,9 +250,11 @@ function App() {
         <TooltipProvider>
           <ConfirmDialogProvider>
             <SimixToastProvider>
-              <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
-                <AppShell />
-              </WouterRouter>
+              <PWAInstallProvider>
+                <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
+                  <AppShell />
+                </WouterRouter>
+              </PWAInstallProvider>
             </SimixToastProvider>
           </ConfirmDialogProvider>
         </TooltipProvider>

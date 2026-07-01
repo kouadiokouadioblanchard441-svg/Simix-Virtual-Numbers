@@ -1,11 +1,11 @@
 import { useState, useEffect } from "react";
-import { usePWAInstall } from "@/hooks/usePWA";
+import { usePWAInstallContext } from "@/context/PWAInstallContext";
 import { Download, X } from "lucide-react";
 
 const DISMISSED_KEY = "simix_install_dismissed";
 
 export function PWAInstallPrompt() {
-  const { canInstall, isInstalled, isStandalone, promptInstall } = usePWAInstall();
+  const { canInstall, isInstalled, isStandalone, promptInstall } = usePWAInstallContext();
   const [dismissed, setDismissed] = useState(false);
   const [visible, setVisible] = useState(false);
 
