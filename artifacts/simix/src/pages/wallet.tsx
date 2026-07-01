@@ -451,9 +451,6 @@ function OperatorList({
                 )}
               </div>
               <div className="flex items-center gap-3 mt-0.5">
-                {m.description && (
-                  <span className="text-[11px] text-muted-foreground truncate">{m.description}</span>
-                )}
                 {m.minDeposit > 0 && (
                   <span className="text-[11px] text-muted-foreground/60 flex-shrink-0">
                     Min {m.minDeposit >= 1000 ? `${m.minDeposit / 1000}k` : m.minDeposit} F
