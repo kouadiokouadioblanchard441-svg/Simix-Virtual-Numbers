@@ -91113,6 +91113,7 @@ __export(clapay_exports, {
   ClapayClient: () => ClapayClient,
   METHOD_TO_CLAPAY_OPERATOR: () => METHOD_TO_CLAPAY_OPERATOR,
   extractClapayTransactionId: () => extractClapayTransactionId,
+  formatClapayPhone: () => formatClapayPhone,
   getOperatorCodeForMethod: () => getOperatorCodeForMethod,
   isClapayDeposit: () => isClapayDeposit,
   isClapayTerminalStatus: () => isClapayTerminalStatus,
@@ -91121,6 +91122,15 @@ __export(clapay_exports, {
   parseClapayMeta: () => parseClapayMeta,
   serializeClapayMeta: () => serializeClapayMeta
 });
+function formatClapayPhone(phoneNumber, dialCode) {
+  const countryDigits = (dialCode ?? "").replace(/\D/g, "");
+  let localDigits = phoneNumber.replace(/\D/g, "");
+  if (countryDigits && localDigits.startsWith(countryDigits)) {
+    localDigits = localDigits.slice(countryDigits.length);
+  }
+  localDigits = localDigits.replace(/^0+/, "");
+  return countryDigits ? `+${countryDigits}${localDigits}` : `+${localDigits}`;
+}
 function getOperatorCodeForMethod(methodSlug) {
   const slug = methodSlug.toLowerCase();
   for (const [keyword, code] of Object.entries(METHOD_TO_CLAPAY_OPERATOR)) {
@@ -120010,7 +120020,7 @@ router10.post(
           clapayRes = await client.initiatePayment({
             transaction_id: trackingId,
             additional_infos: {
-              customer_phone: `${dialCode ?? ""}${phoneNumber}`,
+              customer_phone: formatClapayPhone(phoneNumber, dialCode),
               customer_firstname: user.fullName?.split(" ")[0] ?? void 0,
               customer_lastname: user.fullName?.split(" ").slice(1).join(" ") ?? void 0,
               customer_email: user.email ?? void 0
