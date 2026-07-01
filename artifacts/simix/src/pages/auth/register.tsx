@@ -1,3 +1,4 @@
+import { SeoMeta } from "@/components/seo/SeoMeta";
 import { useState, useMemo, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { useForm } from "react-hook-form";
@@ -159,6 +160,11 @@ export default function Register() {
 
   return (
     <div className="min-h-[100dvh] bg-background flex flex-col px-6 py-6 relative overflow-y-auto">
+      <SeoMeta
+        title="Créer un compte — SIMIX"
+        description="Rejoignez SIMIX et accédez à des milliers de numéros virtuels pour vérifier vos comptes. Inscription rapide, paiement en FCFA via Orange Money, MTN Money ou Wave."
+        path="/register"
+      />
       <div className="absolute top-0 right-0 w-64 h-64 bg-primary/10 blur-[100px] rounded-full pointer-events-none" />
 
       <div className="flex items-center justify-between mb-6 z-10">

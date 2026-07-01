@@ -1,3 +1,4 @@
+import { HelmetProvider } from "react-helmet-async";
 import { Switch, Route, Router as WouterRouter, useLocation } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -252,21 +253,23 @@ function AppShell() {
 
 function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <ThemeProvider>
-        <TooltipProvider>
-          <ConfirmDialogProvider>
-            <SimixToastProvider>
-              <PWAInstallProvider>
-                <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
-                  <AppShell />
-                </WouterRouter>
-              </PWAInstallProvider>
-            </SimixToastProvider>
-          </ConfirmDialogProvider>
-        </TooltipProvider>
-      </ThemeProvider>
-    </QueryClientProvider>
+    <HelmetProvider>
+      <QueryClientProvider client={queryClient}>
+        <ThemeProvider>
+          <TooltipProvider>
+            <ConfirmDialogProvider>
+              <SimixToastProvider>
+                <PWAInstallProvider>
+                  <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
+                    <AppShell />
+                  </WouterRouter>
+                </PWAInstallProvider>
+              </SimixToastProvider>
+            </ConfirmDialogProvider>
+          </TooltipProvider>
+        </ThemeProvider>
+      </QueryClientProvider>
+    </HelmetProvider>
   );
 }
 

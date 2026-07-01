@@ -1,4 +1,5 @@
 import express, { type Express } from "express";
+import compression from "compression";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import pinoHttp from "pino-http";
@@ -23,6 +24,16 @@ const app: Express = express();
  * headers set by the upstream proxy, so req.protocol returns "https"
  * and req.ip returns the real client IP instead of the proxy IP.       */
 app.set("trust proxy", 1);
+
+/* ── Response compression (gzip/br) ───────────────────────────────────── */
+app.use(compression({
+  level: 6,
+  threshold: 1024,
+  filter: (req, res) => {
+    if (req.headers["x-no-compression"]) return false;
+    return compression.filter(req, res);
+  },
+}));
 
 /* ── CORS — explicit allowlist + env-var overrides ────────────────────────
  * Allowed origins (in priority order):

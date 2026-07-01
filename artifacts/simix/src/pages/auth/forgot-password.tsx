@@ -1,3 +1,4 @@
+import { SeoMeta } from "@/components/seo/SeoMeta";
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
@@ -104,6 +105,12 @@ export default function ForgotPassword() {
 
   return (
     <div className="min-h-[100dvh] bg-background flex flex-col relative overflow-hidden">
+      <SeoMeta
+        title="Mot de passe oublié — SIMIX"
+        description="Réinitialisez votre mot de passe SIMIX facilement. Entrez votre numéro de téléphone ou e-mail pour recevoir un lien de réinitialisation."
+        path="/forgot-password"
+        noIndex
+      />
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[500px] h-[300px] bg-primary/8 blur-[120px] rounded-full pointer-events-none" />
       <div className="absolute bottom-0 right-0 w-64 h-64 bg-orange-500/5 blur-[100px] rounded-full pointer-events-none" />
 

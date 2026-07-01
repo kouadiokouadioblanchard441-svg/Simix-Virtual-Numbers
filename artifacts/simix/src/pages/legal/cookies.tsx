@@ -1,3 +1,4 @@
+import { SeoMeta } from "@/components/seo/SeoMeta";
 import { motion } from "framer-motion";
 import { ArrowLeft, Cookie } from "lucide-react";
 import { SimixLogo } from "@/components/simix-logo";
@@ -37,6 +38,11 @@ export default function LegalCookies() {
 
   return (
     <div className="min-h-[100dvh] bg-background">
+      <SeoMeta
+        title="Politique de Cookies — SIMIX"
+        description="Comment SIMIX utilise les cookies pour améliorer votre expérience. Gérez vos préférences de cookies sur la plateforme de numéros virtuels."
+        path="/legal/cookies"
+      />
       <div className="flex justify-center">
         <div className="w-full max-w-md bg-background relative shadow-2xl sm:border-x sm:border-border min-h-[100dvh]">
 

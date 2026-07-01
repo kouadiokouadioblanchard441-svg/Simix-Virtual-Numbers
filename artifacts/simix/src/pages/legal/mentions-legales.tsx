@@ -1,3 +1,4 @@
+import { SeoMeta } from "@/components/seo/SeoMeta";
 import { motion } from "framer-motion";
 import { ArrowLeft, Building2 } from "lucide-react";
 import { SimixLogo } from "@/components/simix-logo";
@@ -37,6 +38,11 @@ export default function LegalMentionsLegales() {
 
   return (
     <div className="min-h-[100dvh] bg-background">
+      <SeoMeta
+        title="Mentions Légales — SIMIX"
+        description="Mentions légales de la plateforme SIMIX — informations sur l'éditeur, l'hébergeur et les responsables de publication du service."
+        path="/legal/mentions-legales"
+      />
       <div className="flex justify-center">
         <div className="w-full max-w-md bg-background relative shadow-2xl sm:border-x sm:border-border min-h-[100dvh]">
 

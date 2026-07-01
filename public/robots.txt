@@ -1,0 +1,36 @@
+User-agent: *
+
+# Pages publiques indexables
+Allow: /$
+Allow: /register$
+Allow: /login$
+Allow: /forgot-password$
+Allow: /legal/
+
+# Pages privées — espace utilisateur
+Disallow: /dashboard
+Disallow: /profile
+Disallow: /wallet
+Disallow: /history
+Disallow: /numbers
+Disallow: /services
+Disallow: /countries
+Disallow: /notifications
+Disallow: /pin
+Disallow: /verify-email
+Disallow: /reset-password
+Disallow: /splash
+Disallow: /bienvenue
+Disallow: /crypto-history
+
+# Pages admin — accès interdit
+Disallow: /admin
+Disallow: /console
+Disallow: /admin-login
+Disallow: /admin/secure-login
+Disallow: /toast-demo
+
+# API
+Disallow: /api/
+
+Sitemap: https://simix.site/sitemap.xml

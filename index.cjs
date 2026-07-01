@@ -20477,27 +20477,27 @@ var require_router = __commonJS({
     var slice = Array.prototype.slice;
     var flatten = Array.prototype.flat;
     var methods = METHODS.map((method) => method.toLowerCase());
-    module2.exports = Router30;
+    module2.exports = Router31;
     module2.exports.Route = Route;
-    function Router30(options) {
-      if (!(this instanceof Router30)) {
-        return new Router30(options);
+    function Router31(options) {
+      if (!(this instanceof Router31)) {
+        return new Router31(options);
       }
       const opts = options || {};
-      function router30(req, res, next) {
-        router30.handle(req, res, next);
+      function router31(req, res, next) {
+        router31.handle(req, res, next);
       }
-      Object.setPrototypeOf(router30, this);
-      router30.caseSensitive = opts.caseSensitive;
-      router30.mergeParams = opts.mergeParams;
-      router30.params = {};
-      router30.strict = opts.strict;
-      router30.stack = [];
-      return router30;
+      Object.setPrototypeOf(router31, this);
+      router31.caseSensitive = opts.caseSensitive;
+      router31.mergeParams = opts.mergeParams;
+      router31.params = {};
+      router31.strict = opts.strict;
+      router31.stack = [];
+      return router31;
     }
-    Router30.prototype = function() {
+    Router31.prototype = function() {
     };
-    Router30.prototype.param = function param2(name2, fn) {
+    Router31.prototype.param = function param2(name2, fn) {
       if (!name2) {
         throw new TypeError("argument name is required");
       }
@@ -20517,7 +20517,7 @@ var require_router = __commonJS({
       params.push(fn);
       return this;
     };
-    Router30.prototype.handle = function handle(req, res, callback) {
+    Router31.prototype.handle = function handle(req, res, callback) {
       if (!callback) {
         throw new TypeError("argument callback is required");
       }
@@ -20644,7 +20644,7 @@ var require_router = __commonJS({
         }
       }
     };
-    Router30.prototype.use = function use(handler) {
+    Router31.prototype.use = function use(handler) {
       let offset = 0;
       let path5 = "/";
       if (typeof handler !== "function") {
@@ -20677,7 +20677,7 @@ var require_router = __commonJS({
       }
       return this;
     };
-    Router30.prototype.route = function route(path5) {
+    Router31.prototype.route = function route(path5) {
       const route2 = new Route(path5);
       const layer = new Layer(path5, {
         sensitive: this.caseSensitive,
@@ -20692,7 +20692,7 @@ var require_router = __commonJS({
       return route2;
     };
     methods.concat("all").forEach(function(method) {
-      Router30.prototype[method] = function(path5) {
+      Router31.prototype[method] = function(path5) {
         const route = this.route(path5);
         route[method].apply(route, slice.call(arguments, 1));
         return this;
@@ -20875,13 +20875,13 @@ var require_application = __commonJS({
     var compileTrust = require_utils3().compileTrust;
     var resolve = require("node:path").resolve;
     var once = require_once();
-    var Router30 = require_router();
+    var Router31 = require_router();
     var slice = Array.prototype.slice;
     var flatten = Array.prototype.flat;
     var app2 = exports2 = module2.exports = {};
     var trustProxyDefaultSymbol = "@@symbol:trust_proxy_default";
     app2.init = function init() {
-      var router30 = null;
+      var router31 = null;
       this.cache = /* @__PURE__ */ Object.create(null);
       this.engines = /* @__PURE__ */ Object.create(null);
       this.settings = /* @__PURE__ */ Object.create(null);
@@ -20890,13 +20890,13 @@ var require_application = __commonJS({
         configurable: true,
         enumerable: true,
         get: function getrouter() {
-          if (router30 === null) {
-            router30 = new Router30({
+          if (router31 === null) {
+            router31 = new Router31({
               caseSensitive: this.enabled("case sensitive routing"),
               strict: this.enabled("strict routing")
             });
           }
-          return router30;
+          return router31;
         }
       });
     };
@@ -20967,15 +20967,15 @@ var require_application = __commonJS({
       if (fns.length === 0) {
         throw new TypeError("app.use() requires a middleware function");
       }
-      var router30 = this.router;
+      var router31 = this.router;
       fns.forEach(function(fn2) {
         if (!fn2 || !fn2.handle || !fn2.set) {
-          return router30.use(path5, fn2);
+          return router31.use(path5, fn2);
         }
         debug(".use app under %s", path5);
         fn2.mountpath = path5;
         fn2.parent = this;
-        router30.use(path5, function mounted_app(req, res, next) {
+        router31.use(path5, function mounted_app(req, res, next) {
           var orig = req.app;
           fn2.handle(req, res, function(err) {
             Object.setPrototypeOf(req, orig.request);
@@ -23502,7 +23502,7 @@ var require_express = __commonJS({
     var EventEmitter3 = require("node:events").EventEmitter;
     var mixin = require_merge_descriptors();
     var proto = require_application();
-    var Router30 = require_router();
+    var Router31 = require_router();
     var req = require_request();
     var res = require_response();
     exports2 = module2.exports = createApplication;
@@ -23524,8 +23524,8 @@ var require_express = __commonJS({
     exports2.application = proto;
     exports2.request = req;
     exports2.response = res;
-    exports2.Route = Router30.Route;
-    exports2.Router = Router30;
+    exports2.Route = Router31.Route;
+    exports2.Router = Router31;
     exports2.json = bodyParser.json;
     exports2.raw = bodyParser.raw;
     exports2.static = require_serve_static();
@@ -23539,6 +23539,1292 @@ var require_express2 = __commonJS({
   "../../node_modules/.pnpm/express@5.2.1/node_modules/express/index.js"(exports2, module2) {
     "use strict";
     module2.exports = require_express();
+  }
+});
+
+// ../../node_modules/.pnpm/negotiator@0.6.4/node_modules/negotiator/lib/charset.js
+var require_charset2 = __commonJS({
+  "../../node_modules/.pnpm/negotiator@0.6.4/node_modules/negotiator/lib/charset.js"(exports2, module2) {
+    "use strict";
+    module2.exports = preferredCharsets;
+    module2.exports.preferredCharsets = preferredCharsets;
+    var simpleCharsetRegExp = /^\s*([^\s;]+)\s*(?:;(.*))?$/;
+    function parseAcceptCharset(accept) {
+      var accepts = accept.split(",");
+      for (var i2 = 0, j = 0; i2 < accepts.length; i2++) {
+        var charset = parseCharset(accepts[i2].trim(), i2);
+        if (charset) {
+          accepts[j++] = charset;
+        }
+      }
+      accepts.length = j;
+      return accepts;
+    }
+    function parseCharset(str, i2) {
+      var match = simpleCharsetRegExp.exec(str);
+      if (!match) return null;
+      var charset = match[1];
+      var q = 1;
+      if (match[2]) {
+        var params = match[2].split(";");
+        for (var j = 0; j < params.length; j++) {
+          var p = params[j].trim().split("=");
+          if (p[0] === "q") {
+            q = parseFloat(p[1]);
+            break;
+          }
+        }
+      }
+      return {
+        charset,
+        q,
+        i: i2
+      };
+    }
+    function getCharsetPriority(charset, accepted, index2) {
+      var priority = { o: -1, q: 0, s: 0 };
+      for (var i2 = 0; i2 < accepted.length; i2++) {
+        var spec = specify(charset, accepted[i2], index2);
+        if (spec && (priority.s - spec.s || priority.q - spec.q || priority.o - spec.o) < 0) {
+          priority = spec;
+        }
+      }
+      return priority;
+    }
+    function specify(charset, spec, index2) {
+      var s2 = 0;
+      if (spec.charset.toLowerCase() === charset.toLowerCase()) {
+        s2 |= 1;
+      } else if (spec.charset !== "*") {
+        return null;
+      }
+      return {
+        i: index2,
+        o: spec.i,
+        q: spec.q,
+        s: s2
+      };
+    }
+    function preferredCharsets(accept, provided) {
+      var accepts = parseAcceptCharset(accept === void 0 ? "*" : accept || "");
+      if (!provided) {
+        return accepts.filter(isQuality).sort(compareSpecs).map(getFullCharset);
+      }
+      var priorities = provided.map(function getPriority(type, index2) {
+        return getCharsetPriority(type, accepts, index2);
+      });
+      return priorities.filter(isQuality).sort(compareSpecs).map(function getCharset(priority) {
+        return provided[priorities.indexOf(priority)];
+      });
+    }
+    function compareSpecs(a, b) {
+      return b.q - a.q || b.s - a.s || a.o - b.o || a.i - b.i || 0;
+    }
+    function getFullCharset(spec) {
+      return spec.charset;
+    }
+    function isQuality(spec) {
+      return spec.q > 0;
+    }
+  }
+});
+
+// ../../node_modules/.pnpm/negotiator@0.6.4/node_modules/negotiator/lib/encoding.js
+var require_encoding2 = __commonJS({
+  "../../node_modules/.pnpm/negotiator@0.6.4/node_modules/negotiator/lib/encoding.js"(exports2, module2) {
+    "use strict";
+    module2.exports = preferredEncodings;
+    module2.exports.preferredEncodings = preferredEncodings;
+    var simpleEncodingRegExp = /^\s*([^\s;]+)\s*(?:;(.*))?$/;
+    function parseAcceptEncoding(accept) {
+      var accepts = accept.split(",");
+      var hasIdentity = false;
+      var minQuality = 1;
+      for (var i2 = 0, j = 0; i2 < accepts.length; i2++) {
+        var encoding = parseEncoding(accepts[i2].trim(), i2);
+        if (encoding) {
+          accepts[j++] = encoding;
+          hasIdentity = hasIdentity || specify("identity", encoding);
+          minQuality = Math.min(minQuality, encoding.q || 1);
+        }
+      }
+      if (!hasIdentity) {
+        accepts[j++] = {
+          encoding: "identity",
+          q: minQuality,
+          i: i2
+        };
+      }
+      accepts.length = j;
+      return accepts;
+    }
+    function parseEncoding(str, i2) {
+      var match = simpleEncodingRegExp.exec(str);
+      if (!match) return null;
+      var encoding = match[1];
+      var q = 1;
+      if (match[2]) {
+        var params = match[2].split(";");
+        for (var j = 0; j < params.length; j++) {
+          var p = params[j].trim().split("=");
+          if (p[0] === "q") {
+            q = parseFloat(p[1]);
+            break;
+          }
+        }
+      }
+      return {
+        encoding,
+        q,
+        i: i2
+      };
+    }
+    function getEncodingPriority(encoding, accepted, index2) {
+      var priority = { encoding, o: -1, q: 0, s: 0 };
+      for (var i2 = 0; i2 < accepted.length; i2++) {
+        var spec = specify(encoding, accepted[i2], index2);
+        if (spec && (priority.s - spec.s || priority.q - spec.q || priority.o - spec.o) < 0) {
+          priority = spec;
+        }
+      }
+      return priority;
+    }
+    function specify(encoding, spec, index2) {
+      var s2 = 0;
+      if (spec.encoding.toLowerCase() === encoding.toLowerCase()) {
+        s2 |= 1;
+      } else if (spec.encoding !== "*") {
+        return null;
+      }
+      return {
+        encoding,
+        i: index2,
+        o: spec.i,
+        q: spec.q,
+        s: s2
+      };
+    }
+    function preferredEncodings(accept, provided, preferred) {
+      var accepts = parseAcceptEncoding(accept || "");
+      var comparator = preferred ? function comparator2(a, b) {
+        if (a.q !== b.q) {
+          return b.q - a.q;
+        }
+        var aPreferred = preferred.indexOf(a.encoding);
+        var bPreferred = preferred.indexOf(b.encoding);
+        if (aPreferred === -1 && bPreferred === -1) {
+          return b.s - a.s || a.o - b.o || a.i - b.i;
+        }
+        if (aPreferred !== -1 && bPreferred !== -1) {
+          return aPreferred - bPreferred;
+        }
+        return aPreferred === -1 ? 1 : -1;
+      } : compareSpecs;
+      if (!provided) {
+        return accepts.filter(isQuality).sort(comparator).map(getFullEncoding);
+      }
+      var priorities = provided.map(function getPriority(type, index2) {
+        return getEncodingPriority(type, accepts, index2);
+      });
+      return priorities.filter(isQuality).sort(comparator).map(function getEncoding(priority) {
+        return provided[priorities.indexOf(priority)];
+      });
+    }
+    function compareSpecs(a, b) {
+      return b.q - a.q || b.s - a.s || a.o - b.o || a.i - b.i;
+    }
+    function getFullEncoding(spec) {
+      return spec.encoding;
+    }
+    function isQuality(spec) {
+      return spec.q > 0;
+    }
+  }
+});
+
+// ../../node_modules/.pnpm/negotiator@0.6.4/node_modules/negotiator/lib/language.js
+var require_language2 = __commonJS({
+  "../../node_modules/.pnpm/negotiator@0.6.4/node_modules/negotiator/lib/language.js"(exports2, module2) {
+    "use strict";
+    module2.exports = preferredLanguages;
+    module2.exports.preferredLanguages = preferredLanguages;
+    var simpleLanguageRegExp = /^\s*([^\s\-;]+)(?:-([^\s;]+))?\s*(?:;(.*))?$/;
+    function parseAcceptLanguage(accept) {
+      var accepts = accept.split(",");
+      for (var i2 = 0, j = 0; i2 < accepts.length; i2++) {
+        var language = parseLanguage(accepts[i2].trim(), i2);
+        if (language) {
+          accepts[j++] = language;
+        }
+      }
+      accepts.length = j;
+      return accepts;
+    }
+    function parseLanguage(str, i2) {
+      var match = simpleLanguageRegExp.exec(str);
+      if (!match) return null;
+      var prefix = match[1];
+      var suffix = match[2];
+      var full = prefix;
+      if (suffix) full += "-" + suffix;
+      var q = 1;
+      if (match[3]) {
+        var params = match[3].split(";");
+        for (var j = 0; j < params.length; j++) {
+          var p = params[j].split("=");
+          if (p[0] === "q") q = parseFloat(p[1]);
+        }
+      }
+      return {
+        prefix,
+        suffix,
+        q,
+        i: i2,
+        full
+      };
+    }
+    function getLanguagePriority(language, accepted, index2) {
+      var priority = { o: -1, q: 0, s: 0 };
+      for (var i2 = 0; i2 < accepted.length; i2++) {
+        var spec = specify(language, accepted[i2], index2);
+        if (spec && (priority.s - spec.s || priority.q - spec.q || priority.o - spec.o) < 0) {
+          priority = spec;
+        }
+      }
+      return priority;
+    }
+    function specify(language, spec, index2) {
+      var p = parseLanguage(language);
+      if (!p) return null;
+      var s2 = 0;
+      if (spec.full.toLowerCase() === p.full.toLowerCase()) {
+        s2 |= 4;
+      } else if (spec.prefix.toLowerCase() === p.full.toLowerCase()) {
+        s2 |= 2;
+      } else if (spec.full.toLowerCase() === p.prefix.toLowerCase()) {
+        s2 |= 1;
+      } else if (spec.full !== "*") {
+        return null;
+      }
+      return {
+        i: index2,
+        o: spec.i,
+        q: spec.q,
+        s: s2
+      };
+    }
+    function preferredLanguages(accept, provided) {
+      var accepts = parseAcceptLanguage(accept === void 0 ? "*" : accept || "");
+      if (!provided) {
+        return accepts.filter(isQuality).sort(compareSpecs).map(getFullLanguage);
+      }
+      var priorities = provided.map(function getPriority(type, index2) {
+        return getLanguagePriority(type, accepts, index2);
+      });
+      return priorities.filter(isQuality).sort(compareSpecs).map(function getLanguage(priority) {
+        return provided[priorities.indexOf(priority)];
+      });
+    }
+    function compareSpecs(a, b) {
+      return b.q - a.q || b.s - a.s || a.o - b.o || a.i - b.i || 0;
+    }
+    function getFullLanguage(spec) {
+      return spec.full;
+    }
+    function isQuality(spec) {
+      return spec.q > 0;
+    }
+  }
+});
+
+// ../../node_modules/.pnpm/negotiator@0.6.4/node_modules/negotiator/lib/mediaType.js
+var require_mediaType2 = __commonJS({
+  "../../node_modules/.pnpm/negotiator@0.6.4/node_modules/negotiator/lib/mediaType.js"(exports2, module2) {
+    "use strict";
+    module2.exports = preferredMediaTypes;
+    module2.exports.preferredMediaTypes = preferredMediaTypes;
+    var simpleMediaTypeRegExp = /^\s*([^\s\/;]+)\/([^;\s]+)\s*(?:;(.*))?$/;
+    function parseAccept(accept) {
+      var accepts = splitMediaTypes(accept);
+      for (var i2 = 0, j = 0; i2 < accepts.length; i2++) {
+        var mediaType = parseMediaType(accepts[i2].trim(), i2);
+        if (mediaType) {
+          accepts[j++] = mediaType;
+        }
+      }
+      accepts.length = j;
+      return accepts;
+    }
+    function parseMediaType(str, i2) {
+      var match = simpleMediaTypeRegExp.exec(str);
+      if (!match) return null;
+      var params = /* @__PURE__ */ Object.create(null);
+      var q = 1;
+      var subtype = match[2];
+      var type = match[1];
+      if (match[3]) {
+        var kvps = splitParameters(match[3]).map(splitKeyValuePair);
+        for (var j = 0; j < kvps.length; j++) {
+          var pair = kvps[j];
+          var key = pair[0].toLowerCase();
+          var val = pair[1];
+          var value = val && val[0] === '"' && val[val.length - 1] === '"' ? val.slice(1, -1) : val;
+          if (key === "q") {
+            q = parseFloat(value);
+            break;
+          }
+          params[key] = value;
+        }
+      }
+      return {
+        type,
+        subtype,
+        params,
+        q,
+        i: i2
+      };
+    }
+    function getMediaTypePriority(type, accepted, index2) {
+      var priority = { o: -1, q: 0, s: 0 };
+      for (var i2 = 0; i2 < accepted.length; i2++) {
+        var spec = specify(type, accepted[i2], index2);
+        if (spec && (priority.s - spec.s || priority.q - spec.q || priority.o - spec.o) < 0) {
+          priority = spec;
+        }
+      }
+      return priority;
+    }
+    function specify(type, spec, index2) {
+      var p = parseMediaType(type);
+      var s2 = 0;
+      if (!p) {
+        return null;
+      }
+      if (spec.type.toLowerCase() == p.type.toLowerCase()) {
+        s2 |= 4;
+      } else if (spec.type != "*") {
+        return null;
+      }
+      if (spec.subtype.toLowerCase() == p.subtype.toLowerCase()) {
+        s2 |= 2;
+      } else if (spec.subtype != "*") {
+        return null;
+      }
+      var keys = Object.keys(spec.params);
+      if (keys.length > 0) {
+        if (keys.every(function(k) {
+          return spec.params[k] == "*" || (spec.params[k] || "").toLowerCase() == (p.params[k] || "").toLowerCase();
+        })) {
+          s2 |= 1;
+        } else {
+          return null;
+        }
+      }
+      return {
+        i: index2,
+        o: spec.i,
+        q: spec.q,
+        s: s2
+      };
+    }
+    function preferredMediaTypes(accept, provided) {
+      var accepts = parseAccept(accept === void 0 ? "*/*" : accept || "");
+      if (!provided) {
+        return accepts.filter(isQuality).sort(compareSpecs).map(getFullType);
+      }
+      var priorities = provided.map(function getPriority(type, index2) {
+        return getMediaTypePriority(type, accepts, index2);
+      });
+      return priorities.filter(isQuality).sort(compareSpecs).map(function getType(priority) {
+        return provided[priorities.indexOf(priority)];
+      });
+    }
+    function compareSpecs(a, b) {
+      return b.q - a.q || b.s - a.s || a.o - b.o || a.i - b.i || 0;
+    }
+    function getFullType(spec) {
+      return spec.type + "/" + spec.subtype;
+    }
+    function isQuality(spec) {
+      return spec.q > 0;
+    }
+    function quoteCount(string) {
+      var count2 = 0;
+      var index2 = 0;
+      while ((index2 = string.indexOf('"', index2)) !== -1) {
+        count2++;
+        index2++;
+      }
+      return count2;
+    }
+    function splitKeyValuePair(str) {
+      var index2 = str.indexOf("=");
+      var key;
+      var val;
+      if (index2 === -1) {
+        key = str;
+      } else {
+        key = str.slice(0, index2);
+        val = str.slice(index2 + 1);
+      }
+      return [key, val];
+    }
+    function splitMediaTypes(accept) {
+      var accepts = accept.split(",");
+      for (var i2 = 1, j = 0; i2 < accepts.length; i2++) {
+        if (quoteCount(accepts[j]) % 2 == 0) {
+          accepts[++j] = accepts[i2];
+        } else {
+          accepts[j] += "," + accepts[i2];
+        }
+      }
+      accepts.length = j + 1;
+      return accepts;
+    }
+    function splitParameters(str) {
+      var parameters = str.split(";");
+      for (var i2 = 1, j = 0; i2 < parameters.length; i2++) {
+        if (quoteCount(parameters[j]) % 2 == 0) {
+          parameters[++j] = parameters[i2];
+        } else {
+          parameters[j] += ";" + parameters[i2];
+        }
+      }
+      parameters.length = j + 1;
+      for (var i2 = 0; i2 < parameters.length; i2++) {
+        parameters[i2] = parameters[i2].trim();
+      }
+      return parameters;
+    }
+  }
+});
+
+// ../../node_modules/.pnpm/negotiator@0.6.4/node_modules/negotiator/index.js
+var require_negotiator2 = __commonJS({
+  "../../node_modules/.pnpm/negotiator@0.6.4/node_modules/negotiator/index.js"(exports2, module2) {
+    "use strict";
+    var preferredCharsets = require_charset2();
+    var preferredEncodings = require_encoding2();
+    var preferredLanguages = require_language2();
+    var preferredMediaTypes = require_mediaType2();
+    module2.exports = Negotiator;
+    module2.exports.Negotiator = Negotiator;
+    function Negotiator(request) {
+      if (!(this instanceof Negotiator)) {
+        return new Negotiator(request);
+      }
+      this.request = request;
+    }
+    Negotiator.prototype.charset = function charset(available) {
+      var set = this.charsets(available);
+      return set && set[0];
+    };
+    Negotiator.prototype.charsets = function charsets(available) {
+      return preferredCharsets(this.request.headers["accept-charset"], available);
+    };
+    Negotiator.prototype.encoding = function encoding(available, preferred) {
+      var set = this.encodings(available, preferred);
+      return set && set[0];
+    };
+    Negotiator.prototype.encodings = function encodings(available, preferred) {
+      return preferredEncodings(this.request.headers["accept-encoding"], available, preferred);
+    };
+    Negotiator.prototype.language = function language(available) {
+      var set = this.languages(available);
+      return set && set[0];
+    };
+    Negotiator.prototype.languages = function languages(available) {
+      return preferredLanguages(this.request.headers["accept-language"], available);
+    };
+    Negotiator.prototype.mediaType = function mediaType(available) {
+      var set = this.mediaTypes(available);
+      return set && set[0];
+    };
+    Negotiator.prototype.mediaTypes = function mediaTypes(available) {
+      return preferredMediaTypes(this.request.headers.accept, available);
+    };
+    Negotiator.prototype.preferredCharset = Negotiator.prototype.charset;
+    Negotiator.prototype.preferredCharsets = Negotiator.prototype.charsets;
+    Negotiator.prototype.preferredEncoding = Negotiator.prototype.encoding;
+    Negotiator.prototype.preferredEncodings = Negotiator.prototype.encodings;
+    Negotiator.prototype.preferredLanguage = Negotiator.prototype.language;
+    Negotiator.prototype.preferredLanguages = Negotiator.prototype.languages;
+    Negotiator.prototype.preferredMediaType = Negotiator.prototype.mediaType;
+    Negotiator.prototype.preferredMediaTypes = Negotiator.prototype.mediaTypes;
+  }
+});
+
+// ../../node_modules/.pnpm/safe-buffer@5.2.1/node_modules/safe-buffer/index.js
+var require_safe_buffer = __commonJS({
+  "../../node_modules/.pnpm/safe-buffer@5.2.1/node_modules/safe-buffer/index.js"(exports2, module2) {
+    var buffer = require("buffer");
+    var Buffer4 = buffer.Buffer;
+    function copyProps(src, dst) {
+      for (var key in src) {
+        dst[key] = src[key];
+      }
+    }
+    if (Buffer4.from && Buffer4.alloc && Buffer4.allocUnsafe && Buffer4.allocUnsafeSlow) {
+      module2.exports = buffer;
+    } else {
+      copyProps(buffer, exports2);
+      exports2.Buffer = SafeBuffer;
+    }
+    function SafeBuffer(arg, encodingOrOffset, length) {
+      return Buffer4(arg, encodingOrOffset, length);
+    }
+    SafeBuffer.prototype = Object.create(Buffer4.prototype);
+    copyProps(Buffer4, SafeBuffer);
+    SafeBuffer.from = function(arg, encodingOrOffset, length) {
+      if (typeof arg === "number") {
+        throw new TypeError("Argument must not be a number");
+      }
+      return Buffer4(arg, encodingOrOffset, length);
+    };
+    SafeBuffer.alloc = function(size, fill, encoding) {
+      if (typeof size !== "number") {
+        throw new TypeError("Argument must be a number");
+      }
+      var buf = Buffer4(size);
+      if (fill !== void 0) {
+        if (typeof encoding === "string") {
+          buf.fill(fill, encoding);
+        } else {
+          buf.fill(fill);
+        }
+      } else {
+        buf.fill(0);
+      }
+      return buf;
+    };
+    SafeBuffer.allocUnsafe = function(size) {
+      if (typeof size !== "number") {
+        throw new TypeError("Argument must be a number");
+      }
+      return Buffer4(size);
+    };
+    SafeBuffer.allocUnsafeSlow = function(size) {
+      if (typeof size !== "number") {
+        throw new TypeError("Argument must be a number");
+      }
+      return buffer.SlowBuffer(size);
+    };
+  }
+});
+
+// ../../node_modules/.pnpm/compressible@2.0.18/node_modules/compressible/index.js
+var require_compressible = __commonJS({
+  "../../node_modules/.pnpm/compressible@2.0.18/node_modules/compressible/index.js"(exports2, module2) {
+    "use strict";
+    var db2 = require_mime_db();
+    var COMPRESSIBLE_TYPE_REGEXP = /^text\/|\+(?:json|text|xml)$/i;
+    var EXTRACT_TYPE_REGEXP = /^\s*([^;\s]*)(?:;|\s|$)/;
+    module2.exports = compressible;
+    function compressible(type) {
+      if (!type || typeof type !== "string") {
+        return false;
+      }
+      var match = EXTRACT_TYPE_REGEXP.exec(type);
+      var mime3 = match && match[1].toLowerCase();
+      var data = db2[mime3];
+      if (data && data.compressible !== void 0) {
+        return data.compressible;
+      }
+      return COMPRESSIBLE_TYPE_REGEXP.test(mime3) || void 0;
+    }
+  }
+});
+
+// ../../node_modules/.pnpm/ms@2.0.0/node_modules/ms/index.js
+var require_ms2 = __commonJS({
+  "../../node_modules/.pnpm/ms@2.0.0/node_modules/ms/index.js"(exports2, module2) {
+    var s2 = 1e3;
+    var m2 = s2 * 60;
+    var h2 = m2 * 60;
+    var d = h2 * 24;
+    var y = d * 365.25;
+    module2.exports = function(val, options) {
+      options = options || {};
+      var type = typeof val;
+      if (type === "string" && val.length > 0) {
+        return parse2(val);
+      } else if (type === "number" && isNaN(val) === false) {
+        return options.long ? fmtLong(val) : fmtShort(val);
+      }
+      throw new Error(
+        "val is not a non-empty string or a valid number. val=" + JSON.stringify(val)
+      );
+    };
+    function parse2(str) {
+      str = String(str);
+      if (str.length > 100) {
+        return;
+      }
+      var match = /^((?:\d+)?\.?\d+) *(milliseconds?|msecs?|ms|seconds?|secs?|s|minutes?|mins?|m|hours?|hrs?|h|days?|d|years?|yrs?|y)?$/i.exec(
+        str
+      );
+      if (!match) {
+        return;
+      }
+      var n = parseFloat(match[1]);
+      var type = (match[2] || "ms").toLowerCase();
+      switch (type) {
+        case "years":
+        case "year":
+        case "yrs":
+        case "yr":
+        case "y":
+          return n * y;
+        case "days":
+        case "day":
+        case "d":
+          return n * d;
+        case "hours":
+        case "hour":
+        case "hrs":
+        case "hr":
+        case "h":
+          return n * h2;
+        case "minutes":
+        case "minute":
+        case "mins":
+        case "min":
+        case "m":
+          return n * m2;
+        case "seconds":
+        case "second":
+        case "secs":
+        case "sec":
+        case "s":
+          return n * s2;
+        case "milliseconds":
+        case "millisecond":
+        case "msecs":
+        case "msec":
+        case "ms":
+          return n;
+        default:
+          return void 0;
+      }
+    }
+    function fmtShort(ms) {
+      if (ms >= d) {
+        return Math.round(ms / d) + "d";
+      }
+      if (ms >= h2) {
+        return Math.round(ms / h2) + "h";
+      }
+      if (ms >= m2) {
+        return Math.round(ms / m2) + "m";
+      }
+      if (ms >= s2) {
+        return Math.round(ms / s2) + "s";
+      }
+      return ms + "ms";
+    }
+    function fmtLong(ms) {
+      return plural(ms, d, "day") || plural(ms, h2, "hour") || plural(ms, m2, "minute") || plural(ms, s2, "second") || ms + " ms";
+    }
+    function plural(ms, n, name2) {
+      if (ms < n) {
+        return;
+      }
+      if (ms < n * 1.5) {
+        return Math.floor(ms / n) + " " + name2;
+      }
+      return Math.ceil(ms / n) + " " + name2 + "s";
+    }
+  }
+});
+
+// ../../node_modules/.pnpm/debug@2.6.9/node_modules/debug/src/debug.js
+var require_debug = __commonJS({
+  "../../node_modules/.pnpm/debug@2.6.9/node_modules/debug/src/debug.js"(exports2, module2) {
+    exports2 = module2.exports = createDebug.debug = createDebug["default"] = createDebug;
+    exports2.coerce = coerce2;
+    exports2.disable = disable;
+    exports2.enable = enable;
+    exports2.enabled = enabled;
+    exports2.humanize = require_ms2();
+    exports2.names = [];
+    exports2.skips = [];
+    exports2.formatters = {};
+    var prevTime;
+    function selectColor(namespace) {
+      var hash2 = 0, i2;
+      for (i2 in namespace) {
+        hash2 = (hash2 << 5) - hash2 + namespace.charCodeAt(i2);
+        hash2 |= 0;
+      }
+      return exports2.colors[Math.abs(hash2) % exports2.colors.length];
+    }
+    function createDebug(namespace) {
+      function debug() {
+        if (!debug.enabled) return;
+        var self2 = debug;
+        var curr = +/* @__PURE__ */ new Date();
+        var ms = curr - (prevTime || curr);
+        self2.diff = ms;
+        self2.prev = prevTime;
+        self2.curr = curr;
+        prevTime = curr;
+        var args = new Array(arguments.length);
+        for (var i2 = 0; i2 < args.length; i2++) {
+          args[i2] = arguments[i2];
+        }
+        args[0] = exports2.coerce(args[0]);
+        if ("string" !== typeof args[0]) {
+          args.unshift("%O");
+        }
+        var index2 = 0;
+        args[0] = args[0].replace(/%([a-zA-Z%])/g, function(match, format) {
+          if (match === "%%") return match;
+          index2++;
+          var formatter = exports2.formatters[format];
+          if ("function" === typeof formatter) {
+            var val = args[index2];
+            match = formatter.call(self2, val);
+            args.splice(index2, 1);
+            index2--;
+          }
+          return match;
+        });
+        exports2.formatArgs.call(self2, args);
+        var logFn = debug.log || exports2.log || console.log.bind(console);
+        logFn.apply(self2, args);
+      }
+      debug.namespace = namespace;
+      debug.enabled = exports2.enabled(namespace);
+      debug.useColors = exports2.useColors();
+      debug.color = selectColor(namespace);
+      if ("function" === typeof exports2.init) {
+        exports2.init(debug);
+      }
+      return debug;
+    }
+    function enable(namespaces) {
+      exports2.save(namespaces);
+      exports2.names = [];
+      exports2.skips = [];
+      var split = (typeof namespaces === "string" ? namespaces : "").split(/[\s,]+/);
+      var len = split.length;
+      for (var i2 = 0; i2 < len; i2++) {
+        if (!split[i2]) continue;
+        namespaces = split[i2].replace(/\*/g, ".*?");
+        if (namespaces[0] === "-") {
+          exports2.skips.push(new RegExp("^" + namespaces.substr(1) + "$"));
+        } else {
+          exports2.names.push(new RegExp("^" + namespaces + "$"));
+        }
+      }
+    }
+    function disable() {
+      exports2.enable("");
+    }
+    function enabled(name2) {
+      var i2, len;
+      for (i2 = 0, len = exports2.skips.length; i2 < len; i2++) {
+        if (exports2.skips[i2].test(name2)) {
+          return false;
+        }
+      }
+      for (i2 = 0, len = exports2.names.length; i2 < len; i2++) {
+        if (exports2.names[i2].test(name2)) {
+          return true;
+        }
+      }
+      return false;
+    }
+    function coerce2(val) {
+      if (val instanceof Error) return val.stack || val.message;
+      return val;
+    }
+  }
+});
+
+// ../../node_modules/.pnpm/debug@2.6.9/node_modules/debug/src/browser.js
+var require_browser2 = __commonJS({
+  "../../node_modules/.pnpm/debug@2.6.9/node_modules/debug/src/browser.js"(exports2, module2) {
+    exports2 = module2.exports = require_debug();
+    exports2.log = log;
+    exports2.formatArgs = formatArgs;
+    exports2.save = save;
+    exports2.load = load;
+    exports2.useColors = useColors;
+    exports2.storage = "undefined" != typeof chrome && "undefined" != typeof chrome.storage ? chrome.storage.local : localstorage();
+    exports2.colors = [
+      "lightseagreen",
+      "forestgreen",
+      "goldenrod",
+      "dodgerblue",
+      "darkorchid",
+      "crimson"
+    ];
+    function useColors() {
+      if (typeof window !== "undefined" && window.process && window.process.type === "renderer") {
+        return true;
+      }
+      return typeof document !== "undefined" && document.documentElement && document.documentElement.style && document.documentElement.style.WebkitAppearance || // is firebug? http://stackoverflow.com/a/398120/376773
+      typeof window !== "undefined" && window.console && (window.console.firebug || window.console.exception && window.console.table) || // is firefox >= v31?
+      // https://developer.mozilla.org/en-US/docs/Tools/Web_Console#Styling_messages
+      typeof navigator !== "undefined" && navigator.userAgent && navigator.userAgent.toLowerCase().match(/firefox\/(\d+)/) && parseInt(RegExp.$1, 10) >= 31 || // double check webkit in userAgent just in case we are in a worker
+      typeof navigator !== "undefined" && navigator.userAgent && navigator.userAgent.toLowerCase().match(/applewebkit\/(\d+)/);
+    }
+    exports2.formatters.j = function(v) {
+      try {
+        return JSON.stringify(v);
+      } catch (err) {
+        return "[UnexpectedJSONParseError]: " + err.message;
+      }
+    };
+    function formatArgs(args) {
+      var useColors2 = this.useColors;
+      args[0] = (useColors2 ? "%c" : "") + this.namespace + (useColors2 ? " %c" : " ") + args[0] + (useColors2 ? "%c " : " ") + "+" + exports2.humanize(this.diff);
+      if (!useColors2) return;
+      var c = "color: " + this.color;
+      args.splice(1, 0, c, "color: inherit");
+      var index2 = 0;
+      var lastC = 0;
+      args[0].replace(/%[a-zA-Z%]/g, function(match) {
+        if ("%%" === match) return;
+        index2++;
+        if ("%c" === match) {
+          lastC = index2;
+        }
+      });
+      args.splice(lastC, 0, c);
+    }
+    function log() {
+      return "object" === typeof console && console.log && Function.prototype.apply.call(console.log, console, arguments);
+    }
+    function save(namespaces) {
+      try {
+        if (null == namespaces) {
+          exports2.storage.removeItem("debug");
+        } else {
+          exports2.storage.debug = namespaces;
+        }
+      } catch (e2) {
+      }
+    }
+    function load() {
+      var r2;
+      try {
+        r2 = exports2.storage.debug;
+      } catch (e2) {
+      }
+      if (!r2 && typeof process !== "undefined" && "env" in process) {
+        r2 = process.env.DEBUG;
+      }
+      return r2;
+    }
+    exports2.enable(load());
+    function localstorage() {
+      try {
+        return window.localStorage;
+      } catch (e2) {
+      }
+    }
+  }
+});
+
+// ../../node_modules/.pnpm/debug@2.6.9/node_modules/debug/src/node.js
+var require_node2 = __commonJS({
+  "../../node_modules/.pnpm/debug@2.6.9/node_modules/debug/src/node.js"(exports2, module2) {
+    var tty = require("tty");
+    var util3 = require("util");
+    exports2 = module2.exports = require_debug();
+    exports2.init = init;
+    exports2.log = log;
+    exports2.formatArgs = formatArgs;
+    exports2.save = save;
+    exports2.load = load;
+    exports2.useColors = useColors;
+    exports2.colors = [6, 2, 3, 4, 5, 1];
+    exports2.inspectOpts = Object.keys(process.env).filter(function(key) {
+      return /^debug_/i.test(key);
+    }).reduce(function(obj, key) {
+      var prop = key.substring(6).toLowerCase().replace(/_([a-z])/g, function(_, k) {
+        return k.toUpperCase();
+      });
+      var val = process.env[key];
+      if (/^(yes|on|true|enabled)$/i.test(val)) val = true;
+      else if (/^(no|off|false|disabled)$/i.test(val)) val = false;
+      else if (val === "null") val = null;
+      else val = Number(val);
+      obj[prop] = val;
+      return obj;
+    }, {});
+    var fd = parseInt(process.env.DEBUG_FD, 10) || 2;
+    if (1 !== fd && 2 !== fd) {
+      util3.deprecate(function() {
+      }, "except for stderr(2) and stdout(1), any other usage of DEBUG_FD is deprecated. Override debug.log if you want to use a different log function (https://git.io/debug_fd)")();
+    }
+    var stream = 1 === fd ? process.stdout : 2 === fd ? process.stderr : createWritableStdioStream(fd);
+    function useColors() {
+      return "colors" in exports2.inspectOpts ? Boolean(exports2.inspectOpts.colors) : tty.isatty(fd);
+    }
+    exports2.formatters.o = function(v) {
+      this.inspectOpts.colors = this.useColors;
+      return util3.inspect(v, this.inspectOpts).split("\n").map(function(str) {
+        return str.trim();
+      }).join(" ");
+    };
+    exports2.formatters.O = function(v) {
+      this.inspectOpts.colors = this.useColors;
+      return util3.inspect(v, this.inspectOpts);
+    };
+    function formatArgs(args) {
+      var name2 = this.namespace;
+      var useColors2 = this.useColors;
+      if (useColors2) {
+        var c = this.color;
+        var prefix = "  \x1B[3" + c + ";1m" + name2 + " \x1B[0m";
+        args[0] = prefix + args[0].split("\n").join("\n" + prefix);
+        args.push("\x1B[3" + c + "m+" + exports2.humanize(this.diff) + "\x1B[0m");
+      } else {
+        args[0] = (/* @__PURE__ */ new Date()).toUTCString() + " " + name2 + " " + args[0];
+      }
+    }
+    function log() {
+      return stream.write(util3.format.apply(util3, arguments) + "\n");
+    }
+    function save(namespaces) {
+      if (null == namespaces) {
+        delete process.env.DEBUG;
+      } else {
+        process.env.DEBUG = namespaces;
+      }
+    }
+    function load() {
+      return process.env.DEBUG;
+    }
+    function createWritableStdioStream(fd2) {
+      var stream2;
+      var tty_wrap = process.binding("tty_wrap");
+      switch (tty_wrap.guessHandleType(fd2)) {
+        case "TTY":
+          stream2 = new tty.WriteStream(fd2);
+          stream2._type = "tty";
+          if (stream2._handle && stream2._handle.unref) {
+            stream2._handle.unref();
+          }
+          break;
+        case "FILE":
+          var fs6 = require("fs");
+          stream2 = new fs6.SyncWriteStream(fd2, { autoClose: false });
+          stream2._type = "fs";
+          break;
+        case "PIPE":
+        case "TCP":
+          var net = require("net");
+          stream2 = new net.Socket({
+            fd: fd2,
+            readable: false,
+            writable: true
+          });
+          stream2.readable = false;
+          stream2.read = null;
+          stream2._type = "pipe";
+          if (stream2._handle && stream2._handle.unref) {
+            stream2._handle.unref();
+          }
+          break;
+        default:
+          throw new Error("Implement me. Unknown stream file type!");
+      }
+      stream2.fd = fd2;
+      stream2._isStdio = true;
+      return stream2;
+    }
+    function init(debug) {
+      debug.inspectOpts = {};
+      var keys = Object.keys(exports2.inspectOpts);
+      for (var i2 = 0; i2 < keys.length; i2++) {
+        debug.inspectOpts[keys[i2]] = exports2.inspectOpts[keys[i2]];
+      }
+    }
+    exports2.enable(load());
+  }
+});
+
+// ../../node_modules/.pnpm/debug@2.6.9/node_modules/debug/src/index.js
+var require_src2 = __commonJS({
+  "../../node_modules/.pnpm/debug@2.6.9/node_modules/debug/src/index.js"(exports2, module2) {
+    if (typeof process !== "undefined" && process.type === "renderer") {
+      module2.exports = require_browser2();
+    } else {
+      module2.exports = require_node2();
+    }
+  }
+});
+
+// ../../node_modules/.pnpm/on-headers@1.1.0/node_modules/on-headers/index.js
+var require_on_headers = __commonJS({
+  "../../node_modules/.pnpm/on-headers@1.1.0/node_modules/on-headers/index.js"(exports2, module2) {
+    "use strict";
+    module2.exports = onHeaders;
+    var http3 = require("http");
+    var isAppendHeaderSupported = typeof http3.ServerResponse.prototype.appendHeader === "function";
+    var set1dArray = isAppendHeaderSupported ? set1dArrayWithAppend : set1dArrayWithSet;
+    function createWriteHead(prevWriteHead, listener) {
+      var fired = false;
+      return function writeHead(statusCode) {
+        var args = setWriteHeadHeaders.apply(this, arguments);
+        if (!fired) {
+          fired = true;
+          listener.call(this);
+          if (typeof args[0] === "number" && this.statusCode !== args[0]) {
+            args[0] = this.statusCode;
+            args.length = 1;
+          }
+        }
+        return prevWriteHead.apply(this, args);
+      };
+    }
+    function onHeaders(res, listener) {
+      if (!res) {
+        throw new TypeError("argument res is required");
+      }
+      if (typeof listener !== "function") {
+        throw new TypeError("argument listener must be a function");
+      }
+      res.writeHead = createWriteHead(res.writeHead, listener);
+    }
+    function setHeadersFromArray(res, headers) {
+      if (headers.length && Array.isArray(headers[0])) {
+        set2dArray(res, headers);
+      } else {
+        if (headers.length % 2 !== 0) {
+          throw new TypeError("headers array is malformed");
+        }
+        set1dArray(res, headers);
+      }
+    }
+    function setHeadersFromObject(res, headers) {
+      var keys = Object.keys(headers);
+      for (var i2 = 0; i2 < keys.length; i2++) {
+        var k = keys[i2];
+        if (k) res.setHeader(k, headers[k]);
+      }
+    }
+    function setWriteHeadHeaders(statusCode) {
+      var length = arguments.length;
+      var headerIndex = length > 1 && typeof arguments[1] === "string" ? 2 : 1;
+      var headers = length >= headerIndex + 1 ? arguments[headerIndex] : void 0;
+      this.statusCode = statusCode;
+      if (Array.isArray(headers)) {
+        setHeadersFromArray(this, headers);
+      } else if (headers) {
+        setHeadersFromObject(this, headers);
+      }
+      var args = new Array(Math.min(length, headerIndex));
+      for (var i2 = 0; i2 < args.length; i2++) {
+        args[i2] = arguments[i2];
+      }
+      return args;
+    }
+    function set2dArray(res, headers) {
+      var key;
+      for (var i2 = 0; i2 < headers.length; i2++) {
+        key = headers[i2][0];
+        if (key) {
+          res.setHeader(key, headers[i2][1]);
+        }
+      }
+    }
+    function set1dArrayWithAppend(res, headers) {
+      for (var i2 = 0; i2 < headers.length; i2 += 2) {
+        res.removeHeader(headers[i2]);
+      }
+      var key;
+      for (var j = 0; j < headers.length; j += 2) {
+        key = headers[j];
+        if (key) {
+          res.appendHeader(key, headers[j + 1]);
+        }
+      }
+    }
+    function set1dArrayWithSet(res, headers) {
+      var key;
+      for (var i2 = 0; i2 < headers.length; i2 += 2) {
+        key = headers[i2];
+        if (key) {
+          res.setHeader(key, headers[i2 + 1]);
+        }
+      }
+    }
+  }
+});
+
+// ../../node_modules/.pnpm/compression@1.8.1/node_modules/compression/index.js
+var require_compression = __commonJS({
+  "../../node_modules/.pnpm/compression@1.8.1/node_modules/compression/index.js"(exports2, module2) {
+    "use strict";
+    var Negotiator = require_negotiator2();
+    var Buffer4 = require_safe_buffer().Buffer;
+    var bytes = require_bytes();
+    var compressible = require_compressible();
+    var debug = require_src2()("compression");
+    var onHeaders = require_on_headers();
+    var vary = require_vary();
+    var zlib3 = require("zlib");
+    module2.exports = compression2;
+    module2.exports.filter = shouldCompress;
+    var hasBrotliSupport = "createBrotliCompress" in zlib3;
+    var cacheControlNoTransformRegExp = /(?:^|,)\s*?no-transform\s*?(?:,|$)/;
+    var SUPPORTED_ENCODING = hasBrotliSupport ? ["br", "gzip", "deflate", "identity"] : ["gzip", "deflate", "identity"];
+    var PREFERRED_ENCODING = hasBrotliSupport ? ["br", "gzip"] : ["gzip"];
+    var encodingSupported = ["gzip", "deflate", "identity", "br"];
+    function compression2(options) {
+      var opts = options || {};
+      var optsBrotli = {};
+      if (hasBrotliSupport) {
+        Object.assign(optsBrotli, opts.brotli);
+        var brotliParams = {};
+        brotliParams[zlib3.constants.BROTLI_PARAM_QUALITY] = 4;
+        optsBrotli.params = Object.assign(brotliParams, optsBrotli.params);
+      }
+      var filter = opts.filter || shouldCompress;
+      var threshold = bytes.parse(opts.threshold);
+      var enforceEncoding = opts.enforceEncoding || "identity";
+      if (threshold == null) {
+        threshold = 1024;
+      }
+      return function compression3(req, res, next) {
+        var ended = false;
+        var length;
+        var listeners = [];
+        var stream;
+        var _end = res.end;
+        var _on = res.on;
+        var _write = res.write;
+        res.flush = function flush() {
+          if (stream) {
+            stream.flush();
+          }
+        };
+        res.write = function write(chunk, encoding) {
+          if (ended) {
+            return false;
+          }
+          if (!headersSent(res)) {
+            this.writeHead(this.statusCode);
+          }
+          return stream ? stream.write(toBuffer(chunk, encoding)) : _write.call(this, chunk, encoding);
+        };
+        res.end = function end(chunk, encoding) {
+          if (ended) {
+            return false;
+          }
+          if (!headersSent(res)) {
+            if (!this.getHeader("Content-Length")) {
+              length = chunkLength(chunk, encoding);
+            }
+            this.writeHead(this.statusCode);
+          }
+          if (!stream) {
+            return _end.call(this, chunk, encoding);
+          }
+          ended = true;
+          return chunk ? stream.end(toBuffer(chunk, encoding)) : stream.end();
+        };
+        res.on = function on(type, listener) {
+          if (!listeners || type !== "drain") {
+            return _on.call(this, type, listener);
+          }
+          if (stream) {
+            return stream.on(type, listener);
+          }
+          listeners.push([type, listener]);
+          return this;
+        };
+        function nocompress(msg) {
+          debug("no compression: %s", msg);
+          addListeners(res, _on, listeners);
+          listeners = null;
+        }
+        onHeaders(res, function onResponseHeaders() {
+          if (!filter(req, res)) {
+            nocompress("filtered");
+            return;
+          }
+          if (!shouldTransform(req, res)) {
+            nocompress("no transform");
+            return;
+          }
+          vary(res, "Accept-Encoding");
+          if (Number(res.getHeader("Content-Length")) < threshold || length < threshold) {
+            nocompress("size below threshold");
+            return;
+          }
+          var encoding = res.getHeader("Content-Encoding") || "identity";
+          if (encoding !== "identity") {
+            nocompress("already encoded");
+            return;
+          }
+          if (req.method === "HEAD") {
+            nocompress("HEAD request");
+            return;
+          }
+          var negotiator = new Negotiator(req);
+          var method = negotiator.encoding(SUPPORTED_ENCODING, PREFERRED_ENCODING);
+          if (!req.headers["accept-encoding"] && encodingSupported.indexOf(enforceEncoding) !== -1) {
+            method = enforceEncoding;
+          }
+          if (!method || method === "identity") {
+            nocompress("not acceptable");
+            return;
+          }
+          debug("%s compression", method);
+          stream = method === "gzip" ? zlib3.createGzip(opts) : method === "br" ? zlib3.createBrotliCompress(optsBrotli) : zlib3.createDeflate(opts);
+          addListeners(stream, stream.on, listeners);
+          res.setHeader("Content-Encoding", method);
+          res.removeHeader("Content-Length");
+          stream.on("data", function onStreamData(chunk) {
+            if (_write.call(res, chunk) === false) {
+              stream.pause();
+            }
+          });
+          stream.on("end", function onStreamEnd() {
+            _end.call(res);
+          });
+          _on.call(res, "drain", function onResponseDrain() {
+            stream.resume();
+          });
+        });
+        next();
+      };
+    }
+    function addListeners(stream, on, listeners) {
+      for (var i2 = 0; i2 < listeners.length; i2++) {
+        on.apply(stream, listeners[i2]);
+      }
+    }
+    function chunkLength(chunk, encoding) {
+      if (!chunk) {
+        return 0;
+      }
+      return Buffer4.isBuffer(chunk) ? chunk.length : Buffer4.byteLength(chunk, encoding);
+    }
+    function shouldCompress(req, res) {
+      var type = res.getHeader("Content-Type");
+      if (type === void 0 || !compressible(type)) {
+        debug("%s not compressible", type);
+        return false;
+      }
+      return true;
+    }
+    function shouldTransform(req, res) {
+      var cacheControl = res.getHeader("Cache-Control");
+      return !cacheControl || !cacheControlNoTransformRegExp.test(cacheControl);
+    }
+    function toBuffer(chunk, encoding) {
+      return Buffer4.isBuffer(chunk) ? chunk : Buffer4.from(chunk, encoding);
+    }
+    function headersSent(res) {
+      return typeof res.headersSent !== "boolean" ? Boolean(res._header) : res.headersSent;
+    }
   }
 });
 
@@ -47845,7 +49131,7 @@ Content-Type: ${partContentType}\r
 });
 
 // ../../node_modules/.pnpm/gaxios@6.7.1/node_modules/gaxios/build/src/index.js
-var require_src2 = __commonJS({
+var require_src3 = __commonJS({
   "../../node_modules/.pnpm/gaxios@6.7.1/node_modules/gaxios/build/src/index.js"(exports2) {
     "use strict";
     var __createBinding = exports2 && exports2.__createBinding || (Object.create ? (function(o, m2, k, k2) {
@@ -50024,7 +51310,7 @@ var require_logging_utils = __commonJS({
 });
 
 // ../../node_modules/.pnpm/google-logging-utils@0.0.2/node_modules/google-logging-utils/build/src/index.js
-var require_src3 = __commonJS({
+var require_src4 = __commonJS({
   "../../node_modules/.pnpm/google-logging-utils@0.0.2/node_modules/google-logging-utils/build/src/index.js"(exports2) {
     "use strict";
     var __createBinding = exports2 && exports2.__createBinding || (Object.create ? (function(o, m2, k, k2) {
@@ -50049,7 +51335,7 @@ var require_src3 = __commonJS({
 });
 
 // ../../node_modules/.pnpm/gcp-metadata@6.1.1/node_modules/gcp-metadata/build/src/index.js
-var require_src4 = __commonJS({
+var require_src5 = __commonJS({
   "../../node_modules/.pnpm/gcp-metadata@6.1.1/node_modules/gcp-metadata/build/src/index.js"(exports2) {
     "use strict";
     var __createBinding = exports2 && exports2.__createBinding || (Object.create ? (function(o, m2, k, k2) {
@@ -50079,10 +51365,10 @@ var require_src4 = __commonJS({
     exports2.getGCPResidency = getGCPResidency;
     exports2.setGCPResidency = setGCPResidency;
     exports2.requestTimeout = requestTimeout;
-    var gaxios_1 = require_src2();
+    var gaxios_1 = require_src3();
     var jsonBigint = require_json_bigint();
     var gcp_residency_1 = require_gcp_residency();
-    var logger2 = require_src3();
+    var logger2 = require_src4();
     exports2.BASE_PATH = "/computeMetadata/v1";
     exports2.HOST_ADDRESS = "http://169.254.169.254";
     exports2.SECONDARY_HOST_ADDRESS = "http://metadata.google.internal.";
@@ -50718,7 +52004,7 @@ var require_transporters = __commonJS({
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.DefaultTransporter = void 0;
-    var gaxios_1 = require_src2();
+    var gaxios_1 = require_src3();
     var options_1 = require_options();
     var pkg = require_package3();
     var PRODUCT_NAME = "google-api-nodejs-client";
@@ -50794,64 +52080,6 @@ var require_transporters = __commonJS({
     };
     exports2.DefaultTransporter = DefaultTransporter;
     DefaultTransporter.USER_AGENT = `${PRODUCT_NAME}/${pkg.version}`;
-  }
-});
-
-// ../../node_modules/.pnpm/safe-buffer@5.2.1/node_modules/safe-buffer/index.js
-var require_safe_buffer = __commonJS({
-  "../../node_modules/.pnpm/safe-buffer@5.2.1/node_modules/safe-buffer/index.js"(exports2, module2) {
-    var buffer = require("buffer");
-    var Buffer4 = buffer.Buffer;
-    function copyProps(src, dst) {
-      for (var key in src) {
-        dst[key] = src[key];
-      }
-    }
-    if (Buffer4.from && Buffer4.alloc && Buffer4.allocUnsafe && Buffer4.allocUnsafeSlow) {
-      module2.exports = buffer;
-    } else {
-      copyProps(buffer, exports2);
-      exports2.Buffer = SafeBuffer;
-    }
-    function SafeBuffer(arg, encodingOrOffset, length) {
-      return Buffer4(arg, encodingOrOffset, length);
-    }
-    SafeBuffer.prototype = Object.create(Buffer4.prototype);
-    copyProps(Buffer4, SafeBuffer);
-    SafeBuffer.from = function(arg, encodingOrOffset, length) {
-      if (typeof arg === "number") {
-        throw new TypeError("Argument must not be a number");
-      }
-      return Buffer4(arg, encodingOrOffset, length);
-    };
-    SafeBuffer.alloc = function(size, fill, encoding) {
-      if (typeof size !== "number") {
-        throw new TypeError("Argument must be a number");
-      }
-      var buf = Buffer4(size);
-      if (fill !== void 0) {
-        if (typeof encoding === "string") {
-          buf.fill(fill, encoding);
-        } else {
-          buf.fill(fill);
-        }
-      } else {
-        buf.fill(0);
-      }
-      return buf;
-    };
-    SafeBuffer.allocUnsafe = function(size) {
-      if (typeof size !== "number") {
-        throw new TypeError("Argument must be a number");
-      }
-      return Buffer4(size);
-    };
-    SafeBuffer.allocUnsafeSlow = function(size) {
-      if (typeof size !== "number") {
-        throw new TypeError("Argument must be a number");
-      }
-      return buffer.SlowBuffer(size);
-    };
   }
 });
 
@@ -51104,7 +52332,7 @@ var require_authclient = __commonJS({
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.AuthClient = exports2.DEFAULT_EAGER_REFRESH_THRESHOLD_MILLIS = exports2.DEFAULT_UNIVERSE = void 0;
     var events_1 = require("events");
-    var gaxios_1 = require_src2();
+    var gaxios_1 = require_src3();
     var transporters_1 = require_transporters();
     var util_1 = require_util2();
     exports2.DEFAULT_UNIVERSE = "googleapis.com";
@@ -51246,7 +52474,7 @@ var require_oauth2client = __commonJS({
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.OAuth2Client = exports2.ClientAuthentication = exports2.CertificateFormat = exports2.CodeChallengeMethod = void 0;
-    var gaxios_1 = require_src2();
+    var gaxios_1 = require_src3();
     var querystring2 = require("querystring");
     var stream = require("stream");
     var formatEcdsa = require_ecdsa_sig_formatter();
@@ -51898,8 +53126,8 @@ var require_computeclient = __commonJS({
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.Compute = void 0;
-    var gaxios_1 = require_src2();
-    var gcpMetadata = require_src4();
+    var gaxios_1 = require_src3();
+    var gcpMetadata = require_src5();
     var oauth2client_1 = require_oauth2client();
     var Compute = class extends oauth2client_1.OAuth2Client {
       /**
@@ -52034,7 +53262,7 @@ var require_envDetect = __commonJS({
     exports2.GCPEnv = void 0;
     exports2.clear = clear;
     exports2.getEnv = getEnv;
-    var gcpMetadata = require_src4();
+    var gcpMetadata = require_src5();
     var GCPEnv;
     (function(GCPEnv2) {
       GCPEnv2["APP_ENGINE"] = "APP_ENGINE";
@@ -52641,7 +53869,7 @@ var require_jws = __commonJS({
 });
 
 // ../../node_modules/.pnpm/gtoken@7.1.0/node_modules/gtoken/build/src/index.js
-var require_src5 = __commonJS({
+var require_src6 = __commonJS({
   "../../node_modules/.pnpm/gtoken@7.1.0/node_modules/gtoken/build/src/index.js"(exports2) {
     "use strict";
     var __classPrivateFieldGet5 = exports2 && exports2.__classPrivateFieldGet || function(receiver, state, kind, f3) {
@@ -52666,7 +53894,7 @@ var require_src5 = __commonJS({
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.GoogleToken = void 0;
     var fs6 = require("fs");
-    var gaxios_1 = require_src2();
+    var gaxios_1 = require_src3();
     var jws = require_jws();
     var path5 = require("path");
     var util_1 = require("util");
@@ -53075,7 +54303,7 @@ var require_jwtclient = __commonJS({
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.JWT = void 0;
-    var gtoken_1 = require_src5();
+    var gtoken_1 = require_src6();
     var jwtaccess_1 = require_jwtaccess();
     var oauth2client_1 = require_oauth2client();
     var authclient_1 = require_authclient();
@@ -53443,7 +54671,7 @@ var require_impersonated = __commonJS({
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.Impersonated = exports2.IMPERSONATED_ACCOUNT_TYPE = void 0;
     var oauth2client_1 = require_oauth2client();
-    var gaxios_1 = require_src2();
+    var gaxios_1 = require_src3();
     var util_1 = require_util2();
     exports2.IMPERSONATED_ACCOUNT_TYPE = "impersonated_service_account";
     var Impersonated = class _Impersonated extends oauth2client_1.OAuth2Client {
@@ -53764,7 +54992,7 @@ var require_stscredentials = __commonJS({
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.StsCredentials = void 0;
-    var gaxios_1 = require_src2();
+    var gaxios_1 = require_src3();
     var querystring2 = require("querystring");
     var transporters_1 = require_transporters();
     var oauth2common_1 = require_oauth2common();
@@ -55240,7 +56468,7 @@ var require_externalAccountAuthorizedUserClient = __commonJS({
     exports2.ExternalAccountAuthorizedUserClient = exports2.EXTERNAL_ACCOUNT_AUTHORIZED_USER_TYPE = void 0;
     var authclient_1 = require_authclient();
     var oauth2common_1 = require_oauth2common();
-    var gaxios_1 = require_src2();
+    var gaxios_1 = require_src3();
     var stream = require("stream");
     var baseexternalclient_1 = require_baseexternalclient();
     exports2.EXTERNAL_ACCOUNT_AUTHORIZED_USER_TYPE = "external_account_authorized_user";
@@ -55449,7 +56677,7 @@ var require_googleauth = __commonJS({
     exports2.GoogleAuth = exports2.GoogleAuthExceptionMessages = exports2.CLOUD_SDK_CLIENT_ID = void 0;
     var child_process_1 = require("child_process");
     var fs6 = require("fs");
-    var gcpMetadata = require_src4();
+    var gcpMetadata = require_src5();
     var os = require("os");
     var path5 = require("path");
     var crypto_1 = require_crypto3();
@@ -56417,7 +57645,7 @@ var require_passthrough = __commonJS({
 });
 
 // ../../node_modules/.pnpm/google-auth-library@9.15.1/node_modules/google-auth-library/build/src/index.js
-var require_src6 = __commonJS({
+var require_src7 = __commonJS({
   "../../node_modules/.pnpm/google-auth-library@9.15.1/node_modules/google-auth-library/build/src/index.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
@@ -56426,8 +57654,8 @@ var require_src6 = __commonJS({
     Object.defineProperty(exports2, "GoogleAuth", { enumerable: true, get: function() {
       return googleauth_1.GoogleAuth;
     } });
-    exports2.gcpMetadata = require_src4();
-    exports2.gaxios = require_src2();
+    exports2.gcpMetadata = require_src5();
+    exports2.gaxios = require_src3();
     var authclient_1 = require_authclient();
     Object.defineProperty(exports2, "AuthClient", { enumerable: true, get: function() {
       return authclient_1.AuthClient;
@@ -56526,7 +57754,7 @@ var require_src6 = __commonJS({
 });
 
 // ../../node_modules/.pnpm/@google-cloud+projectify@4.0.0/node_modules/@google-cloud/projectify/build/src/index.js
-var require_src7 = __commonJS({
+var require_src8 = __commonJS({
   "../../node_modules/.pnpm/@google-cloud+projectify@4.0.0/node_modules/@google-cloud/projectify/build/src/index.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
@@ -56849,7 +58077,7 @@ var require_promisify = __commonJS({
 });
 
 // ../../node_modules/.pnpm/agent-base@6.0.2/node_modules/agent-base/dist/src/index.js
-var require_src8 = __commonJS({
+var require_src9 = __commonJS({
   "../../node_modules/.pnpm/agent-base@6.0.2/node_modules/agent-base/dist/src/index.js"(exports2, module2) {
     "use strict";
     var __importDefault = exports2 && exports2.__importDefault || function(mod) {
@@ -57071,7 +58299,7 @@ var require_agent = __commonJS({
     var url_1 = __importDefault(require("url"));
     var debug_1 = __importDefault(require_src());
     var once_1 = __importDefault(require_dist5());
-    var agent_base_1 = require_src8();
+    var agent_base_1 = require_src9();
     var debug = (0, debug_1.default)("http-proxy-agent");
     function isHTTPS(protocol) {
       return typeof protocol === "string" ? /^https:?$/i.test(protocol) : false;
@@ -57292,7 +58520,7 @@ var require_agent2 = __commonJS({
     var url_1 = __importDefault(require("url"));
     var assert_1 = __importDefault(require("assert"));
     var debug_1 = __importDefault(require_src());
-    var agent_base_1 = require_src8();
+    var agent_base_1 = require_src9();
     var parse_proxy_response_1 = __importDefault(require_parse_proxy_response2());
     var debug = debug_1.default("https-proxy-agent:agent");
     var HttpsProxyAgent = class extends agent_base_1.Agent {
@@ -57641,7 +58869,7 @@ var require_stream_events = __commonJS({
 });
 
 // ../../node_modules/.pnpm/teeny-request@9.0.0/node_modules/teeny-request/build/src/index.js
-var require_src9 = __commonJS({
+var require_src10 = __commonJS({
   "../../node_modules/.pnpm/teeny-request@9.0.0/node_modules/teeny-request/build/src/index.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
@@ -58454,7 +59682,7 @@ var require_state = __commonJS({
 });
 
 // ../../node_modules/.pnpm/util-deprecate@1.0.2/node_modules/util-deprecate/node.js
-var require_node2 = __commonJS({
+var require_node3 = __commonJS({
   "../../node_modules/.pnpm/util-deprecate@1.0.2/node_modules/util-deprecate/node.js"(exports2, module2) {
     module2.exports = require("util").deprecate;
   }
@@ -58476,7 +59704,7 @@ var require_stream_writable = __commonJS({
     var Duplex;
     Writable3.WritableState = WritableState;
     var internalUtil = {
-      deprecate: require_node2()
+      deprecate: require_node3()
     };
     var Stream3 = require_stream2();
     var Buffer4 = require("buffer").Buffer;
@@ -60913,7 +62141,7 @@ var require_duplexify = __commonJS({
 });
 
 // ../../node_modules/.pnpm/@google-cloud+promisify@4.0.0/node_modules/@google-cloud/promisify/build/src/index.js
-var require_src10 = __commonJS({
+var require_src11 = __commonJS({
   "../../node_modules/.pnpm/@google-cloud+promisify@4.0.0/node_modules/@google-cloud/promisify/build/src/index.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
@@ -61108,7 +62336,7 @@ var require_resource_stream = __commonJS({
 });
 
 // ../../node_modules/.pnpm/@google-cloud+paginator@5.0.2/node_modules/@google-cloud/paginator/build/src/index.js
-var require_src11 = __commonJS({
+var require_src12 = __commonJS({
   "../../node_modules/.pnpm/@google-cloud+paginator@5.0.2/node_modules/@google-cloud/paginator/build/src/index.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
@@ -78198,7 +79426,7 @@ Content-Type: ${partContentType}\r
 });
 
 // ../../node_modules/.pnpm/gaxios@7.1.4/node_modules/gaxios/build/cjs/src/index.js
-var require_src12 = __commonJS({
+var require_src13 = __commonJS({
   "../../node_modules/.pnpm/gaxios@7.1.4/node_modules/gaxios/build/cjs/src/index.js"(exports2) {
     "use strict";
     var __createBinding = exports2 && exports2.__createBinding || (Object.create ? (function(o, m2, k, k2) {
@@ -78642,7 +79870,7 @@ var require_logging_utils2 = __commonJS({
 });
 
 // ../../node_modules/.pnpm/google-logging-utils@1.1.3/node_modules/google-logging-utils/build/src/index.js
-var require_src13 = __commonJS({
+var require_src14 = __commonJS({
   "../../node_modules/.pnpm/google-logging-utils@1.1.3/node_modules/google-logging-utils/build/src/index.js"(exports2) {
     "use strict";
     var __createBinding = exports2 && exports2.__createBinding || (Object.create ? (function(o, m2, k, k2) {
@@ -78667,7 +79895,7 @@ var require_src13 = __commonJS({
 });
 
 // ../../node_modules/.pnpm/gcp-metadata@8.1.2/node_modules/gcp-metadata/build/src/index.js
-var require_src14 = __commonJS({
+var require_src15 = __commonJS({
   "../../node_modules/.pnpm/gcp-metadata@8.1.2/node_modules/gcp-metadata/build/src/index.js"(exports2) {
     "use strict";
     var __createBinding = exports2 && exports2.__createBinding || (Object.create ? (function(o, m2, k, k2) {
@@ -78721,10 +79949,10 @@ var require_src14 = __commonJS({
     exports2.getGCPResidency = getGCPResidency;
     exports2.setGCPResidency = setGCPResidency;
     exports2.requestTimeout = requestTimeout;
-    var gaxios_1 = require_src12();
+    var gaxios_1 = require_src13();
     var jsonBigint = require_json_bigint();
     var gcp_residency_1 = require_gcp_residency2();
-    var logger2 = __importStar(require_src13());
+    var logger2 = __importStar(require_src14());
     exports2.BASE_PATH = "/computeMetadata/v1";
     exports2.HOST_ADDRESS = "http://169.254.169.254";
     exports2.SECONDARY_HOST_ADDRESS = "http://metadata.google.internal.";
@@ -79375,9 +80603,9 @@ var require_authclient2 = __commonJS({
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.AuthClient = exports2.DEFAULT_EAGER_REFRESH_THRESHOLD_MILLIS = exports2.DEFAULT_UNIVERSE = void 0;
     var events_1 = require("events");
-    var gaxios_1 = require_src12();
+    var gaxios_1 = require_src13();
     var util_1 = require_util5();
-    var google_logging_utils_1 = require_src13();
+    var google_logging_utils_1 = require_src14();
     var shared_cjs_1 = require_shared2();
     exports2.DEFAULT_UNIVERSE = "googleapis.com";
     exports2.DEFAULT_EAGER_REFRESH_THRESHOLD_MILLIS = 5 * 60 * 1e3;
@@ -79661,7 +80889,7 @@ var require_oauth2client2 = __commonJS({
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.OAuth2Client = exports2.ClientAuthentication = exports2.CertificateFormat = exports2.CodeChallengeMethod = void 0;
-    var gaxios_1 = require_src12();
+    var gaxios_1 = require_src13();
     var querystring2 = require("querystring");
     var stream = require("stream");
     var formatEcdsa = require_ecdsa_sig_formatter();
@@ -80342,8 +81570,8 @@ var require_computeclient2 = __commonJS({
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.Compute = void 0;
-    var gaxios_1 = require_src12();
-    var gcpMetadata = require_src14();
+    var gaxios_1 = require_src13();
+    var gcpMetadata = require_src15();
     var oauth2client_1 = require_oauth2client2();
     var Compute = class extends oauth2client_1.OAuth2Client {
       serviceAccountEmail;
@@ -80482,7 +81710,7 @@ var require_envDetect2 = __commonJS({
     exports2.GCPEnv = void 0;
     exports2.clear = clear;
     exports2.getEnv = getEnv;
-    var gcpMetadata = require_src14();
+    var gcpMetadata = require_src15();
     var GCPEnv;
     (function(GCPEnv2) {
       GCPEnv2["APP_ENGINE"] = "APP_ENGINE";
@@ -80862,7 +82090,7 @@ var require_googleToken = __commonJS({
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.GoogleToken = void 0;
-    var gaxios_1 = require_src12();
+    var gaxios_1 = require_src13();
     var tokenHandler_1 = require_tokenHandler();
     var revokeToken_1 = require_revokeToken();
     var GoogleToken = class {
@@ -81539,7 +82767,7 @@ var require_impersonated2 = __commonJS({
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.Impersonated = exports2.IMPERSONATED_ACCOUNT_TYPE = void 0;
     var oauth2client_1 = require_oauth2client2();
-    var gaxios_1 = require_src12();
+    var gaxios_1 = require_src13();
     var util_1 = require_util5();
     exports2.IMPERSONATED_ACCOUNT_TYPE = "impersonated_service_account";
     var Impersonated = class _Impersonated extends oauth2client_1.OAuth2Client {
@@ -81718,7 +82946,7 @@ var require_oauth2common2 = __commonJS({
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.OAuthClientAuthHandler = void 0;
     exports2.getErrorFromOAuthErrorResponse = getErrorFromOAuthErrorResponse;
-    var gaxios_1 = require_src12();
+    var gaxios_1 = require_src13();
     var crypto_1 = require_crypto6();
     var METHODS_SUPPORTING_REQUEST_BODY = ["PUT", "POST", "PATCH"];
     var OAuthClientAuthHandler = class {
@@ -81865,7 +83093,7 @@ var require_stscredentials2 = __commonJS({
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.StsCredentials = void 0;
-    var gaxios_1 = require_src12();
+    var gaxios_1 = require_src13();
     var authclient_1 = require_authclient2();
     var oauth2common_1 = require_oauth2common2();
     var util_1 = require_util5();
@@ -81953,7 +83181,7 @@ var require_baseexternalclient2 = __commonJS({
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.BaseExternalAccountClient = exports2.CLOUD_RESOURCE_MANAGER = exports2.EXTERNAL_ACCOUNT_TYPE = exports2.EXPIRATION_TIME_OFFSET = void 0;
-    var gaxios_1 = require_src12();
+    var gaxios_1 = require_src13();
     var stream = require("stream");
     var authclient_1 = require_authclient2();
     var sts = require_stscredentials2();
@@ -82645,7 +83873,7 @@ var require_identitypoolclient2 = __commonJS({
     var urlsubjecttokensupplier_1 = require_urlsubjecttokensupplier2();
     var certificatesubjecttokensupplier_1 = require_certificatesubjecttokensupplier();
     var stscredentials_1 = require_stscredentials2();
-    var gaxios_1 = require_src12();
+    var gaxios_1 = require_src13();
     var IdentityPoolClient = class _IdentityPoolClient extends baseexternalclient_1.BaseExternalAccountClient {
       subjectTokenSupplier;
       /**
@@ -82751,7 +83979,7 @@ var require_awsrequestsigner2 = __commonJS({
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.AwsRequestSigner = void 0;
-    var gaxios_1 = require_src12();
+    var gaxios_1 = require_src13();
     var crypto_1 = require_crypto6();
     var AWS_ALGORITHM = "AWS4-HMAC-SHA256";
     var AWS_REQUEST_TYPE = "aws4_request";
@@ -83060,7 +84288,7 @@ var require_awsclient2 = __commonJS({
     var baseexternalclient_1 = require_baseexternalclient2();
     var defaultawssecuritycredentialssupplier_1 = require_defaultawssecuritycredentialssupplier2();
     var util_1 = require_util5();
-    var gaxios_1 = require_src12();
+    var gaxios_1 = require_src13();
     var AwsClient = class _AwsClient extends baseexternalclient_1.BaseExternalAccountClient {
       environmentId;
       awsSecurityCredentialsSupplier;
@@ -83620,7 +84848,7 @@ var require_externalAccountAuthorizedUserClient2 = __commonJS({
     exports2.ExternalAccountAuthorizedUserClient = exports2.EXTERNAL_ACCOUNT_AUTHORIZED_USER_TYPE = void 0;
     var authclient_1 = require_authclient2();
     var oauth2common_1 = require_oauth2common2();
-    var gaxios_1 = require_src12();
+    var gaxios_1 = require_src13();
     var stream = require("stream");
     var baseexternalclient_1 = require_baseexternalclient2();
     exports2.EXTERNAL_ACCOUNT_AUTHORIZED_USER_TYPE = "external_account_authorized_user";
@@ -83807,8 +85035,8 @@ var require_googleauth2 = __commonJS({
     exports2.GoogleAuth = exports2.GoogleAuthExceptionMessages = void 0;
     var child_process_1 = require("child_process");
     var fs6 = require("fs");
-    var gaxios_1 = require_src12();
-    var gcpMetadata = require_src14();
+    var gaxios_1 = require_src13();
+    var gcpMetadata = require_src15();
     var os = require("os");
     var path5 = require("path");
     var crypto_1 = require_crypto6();
@@ -84631,7 +85859,7 @@ var require_downscopedclient2 = __commonJS({
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.DownscopedClient = exports2.EXPIRATION_TIME_OFFSET = exports2.MAX_ACCESS_BOUNDARY_RULES_COUNT = void 0;
-    var gaxios_1 = require_src12();
+    var gaxios_1 = require_src13();
     var stream = require("stream");
     var authclient_1 = require_authclient2();
     var sts = require_stscredentials2();
@@ -84856,7 +86084,7 @@ var require_passthrough2 = __commonJS({
 });
 
 // ../../node_modules/.pnpm/google-auth-library@10.6.2/node_modules/google-auth-library/build/src/index.js
-var require_src15 = __commonJS({
+var require_src16 = __commonJS({
   "../../node_modules/.pnpm/google-auth-library@10.6.2/node_modules/google-auth-library/build/src/index.js"(exports2) {
     "use strict";
     var __createBinding = exports2 && exports2.__createBinding || (Object.create ? (function(o, m2, k, k2) {
@@ -84881,8 +86109,8 @@ var require_src15 = __commonJS({
     Object.defineProperty(exports2, "GoogleAuth", { enumerable: true, get: function() {
       return googleauth_1.GoogleAuth;
     } });
-    exports2.gcpMetadata = require_src14();
-    exports2.gaxios = require_src12();
+    exports2.gcpMetadata = require_src15();
+    exports2.gaxios = require_src13();
     var authclient_1 = require_authclient2();
     Object.defineProperty(exports2, "AuthClient", { enumerable: true, get: function() {
       return authclient_1.AuthClient;
@@ -88541,7 +89769,7 @@ var require_minimalistic_assert = __commonJS({
 });
 
 // ../../node_modules/.pnpm/asn1.js@5.4.1/node_modules/asn1.js/lib/asn1/base/node.js
-var require_node3 = __commonJS({
+var require_node4 = __commonJS({
   "../../node_modules/.pnpm/asn1.js@5.4.1/node_modules/asn1.js/lib/asn1/base/node.js"(exports2, module2) {
     "use strict";
     var Reporter = require_reporter().Reporter;
@@ -89137,7 +90365,7 @@ var require_der2 = __commonJS({
     "use strict";
     var inherits = require_inherits();
     var Buffer4 = require_safer().Buffer;
-    var Node = require_node3();
+    var Node = require_node4();
     var der = require_der();
     function DEREncoder(entity) {
       this.enc = "der";
@@ -89403,7 +90631,7 @@ var require_der3 = __commonJS({
     var inherits = require_inherits();
     var bignum = require_bn();
     var DecoderBuffer = require_buffer().DecoderBuffer;
-    var Node = require_node3();
+    var Node = require_node4();
     var der = require_der();
     function DERDecoder(entity) {
       this.enc = "der";
@@ -89781,7 +91009,7 @@ var require_base = __commonJS({
     base.Reporter = require_reporter().Reporter;
     base.DecoderBuffer = require_buffer().DecoderBuffer;
     base.EncoderBuffer = require_buffer().EncoderBuffer;
-    base.Node = require_node3();
+    base.Node = require_node4();
   }
 });
 
@@ -90837,7 +92065,7 @@ var require_web_push_lib = __commonJS({
 });
 
 // ../../node_modules/.pnpm/web-push@3.6.7/node_modules/web-push/src/index.js
-var require_src16 = __commonJS({
+var require_src17 = __commonJS({
   "../../node_modules/.pnpm/web-push@3.6.7/node_modules/web-push/src/index.js"(exports2, module2) {
     "use strict";
     var vapidHelper = require_vapid_helper();
@@ -92587,7 +93815,8 @@ async function migrate(db2, config) {
 }
 
 // src/app.ts
-var import_express31 = __toESM(require_express2(), 1);
+var import_express32 = __toESM(require_express2(), 1);
+var import_compression = __toESM(require_compression(), 1);
 var import_cors = __toESM(require_lib3(), 1);
 var import_cookie_parser = __toESM(require_cookie_parser(), 1);
 var import_pino_http = __toESM(require_logger(), 1);
@@ -93139,10 +94368,116 @@ var import_path2 = __toESM(require("path"), 1);
 var import_fs3 = require("fs");
 
 // src/routes/index.ts
-var import_express30 = __toESM(require_express2(), 1);
+var import_express31 = __toESM(require_express2(), 1);
+
+// src/routes/seo.ts
+var import_express = __toESM(require_express2(), 1);
+
+// src/lib/app-url.ts
+var _dbUrl = null;
+function setAppUrl(url2) {
+  _dbUrl = url2.replace(/\/$/, "");
+}
+function clearAppUrlCache() {
+  _dbUrl = null;
+}
+function getAppUrl() {
+  const env = process.env["APP_URL"];
+  if (env) return env.replace(/\/$/, "");
+  if (_dbUrl) return _dbUrl;
+  return "https://simix.site";
+}
+
+// src/routes/seo.ts
+var router = (0, import_express.Router)();
+var SITEMAP_PAGES = [
+  { path: "/", priority: "1.0", changefreq: "weekly" },
+  { path: "/register", priority: "0.9", changefreq: "monthly" },
+  { path: "/login", priority: "0.8", changefreq: "monthly" },
+  { path: "/forgot-password", priority: "0.3", changefreq: "yearly" },
+  { path: "/legal/cgu", priority: "0.5", changefreq: "yearly" },
+  { path: "/legal/politique-confidentialite", priority: "0.5", changefreq: "yearly" },
+  { path: "/legal/mentions-legales", priority: "0.5", changefreq: "yearly" },
+  { path: "/legal/cookies", priority: "0.4", changefreq: "yearly" }
+];
+function buildSitemap(baseUrl2) {
+  const today = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
+  const urls = SITEMAP_PAGES.map(({ path: path5, priority, changefreq }) => {
+    const loc = `${baseUrl2}${path5}`;
+    return [
+      "  <url>",
+      `    <loc>${loc}</loc>`,
+      `    <lastmod>${today}</lastmod>`,
+      `    <changefreq>${changefreq}</changefreq>`,
+      `    <priority>${priority}</priority>`,
+      "  </url>"
+    ].join("\n");
+  }).join("\n");
+  return [
+    '<?xml version="1.0" encoding="UTF-8"?>',
+    '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"',
+    '        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"',
+    '        xsi:schemaLocation="http://www.sitemaps.org/schemas/sitemap/0.9',
+    '          http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd">',
+    urls,
+    "</urlset>"
+  ].join("\n");
+}
+router.get("/sitemap.xml", (_req, res) => {
+  const baseUrl2 = getAppUrl();
+  const xml = buildSitemap(baseUrl2);
+  res.setHeader("Content-Type", "application/xml; charset=utf-8");
+  res.setHeader("Cache-Control", "public, max-age=3600, stale-while-revalidate=86400");
+  res.status(200).send(xml);
+});
+router.get("/robots.txt", (_req, res) => {
+  const baseUrl2 = getAppUrl();
+  const content = [
+    "User-agent: *",
+    "",
+    "# Pages publiques indexables",
+    "Allow: /$",
+    "Allow: /register$",
+    "Allow: /login$",
+    "Allow: /forgot-password$",
+    "Allow: /legal/",
+    "",
+    "# Pages priv\xE9es \u2014 espace utilisateur",
+    "Disallow: /dashboard",
+    "Disallow: /profile",
+    "Disallow: /wallet",
+    "Disallow: /history",
+    "Disallow: /numbers",
+    "Disallow: /services",
+    "Disallow: /countries",
+    "Disallow: /notifications",
+    "Disallow: /pin",
+    "Disallow: /verify-email",
+    "Disallow: /reset-password",
+    "Disallow: /splash",
+    "Disallow: /bienvenue",
+    "Disallow: /crypto-history",
+    "",
+    "# Pages admin \u2014 acc\xE8s interdit",
+    "Disallow: /admin",
+    "Disallow: /console",
+    "Disallow: /admin-login",
+    "Disallow: /admin/secure-login",
+    "Disallow: /toast-demo",
+    "",
+    "# API",
+    "Disallow: /api/",
+    "",
+    `Sitemap: ${baseUrl2}/sitemap.xml`
+  ].join("\n");
+  res.setHeader("Content-Type", "text/plain; charset=utf-8");
+  res.setHeader("Cache-Control", "public, max-age=86400");
+  res.status(200).send(content);
+});
+var seo_default = router;
 
 // src/routes/health.ts
-var import_express = __toESM(require_express2(), 1);
+var import_express2 = __toESM(require_express2(), 1);
 
 // ../../node_modules/.pnpm/zod@3.25.76/node_modules/zod/v3/external.js
 var external_exports = {};
@@ -97712,16 +99047,16 @@ var GetDashboardSummaryResponse = objectType({
 
 // src/routes/health.ts
 init_src();
-var router = (0, import_express.Router)();
-router.get("/healthz", (_req, res) => {
+var router2 = (0, import_express2.Router)();
+router2.get("/healthz", (_req, res) => {
   const data = HealthCheckResponse.parse({ status: "ok" });
   res.json(data);
 });
-router.get("/health", (_req, res) => {
+router2.get("/health", (_req, res) => {
   const data = HealthCheckResponse.parse({ status: "ok" });
   res.json(data);
 });
-router.get("/public/registration-countries", async (_req, res) => {
+router2.get("/public/registration-countries", async (_req, res) => {
   try {
     const { rows } = await pool.query(
       `SELECT code, dial_code, name, flag FROM countries WHERE enabled = true ORDER BY sort_order ASC`
@@ -97736,18 +99071,18 @@ router.get("/public/registration-countries", async (_req, res) => {
     res.status(500).json({ error: "Impossible de charger les pays." });
   }
 });
-var health_default = router;
+var health_default = router2;
 
 // src/routes/storage.ts
-var import_express2 = __toESM(require_express2(), 1);
+var import_express3 = __toESM(require_express2(), 1);
 var import_stream9 = require("stream");
 var import_crypto9 = require("crypto");
 var import_path = __toESM(require("path"), 1);
 var import_fs2 = __toESM(require("fs"), 1);
-var import_express3 = __toESM(require_express2(), 1);
+var import_express4 = __toESM(require_express2(), 1);
 
 // ../../node_modules/.pnpm/@google-cloud+storage@7.19.0/node_modules/@google-cloud/storage/build/esm/src/nodejs-common/service.js
-var import_google_auth_library2 = __toESM(require_src6(), 1);
+var import_google_auth_library2 = __toESM(require_src7(), 1);
 
 // ../../node_modules/.pnpm/uuid@8.3.2/node_modules/uuid/dist/esm-node/rng.js
 var import_crypto5 = __toESM(require("crypto"));
@@ -97802,7 +99137,7 @@ function v42(options, buf, offset) {
 var v4_default2 = v42;
 
 // ../../node_modules/.pnpm/@google-cloud+storage@7.19.0/node_modules/@google-cloud/storage/build/esm/src/nodejs-common/util.js
-var import_projectify = __toESM(require_src7(), 1);
+var import_projectify = __toESM(require_src8(), 1);
 
 // ../../node_modules/.pnpm/html-entities@2.6.0/node_modules/html-entities/dist/esm/named-references.js
 var __assign = function() {
@@ -97964,10 +99299,10 @@ function decode(text2, _a) {
 }
 
 // ../../node_modules/.pnpm/@google-cloud+storage@7.19.0/node_modules/@google-cloud/storage/build/esm/src/nodejs-common/util.js
-var import_google_auth_library = __toESM(require_src6(), 1);
+var import_google_auth_library = __toESM(require_src7(), 1);
 var import_retry_request = __toESM(require_retry_request(), 1);
 var import_stream2 = require("stream");
-var import_teeny_request = __toESM(require_src9(), 1);
+var import_teeny_request = __toESM(require_src10(), 1);
 
 // ../../node_modules/.pnpm/@google-cloud+storage@7.19.0/node_modules/@google-cloud/storage/build/esm/src/util.js
 var querystring = __toESM(require("querystring"), 1);
@@ -98801,7 +100136,7 @@ var Service = class _Service {
 };
 
 // ../../node_modules/.pnpm/@google-cloud+storage@7.19.0/node_modules/@google-cloud/storage/build/esm/src/nodejs-common/service-object.js
-var import_promisify = __toESM(require_src10(), 1);
+var import_promisify = __toESM(require_src11(), 1);
 var import_events = require("events");
 var ServiceObject = class _ServiceObject extends import_events.EventEmitter {
   /*
@@ -99029,13 +100364,13 @@ var ServiceObject = class _ServiceObject extends import_events.EventEmitter {
 (0, import_promisify.promisifyAll)(ServiceObject, { exclude: ["getRequestInterceptors"] });
 
 // ../../node_modules/.pnpm/@google-cloud+storage@7.19.0/node_modules/@google-cloud/storage/build/esm/src/storage.js
-var import_paginator2 = __toESM(require_src11(), 1);
-var import_promisify9 = __toESM(require_src10(), 1);
+var import_paginator2 = __toESM(require_src12(), 1);
+var import_promisify9 = __toESM(require_src11(), 1);
 var import_stream7 = require("stream");
 
 // ../../node_modules/.pnpm/@google-cloud+storage@7.19.0/node_modules/@google-cloud/storage/build/esm/src/bucket.js
-var import_paginator = __toESM(require_src11(), 1);
-var import_promisify6 = __toESM(require_src10(), 1);
+var import_paginator = __toESM(require_src12(), 1);
+var import_promisify6 = __toESM(require_src11(), 1);
 var fs3 = __toESM(require("fs"), 1);
 var import_mime2 = __toESM(require_mime(), 1);
 var path = __toESM(require("path"), 1);
@@ -99044,7 +100379,7 @@ var import_util15 = require("util");
 var import_async_retry3 = __toESM(require_lib8(), 1);
 
 // ../../node_modules/.pnpm/@google-cloud+storage@7.19.0/node_modules/@google-cloud/storage/build/esm/src/acl.js
-var import_promisify2 = __toESM(require_src10(), 1);
+var import_promisify2 = __toESM(require_src11(), 1);
 var AclRoleAccessorMethods = class _AclRoleAccessorMethods {
   constructor() {
     this.owners = {};
@@ -99524,7 +100859,7 @@ var Acl = class extends AclRoleAccessorMethods {
 });
 
 // ../../node_modules/.pnpm/@google-cloud+storage@7.19.0/node_modules/@google-cloud/storage/build/esm/src/file.js
-var import_promisify3 = __toESM(require_src10(), 1);
+var import_promisify3 = __toESM(require_src11(), 1);
 var crypto9 = __toESM(require("crypto"), 1);
 var fs2 = __toESM(require("fs"), 1);
 var import_mime = __toESM(require_mime(), 1);
@@ -99532,8 +100867,8 @@ var import_mime = __toESM(require_mime(), 1);
 // ../../node_modules/.pnpm/@google-cloud+storage@7.19.0/node_modules/@google-cloud/storage/build/esm/src/resumable-upload.js
 var import_abort_controller = __toESM(require_abort_controller(), 1);
 var import_crypto7 = require("crypto");
-var gaxios = __toESM(require_src2(), 1);
-var import_google_auth_library3 = __toESM(require_src6(), 1);
+var gaxios = __toESM(require_src3(), 1);
+var import_google_auth_library3 = __toESM(require_src7(), 1);
 var import_stream4 = require("stream");
 var import_async_retry = __toESM(require_lib8(), 1);
 var import_package_json_helper3 = __toESM(require_package_json_helper(), 1);
@@ -104397,7 +105732,7 @@ async function _File_validateIntegrity2(hashCalculatingStream, verify = {}) {
 });
 
 // ../../node_modules/.pnpm/@google-cloud+storage@7.19.0/node_modules/@google-cloud/storage/build/esm/src/iam.js
-var import_promisify4 = __toESM(require_src10(), 1);
+var import_promisify4 = __toESM(require_src11(), 1);
 var IAMExceptionMessages;
 (function(IAMExceptionMessages2) {
   IAMExceptionMessages2["POLICY_OBJECT_REQUIRED"] = "A policy object is required.";
@@ -104659,7 +105994,7 @@ var Iam = class {
 (0, import_promisify4.promisifyAll)(Iam);
 
 // ../../node_modules/.pnpm/@google-cloud+storage@7.19.0/node_modules/@google-cloud/storage/build/esm/src/notification.js
-var import_promisify5 = __toESM(require_src10(), 1);
+var import_promisify5 = __toESM(require_src11(), 1);
 var Notification = class extends ServiceObject {
   constructor(bucket, id) {
     const requestQueryObject = {};
@@ -107966,7 +109301,7 @@ import_paginator.paginator.extend(Bucket, "getFiles");
 });
 
 // ../../node_modules/.pnpm/@google-cloud+storage@7.19.0/node_modules/@google-cloud/storage/build/esm/src/channel.js
-var import_promisify7 = __toESM(require_src10(), 1);
+var import_promisify7 = __toESM(require_src11(), 1);
 var Channel = class extends ServiceObject {
   constructor(storage, id, resourceId) {
     const config = {
@@ -108035,7 +109370,7 @@ var Channel = class extends ServiceObject {
 var import_package_json_helper4 = __toESM(require_package_json_helper(), 1);
 
 // ../../node_modules/.pnpm/@google-cloud+storage@7.19.0/node_modules/@google-cloud/storage/build/esm/src/hmacKey.js
-var import_promisify8 = __toESM(require_src10(), 1);
+var import_promisify8 = __toESM(require_src11(), 1);
 var HmacKey = class extends ServiceObject {
   /**
    * @typedef {object} HmacKeyOptions
@@ -108322,7 +109657,7 @@ var HmacKey = class extends ServiceObject {
 (0, import_promisify8.promisifyAll)(HmacKey);
 
 // ../../node_modules/.pnpm/@google-cloud+storage@7.19.0/node_modules/@google-cloud/storage/build/esm/src/storage.js
-var import_google_auth_library4 = __toESM(require_src6(), 1);
+var import_google_auth_library4 = __toESM(require_src7(), 1);
 var IdempotencyStrategy;
 (function(IdempotencyStrategy2) {
   IdempotencyStrategy2[IdempotencyStrategy2["RetryAlways"] = 0] = "RetryAlways";
@@ -109221,7 +110556,7 @@ import_paginator2.paginator.extend(Storage, ["getBuckets", "getHmacKeys"]);
 
 // ../../node_modules/.pnpm/@google-cloud+storage@7.19.0/node_modules/@google-cloud/storage/build/esm/src/transfer-manager.js
 var import_p_limit2 = __toESM(require_p_limit(), 1);
-var import_google_auth_library5 = __toESM(require_src6(), 1);
+var import_google_auth_library5 = __toESM(require_src7(), 1);
 var import_async_retry4 = __toESM(require_lib8(), 1);
 var import_package_json_helper5 = __toESM(require_package_json_helper(), 1);
 var _XMLMultiPartUploadHelper_instances;
@@ -109547,11 +110882,11 @@ var RequestUploadUrlResponse = external_exports.object({
   objectPath: external_exports.string(),
   metadata: external_exports.object({ name: external_exports.string(), size: external_exports.number(), contentType: external_exports.string() })
 });
-var router2 = (0, import_express2.Router)();
+var router3 = (0, import_express3.Router)();
 var objectStorageService = new ObjectStorageService();
 var UPLOAD_DIR = import_path.default.resolve(process.env.UPLOAD_DIR ?? "uploads");
 import_fs2.default.mkdirSync(UPLOAD_DIR, { recursive: true });
-router2.post("/storage/uploads/request-url", async (req, res) => {
+router3.post("/storage/uploads/request-url", async (req, res) => {
   const parsed = RequestUploadUrlBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "Missing or invalid required fields" });
@@ -109573,9 +110908,9 @@ router2.post("/storage/uploads/request-url", async (req, res) => {
     res.status(503).json({ error: "GCS unavailable", fallback: "/api/storage/uploads/direct" });
   }
 });
-router2.post(
+router3.post(
   "/storage/uploads/direct",
-  import_express3.default.raw({ type: "image/*", limit: "5mb" }),
+  import_express4.default.raw({ type: "image/*", limit: "5mb" }),
   (req, res) => {
     const contentType = req.headers["content-type"] ?? "application/octet-stream";
     if (!contentType.startsWith("image/")) {
@@ -109600,7 +110935,7 @@ router2.post(
     }
   }
 );
-router2.get("/storage/uploads/files/:filename", (req, res) => {
+router3.get("/storage/uploads/files/:filename", (req, res) => {
   const { filename } = req.params;
   if (!filename || filename.includes("..") || filename.includes("/") || filename.includes("\\")) {
     res.status(400).end();
@@ -109617,7 +110952,7 @@ router2.get("/storage/uploads/files/:filename", (req, res) => {
   res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
   res.sendFile(filepath);
 });
-router2.get("/storage/public-objects/*filePath", async (req, res) => {
+router3.get("/storage/public-objects/*filePath", async (req, res) => {
   try {
     const raw = req.params.filePath;
     const filePath = Array.isArray(raw) ? raw.join("/") : raw;
@@ -109640,7 +110975,7 @@ router2.get("/storage/public-objects/*filePath", async (req, res) => {
     res.status(500).json({ error: "Failed to serve public object" });
   }
 });
-router2.get("/storage/objects/*path", async (req, res) => {
+router3.get("/storage/objects/*path", async (req, res) => {
   try {
     const raw = req.params.path;
     const wildcardPath = Array.isArray(raw) ? raw.join("/") : raw;
@@ -109665,10 +111000,10 @@ router2.get("/storage/objects/*path", async (req, res) => {
     res.status(500).json({ error: "Failed to serve object" });
   }
 });
-var storage_default = router2;
+var storage_default = router3;
 
 // src/routes/auth.ts
-var import_express4 = __toESM(require_express2(), 1);
+var import_express5 = __toESM(require_express2(), 1);
 var import_node_crypto4 = __toESM(require("node:crypto"), 1);
 
 // ../../node_modules/.pnpm/bcryptjs@3.0.3/node_modules/bcryptjs/index.js
@@ -116738,23 +118073,6 @@ var Resend = class {
 // src/lib/email.ts
 init_src();
 init_drizzle_orm();
-
-// src/lib/app-url.ts
-var _dbUrl = null;
-function setAppUrl(url2) {
-  _dbUrl = url2.replace(/\/$/, "");
-}
-function clearAppUrlCache() {
-  _dbUrl = null;
-}
-function getAppUrl() {
-  const env = process.env["APP_URL"];
-  if (env) return env.replace(/\/$/, "");
-  if (_dbUrl) return _dbUrl;
-  return "https://simix.site";
-}
-
-// src/lib/email.ts
 async function getResend() {
   let key = process.env.RESEND_API_KEY ?? null;
   if (!key) {
@@ -117239,8 +118557,8 @@ async function uniqueReferralCode() {
   }
   return "SX" + Date.now().toString(36).toUpperCase().slice(-8);
 }
-var router3 = (0, import_express4.Router)();
-router3.post("/auth/register", requireTurnstile, async (req, res) => {
+var router4 = (0, import_express5.Router)();
+router4.post("/auth/register", requireTurnstile, async (req, res) => {
   const ip = req.ip ?? "unknown";
   if (!await isRegistrationEnabled()) {
     res.status(503).json({ error: "Les inscriptions sont temporairement d\xE9sactiv\xE9es. R\xE9essayez plus tard." });
@@ -117304,7 +118622,7 @@ router3.post("/auth/register", requireTurnstile, async (req, res) => {
   }
   res.json({ user: toUser(user), token: session.id, requiresEmailVerification: true });
 });
-router3.post("/auth/login", requireTurnstile, async (req, res) => {
+router4.post("/auth/login", requireTurnstile, async (req, res) => {
   const ip = req.ip ?? "unknown";
   const ua = req.headers["user-agent"] ?? "";
   const parsed = LoginBody.safeParse(req.body);
@@ -117416,12 +118734,12 @@ router3.post("/auth/login", requireTurnstile, async (req, res) => {
   })();
   res.json({ user: toUser(user), token: session.id });
 });
-router3.post("/auth/logout", async (req, res) => {
+router4.post("/auth/logout", async (req, res) => {
   if (req.sessionId) await deleteSession(req.sessionId);
   clearSessionCookie(res);
   res.json({ success: true });
 });
-router3.patch("/auth/me/password", requireAuth, async (req, res) => {
+router4.patch("/auth/me/password", requireAuth, async (req, res) => {
   const { currentPassword, newPassword } = req.body;
   if (!currentPassword || typeof currentPassword !== "string") {
     res.status(400).json({ error: "Mot de passe actuel requis" });
@@ -117445,7 +118763,7 @@ router3.patch("/auth/me/password", requireAuth, async (req, res) => {
   await db.update(usersTable).set({ passwordHash: newHash }).where(eq(usersTable.id, user.id));
   res.json({ success: true });
 });
-router3.post("/ratings", requireAuth, async (req, res) => {
+router4.post("/ratings", requireAuth, async (req, res) => {
   const { score } = req.body;
   if (!score || typeof score !== "number" || score < 1 || score > 5) {
     res.status(400).json({ error: "Note invalide (1-5 requis)" });
@@ -117453,7 +118771,7 @@ router3.post("/ratings", requireAuth, async (req, res) => {
   }
   res.json({ success: true, score });
 });
-router3.patch("/auth/me/avatar", requireAuth, async (req, res) => {
+router4.patch("/auth/me/avatar", requireAuth, async (req, res) => {
   const { avatar } = req.body;
   if (!avatar || typeof avatar !== "string") {
     res.status(400).json({ error: "Avatar requis" });
@@ -117476,7 +118794,7 @@ router3.patch("/auth/me/avatar", requireAuth, async (req, res) => {
   }
   res.json({ avatar: user.avatar });
 });
-router3.patch("/auth/me/profile", requireAuth, async (req, res) => {
+router4.patch("/auth/me/profile", requireAuth, async (req, res) => {
   const { fullName, email, username } = req.body;
   const updates = {};
   if (fullName && typeof fullName === "string") updates.fullName = fullName.trim();
@@ -117496,7 +118814,7 @@ router3.patch("/auth/me/profile", requireAuth, async (req, res) => {
   }
   res.json({ user: toUser(user) });
 });
-router3.get("/auth/me", requireAuth, async (req, res) => {
+router4.get("/auth/me", requireAuth, async (req, res) => {
   const user = req.user;
   const allTx = await db.select().from(
     (await Promise.resolve().then(() => (init_src(), src_exports))).transactionsTable
@@ -117507,7 +118825,7 @@ router3.get("/auth/me", requireAuth, async (req, res) => {
 function generateApiKey() {
   return "simix_" + import_node_crypto4.default.randomBytes(24).toString("hex");
 }
-router3.get("/auth/me/api-key", requireAuth, async (req, res) => {
+router4.get("/auth/me/api-key", requireAuth, async (req, res) => {
   let user = req.user;
   if (!user.apiKey) {
     const newKey = generateApiKey();
@@ -117516,15 +118834,15 @@ router3.get("/auth/me/api-key", requireAuth, async (req, res) => {
   }
   res.json({ apiKey: user.apiKey });
 });
-router3.post("/auth/me/api-key/regenerate", requireAuth, async (req, res) => {
+router4.post("/auth/me/api-key/regenerate", requireAuth, async (req, res) => {
   const newKey = generateApiKey();
   const [updated] = await db.update(usersTable).set({ apiKey: newKey }).where(eq(usersTable.id, req.user.id)).returning();
   res.json({ apiKey: updated.apiKey });
 });
-router3.get("/auth/me/webhook", requireAuth, async (req, res) => {
+router4.get("/auth/me/webhook", requireAuth, async (req, res) => {
   res.json({ webhookUrl: req.user.webhookUrl ?? null });
 });
-router3.patch("/auth/me/webhook", requireAuth, async (req, res) => {
+router4.patch("/auth/me/webhook", requireAuth, async (req, res) => {
   const { webhookUrl } = req.body;
   if (webhookUrl) {
     try {
@@ -117541,7 +118859,7 @@ router3.patch("/auth/me/webhook", requireAuth, async (req, res) => {
   const [updated] = await db.update(usersTable).set({ webhookUrl: webhookUrl?.trim() || null }).where(eq(usersTable.id, req.user.id)).returning();
   res.json({ webhookUrl: updated.webhookUrl ?? null });
 });
-router3.post("/auth/me/webhook/test", requireAuth, async (req, res) => {
+router4.post("/auth/me/webhook/test", requireAuth, async (req, res) => {
   const user = req.user;
   const webhookUrl = user.webhookUrl;
   if (!webhookUrl) {
@@ -117586,16 +118904,16 @@ router3.post("/auth/me/webhook/test", requireAuth, async (req, res) => {
     }
   }
 });
-var auth_default = router3;
+var auth_default = router4;
 
 // src/routes/google-auth.ts
-var import_express5 = __toESM(require_express2(), 1);
-var import_google_auth_library6 = __toESM(require_src15(), 1);
+var import_express6 = __toESM(require_express2(), 1);
+var import_google_auth_library6 = __toESM(require_src16(), 1);
 var import_node_crypto5 = require("node:crypto");
 init_drizzle_orm();
 init_src();
 init_logger2();
-var router4 = (0, import_express5.Router)();
+var router5 = (0, import_express6.Router)();
 function getOAuthClient(redirectUri) {
   return new import_google_auth_library6.OAuth2Client(
     process.env.GOOGLE_CLIENT_ID,
@@ -117626,7 +118944,7 @@ function oauthStateCookieOptions(secure) {
     path: "/"
   };
 }
-router4.get("/auth/google/debug-redirect", (req, res) => {
+router5.get("/auth/google/debug-redirect", (req, res) => {
   const redirectUri = getRedirectUri(req);
   res.json({
     redirectUri,
@@ -117640,7 +118958,7 @@ router4.get("/auth/google/debug-redirect", (req, res) => {
     REPLIT_DEV_DOMAIN_set: !!process.env.REPLIT_DEV_DOMAIN
   });
 });
-router4.get("/auth/google", (req, res) => {
+router5.get("/auth/google", (req, res) => {
   const clientId = process.env.GOOGLE_CLIENT_ID;
   const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
   if (!clientId || !clientSecret) {
@@ -117661,7 +118979,7 @@ router4.get("/auth/google", (req, res) => {
   });
   res.redirect(url2);
 });
-router4.get("/auth/google/callback", async (req, res) => {
+router5.get("/auth/google/callback", async (req, res) => {
   const { code, state, error } = req.query;
   const ip = req.headers["x-forwarded-for"]?.split(",")[0]?.trim() ?? req.ip;
   if (error) {
@@ -117797,14 +119115,14 @@ router4.get("/auth/google/callback", async (req, res) => {
     res.redirect("/?error=google_auth_failed");
   }
 });
-var google_auth_default = router4;
+var google_auth_default = router5;
 
 // src/routes/services.ts
-var import_express6 = __toESM(require_express2(), 1);
+var import_express7 = __toESM(require_express2(), 1);
 init_drizzle_orm();
 init_src();
-var router5 = (0, import_express6.Router)();
-router5.get("/services", async (req, res) => {
+var router6 = (0, import_express7.Router)();
+router6.get("/services", async (req, res) => {
   const parsed = ListServicesQueryParams.safeParse(req.query);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
@@ -117819,22 +119137,22 @@ router5.get("/services", async (req, res) => {
   const rows = await db.select().from(servicesTable).where(baseCondition).orderBy(asc(servicesTable.sortOrder), desc(servicesTable.available));
   res.json(rows.map(toService));
 });
-router5.get("/services/popular", async (_req, res) => {
+router6.get("/services/popular", async (_req, res) => {
   let rows = await db.select().from(servicesTable).where(eq(servicesTable.popular, true)).orderBy(asc(servicesTable.sortOrder)).limit(12);
   if (rows.length === 0) {
     rows = await db.select().from(servicesTable).where(eq(servicesTable.enabled, true)).orderBy(desc(servicesTable.available), asc(servicesTable.name)).limit(12);
   }
   res.json(rows.map(toService));
 });
-var services_default = router5;
+var services_default = router6;
 
 // src/routes/countries.ts
-var import_express7 = __toESM(require_express2(), 1);
+var import_express8 = __toESM(require_express2(), 1);
 init_drizzle_orm();
 init_src();
 init_src();
-var router6 = (0, import_express7.Router)();
-router6.get("/public/registration-countries", async (_req, res) => {
+var router7 = (0, import_express8.Router)();
+router7.get("/public/registration-countries", async (_req, res) => {
   try {
     const { rows } = await pool.query(
       `SELECT code, dial_code, name, flag
@@ -117852,7 +119170,7 @@ router6.get("/public/registration-countries", async (_req, res) => {
     res.status(500).json({ error: "Impossible de charger les pays." });
   }
 });
-router6.get("/countries", async (req, res) => {
+router7.get("/countries", async (req, res) => {
   const parsed = ListCountriesQueryParams.safeParse(req.query);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
@@ -117916,26 +119234,26 @@ router6.get("/countries", async (req, res) => {
   const rows = await db.select().from(countriesTable).where(and(...nameConditions)).orderBy(asc(countriesTable.sortOrder));
   res.json(rows.map(toCountry));
 });
-router6.get("/countries/popular", async (_req, res) => {
+router7.get("/countries/popular", async (_req, res) => {
   const rows = await db.select().from(countriesTable).where(and(eq(countriesTable.popular, true), eq(countriesTable.enabled, true))).orderBy(asc(countriesTable.sortOrder));
   res.json(rows.map(toCountry));
 });
-var countries_default = router6;
+var countries_default = router7;
 
 // src/routes/numbers.ts
-var import_express9 = __toESM(require_express2(), 1);
+var import_express10 = __toESM(require_express2(), 1);
 init_drizzle_orm();
 init_src();
 init_fivesim();
 init_logger2();
 
 // src/routes/notifications.ts
-var import_express8 = __toESM(require_express2(), 1);
+var import_express9 = __toESM(require_express2(), 1);
 init_drizzle_orm();
 init_src();
 
 // src/lib/push.ts
-var import_web_push = __toESM(require_src16(), 1);
+var import_web_push = __toESM(require_src17(), 1);
 init_src();
 init_drizzle_orm();
 init_logger2();
@@ -118010,7 +119328,7 @@ async function _dispatchPush(subs, payload, userId) {
 }
 
 // src/routes/notifications.ts
-var router7 = (0, import_express8.Router)();
+var router8 = (0, import_express9.Router)();
 var sseClients = [];
 function broadcastNotification(notification) {
   const data = JSON.stringify({ event: "notification", data: notification });
@@ -118041,7 +119359,7 @@ function broadcastNotification(notification) {
     });
   }
 }
-router7.get("/notifications/stream", requireAuth, (req, res) => {
+router8.get("/notifications/stream", requireAuth, (req, res) => {
   const userId = req.user.id;
   res.setHeader("Content-Type", "text/event-stream");
   res.setHeader("Cache-Control", "no-cache");
@@ -118072,7 +119390,7 @@ function userNotifWhere(userId) {
     and(eq(notificationsTable.isGlobal, true), isNull(notificationsTable.userId))
   );
 }
-router7.get("/notifications", requireAuth, async (req, res) => {
+router8.get("/notifications", requireAuth, async (req, res) => {
   const userId = req.user.id;
   const limit = Math.min(Number(req.query.limit) || 30, 100);
   const offset = Number(req.query.offset) || 0;
@@ -118085,7 +119403,7 @@ router7.get("/notifications", requireAuth, async (req, res) => {
   }));
   res.json({ notifications: withRead });
 });
-router7.get("/notifications/unread-count", requireAuth, async (req, res) => {
+router8.get("/notifications/unread-count", requireAuth, async (req, res) => {
   const userId = req.user.id;
   const readGlobalIds = await db.select({ notificationId: notificationReadsTable.notificationId }).from(notificationReadsTable).where(eq(notificationReadsTable.userId, userId));
   const readSet = readGlobalIds.map((r2) => r2.notificationId);
@@ -118100,7 +119418,7 @@ router7.get("/notifications/unread-count", requireAuth, async (req, res) => {
   const total = (directUnread[0]?.count ?? 0) + (globalUnread[0]?.count ?? 0);
   res.json({ count: Number(total) });
 });
-router7.patch("/notifications/:id/read", requireAuth, async (req, res) => {
+router8.patch("/notifications/:id/read", requireAuth, async (req, res) => {
   const userId = req.user.id;
   const { id } = req.params;
   const [notif] = await db.select().from(notificationsTable).where(eq(notificationsTable.id, id)).limit(1);
@@ -118115,7 +119433,7 @@ router7.patch("/notifications/:id/read", requireAuth, async (req, res) => {
   }
   res.json({ success: true });
 });
-router7.patch("/notifications/read-all", requireAuth, async (req, res) => {
+router8.patch("/notifications/read-all", requireAuth, async (req, res) => {
   const userId = req.user.id;
   await db.update(notificationsTable).set({ isRead: true, readAt: /* @__PURE__ */ new Date() }).where(and(eq(notificationsTable.userId, userId), eq(notificationsTable.isRead, false)));
   const globalNotifs = await db.select({ id: notificationsTable.id }).from(notificationsTable).where(and(eq(notificationsTable.isGlobal, true), isNull(notificationsTable.userId)));
@@ -118125,17 +119443,17 @@ router7.patch("/notifications/read-all", requireAuth, async (req, res) => {
   }
   res.json({ success: true });
 });
-router7.delete("/notifications/:id", requireAuth, async (req, res) => {
+router8.delete("/notifications/:id", requireAuth, async (req, res) => {
   const userId = req.user.id;
   const { id } = req.params;
   await db.delete(notificationsTable).where(and(eq(notificationsTable.id, id), eq(notificationsTable.userId, userId)));
   res.json({ success: true });
 });
-var notifications_default = router7;
+var notifications_default = router8;
 
 // src/routes/numbers.ts
 init_src();
-var router8 = (0, import_express9.Router)();
+var router9 = (0, import_express10.Router)();
 function extractCode(text2) {
   const match = text2.match(/\b(\d{4,8})\b/);
   return match ? match[1] : null;
@@ -118145,7 +119463,7 @@ async function getActive5SimClient() {
   if (!providers.length || !providers[0]?.apiKey) return null;
   return new FiveSimClient(providers[0].apiKey);
 }
-router8.get("/numbers/quote", async (req, res) => {
+router9.get("/numbers/quote", async (req, res) => {
   const parsed = GetNumberQuoteQueryParams.safeParse(req.query);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
@@ -118247,7 +119565,7 @@ router8.get("/numbers/quote", async (req, res) => {
     validityMinutes
   });
 });
-router8.post("/numbers", requireAuth, async (req, res) => {
+router9.post("/numbers", requireAuth, async (req, res) => {
   const user = req.user;
   const ip = req.ip ?? "unknown";
   const ua = req.headers["user-agent"] ?? "";
@@ -118480,7 +119798,7 @@ router8.post("/numbers", requireAuth, async (req, res) => {
   }
   res.json(toNumber(vn, service, country, []));
 });
-router8.get("/numbers/active", requireAuth, async (req, res) => {
+router9.get("/numbers/active", requireAuth, async (req, res) => {
   const user = req.user;
   const rows = await db.select({ n: virtualNumbersTable, s: servicesTable, c: countriesTable }).from(virtualNumbersTable).innerJoin(servicesTable, eq(virtualNumbersTable.serviceId, servicesTable.id)).innerJoin(countriesTable, eq(virtualNumbersTable.countryId, countriesTable.id)).where(and(eq(virtualNumbersTable.userId, user.id), gt(virtualNumbersTable.expiresAt, /* @__PURE__ */ new Date()))).orderBy(desc(virtualNumbersTable.createdAt));
   const result = await Promise.all(
@@ -118491,7 +119809,7 @@ router8.get("/numbers/active", requireAuth, async (req, res) => {
   );
   res.json(result);
 });
-router8.get("/numbers/history", requireAuth, async (req, res) => {
+router9.get("/numbers/history", requireAuth, async (req, res) => {
   const user = req.user;
   const rows = await db.select({ n: virtualNumbersTable, s: servicesTable, c: countriesTable }).from(virtualNumbersTable).innerJoin(servicesTable, eq(virtualNumbersTable.serviceId, servicesTable.id)).innerJoin(countriesTable, eq(virtualNumbersTable.countryId, countriesTable.id)).where(eq(virtualNumbersTable.userId, user.id)).orderBy(desc(virtualNumbersTable.createdAt)).limit(100);
   const result = await Promise.all(
@@ -118502,7 +119820,7 @@ router8.get("/numbers/history", requireAuth, async (req, res) => {
   );
   res.json(result);
 });
-router8.get("/numbers/:numberId", requireAuth, async (req, res) => {
+router9.get("/numbers/:numberId", requireAuth, async (req, res) => {
   const numberId = String(req.params.numberId);
   const user = req.user;
   const [row] = await db.select({ n: virtualNumbersTable, s: servicesTable, c: countriesTable }).from(virtualNumbersTable).innerJoin(servicesTable, eq(virtualNumbersTable.serviceId, servicesTable.id)).innerJoin(countriesTable, eq(virtualNumbersTable.countryId, countriesTable.id)).where(and(eq(virtualNumbersTable.id, numberId), eq(virtualNumbersTable.userId, user.id))).limit(1);
@@ -118517,7 +119835,7 @@ router8.get("/numbers/:numberId", requireAuth, async (req, res) => {
   const messages = await db.select().from(smsMessagesTable).where(eq(smsMessagesTable.numberId, numberId)).orderBy(desc(smsMessagesTable.receivedAt));
   res.json(toNumber(row.n, row.s, row.c, messages));
 });
-router8.post("/numbers/:numberId/poll", requireAuth, async (req, res) => {
+router9.post("/numbers/:numberId/poll", requireAuth, async (req, res) => {
   const numberId = String(req.params.numberId);
   const user = req.user;
   if (isRateLimited(`poll:${user.id}`, 12, 6e4)) {
@@ -118572,7 +119890,7 @@ router8.post("/numbers/:numberId/poll", requireAuth, async (req, res) => {
   const messages = await db.select().from(smsMessagesTable).where(eq(smsMessagesTable.numberId, numberId)).orderBy(desc(smsMessagesTable.receivedAt));
   res.json(messages.map(toMessage));
 });
-router8.get("/numbers/:numberId/messages", requireAuth, async (req, res) => {
+router9.get("/numbers/:numberId/messages", requireAuth, async (req, res) => {
   const numberId = String(req.params.numberId);
   const user = req.user;
   const [vn] = await db.select().from(virtualNumbersTable).where(and(eq(virtualNumbersTable.id, numberId), eq(virtualNumbersTable.userId, user.id))).limit(1);
@@ -118583,7 +119901,7 @@ router8.get("/numbers/:numberId/messages", requireAuth, async (req, res) => {
   const messages = await db.select().from(smsMessagesTable).where(eq(smsMessagesTable.numberId, numberId)).orderBy(desc(smsMessagesTable.receivedAt));
   res.json(messages.map(toMessage));
 });
-router8.post("/numbers/:numberId/extend", requireAuth, async (req, res) => {
+router9.post("/numbers/:numberId/extend", requireAuth, async (req, res) => {
   const numberId = String(req.params.numberId);
   const user = req.user;
   const [row] = await db.select({ n: virtualNumbersTable, s: servicesTable, c: countriesTable }).from(virtualNumbersTable).innerJoin(servicesTable, eq(virtualNumbersTable.serviceId, servicesTable.id)).innerJoin(countriesTable, eq(virtualNumbersTable.countryId, countriesTable.id)).where(and(eq(virtualNumbersTable.id, numberId), eq(virtualNumbersTable.userId, user.id))).limit(1);
@@ -118620,7 +119938,7 @@ router8.post("/numbers/:numberId/extend", requireAuth, async (req, res) => {
   const messages = await db.select().from(smsMessagesTable).where(eq(smsMessagesTable.numberId, numberId)).orderBy(desc(smsMessagesTable.receivedAt));
   res.json(toNumber(updated, row.s, row.c, messages));
 });
-router8.post("/numbers/:numberId/cancel", requireAuth, async (req, res) => {
+router9.post("/numbers/:numberId/cancel", requireAuth, async (req, res) => {
   const numberId = String(req.params.numberId);
   const user = req.user;
   const [row] = await db.select({ n: virtualNumbersTable, s: servicesTable, c: countriesTable }).from(virtualNumbersTable).innerJoin(servicesTable, eq(virtualNumbersTable.serviceId, servicesTable.id)).innerJoin(countriesTable, eq(virtualNumbersTable.countryId, countriesTable.id)).where(and(eq(virtualNumbersTable.id, numberId), eq(virtualNumbersTable.userId, user.id))).limit(1);
@@ -118658,10 +119976,10 @@ router8.post("/numbers/:numberId/cancel", requireAuth, async (req, res) => {
   const [updated] = await db.update(virtualNumbersTable).set({ status: "cancelled", expiresAt: /* @__PURE__ */ new Date() }).where(eq(virtualNumbersTable.id, numberId)).returning();
   res.json(toNumber(updated, row.s, row.c, messages));
 });
-var numbers_default = router8;
+var numbers_default = router9;
 
 // src/routes/wallet.ts
-var import_express11 = __toESM(require_express2(), 1);
+var import_express12 = __toESM(require_express2(), 1);
 init_drizzle_orm();
 init_src();
 init_pawapay();
@@ -118673,7 +119991,7 @@ init_src();
 init_drizzle_orm();
 
 // src/routes/admin-payment-routing.ts
-var import_express10 = __toESM(require_express2(), 1);
+var import_express11 = __toESM(require_express2(), 1);
 init_drizzle_orm();
 init_src();
 
@@ -118740,8 +120058,8 @@ function requireAdminJwt(req, res, next) {
 
 // src/routes/admin-payment-routing.ts
 init_logger2();
-var router9 = (0, import_express10.Router)();
-router9.use(requireAdminJwt);
+var router10 = (0, import_express11.Router)();
+router10.use(requireAdminJwt);
 function requireAdmin(req, res, next) {
   if (req.adminPayload) {
     next();
@@ -118790,11 +120108,11 @@ async function resolvePaymentRoute(countryCode, operatorSlug, transactionType = 
   }
   return null;
 }
-router9.get("/admin/payment-routing/operators", requireAdmin, async (_req, res) => {
+router10.get("/admin/payment-routing/operators", requireAdmin, async (_req, res) => {
   const rows = await db.select().from(mobileOperatorsTable).orderBy(asc(mobileOperatorsTable.sortOrder));
   res.json({ operators: rows });
 });
-router9.post("/admin/payment-routing/operators", requireAdmin, async (req, res) => {
+router10.post("/admin/payment-routing/operators", requireAdmin, async (req, res) => {
   const { name: name2, slug, logoUrl, color, countryCodes, active, sortOrder } = req.body;
   if (!name2?.trim() || !slug?.trim()) {
     res.status(400).json({ error: "Nom et slug requis" });
@@ -118812,7 +120130,7 @@ router9.post("/admin/payment-routing/operators", requireAdmin, async (req, res) 
   logger.info({ id: op.id, name: name2 }, "[payment-routing] Operator created");
   res.status(201).json(op);
 });
-router9.put("/admin/payment-routing/operators/:id", requireAdmin, async (req, res) => {
+router10.put("/admin/payment-routing/operators/:id", requireAdmin, async (req, res) => {
   const { id } = req.params;
   const { name: name2, slug, logoUrl, color, countryCodes, active, sortOrder } = req.body;
   const [op] = await db.update(mobileOperatorsTable).set({
@@ -118831,11 +120149,11 @@ router9.put("/admin/payment-routing/operators/:id", requireAdmin, async (req, re
   }
   res.json(op);
 });
-router9.delete("/admin/payment-routing/operators/:id", requireAdmin, async (req, res) => {
+router10.delete("/admin/payment-routing/operators/:id", requireAdmin, async (req, res) => {
   await db.delete(mobileOperatorsTable).where(eq(mobileOperatorsTable.id, req.params.id));
   res.json({ success: true });
 });
-router9.get("/admin/payment-routing/gateways", requireAdmin, async (_req, res) => {
+router10.get("/admin/payment-routing/gateways", requireAdmin, async (_req, res) => {
   const rows = await db.select().from(paymentGatewaysTable).orderBy(asc(paymentGatewaysTable.name));
   const masked = rows.map((g) => ({
     ...g,
@@ -118845,7 +120163,7 @@ router9.get("/admin/payment-routing/gateways", requireAdmin, async (_req, res) =
   }));
   res.json({ gateways: masked });
 });
-router9.post("/admin/payment-routing/gateways", requireAdmin, async (req, res) => {
+router10.post("/admin/payment-routing/gateways", requireAdmin, async (req, res) => {
   const {
     name: name2,
     slug,
@@ -118883,7 +120201,7 @@ router9.post("/admin/payment-routing/gateways", requireAdmin, async (req, res) =
   logger.info({ id: gw.id, name: name2, adminId: adminId(req) }, "[payment-routing] Gateway created");
   res.status(201).json({ ...gw, apiKey: void 0, apiSecret: void 0 });
 });
-router9.put("/admin/payment-routing/gateways/:id", requireAdmin, async (req, res) => {
+router10.put("/admin/payment-routing/gateways/:id", requireAdmin, async (req, res) => {
   const { id } = req.params;
   const body = req.body;
   const [gw] = await db.update(paymentGatewaysTable).set({
@@ -118909,12 +120227,12 @@ router9.put("/admin/payment-routing/gateways/:id", requireAdmin, async (req, res
   logger.info({ id, adminId: adminId(req) }, "[payment-routing] Gateway updated");
   res.json({ ...gw, apiKey: void 0, apiSecret: void 0 });
 });
-router9.delete("/admin/payment-routing/gateways/:id", requireAdmin, async (req, res) => {
+router10.delete("/admin/payment-routing/gateways/:id", requireAdmin, async (req, res) => {
   await db.delete(paymentGatewaysTable).where(eq(paymentGatewaysTable.id, req.params.id));
   logger.info({ id: req.params.id, adminId: adminId(req) }, "[payment-routing] Gateway deleted");
   res.json({ success: true });
 });
-router9.post("/admin/payment-routing/gateways/:id/test", requireAdmin, async (req, res) => {
+router10.post("/admin/payment-routing/gateways/:id/test", requireAdmin, async (req, res) => {
   const { id } = req.params;
   const [gw] = await db.select().from(paymentGatewaysTable).where(eq(paymentGatewaysTable.id, id)).limit(1);
   if (!gw) {
@@ -119068,7 +120386,7 @@ router9.post("/admin/payment-routing/gateways/:id/test", requireAdmin, async (re
     });
   }
 });
-router9.get("/admin/payment-routing/routes", requireAdmin, async (req, res) => {
+router10.get("/admin/payment-routing/routes", requireAdmin, async (req, res) => {
   const countryCode = req.query.country;
   const operatorSlug = req.query.operator;
   const type = req.query.type;
@@ -119097,7 +120415,7 @@ router9.get("/admin/payment-routing/routes", requireAdmin, async (req, res) => {
   }));
   res.json({ routes: enriched, gateways, operators });
 });
-router9.post("/admin/payment-routing/routes", requireAdmin, async (req, res) => {
+router10.post("/admin/payment-routing/routes", requireAdmin, async (req, res) => {
   const {
     countryCode,
     operatorSlug,
@@ -119136,7 +120454,7 @@ router9.post("/admin/payment-routing/routes", requireAdmin, async (req, res) => 
   logger.info({ id: route.id, countryCode, operatorSlug, adminId: adminId(req) }, "[payment-routing] Route created");
   res.status(201).json(route);
 });
-router9.post("/admin/payment-routing/routes/upsert", requireAdmin, async (req, res) => {
+router10.post("/admin/payment-routing/routes/upsert", requireAdmin, async (req, res) => {
   const {
     countryCode,
     operatorSlug,
@@ -119195,7 +120513,7 @@ router9.post("/admin/payment-routing/routes/upsert", requireAdmin, async (req, r
   logger.info({ countryCode: cc, operatorSlug: op, primaryGatewayId, adminId: adminId(req) }, "[payment-routing] Route upserted");
   res.json({ success: true, route });
 });
-router9.put("/admin/payment-routing/routes/:id", requireAdmin, async (req, res) => {
+router10.put("/admin/payment-routing/routes/:id", requireAdmin, async (req, res) => {
   const { id } = req.params;
   const body = req.body;
   const [route] = await db.update(paymentRoutesTable).set({
@@ -119225,11 +120543,11 @@ router9.put("/admin/payment-routing/routes/:id", requireAdmin, async (req, res) 
   logger.info({ id, adminId: adminId(req) }, "[payment-routing] Route updated");
   res.json(route);
 });
-router9.delete("/admin/payment-routing/routes/:id", requireAdmin, async (req, res) => {
+router10.delete("/admin/payment-routing/routes/:id", requireAdmin, async (req, res) => {
   await db.delete(paymentRoutesTable).where(eq(paymentRoutesTable.id, req.params.id));
   res.json({ success: true });
 });
-router9.post("/admin/payment-routing/routes/:id/switch", requireAdmin, async (req, res) => {
+router10.post("/admin/payment-routing/routes/:id/switch", requireAdmin, async (req, res) => {
   const { id } = req.params;
   const { gatewayId } = req.body;
   const [route] = await db.update(paymentRoutesTable).set({ primaryGatewayId: gatewayId, updatedAt: /* @__PURE__ */ new Date() }).where(eq(paymentRoutesTable.id, id)).returning();
@@ -119249,7 +120567,7 @@ router9.post("/admin/payment-routing/routes/:id/switch", requireAdmin, async (re
   logger.info({ id, gatewayId, adminId: adminId(req) }, "[payment-routing] Gateway switched");
   res.json({ success: true, route, gateway: gw });
 });
-router9.post("/admin/payment-routing/routes/:id/maintenance", requireAdmin, async (req, res) => {
+router10.post("/admin/payment-routing/routes/:id/maintenance", requireAdmin, async (req, res) => {
   const { id } = req.params;
   const { maintenanceMode, maintenanceMessage } = req.body;
   const [route] = await db.update(paymentRoutesTable).set({ maintenanceMode, maintenanceMessage: maintenanceMessage || null, updatedAt: /* @__PURE__ */ new Date() }).where(eq(paymentRoutesTable.id, id)).returning();
@@ -119265,7 +120583,7 @@ router9.post("/admin/payment-routing/routes/:id/maintenance", requireAdmin, asyn
   });
   res.json({ success: true, route });
 });
-router9.get("/admin/payment-routing/logs", requireAdmin, async (req, res) => {
+router10.get("/admin/payment-routing/logs", requireAdmin, async (req, res) => {
   const limit = Math.min(Number(req.query.limit) || 100, 500);
   const offset = Number(req.query.offset) || 0;
   const eventType = req.query.eventType;
@@ -119279,7 +120597,7 @@ router9.get("/admin/payment-routing/logs", requireAdmin, async (req, res) => {
   const [{ total }] = await db.select({ total: count() }).from(paymentRouteLogsTable);
   res.json({ logs: rows, total: Number(total) });
 });
-router9.get("/admin/payment-routing/matrix", requireAdmin, async (_req, res) => {
+router10.get("/admin/payment-routing/matrix", requireAdmin, async (_req, res) => {
   const [operators, gateways, routes, countries] = await Promise.all([
     db.select().from(mobileOperatorsTable).orderBy(asc(mobileOperatorsTable.sortOrder)),
     db.select({
@@ -119312,7 +120630,7 @@ router9.get("/admin/payment-routing/matrix", requireAdmin, async (_req, res) => 
   })).sort((a, b) => a.name.localeCompare(b.name));
   res.json({ countries: countryList, operators, gateways, routes });
 });
-router9.post("/admin/payment-routing/pawapay-sync", requireAdmin, async (req, res) => {
+router10.post("/admin/payment-routing/pawapay-sync", requireAdmin, async (req, res) => {
   try {
     let providerToSlug2 = function(provider) {
       const s2 = provider.toLowerCase();
@@ -119484,7 +120802,7 @@ router9.post("/admin/payment-routing/pawapay-sync", requireAdmin, async (req, re
     res.status(500).json({ error: `Synchronisation \xE9chou\xE9e: ${err.message}` });
   }
 });
-router9.get("/admin/payment-routing/stats", requireAdmin, async (_req, res) => {
+router10.get("/admin/payment-routing/stats", requireAdmin, async (_req, res) => {
   const [totalGateways] = await db.select({ count: count() }).from(paymentGatewaysTable);
   const [activeGateways] = await db.select({ count: count() }).from(paymentGatewaysTable).where(eq(paymentGatewaysTable.active, true));
   const [totalOperators] = await db.select({ count: count() }).from(mobileOperatorsTable);
@@ -119497,7 +120815,7 @@ router9.get("/admin/payment-routing/stats", requireAdmin, async (_req, res) => {
     routes: { total: Number(totalRoutes.count), active: Number(activeRoutes.count), maintenance: Number(maintenanceRoutes.count) }
   });
 });
-router9.get("/admin/payment-routing/gateway-stats", requireAdminJwt, async (_req, res) => {
+router10.get("/admin/payment-routing/gateway-stats", requireAdminJwt, async (_req, res) => {
   const now = /* @__PURE__ */ new Date();
   const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1e3);
@@ -119567,7 +120885,7 @@ router9.get("/admin/payment-routing/gateway-stats", requireAdminJwt, async (_req
   }
   res.json({ gateways, generatedAt: now.toISOString() });
 });
-var admin_payment_routing_default = router9;
+var admin_payment_routing_default = router10;
 
 // src/lib/payment-router.ts
 init_pawapay();
@@ -119686,7 +121004,7 @@ async function resolveGateway(countryCode, methodSlug, _amount) {
 
 // src/routes/wallet.ts
 init_src();
-var router10 = (0, import_express11.Router)();
+var router11 = (0, import_express12.Router)();
 async function getPawaPayClient() {
   let token = process.env.PAWAPAY_API_TOKEN ?? null;
   const rawEnvFromEnvVar = process.env.PAWAPAY_ENV?.trim().toLowerCase();
@@ -119776,11 +121094,11 @@ function isMobileMoneySlug(slug) {
   const s2 = slug.toLowerCase();
   return MOBILE_MONEY_KEYWORDS.some((k) => s2.includes(k));
 }
-router10.get("/wallet", requireAuth, async (req, res) => {
+router11.get("/wallet", requireAuth, async (req, res) => {
   const user = req.user;
   res.json({ balance: user.balance, currency: "FCFA" });
 });
-router10.post(
+router11.post(
   "/wallet/recharge",
   requireAuth,
   async (req, res) => {
@@ -120139,7 +121457,7 @@ router10.post(
     res.json(toTransaction(tx));
   }
 );
-router10.post("/wallet/predict-provider", requireAuth, async (req, res) => {
+router11.post("/wallet/predict-provider", requireAuth, async (req, res) => {
   const { phoneNumber, dialCode } = req.body;
   if (!phoneNumber) {
     res.status(400).json({ error: "phoneNumber requis" });
@@ -120158,7 +121476,7 @@ router10.post("/wallet/predict-provider", requireAuth, async (req, res) => {
     res.status(500).json({ error: e2.message });
   }
 });
-router10.post("/wallet/pawapay/webhook", async (req, res) => {
+router11.post("/wallet/pawapay/webhook", async (req, res) => {
   res.status(200).json({ received: true });
   try {
     const contentDigest = req.headers["content-digest"];
@@ -120257,7 +121575,7 @@ async function processDepositCallback(payload) {
     logger.info({ depositId, status }, "[PawaPay Webhook] Non-final status received, ignoring");
   }
 }
-router10.post("/wallet/pawapay/refund-webhook", async (req, res) => {
+router11.post("/wallet/pawapay/refund-webhook", async (req, res) => {
   res.status(200).json({ received: true });
   try {
     const body = req.body;
@@ -120270,7 +121588,7 @@ router10.post("/wallet/pawapay/refund-webhook", async (req, res) => {
     logger.error({ error: e2.message }, "[PawaPay Refund Webhook] Error");
   }
 });
-router10.post("/wallet/clapay/webhook", async (req, res) => {
+router11.post("/wallet/clapay/webhook", async (req, res) => {
   const expectedSecret = getClapayWebhookSecret();
   if (expectedSecret) {
     const { timingSafeEqual: timingSafeEqual2 } = require("node:crypto");
@@ -120385,7 +121703,7 @@ router10.post("/wallet/clapay/webhook", async (req, res) => {
     logger.error({ error: e2.message }, "[Clapay Webhook] Unhandled error processing callback");
   }
 });
-router10.get("/wallet/deposit/:depositId/status", requireAuth, async (req, res) => {
+router11.get("/wallet/deposit/:depositId/status", requireAuth, async (req, res) => {
   const depositId = String(req.params.depositId);
   const user = req.user;
   const [tx] = await db.select().from(transactionsTable).where(and(
@@ -120439,7 +121757,7 @@ router10.get("/wallet/deposit/:depositId/status", requireAuth, async (req, res) 
   }
   res.json(toTransaction(tx));
 });
-router10.get(
+router11.get(
   "/wallet/transactions",
   requireAuth,
   async (req, res) => {
@@ -120448,7 +121766,7 @@ router10.get(
     res.json(rows.map(toTransaction));
   }
 );
-router10.get(
+router11.get(
   "/wallet/payment-methods",
   async (req, res) => {
     const countryCode = req.query.countryCode;
@@ -120548,7 +121866,7 @@ var SUBSAHARAN_AFRICA_CODES = [
   "CD",
   "BI"
 ];
-router10.get(
+router11.get(
   "/wallet/deposit-countries",
   async (_req, res) => {
     const rows = await db.selectDistinctOn([countriesTable.code], {
@@ -120568,10 +121886,10 @@ router10.get(
     res.json(rows);
   }
 );
-var wallet_default = router10;
+var wallet_default = router11;
 
 // src/routes/crypto-wallet.ts
-var import_express12 = __toESM(require_express2(), 1);
+var import_express13 = __toESM(require_express2(), 1);
 init_drizzle_orm();
 init_src();
 init_logger2();
@@ -121782,7 +123100,7 @@ var CRYPTO_NETWORKS = {
 // src/routes/crypto-wallet.ts
 init_src();
 var import_node_crypto9 = require("node:crypto");
-var router11 = (0, import_express12.Router)();
+var router12 = (0, import_express13.Router)();
 async function getCryptoWebhookUrl() {
   if (process.env.NOWPAYMENTS_WEBHOOK_URL) return process.env.NOWPAYMENTS_WEBHOOK_URL;
   const val = await getSetting("nowpayments_webhook_url", "");
@@ -121818,7 +123136,7 @@ async function creditCryptoDeposit(txId, userId, amountFcfa, paymentId, partial 
   logger.info({ paymentId, userId, amountFcfa, partial }, "[Crypto] Balance credited");
   return true;
 }
-router11.post("/wallet/crypto/initiate", requireAuth, async (req, res) => {
+router12.post("/wallet/crypto/initiate", requireAuth, async (req, res) => {
   const user = req.user;
   const { amountFcfa, network } = req.body;
   if (typeof amountFcfa !== "number" || amountFcfa <= 0) {
@@ -121920,7 +123238,7 @@ router11.post("/wallet/crypto/initiate", requireAuth, async (req, res) => {
     txId: tx.id
   });
 });
-router11.get("/wallet/crypto/:paymentId/status", requireAuth, async (req, res) => {
+router12.get("/wallet/crypto/:paymentId/status", requireAuth, async (req, res) => {
   const user = req.user;
   const { paymentId } = req.params;
   const externalDepositId = `${CRYPTO_PREFIX}${paymentId}`;
@@ -121962,7 +123280,7 @@ router11.get("/wallet/crypto/:paymentId/status", requireAuth, async (req, res) =
   }
   res.json({ status: sdkStatus, amountFcfa: tx.amount, paymentId });
 });
-router11.post("/wallet/crypto/webhook", async (req, res) => {
+router12.post("/wallet/crypto/webhook", async (req, res) => {
   const sig = req.headers["x-nowpayments-sig"];
   if (!sig) {
     logger.warn("[Crypto Webhook] Missing x-nowpayments-sig header");
@@ -122013,7 +123331,7 @@ router11.post("/wallet/crypto/webhook", async (req, res) => {
   }
   res.json({ ok: true });
 });
-router11.get("/wallet/crypto/history", requireAuth, async (req, res) => {
+router12.get("/wallet/crypto/history", requireAuth, async (req, res) => {
   const user = req.user;
   const rows = await db.select().from(transactionsTable).where(
     and(
@@ -122064,14 +123382,14 @@ router11.get("/wallet/crypto/history", requireAuth, async (req, res) => {
   });
   res.json(result);
 });
-var crypto_wallet_default = router11;
+var crypto_wallet_default = router12;
 
 // src/routes/dashboard.ts
-var import_express13 = __toESM(require_express2(), 1);
+var import_express14 = __toESM(require_express2(), 1);
 init_drizzle_orm();
 init_src();
-var router12 = (0, import_express13.Router)();
-router12.get(
+var router13 = (0, import_express14.Router)();
+router13.get(
   "/dashboard/summary",
   requireAuth,
   async (req, res) => {
@@ -122101,16 +123419,16 @@ router12.get(
     });
   }
 );
-var dashboard_default = router12;
+var dashboard_default = router13;
 
 // src/routes/admin.ts
-var import_express14 = __toESM(require_express2(), 1);
+var import_express15 = __toESM(require_express2(), 1);
 init_drizzle_orm();
 init_src();
 init_fivesim();
 init_logger2();
-var router13 = (0, import_express14.Router)();
-router13.use(requireAdminJwt);
+var router14 = (0, import_express15.Router)();
+router14.use(requireAdminJwt);
 function requireAdmin2(req, res, next) {
   if (req.adminPayload) {
     next();
@@ -122136,7 +123454,7 @@ async function logAdminAction(adminId3, action, ip, targetType, targetId, detail
     logger.debug({ err: e2.message, action }, "[admin-log] Non-critical: failed to write admin log");
   }
 }
-router13.get("/admin/stats", requireAdmin2, async (req, res) => {
+router14.get("/admin/stats", requireAdmin2, async (req, res) => {
   const now = /* @__PURE__ */ new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1e3);
@@ -122176,7 +123494,7 @@ router13.get("/admin/stats", requireAdmin2, async (req, res) => {
     activeProviders: activeProviders?.c ?? 0
   });
 });
-router13.get("/admin/users", requireAdmin2, async (req, res) => {
+router14.get("/admin/users", requireAdmin2, async (req, res) => {
   const exportAll = req.query.export === "true";
   const limit = exportAll ? 5e3 : Math.min(Number(req.query.limit) || 50, 200);
   const offset = exportAll ? 0 : Number(req.query.offset) || 0;
@@ -122225,7 +123543,7 @@ router13.get("/admin/users", requireAdmin2, async (req, res) => {
   const [totalRow] = await db.select({ c: count() }).from(usersTable).where(where);
   res.json({ users: rows, total: totalRow?.c ?? 0 });
 });
-router13.get("/admin/users/:userId", requireAdmin2, async (req, res) => {
+router14.get("/admin/users/:userId", requireAdmin2, async (req, res) => {
   const userId = String(req.params.userId);
   const [user] = await db.select().from(usersTable).where(eq(usersTable.id, userId)).limit(1);
   if (!user) {
@@ -122238,7 +123556,7 @@ router13.get("/admin/users/:userId", requireAdmin2, async (req, res) => {
   const { passwordHash, ...safeUser } = user;
   res.json({ user: safeUser, numbers, transactions, securityEvents });
 });
-router13.post("/admin/users/:userId/block", requireAdmin2, async (req, res) => {
+router14.post("/admin/users/:userId/block", requireAdmin2, async (req, res) => {
   const userId = String(req.params.userId);
   const reason = String(req.body?.reason || "Bloqu\xE9 par un administrateur");
   await blockUser(userId, reason);
@@ -122247,20 +123565,20 @@ router13.post("/admin/users/:userId/block", requireAdmin2, async (req, res) => {
   logger.warn({ userId, adminId: req.user.id, reason }, "[ADMIN] User blocked");
   res.json({ success: true, message: "Utilisateur bloqu\xE9" });
 });
-router13.post("/admin/users/:userId/unblock", requireAdmin2, async (req, res) => {
+router14.post("/admin/users/:userId/unblock", requireAdmin2, async (req, res) => {
   const userId = String(req.params.userId);
   await db.update(usersTable).set({ status: "Standard", blockedReason: null }).where(eq(usersTable.id, userId));
   await logSecurityEvent({ userId, eventType: "admin_unblock_user", severity: "low", ip: req.ip, details: { adminId: req.user.id } });
   await logAdminAction(adminId2(req), "unblock_user", req.ip, "user", userId);
   res.json({ success: true, message: "Utilisateur d\xE9bloqu\xE9" });
 });
-router13.post("/admin/users/:userId/promote", requireAdmin2, async (req, res) => {
+router14.post("/admin/users/:userId/promote", requireAdmin2, async (req, res) => {
   const userId = String(req.params.userId);
   await db.update(usersTable).set({ isAdmin: true }).where(eq(usersTable.id, userId));
   await logAdminAction(adminId2(req), "promote_admin", req.ip, "user", userId);
   res.json({ success: true });
 });
-router13.post("/admin/users/:userId/demote", requireAdmin2, async (req, res) => {
+router14.post("/admin/users/:userId/demote", requireAdmin2, async (req, res) => {
   const userId = String(req.params.userId);
   if (userId === req.user.id) {
     res.status(400).json({ error: "Impossible de se r\xE9trograder soi-m\xEAme" });
@@ -122270,7 +123588,7 @@ router13.post("/admin/users/:userId/demote", requireAdmin2, async (req, res) => 
   await logAdminAction(adminId2(req), "demote_admin", req.ip, "user", userId);
   res.json({ success: true });
 });
-router13.post("/admin/users/:userId/adjust-balance", requireAdmin2, async (req, res) => {
+router14.post("/admin/users/:userId/adjust-balance", requireAdmin2, async (req, res) => {
   const userId = String(req.params.userId);
   const amount = Number(req.body?.amount);
   const reason = String(req.body?.reason || "Ajustement administrateur");
@@ -122311,7 +123629,7 @@ router13.post("/admin/users/:userId/adjust-balance", requireAdmin2, async (req, 
   }
   res.json({ success: true, newBalance });
 });
-router13.post("/admin/users/:userId/reset-password", requireAdmin2, async (req, res) => {
+router14.post("/admin/users/:userId/reset-password", requireAdmin2, async (req, res) => {
   const userId = String(req.params.userId);
   const [user] = await db.select({ id: usersTable.id, fullName: usersTable.fullName }).from(usersTable).where(eq(usersTable.id, userId)).limit(1);
   if (!user) {
@@ -122326,7 +123644,7 @@ router13.post("/admin/users/:userId/reset-password", requireAdmin2, async (req, 
   logger.warn({ userId, adminId: req.user.id }, "[ADMIN] User password reset");
   res.json({ success: true, newPassword, message: `Le mot de passe de ${user.fullName} a \xE9t\xE9 r\xE9initialis\xE9` });
 });
-router13.post("/admin/users/:userId/set-limits", requireAdmin2, async (req, res) => {
+router14.post("/admin/users/:userId/set-limits", requireAdmin2, async (req, res) => {
   const userId = String(req.params.userId);
   const { maxPurchasesPerMin, maxBalance, isRestricted } = req.body;
   const updates = {};
@@ -122346,7 +123664,7 @@ router13.post("/admin/users/:userId/set-limits", requireAdmin2, async (req, res)
   await logAdminAction(adminId2(req), "set_user_limits", req.ip, "user", userId, updates);
   res.json({ success: true, limits: updates });
 });
-router13.post("/admin/users/:userId/force-logout", requireAdmin2, async (req, res) => {
+router14.post("/admin/users/:userId/force-logout", requireAdmin2, async (req, res) => {
   const userId = String(req.params.userId);
   const [user] = await db.select({ id: usersTable.id, fullName: usersTable.fullName }).from(usersTable).where(eq(usersTable.id, userId)).limit(1);
   if (!user) {
@@ -122357,7 +123675,7 @@ router13.post("/admin/users/:userId/force-logout", requireAdmin2, async (req, re
   await logAdminAction(adminId2(req), "force_logout", req.ip, "user", userId);
   res.json({ success: true, message: `${user.fullName} a \xE9t\xE9 d\xE9connect\xE9 de force` });
 });
-router13.delete("/admin/users/:userId", requireAdmin2, async (req, res) => {
+router14.delete("/admin/users/:userId", requireAdmin2, async (req, res) => {
   const userId = String(req.params.userId);
   if (userId === req.user.id) {
     res.status(400).json({ error: "Impossible de supprimer votre propre compte" });
@@ -122367,11 +123685,11 @@ router13.delete("/admin/users/:userId", requireAdmin2, async (req, res) => {
   await logAdminAction(adminId2(req), "delete_user", req.ip, "user", userId);
   res.json({ success: true });
 });
-router13.get("/admin/services", requireAdmin2, async (_req, res) => {
+router14.get("/admin/services", requireAdmin2, async (_req, res) => {
   const rows = await db.select().from(servicesTable).orderBy(servicesTable.sortOrder, servicesTable.name);
   res.json(rows);
 });
-router13.put("/admin/services/:serviceId", requireAdmin2, async (req, res) => {
+router14.put("/admin/services/:serviceId", requireAdmin2, async (req, res) => {
   const serviceId = String(req.params.serviceId);
   const { name: name2, price, providerPrice, margin, available, color, category, popular, scope, enabled, logoUrl } = req.body;
   const updates = {};
@@ -122408,7 +123726,7 @@ router13.put("/admin/services/:serviceId", requireAdmin2, async (req, res) => {
   await logAdminAction(adminId2(req), "update_service", req.ip, "service", serviceId, updates);
   res.json({ success: true });
 });
-router13.post("/admin/services/bulk-enable", requireAdmin2, async (req, res) => {
+router14.post("/admin/services/bulk-enable", requireAdmin2, async (req, res) => {
   const { slugs, markPopular } = req.body;
   if (!Array.isArray(slugs) || slugs.length === 0) {
     res.status(400).json({ error: "slugs[] requis" });
@@ -122425,7 +123743,7 @@ router13.post("/admin/services/bulk-enable", requireAdmin2, async (req, res) => 
   await logAdminAction(adminId2(req), "bulk_enable_services", req.ip, "service", "bulk", { count: enabled, slugs });
   res.json({ enabled, message: `${enabled} services activ\xE9s` });
 });
-router13.post("/admin/services/bulk-disable", requireAdmin2, async (req, res) => {
+router14.post("/admin/services/bulk-disable", requireAdmin2, async (req, res) => {
   const { slugs } = req.body;
   if (!Array.isArray(slugs) || slugs.length === 0) {
     res.status(400).json({ error: "slugs[] requis" });
@@ -122437,7 +123755,7 @@ router13.post("/admin/services/bulk-disable", requireAdmin2, async (req, res) =>
   await logAdminAction(adminId2(req), "bulk_disable_services", req.ip, "service", "bulk", { count: slugs.length });
   res.json({ disabled: slugs.length, message: `${slugs.length} services d\xE9sactiv\xE9s` });
 });
-router13.post("/admin/services", requireAdmin2, async (req, res) => {
+router14.post("/admin/services", requireAdmin2, async (req, res) => {
   const { name: name2, slug, category, color, price, providerPrice, margin, available, popular, scope, enabled } = req.body;
   if (!name2 || !slug) {
     res.status(400).json({ error: "name et slug sont requis" });
@@ -122462,7 +123780,7 @@ router13.post("/admin/services", requireAdmin2, async (req, res) => {
   await logAdminAction(adminId2(req), "create_service", req.ip, "service", row.id, { name: name2, slug });
   res.status(201).json(row);
 });
-router13.delete("/admin/services/:serviceId", requireAdmin2, async (req, res) => {
+router14.delete("/admin/services/:serviceId", requireAdmin2, async (req, res) => {
   const serviceId = String(req.params.serviceId);
   await db.delete(servicesTable).where(eq(servicesTable.id, serviceId));
   await logAdminAction(adminId2(req), "delete_service", req.ip, "service", serviceId, {});
@@ -122517,12 +123835,12 @@ var SUBSAHARAN_AFRICA_CODES_ADMIN = [
   "ER",
   "CD"
 ];
-router13.get("/admin/countries", requireAdmin2, async (_req, res) => {
+router14.get("/admin/countries", requireAdmin2, async (_req, res) => {
   const { inArray: inArrayFn } = await Promise.resolve().then(() => (init_drizzle_orm(), drizzle_orm_exports));
   const rows = await db.select().from(countriesTable).where(inArrayFn(countriesTable.code, SUBSAHARAN_AFRICA_CODES_ADMIN)).orderBy(countriesTable.sortOrder, countriesTable.name);
   res.json(rows);
 });
-router13.put("/admin/countries/:countryId", requireAdmin2, async (req, res) => {
+router14.put("/admin/countries/:countryId", requireAdmin2, async (req, res) => {
   const countryId = String(req.params.countryId);
   const { price, available, popular, enabled, numbersEnabled } = req.body;
   const updates = {};
@@ -122543,7 +123861,7 @@ router13.put("/admin/countries/:countryId", requireAdmin2, async (req, res) => {
   const [updated] = await db.select().from(countriesTable).where(eq(countriesTable.id, countryId)).limit(1);
   res.json(updated);
 });
-router13.post("/admin/countries/seed-africa", requireAdmin2, async (req, res) => {
+router14.post("/admin/countries/seed-africa", requireAdmin2, async (req, res) => {
   const AFRICAN_COUNTRIES = [
     { code: "CI", name: "C\xF4te d'Ivoire", dialCode: "+225", popular: true, sortOrder: 1 },
     { code: "SN", name: "S\xE9n\xE9gal", dialCode: "+221", popular: true, sortOrder: 2 },
@@ -122633,7 +123951,7 @@ router13.post("/admin/countries/seed-africa", requireAdmin2, async (req, res) =>
   await logAdminAction(adminId2(req), "seed_african_countries", req.ip, "countries", "bulk", { inserted, updated: skipped });
   res.json({ success: true, inserted, updated: skipped, total: AFRICAN_COUNTRIES.length });
 });
-router13.post("/admin/countries/seed-world", requireAdmin2, async (req, res) => {
+router14.post("/admin/countries/seed-world", requireAdmin2, async (req, res) => {
   const WORLD_COUNTRIES = [
     // Europe
     { code: "AD", name: "Andorre", dialCode: "+376", popular: false, sortOrder: 900 },
@@ -122872,7 +124190,7 @@ router13.post("/admin/countries/seed-world", requireAdmin2, async (req, res) => 
   await logAdminAction(adminId2(req), "seed_world_countries", req.ip, "countries", "bulk", { inserted, updated, total });
   res.json({ success: true, inserted, updated, total: Number(total) });
 });
-router13.post("/admin/countries/sync-5sim", requireAdmin2, async (req, res) => {
+router14.post("/admin/countries/sync-5sim", requireAdmin2, async (req, res) => {
   try {
     const { syncFiveSimCountries: syncFiveSimCountries2 } = await Promise.resolve().then(() => (init_fivesim_sync(), fivesim_sync_exports));
     const result = await syncFiveSimCountries2();
@@ -122882,11 +124200,11 @@ router13.post("/admin/countries/sync-5sim", requireAdmin2, async (req, res) => {
     res.status(503).json({ error: e2.message });
   }
 });
-router13.get("/admin/payment-methods", requireAdmin2, async (_req, res) => {
+router14.get("/admin/payment-methods", requireAdmin2, async (_req, res) => {
   const rows = await db.select().from(paymentMethodsTable).orderBy(paymentMethodsTable.sortOrder, paymentMethodsTable.name);
   res.json(rows);
 });
-router13.post("/admin/payment-methods", requireAdmin2, async (req, res) => {
+router14.post("/admin/payment-methods", requireAdmin2, async (req, res) => {
   const { name: name2, slug, description, color, logoUrl, recommended, sortOrder } = req.body;
   if (!name2 || !slug) {
     res.status(400).json({ error: "Nom et slug requis" });
@@ -122909,7 +124227,7 @@ router13.post("/admin/payment-methods", requireAdmin2, async (req, res) => {
   await logAdminAction(adminId2(req), "create_payment_method", req.ip, "payment_method", method.id, { name: name2, slug });
   res.status(201).json(method);
 });
-router13.put("/admin/payment-methods/:methodId", requireAdmin2, async (req, res) => {
+router14.put("/admin/payment-methods/:methodId", requireAdmin2, async (req, res) => {
   const methodId = String(req.params.methodId);
   const { name: name2, description, color, logoUrl, recommended, sortOrder } = req.body;
   const updates = {};
@@ -122927,13 +124245,13 @@ router13.put("/admin/payment-methods/:methodId", requireAdmin2, async (req, res)
   await logAdminAction(adminId2(req), "update_payment_method", req.ip, "payment_method", methodId, updates);
   res.json({ success: true });
 });
-router13.delete("/admin/payment-methods/:methodId", requireAdmin2, async (req, res) => {
+router14.delete("/admin/payment-methods/:methodId", requireAdmin2, async (req, res) => {
   const methodId = String(req.params.methodId);
   await db.delete(paymentMethodsTable).where(eq(paymentMethodsTable.id, methodId));
   await logAdminAction(adminId2(req), "delete_payment_method", req.ip, "payment_method", methodId);
   res.json({ success: true });
 });
-router13.get("/admin/payment-configs", requireAdmin2, async (_req, res) => {
+router14.get("/admin/payment-configs", requireAdmin2, async (_req, res) => {
   const configs = await db.select().from(countryPaymentConfigsTable);
   const countries = await db.select({
     code: countriesTable.code,
@@ -122943,7 +124261,7 @@ router13.get("/admin/payment-configs", requireAdmin2, async (_req, res) => {
   const methods = await db.select().from(paymentMethodsTable).orderBy(paymentMethodsTable.sortOrder);
   res.json({ configs, countries, methods });
 });
-router13.put("/admin/payment-configs", requireAdmin2, async (req, res) => {
+router14.put("/admin/payment-configs", requireAdmin2, async (req, res) => {
   const { countryCode, methodSlug, enabled, minDeposit, feePercent } = req.body;
   if (!countryCode || !methodSlug) {
     res.status(400).json({ error: "countryCode et methodSlug sont requis" });
@@ -122963,7 +124281,7 @@ router13.put("/admin/payment-configs", requireAdmin2, async (req, res) => {
   await logAdminAction(adminId2(req), "update_payment_config", req.ip, "payment_config", void 0, values);
   res.json({ success: true });
 });
-router13.post("/admin/payment-configs/add-country", requireAdmin2, async (req, res) => {
+router14.post("/admin/payment-configs/add-country", requireAdmin2, async (req, res) => {
   const { countryCode } = req.body;
   if (!countryCode) {
     res.status(400).json({ error: "countryCode est requis" });
@@ -122983,7 +124301,7 @@ router13.post("/admin/payment-configs/add-country", requireAdmin2, async (req, r
   await logAdminAction(adminId2(req), "add_deposit_country", req.ip, "payment_config", String(countryCode), { inserted, total: methods.length });
   res.json({ success: true, country: country[0], inserted, total: methods.length });
 });
-router13.get("/admin/orders", requireAdmin2, async (req, res) => {
+router14.get("/admin/orders", requireAdmin2, async (req, res) => {
   const exportAll = req.query.export === "true";
   const limit = exportAll ? 5e3 : Math.min(Number(req.query.limit) || 50, 200);
   const offset = exportAll ? 0 : Number(req.query.offset) || 0;
@@ -123006,7 +124324,7 @@ router13.get("/admin/orders", requireAdmin2, async (req, res) => {
   const [totalRow] = await db.select({ c: count() }).from(virtualNumbersTable).where(where);
   res.json({ orders: rows, total: totalRow?.c ?? 0 });
 });
-router13.post("/admin/orders/:orderId/cancel", requireAdmin2, async (req, res) => {
+router14.post("/admin/orders/:orderId/cancel", requireAdmin2, async (req, res) => {
   const orderId = String(req.params.orderId);
   const [order] = await db.select().from(virtualNumbersTable).where(eq(virtualNumbersTable.id, orderId)).limit(1);
   if (!order) {
@@ -123025,7 +124343,7 @@ router13.post("/admin/orders/:orderId/cancel", requireAdmin2, async (req, res) =
   await logAdminAction(adminId2(req), "cancel_order", req.ip, "order", orderId, { phoneNumber: order.phoneNumber, price: order.price });
   res.json({ success: true, message: "Commande annul\xE9e et rembours\xE9e" });
 });
-router13.get("/admin/analytics", requireAdmin2, async (req, res) => {
+router14.get("/admin/analytics", requireAdmin2, async (req, res) => {
   const days = Math.min(Number(req.query.days) || 30, 365);
   const since = new Date(Date.now() - days * 24 * 60 * 60 * 1e3);
   const allTx = await db.select({
@@ -123096,11 +124414,11 @@ router13.get("/admin/analytics", requireAdmin2, async (req, res) => {
   const avgOrderValue = totalOrders30d > 0 ? Math.round(totalRevenue30d / totalOrders30d) : 0;
   res.json({ dailyRevenue, topServices, topCountries, txBreakdown, userGrowth, totalRevenue30d, totalOrders30d, avgOrderValue });
 });
-router13.get("/admin/api-providers", requireAdmin2, async (_req, res) => {
+router14.get("/admin/api-providers", requireAdmin2, async (_req, res) => {
   const rows = await db.select().from(apiProvidersTable).orderBy(apiProvidersTable.priority);
   res.json(rows);
 });
-router13.post("/admin/api-providers", requireAdmin2, async (req, res) => {
+router14.post("/admin/api-providers", requireAdmin2, async (req, res) => {
   const { name: name2, slug, apiKey, baseUrl: baseUrl2, active, priority, markup } = req.body;
   if (!name2 || !slug) {
     res.status(400).json({ error: "Nom et slug requis" });
@@ -123133,7 +124451,7 @@ router13.post("/admin/api-providers", requireAdmin2, async (req, res) => {
     res.status(500).json({ error: "Erreur lors de la cr\xE9ation du fournisseur : " + e2.message });
   }
 });
-router13.put("/admin/api-providers/:providerId", requireAdmin2, async (req, res) => {
+router14.put("/admin/api-providers/:providerId", requireAdmin2, async (req, res) => {
   const providerId = String(req.params.providerId);
   const { name: name2, apiKey, baseUrl: baseUrl2, active, priority, markup } = req.body;
   const updates = {};
@@ -123160,7 +124478,7 @@ router13.put("/admin/api-providers/:providerId", requireAdmin2, async (req, res)
     res.status(500).json({ error: "Erreur lors de la mise \xE0 jour : " + e2.message });
   }
 });
-router13.delete("/admin/api-providers/:providerId", requireAdmin2, async (req, res) => {
+router14.delete("/admin/api-providers/:providerId", requireAdmin2, async (req, res) => {
   const providerId = String(req.params.providerId);
   try {
     await db.delete(apiProvidersTable).where(eq(apiProvidersTable.id, providerId));
@@ -123171,7 +124489,7 @@ router13.delete("/admin/api-providers/:providerId", requireAdmin2, async (req, r
     res.status(500).json({ error: "Erreur lors de la suppression : " + e2.message });
   }
 });
-router13.post("/admin/api-providers/:providerId/test", requireAdmin2, async (req, res) => {
+router14.post("/admin/api-providers/:providerId/test", requireAdmin2, async (req, res) => {
   const providerId = String(req.params.providerId);
   const [provider] = await db.select().from(apiProvidersTable).where(eq(apiProvidersTable.id, providerId)).limit(1);
   if (!provider) {
@@ -123212,7 +124530,7 @@ router13.post("/admin/api-providers/:providerId/test", requireAdmin2, async (req
     res.json({ success: false, message: e2.message, latencyMs: Date.now() - start2 });
   }
 });
-router13.get("/admin/api-providers/:providerId/balance", requireAdmin2, async (req, res) => {
+router14.get("/admin/api-providers/:providerId/balance", requireAdmin2, async (req, res) => {
   const providerId = String(req.params.providerId);
   const [provider] = await db.select().from(apiProvidersTable).where(eq(apiProvidersTable.id, providerId)).limit(1);
   if (!provider) {
@@ -123233,7 +124551,7 @@ router13.get("/admin/api-providers/:providerId/balance", requireAdmin2, async (r
   }
   res.json(null);
 });
-router13.post("/admin/api-providers/:providerId/sync-products", requireAdmin2, async (req, res) => {
+router14.post("/admin/api-providers/:providerId/sync-products", requireAdmin2, async (req, res) => {
   const providerId = String(req.params.providerId);
   const [provider] = await db.select({ slug: apiProvidersTable.slug, apiKey: apiProvidersTable.apiKey }).from(apiProvidersTable).where(eq(apiProvidersTable.id, providerId)).limit(1);
   if (!provider) {
@@ -123253,7 +124571,7 @@ router13.post("/admin/api-providers/:providerId/sync-products", requireAdmin2, a
     res.status(503).json({ error: e2.message });
   }
 });
-router13.get("/admin/api-providers/sync-status", requireAdmin2, async (_req, res) => {
+router14.get("/admin/api-providers/sync-status", requireAdmin2, async (_req, res) => {
   const rows = await db.select().from(systemSettingsTable).where(eq(systemSettingsTable.key, "fivesim_last_sync"));
   const statusRows = await db.select().from(systemSettingsTable).where(eq(systemSettingsTable.key, "fivesim_sync_status"));
   res.json({
@@ -123261,7 +124579,7 @@ router13.get("/admin/api-providers/sync-status", requireAdmin2, async (_req, res
     status: statusRows[0]?.value ?? null
   });
 });
-router13.get("/admin/settings", requireAdmin2, async (_req, res) => {
+router14.get("/admin/settings", requireAdmin2, async (_req, res) => {
   const rows = await db.select().from(systemSettingsTable);
   const settings = {};
   for (const row of rows) {
@@ -123269,7 +124587,7 @@ router13.get("/admin/settings", requireAdmin2, async (_req, res) => {
   }
   res.json(settings);
 });
-router13.put("/admin/settings", requireAdmin2, async (req, res) => {
+router14.put("/admin/settings", requireAdmin2, async (req, res) => {
   const updates = req.body;
   if (!updates || typeof updates !== "object") {
     res.status(400).json({ error: "Donn\xE9es invalides" });
@@ -123292,7 +124610,7 @@ router13.put("/admin/settings", requireAdmin2, async (req, res) => {
     res.status(500).json({ error: "Erreur lors de la sauvegarde : " + e2.message });
   }
 });
-router13.post("/admin/pawapay/test", requireAdmin2, async (req, res) => {
+router14.post("/admin/pawapay/test", requireAdmin2, async (req, res) => {
   const bodyToken = req.body.token;
   const bodyEnv = req.body.env;
   let token = bodyToken?.trim() || null;
@@ -123333,7 +124651,7 @@ router13.post("/admin/pawapay/test", requireAdmin2, async (req, res) => {
     });
   }
 });
-router13.get("/admin/pawapay/pending-deposits", requireAdmin2, async (_req, res) => {
+router14.get("/admin/pawapay/pending-deposits", requireAdmin2, async (_req, res) => {
   const rows = await db.select({
     id: transactionsTable.id,
     externalDepositId: transactionsTable.externalDepositId,
@@ -123351,7 +124669,7 @@ router13.get("/admin/pawapay/pending-deposits", requireAdmin2, async (_req, res)
   )).orderBy(desc(transactionsTable.createdAt)).limit(50);
   res.json(rows);
 });
-router13.post("/admin/pawapay/simulate-deposit", requireAdmin2, async (req, res) => {
+router14.post("/admin/pawapay/simulate-deposit", requireAdmin2, async (req, res) => {
   const { depositId, status = "COMPLETED", depositedAmount } = req.body;
   if (!depositId) {
     res.status(400).json({ error: "depositId requis" });
@@ -123410,7 +124728,7 @@ router13.post("/admin/pawapay/simulate-deposit", requireAdmin2, async (req, res)
     res.status(400).json({ error: "status doit \xEAtre COMPLETED ou FAILED" });
   }
 });
-router13.post("/admin/clapay/test", requireAdmin2, async (req, res) => {
+router14.post("/admin/clapay/test", requireAdmin2, async (req, res) => {
   const { token: bodyToken, baseUrl: bodyBaseUrl } = req.body;
   let token = bodyToken?.trim() || null;
   let baseUrl2 = bodyBaseUrl?.trim() || null;
@@ -123451,7 +124769,7 @@ router13.post("/admin/clapay/test", requireAdmin2, async (req, res) => {
     });
   }
 });
-router13.get("/admin/clapay/pending-deposits", requireAdmin2, async (_req, res) => {
+router14.get("/admin/clapay/pending-deposits", requireAdmin2, async (_req, res) => {
   const rows = await db.select({
     id: transactionsTable.id,
     externalDepositId: transactionsTable.externalDepositId,
@@ -123469,7 +124787,7 @@ router13.get("/admin/clapay/pending-deposits", requireAdmin2, async (_req, res) 
   )).orderBy(desc(transactionsTable.createdAt)).limit(50);
   res.json(rows);
 });
-router13.post("/admin/clapay/simulate-deposit", requireAdmin2, async (req, res) => {
+router14.post("/admin/clapay/simulate-deposit", requireAdmin2, async (req, res) => {
   const { depositId, status = "COMPLETED", depositedAmount } = req.body;
   if (!depositId) {
     res.status(400).json({ error: "depositId requis" });
@@ -123528,13 +124846,13 @@ router13.post("/admin/clapay/simulate-deposit", requireAdmin2, async (req, res) 
     res.status(400).json({ error: "status doit \xEAtre COMPLETED ou FAILED" });
   }
 });
-router13.get("/admin/security-events", requireAdmin2, async (req, res) => {
+router14.get("/admin/security-events", requireAdmin2, async (req, res) => {
   const limit = Math.min(Number(req.query.limit) || 50, 200);
   const severity = req.query.severity;
   const rows = await db.select().from(securityEventsTable).where(severity ? eq(securityEventsTable.severity, severity) : void 0).orderBy(desc(securityEventsTable.createdAt)).limit(limit);
   res.json(rows);
 });
-router13.get("/admin/logs", requireAdmin2, async (req, res) => {
+router14.get("/admin/logs", requireAdmin2, async (req, res) => {
   const limit = Math.min(Number(req.query.limit) || 50, 200);
   const rows = await db.select({
     id: adminLogsTable.id,
@@ -123548,7 +124866,7 @@ router13.get("/admin/logs", requireAdmin2, async (req, res) => {
   }).from(adminLogsTable).leftJoin(usersTable, eq(adminLogsTable.adminId, usersTable.id)).orderBy(desc(adminLogsTable.createdAt)).limit(limit);
   res.json(rows);
 });
-router13.get("/admin/transactions", requireAdmin2, async (req, res) => {
+router14.get("/admin/transactions", requireAdmin2, async (req, res) => {
   const exportAll = req.query.export === "true";
   const limit = exportAll ? 5e3 : Math.min(Number(req.query.limit) || 50, 200);
   const offset = exportAll ? 0 : Number(req.query.offset) || 0;
@@ -123568,7 +124886,7 @@ router13.get("/admin/transactions", requireAdmin2, async (req, res) => {
   const [totalRow] = await db.select({ c: count() }).from(transactionsTable).where(where);
   res.json({ transactions: rows, total: totalRow?.c ?? 0 });
 });
-router13.get("/admin/realtime", requireAdmin2, async (req, res) => {
+router14.get("/admin/realtime", requireAdmin2, async (req, res) => {
   const now = /* @__PURE__ */ new Date();
   const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1e3);
@@ -123627,11 +124945,11 @@ router13.get("/admin/realtime", requireAdmin2, async (req, res) => {
     generatedAt: (/* @__PURE__ */ new Date()).toISOString()
   });
 });
-router13.get("/admin/blacklist", requireAdmin2, async (req, res) => {
+router14.get("/admin/blacklist", requireAdmin2, async (req, res) => {
   const entries = await db.select().from(ipBlacklistTable).orderBy(desc(ipBlacklistTable.createdAt)).limit(500);
   res.json(entries);
 });
-router13.post("/admin/blacklist", requireAdmin2, async (req, res) => {
+router14.post("/admin/blacklist", requireAdmin2, async (req, res) => {
   const { type, value, reason, permanent, expiresAt } = req.body;
   if (!type || !value) {
     res.status(400).json({ error: "type et value sont requis" });
@@ -123656,12 +124974,12 @@ router13.post("/admin/blacklist", requireAdmin2, async (req, res) => {
   }
   res.json(entry);
 });
-router13.delete("/admin/blacklist/:id", requireAdmin2, async (req, res) => {
+router14.delete("/admin/blacklist/:id", requireAdmin2, async (req, res) => {
   await db.delete(ipBlacklistTable).where(eq(ipBlacklistTable.id, req.params.id));
   await logAdminAction(adminId2(req), "blacklist_remove", req.ip, "blacklist", req.params.id);
   res.json({ success: true });
 });
-router13.get("/admin/blacklist/check", requireAdmin2, async (req, res) => {
+router14.get("/admin/blacklist/check", requireAdmin2, async (req, res) => {
   const { value } = req.query;
   if (!value || typeof value !== "string") {
     res.status(400).json({ error: "value required" });
@@ -123670,7 +124988,7 @@ router13.get("/admin/blacklist/check", requireAdmin2, async (req, res) => {
   const entries = await db.select().from(ipBlacklistTable).where(eq(ipBlacklistTable.value, value));
   res.json({ banned: entries.length > 0, entries });
 });
-router13.get("/admin/login-history", requireAdmin2, async (req, res) => {
+router14.get("/admin/login-history", requireAdmin2, async (req, res) => {
   const userId = typeof req.query.userId === "string" ? req.query.userId : void 0;
   const { limit = "200", offset = "0" } = req.query;
   const rows = await db.select({
@@ -123693,7 +125011,7 @@ router13.get("/admin/login-history", requireAdmin2, async (req, res) => {
   const [totalRow] = await db.select({ c: count() }).from(loginHistoryTable).where(userId ? eq(loginHistoryTable.userId, userId) : sql`1=1`);
   res.json({ entries: rows, total: totalRow?.c ?? 0 });
 });
-router13.get("/admin/login-history/stats", requireAdmin2, async (req, res) => {
+router14.get("/admin/login-history/stats", requireAdmin2, async (req, res) => {
   const dayAgo = new Date(Date.now() - 24 * 60 * 60 * 1e3);
   const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1e3);
   const [totalRow] = await db.select({ c: count() }).from(loginHistoryTable);
@@ -123722,7 +125040,7 @@ var SAMPLE_COUNTRIES_PRICE = [
   { code: "usa", label: "\xC9tats-Unis", flag: "\u{1F1FA}\u{1F1F8}" },
   { code: "india", label: "Inde", flag: "\u{1F1EE}\u{1F1F3}" }
 ];
-router13.get("/admin/live-prices", requireAdmin2, async (req, res) => {
+router14.get("/admin/live-prices", requireAdmin2, async (req, res) => {
   const { service } = req.query;
   const [provider] = await db.select().from(apiProvidersTable).where(and(eq(apiProvidersTable.slug, "5sim"), eq(apiProvidersTable.active, true))).limit(1);
   if (!provider?.apiKey) {
@@ -123762,7 +125080,7 @@ router13.get("/admin/live-prices", requireAdmin2, async (req, res) => {
   }));
   res.json({ data, markup, providerName: provider.name, generatedAt: (/* @__PURE__ */ new Date()).toISOString() });
 });
-router13.get("/admin/live-prices/services", requireAdmin2, async (req, res) => {
+router14.get("/admin/live-prices/services", requireAdmin2, async (req, res) => {
   const [provider] = await db.select().from(apiProvidersTable).where(and(eq(apiProvidersTable.slug, "5sim"), eq(apiProvidersTable.active, true))).limit(1);
   if (!provider?.apiKey) {
     res.status(404).json({ error: "Aucun fournisseur 5sim actif" });
@@ -123786,13 +125104,13 @@ router13.get("/admin/live-prices/services", requireAdmin2, async (req, res) => {
     res.status(500).json({ error: e2.message });
   }
 });
-router13.get("/admin/site-content", requireAdmin2, async (_req, res) => {
+router14.get("/admin/site-content", requireAdmin2, async (_req, res) => {
   const rows = await db.select().from(systemSettingsTable).where(like(systemSettingsTable.key, "content_%"));
   const content = {};
   for (const r2 of rows) content[r2.key] = r2.value;
   res.json(content);
 });
-router13.put("/admin/site-content", requireAdmin2, async (req, res) => {
+router14.put("/admin/site-content", requireAdmin2, async (req, res) => {
   const updates = req.body;
   if (!updates || typeof updates !== "object") {
     res.status(400).json({ error: "Invalid body" });
@@ -123805,7 +125123,7 @@ router13.put("/admin/site-content", requireAdmin2, async (req, res) => {
   await logAdminAction(adminId2(req), "site_content_update", req.ip, "site", "content", { keys: Object.keys(updates) });
   res.json({ success: true });
 });
-router13.get("/admin/sync/status", requireAdmin2, async (_req, res) => {
+router14.get("/admin/sync/status", requireAdmin2, async (_req, res) => {
   const { isSyncInProgress: isSyncInProgress2, getSyncLogs: getSyncLogs2 } = await Promise.resolve().then(() => (init_fivesim_sync(), fivesim_sync_exports));
   const settingKeys = [
     "fivesim_last_sync",
@@ -123848,7 +125166,7 @@ router13.get("/admin/sync/status", requireAdmin2, async (_req, res) => {
     generatedAt: (/* @__PURE__ */ new Date()).toISOString()
   });
 });
-router13.post("/admin/sync/services", requireAdmin2, async (req, res) => {
+router14.post("/admin/sync/services", requireAdmin2, async (req, res) => {
   try {
     const { syncFiveSimProducts: syncFiveSimProducts2 } = await Promise.resolve().then(() => (init_fivesim_sync(), fivesim_sync_exports));
     const result = await syncFiveSimProducts2("admin");
@@ -123863,7 +125181,7 @@ router13.post("/admin/sync/services", requireAdmin2, async (req, res) => {
     res.status(503).json({ success: false, error: e2.message });
   }
 });
-router13.post("/admin/sync/countries", requireAdmin2, async (req, res) => {
+router14.post("/admin/sync/countries", requireAdmin2, async (req, res) => {
   try {
     const { syncFiveSimCountries: syncFiveSimCountries2 } = await Promise.resolve().then(() => (init_fivesim_sync(), fivesim_sync_exports));
     const result = await syncFiveSimCountries2("admin");
@@ -123878,7 +125196,7 @@ router13.post("/admin/sync/countries", requireAdmin2, async (req, res) => {
     res.status(503).json({ success: false, error: e2.message });
   }
 });
-router13.post("/admin/sync/full", requireAdmin2, async (req, res) => {
+router14.post("/admin/sync/full", requireAdmin2, async (req, res) => {
   try {
     const { syncFiveSimFull: syncFiveSimFull2 } = await Promise.resolve().then(() => (init_fivesim_sync(), fivesim_sync_exports));
     const result = await syncFiveSimFull2("admin");
@@ -123893,12 +125211,12 @@ router13.post("/admin/sync/full", requireAdmin2, async (req, res) => {
     res.status(503).json({ success: false, error: e2.message });
   }
 });
-router13.get("/admin/sync/logs", requireAdmin2, async (_req, res) => {
+router14.get("/admin/sync/logs", requireAdmin2, async (_req, res) => {
   const { getSyncLogs: getSyncLogs2 } = await Promise.resolve().then(() => (init_fivesim_sync(), fivesim_sync_exports));
   const logs = await getSyncLogs2();
   res.json(logs);
 });
-router13.post("/admin/service-prices/bulk", requireAdmin2, async (req, res) => {
+router14.post("/admin/service-prices/bulk", requireAdmin2, async (req, res) => {
   const { prices: items } = req.body;
   if (!Array.isArray(items) || items.length === 0) {
     res.status(400).json({ error: "prices doit \xEAtre un tableau non vide" });
@@ -123924,13 +125242,13 @@ router13.post("/admin/service-prices/bulk", requireAdmin2, async (req, res) => {
   await logAdminAction(adminId2(req), "service_prices_bulk_upsert", req.ip, "service_price", void 0, { count: results.length });
   res.json({ updated: results.length, prices: results });
 });
-router13.get("/admin/service-prices", requireAdmin2, async (req, res) => {
+router14.get("/admin/service-prices", requireAdmin2, async (req, res) => {
   const { serviceSlug } = req.query;
   const query = db.select().from(servicePricesTable);
   const rows = serviceSlug ? await query.where(eq(servicePricesTable.serviceSlug, serviceSlug.toLowerCase())).orderBy(servicePricesTable.countryCode) : await query.orderBy(servicePricesTable.countryCode, servicePricesTable.serviceSlug);
   res.json(rows);
 });
-router13.post("/admin/service-prices", requireAdmin2, async (req, res) => {
+router14.post("/admin/service-prices", requireAdmin2, async (req, res) => {
   const { countryCode, serviceSlug, price, enabled } = req.body;
   if (!countryCode || !serviceSlug || price == null) {
     res.status(400).json({ error: "countryCode, serviceSlug et price sont requis" });
@@ -123943,7 +125261,7 @@ router13.post("/admin/service-prices", requireAdmin2, async (req, res) => {
   await logAdminAction(adminId2(req), "service_price_upsert", req.ip, "service_price", row.id, { countryCode, serviceSlug, price });
   res.status(201).json(row);
 });
-router13.put("/admin/service-prices/:id", requireAdmin2, async (req, res) => {
+router14.put("/admin/service-prices/:id", requireAdmin2, async (req, res) => {
   const { id } = req.params;
   const { price, enabled } = req.body;
   const updates = { updatedAt: /* @__PURE__ */ new Date() };
@@ -123960,13 +125278,13 @@ router13.put("/admin/service-prices/:id", requireAdmin2, async (req, res) => {
   await logAdminAction(adminId2(req), "service_price_update", req.ip, "service_price", id, updates);
   res.json(row);
 });
-router13.delete("/admin/service-prices/:id", requireAdmin2, async (req, res) => {
+router14.delete("/admin/service-prices/:id", requireAdmin2, async (req, res) => {
   const { id } = req.params;
   await db.delete(servicePricesTable).where(eq(servicePricesTable.id, id));
   await logAdminAction(adminId2(req), "service_price_delete", req.ip, "service_price", id);
   res.json({ success: true });
 });
-router13.get("/admin/pricing/matrix", requireAdmin2, async (req, res) => {
+router14.get("/admin/pricing/matrix", requireAdmin2, async (req, res) => {
   const { serviceSlug } = req.query;
   if (!serviceSlug || typeof serviceSlug !== "string") {
     res.status(400).json({ error: "serviceSlug requis" });
@@ -124028,7 +125346,7 @@ router13.get("/admin/pricing/matrix", requireAdmin2, async (req, res) => {
     customCountries: countries.filter((c) => c.isCustom).length
   });
 });
-router13.put("/admin/pricing/global-price", requireAdmin2, async (req, res) => {
+router14.put("/admin/pricing/global-price", requireAdmin2, async (req, res) => {
   const { serviceSlug, price } = req.body;
   if (!serviceSlug || price == null || Number(price) <= 0) {
     res.status(400).json({ error: "serviceSlug et price (> 0) requis" });
@@ -124044,7 +125362,7 @@ router13.put("/admin/pricing/global-price", requireAdmin2, async (req, res) => {
   await logAdminAction(adminId2(req), "update_global_price", req.ip, "service", service.id, { serviceSlug: slug, price: Number(price) });
   res.json({ success: true, serviceSlug: slug, price: Number(price) });
 });
-router13.get("/admin/diagnostics", requireAdmin2, async (_req, res) => {
+router14.get("/admin/diagnostics", requireAdmin2, async (_req, res) => {
   const checks = [];
   try {
     const t0 = Date.now();
@@ -124112,15 +125430,15 @@ router13.get("/admin/diagnostics", requireAdmin2, async (_req, res) => {
   });
   res.json({ ok: checks.every((c) => c.status !== "error"), checks });
 });
-var admin_default = router13;
+var admin_default = router14;
 
 // src/routes/admin-support.ts
-var import_express15 = __toESM(require_express2(), 1);
+var import_express16 = __toESM(require_express2(), 1);
 init_drizzle_orm();
 init_src();
 init_logger2();
-var router14 = (0, import_express15.Router)();
-router14.use(requireAdminJwt);
+var router15 = (0, import_express16.Router)();
+router15.use(requireAdminJwt);
 function requireAdmin3(req, res, next) {
   if (req.adminPayload) {
     next();
@@ -124166,7 +125484,7 @@ var DEFAULT_AI_CONFIG = [
   { key: "company_telegram", value: "", label: "Lien Telegram support", group: "entreprise" },
   { key: "company_phone", value: "", label: "T\xE9l\xE9phone support", group: "entreprise" }
 ];
-router14.get("/admin/support/conversations", requireAdmin3, async (req, res) => {
+router15.get("/admin/support/conversations", requireAdmin3, async (req, res) => {
   const limit = Math.min(Number(req.query.limit) || 50, 200);
   const offset = Number(req.query.offset) || 0;
   const status = req.query.status;
@@ -124191,12 +125509,12 @@ router14.get("/admin/support/conversations", requireAdmin3, async (req, res) => 
   const [totalRow] = await db.select({ c: count() }).from(supportConversationsTable).where(where);
   res.json({ conversations: rows, total: totalRow?.c ?? 0 });
 });
-router14.get("/admin/support/conversations/:id/messages", requireAdmin3, async (req, res) => {
+router15.get("/admin/support/conversations/:id/messages", requireAdmin3, async (req, res) => {
   const { id } = req.params;
   const msgs = await db.select().from(supportMessagesTable).where(eq(supportMessagesTable.conversationId, id)).orderBy(asc(supportMessagesTable.createdAt));
   res.json({ messages: msgs });
 });
-router14.post("/admin/support/conversations/:id/messages", requireAdmin3, async (req, res) => {
+router15.post("/admin/support/conversations/:id/messages", requireAdmin3, async (req, res) => {
   const { id } = req.params;
   const { content, imageData } = req.body;
   if (!content?.trim() && !imageData) {
@@ -124219,7 +125537,7 @@ router14.post("/admin/support/conversations/:id/messages", requireAdmin3, async 
   logger.info({ convId: id, adminId: req.user.id }, "[admin-support] Admin replied to conversation");
   res.json({ message: msg });
 });
-router14.put("/admin/support/conversations/:id/status", requireAdmin3, async (req, res) => {
+router15.put("/admin/support/conversations/:id/status", requireAdmin3, async (req, res) => {
   const { id } = req.params;
   const { status, isHumanTakeover, agentNote, priority } = req.body;
   const updates = { updatedAt: /* @__PURE__ */ new Date() };
@@ -124230,12 +125548,12 @@ router14.put("/admin/support/conversations/:id/status", requireAdmin3, async (re
   await db.update(supportConversationsTable).set(updates).where(eq(supportConversationsTable.id, id));
   res.json({ success: true });
 });
-router14.delete("/admin/support/conversations/:id", requireAdmin3, async (req, res) => {
+router15.delete("/admin/support/conversations/:id", requireAdmin3, async (req, res) => {
   const { id } = req.params;
   await db.delete(supportConversationsTable).where(eq(supportConversationsTable.id, id));
   res.json({ success: true });
 });
-router14.get("/admin/support/stats", requireAdmin3, async (_req, res) => {
+router15.get("/admin/support/stats", requireAdmin3, async (_req, res) => {
   const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1e3);
   const dayAgo = new Date(Date.now() - 24 * 60 * 60 * 1e3);
   const [totalConvs] = await db.select({ c: count() }).from(supportConversationsTable);
@@ -124261,13 +125579,13 @@ router14.get("/admin/support/stats", requireAdmin3, async (_req, res) => {
     activeKnowledgeEntries: activeKnowledge?.c ?? 0
   });
 });
-router14.get("/admin/support/knowledge", requireAdmin3, async (req, res) => {
+router15.get("/admin/support/knowledge", requireAdmin3, async (req, res) => {
   const category = req.query.category;
   const where = category ? eq(aiKnowledgeBaseTable.category, category) : void 0;
   const entries = await db.select().from(aiKnowledgeBaseTable).where(where).orderBy(asc(aiKnowledgeBaseTable.category), asc(aiKnowledgeBaseTable.sortOrder), asc(aiKnowledgeBaseTable.title));
   res.json(entries);
 });
-router14.post("/admin/support/knowledge", requireAdmin3, async (req, res) => {
+router15.post("/admin/support/knowledge", requireAdmin3, async (req, res) => {
   const { category, title, content, isActive, sortOrder } = req.body;
   if (!title?.trim() || !content?.trim()) {
     res.status(400).json({ error: "Titre et contenu requis" });
@@ -124282,7 +125600,7 @@ router14.post("/admin/support/knowledge", requireAdmin3, async (req, res) => {
   }).returning();
   res.status(201).json(entry);
 });
-router14.put("/admin/support/knowledge/:id", requireAdmin3, async (req, res) => {
+router15.put("/admin/support/knowledge/:id", requireAdmin3, async (req, res) => {
   const { id } = req.params;
   const { category, title, content, isActive, sortOrder } = req.body;
   const updates = {};
@@ -124298,12 +125616,12 @@ router14.put("/admin/support/knowledge/:id", requireAdmin3, async (req, res) => 
   const [entry] = await db.update(aiKnowledgeBaseTable).set(updates).where(eq(aiKnowledgeBaseTable.id, id)).returning();
   res.json(entry);
 });
-router14.delete("/admin/support/knowledge/:id", requireAdmin3, async (req, res) => {
+router15.delete("/admin/support/knowledge/:id", requireAdmin3, async (req, res) => {
   const { id } = req.params;
   await db.delete(aiKnowledgeBaseTable).where(eq(aiKnowledgeBaseTable.id, id));
   res.json({ success: true });
 });
-router14.get("/admin/support/config", requireAdmin3, async (_req, res) => {
+router15.get("/admin/support/config", requireAdmin3, async (_req, res) => {
   const entries = await db.select().from(aiSupportConfigTable).orderBy(asc(aiSupportConfigTable.group), asc(aiSupportConfigTable.key));
   if (entries.length === 0) {
     await db.insert(aiSupportConfigTable).values(DEFAULT_AI_CONFIG).onConflictDoNothing();
@@ -124320,7 +125638,7 @@ router14.get("/admin/support/config", requireAdmin3, async (_req, res) => {
   const full = await db.select().from(aiSupportConfigTable).orderBy(asc(aiSupportConfigTable.group), asc(aiSupportConfigTable.key));
   res.json(full);
 });
-router14.put("/admin/support/config", requireAdmin3, async (req, res) => {
+router15.put("/admin/support/config", requireAdmin3, async (req, res) => {
   const updates = req.body;
   if (!updates || typeof updates !== "object") {
     res.status(400).json({ error: "Donn\xE9es invalides" });
@@ -124334,14 +125652,14 @@ router14.put("/admin/support/config", requireAdmin3, async (req, res) => {
   }
   res.json({ success: true });
 });
-var admin_support_default = router14;
+var admin_support_default = router15;
 
 // src/routes/admin-auth.ts
-var import_express16 = __toESM(require_express2(), 1);
+var import_express17 = __toESM(require_express2(), 1);
 init_drizzle_orm();
 init_src();
 init_logger2();
-var router15 = (0, import_express16.Router)();
+var router16 = (0, import_express17.Router)();
 function getIp(req) {
   return req.headers["x-forwarded-for"]?.split(",")[0]?.trim() ?? req.ip ?? "unknown";
 }
@@ -124364,7 +125682,7 @@ async function logAccess(ip, action, success, email, details, userAgent2) {
     logger.error({ err }, "Failed to log admin access");
   }
 }
-router15.post("/admin-auth/verify-token", async (req, res) => {
+router16.post("/admin-auth/verify-token", async (req, res) => {
   const ip = getIp(req);
   const ua = req.headers["user-agent"] ?? "";
   if (isRateLimited(`admin-token:${ip}`, 20, 15 * 6e4)) {
@@ -124392,7 +125710,7 @@ router15.post("/admin-auth/verify-token", async (req, res) => {
   await logAccess(ip, "token_verify_success", true, void 0, {}, ua);
   res.json({ granted: true });
 });
-router15.post("/admin-auth/login", async (req, res) => {
+router16.post("/admin-auth/login", async (req, res) => {
   const ip = getIp(req);
   const ua = req.headers["user-agent"] ?? "";
   const loginKey = `admin-login:${ip}`;
@@ -124457,7 +125775,7 @@ router15.post("/admin-auth/login", async (req, res) => {
     }
   });
 });
-router15.get("/admin-auth/session", async (req, res) => {
+router16.get("/admin-auth/session", async (req, res) => {
   const token = getBearerToken(req);
   if (!token) {
     res.status(401).json({ valid: false, error: "No token provided" });
@@ -124479,7 +125797,7 @@ router15.get("/admin-auth/session", async (req, res) => {
     expiresAt: payload.exp
   });
 });
-router15.post("/admin-auth/logout", async (req, res) => {
+router16.post("/admin-auth/logout", async (req, res) => {
   const ip = getIp(req);
   const ua = req.headers["user-agent"] ?? "";
   const token = getBearerToken(req);
@@ -124491,7 +125809,7 @@ router15.post("/admin-auth/logout", async (req, res) => {
   await logAccess(ip, "logout", true, email, {}, ua);
   res.json({ success: true });
 });
-router15.get("/admin-auth/access-logs", async (req, res) => {
+router16.get("/admin-auth/access-logs", async (req, res) => {
   const token = getBearerToken(req);
   if (!token) {
     res.status(401).json({ error: "No token" });
@@ -124506,15 +125824,15 @@ router15.get("/admin-auth/access-logs", async (req, res) => {
   const logs = await db.select().from(adminAccessLogsTable).orderBy(descFn(adminAccessLogsTable.createdAt)).limit(100);
   res.json({ logs });
 });
-var admin_auth_default = router15;
+var admin_auth_default = router16;
 
 // src/routes/admin-notifications.ts
-var import_express17 = __toESM(require_express2(), 1);
+var import_express18 = __toESM(require_express2(), 1);
 init_drizzle_orm();
 init_src();
 init_logger2();
-var router16 = (0, import_express17.Router)();
-router16.use(requireAdminJwt);
+var router17 = (0, import_express18.Router)();
+router17.use(requireAdminJwt);
 function requireAdmin4(req, res, next) {
   if (req.adminPayload) {
     next();
@@ -124530,7 +125848,7 @@ function requireAdmin4(req, res, next) {
   }
   next();
 }
-router16.post("/admin/notifications", requireAdmin4, async (req, res) => {
+router17.post("/admin/notifications", requireAdmin4, async (req, res) => {
   const {
     title,
     body,
@@ -124577,14 +125895,14 @@ router16.post("/admin/notifications", requireAdmin4, async (req, res) => {
   logger.info({ count: created.length }, "[admin-notifications] Notifications sent");
   res.status(201).json({ created: created.length, notifications: created });
 });
-router16.get("/admin/notifications", requireAdmin4, async (req, res) => {
+router17.get("/admin/notifications", requireAdmin4, async (req, res) => {
   const limit = Math.min(Number(req.query.limit) || 50, 200);
   const offset = Number(req.query.offset) || 0;
   const notifications = await db.select().from(notificationsTable).orderBy(desc(notificationsTable.createdAt)).limit(limit).offset(offset);
   const [{ total }] = await db.select({ total: count() }).from(notificationsTable);
   res.json({ notifications, total: Number(total) });
 });
-router16.get("/admin/notifications/stats", requireAdmin4, async (_req, res) => {
+router17.get("/admin/notifications/stats", requireAdmin4, async (_req, res) => {
   const [total] = await db.select({ count: count() }).from(notificationsTable);
   const [global2] = await db.select({ count: count() }).from(notificationsTable).where(and(eq(notificationsTable.isGlobal, true), isNull(notificationsTable.userId)));
   const [targeted] = await db.select({ count: count() }).from(notificationsTable).where(eq(notificationsTable.isGlobal, false));
@@ -124594,12 +125912,12 @@ router16.get("/admin/notifications/stats", requireAdmin4, async (_req, res) => {
     targeted: Number(targeted.count)
   });
 });
-router16.delete("/admin/notifications/:id", requireAdmin4, async (req, res) => {
+router17.delete("/admin/notifications/:id", requireAdmin4, async (req, res) => {
   const { id } = req.params;
   await db.delete(notificationsTable).where(eq(notificationsTable.id, id));
   res.json({ success: true });
 });
-router16.post("/admin/push/test", requireAdmin4, async (req, res) => {
+router17.post("/admin/push/test", requireAdmin4, async (req, res) => {
   const { userId } = req.body;
   const subCount = await db.select().from(pushSubscriptionsTable);
   if (subCount.length === 0) {
@@ -124634,7 +125952,7 @@ router16.post("/admin/push/test", requireAdmin4, async (req, res) => {
     res.json({ success: true, message: `Notification test broadcast\xE9e \xE0 ${subCount.length} abonnement(s).`, subscriptions: subCount.length });
   }
 });
-router16.get("/admin/push/subscriptions", requireAdmin4, async (_req, res) => {
+router17.get("/admin/push/subscriptions", requireAdmin4, async (_req, res) => {
   const subs = await db.select().from(pushSubscriptionsTable);
   const byUser = {};
   for (const sub of subs) {
@@ -124646,15 +125964,15 @@ router16.get("/admin/push/subscriptions", requireAdmin4, async (_req, res) => {
     byUser
   });
 });
-var admin_notifications_default = router16;
+var admin_notifications_default = router17;
 
 // src/routes/admin-emails.ts
-var import_express18 = __toESM(require_express2(), 1);
+var import_express19 = __toESM(require_express2(), 1);
 init_drizzle_orm();
 init_src();
 init_logger2();
-var router17 = (0, import_express18.Router)();
-router17.use(requireAdminJwt);
+var router18 = (0, import_express19.Router)();
+router18.use(requireAdminJwt);
 function requireAdmin5(req, res, next) {
   if (req.adminPayload) {
     next();
@@ -124784,7 +126102,7 @@ function buildEmailHtml(subject, body, templateType) {
 </body>
 </html>`;
 }
-router17.post("/admin/emails/send", requireAdmin5, async (req, res) => {
+router18.post("/admin/emails/send", requireAdmin5, async (req, res) => {
   const {
     subject,
     body,
@@ -124919,14 +126237,14 @@ router17.post("/admin/emails/send", requireAdmin5, async (req, res) => {
   await db.update(emailCampaignsTable).set({ status: finalStatus, sentCount, failedCount, sentAt: /* @__PURE__ */ new Date() }).where(eq(emailCampaignsTable.id, campaign.id));
   logger.info({ campaignId: campaign.id, sentCount, failedCount, totalRecipients: recipients.length }, "[emails] Campaign complete");
 });
-router17.get("/admin/emails/campaigns", requireAdmin5, async (req, res) => {
+router18.get("/admin/emails/campaigns", requireAdmin5, async (req, res) => {
   const limit = Math.min(Number(req.query.limit) || 20, 100);
   const offset = Number(req.query.offset) || 0;
   const campaigns = await db.select().from(emailCampaignsTable).orderBy(desc(emailCampaignsTable.createdAt)).limit(limit).offset(offset);
   const [{ total }] = await db.select({ total: count() }).from(emailCampaignsTable);
   res.json({ campaigns, total: Number(total) });
 });
-router17.get("/admin/emails/campaigns/:id/progress", requireAdmin5, async (req, res) => {
+router18.get("/admin/emails/campaigns/:id/progress", requireAdmin5, async (req, res) => {
   const { id } = req.params;
   const campaign = await db.select().from(emailCampaignsTable).where(eq(emailCampaignsTable.id, id)).limit(1);
   if (!campaign[0]) {
@@ -124949,7 +126267,7 @@ router17.get("/admin/emails/campaigns/:id/progress", requireAdmin5, async (req, 
     isDone: campaign[0].status !== "sending"
   });
 });
-router17.get("/admin/emails/campaigns/:id/logs", requireAdmin5, async (req, res) => {
+router18.get("/admin/emails/campaigns/:id/logs", requireAdmin5, async (req, res) => {
   const { id } = req.params;
   const limit = Math.min(Number(req.query.limit) || 50, 200);
   const offset = Number(req.query.offset) || 0;
@@ -124963,7 +126281,7 @@ router17.get("/admin/emails/campaigns/:id/logs", requireAdmin5, async (req, res)
   }).from(emailLogsTable).leftJoin(usersTable, eq(emailLogsTable.userId, usersTable.id)).where(eq(emailLogsTable.campaignId, id)).orderBy(desc(emailLogsTable.createdAt)).limit(limit).offset(offset);
   res.json({ logs });
 });
-router17.post("/admin/emails/test", requireAdmin5, async (req, res) => {
+router18.post("/admin/emails/test", requireAdmin5, async (req, res) => {
   const { email } = req.body;
   if (!email || typeof email !== "string" || !email.includes("@")) {
     res.status(400).json({ error: "Adresse email invalide" });
@@ -125045,7 +126363,7 @@ router17.post("/admin/emails/test", requireAdmin5, async (req, res) => {
     res.status(500).json({ success: false, error: msg, latencyMs });
   }
 });
-router17.get("/admin/emails/recipients", requireAdmin5, async (req, res) => {
+router18.get("/admin/emails/recipients", requireAdmin5, async (req, res) => {
   const search = req.query.search?.trim();
   const limit = Math.min(Number(req.query.limit) || 50, 200);
   const rows = await db.select({
@@ -125072,7 +126390,7 @@ router17.get("/admin/emails/recipients", requireAdmin5, async (req, res) => {
   });
   res.json({ recipients: eligible, total: eligible.length });
 });
-router17.get("/admin/emails/stats", requireAdmin5, async (_req, res) => {
+router18.get("/admin/emails/stats", requireAdmin5, async (_req, res) => {
   const [total] = await db.select({ count: count() }).from(emailCampaignsTable);
   const [sent] = await db.select({ count: count() }).from(emailLogsTable).where(eq(emailLogsTable.status, "sent"));
   const [failed] = await db.select({ count: count() }).from(emailLogsTable).where(eq(emailLogsTable.status, "failed"));
@@ -125084,10 +126402,10 @@ router17.get("/admin/emails/stats", requireAdmin5, async (_req, res) => {
     resendConfigured: !!resend
   });
 });
-var admin_emails_default = router17;
+var admin_emails_default = router18;
 
 // src/routes/admin-fivesim.ts
-var import_express19 = __toESM(require_express2(), 1);
+var import_express20 = __toESM(require_express2(), 1);
 init_drizzle_orm();
 init_src();
 init_fivesim();
@@ -125470,7 +126788,7 @@ function extractCode2(text2) {
 
 // src/routes/admin-fivesim.ts
 init_fivesim_sync();
-var router18 = (0, import_express19.Router)();
+var router19 = (0, import_express20.Router)();
 async function get5SimClient() {
   const [provider] = await db.select().from(apiProvidersTable).where(and(eq(apiProvidersTable.slug, "5sim"), eq(apiProvidersTable.active, true))).limit(1);
   if (!provider?.apiKey) return null;
@@ -125487,7 +126805,7 @@ function handle5SimError(e2, res) {
     res.status(500).json({ error: "Erreur serveur inattendue" });
   }
 }
-router18.get("/admin/fivesim/profile", requireAdminJwt, async (req, res) => {
+router19.get("/admin/fivesim/profile", requireAdminJwt, async (req, res) => {
   const client = await get5SimClient();
   if (!client) {
     res.status(503).json({ error: "Fournisseur 5sim non configur\xE9 ou inactif" });
@@ -125500,7 +126818,7 @@ router18.get("/admin/fivesim/profile", requireAdminJwt, async (req, res) => {
     handle5SimError(e2, res);
   }
 });
-router18.get("/admin/fivesim/statistic", requireAdminJwt, async (req, res) => {
+router19.get("/admin/fivesim/statistic", requireAdminJwt, async (req, res) => {
   const client = await get5SimClient();
   if (!client) {
     res.status(503).json({ error: "Fournisseur 5sim non configur\xE9 ou inactif" });
@@ -125513,7 +126831,7 @@ router18.get("/admin/fivesim/statistic", requireAdminJwt, async (req, res) => {
     handle5SimError(e2, res);
   }
 });
-router18.get("/admin/fivesim/wallets", requireAdminJwt, async (req, res) => {
+router19.get("/admin/fivesim/wallets", requireAdminJwt, async (req, res) => {
   const client = await get5SimClient();
   if (!client) {
     res.status(503).json({ error: "Fournisseur 5sim non configur\xE9 ou inactif" });
@@ -125526,7 +126844,7 @@ router18.get("/admin/fivesim/wallets", requireAdminJwt, async (req, res) => {
     handle5SimError(e2, res);
   }
 });
-router18.get("/admin/fivesim/orders", requireAdminJwt, async (req, res) => {
+router19.get("/admin/fivesim/orders", requireAdminJwt, async (req, res) => {
   const client = await get5SimClient();
   if (!client) {
     res.status(503).json({ error: "Fournisseur 5sim non configur\xE9 ou inactif" });
@@ -125542,7 +126860,7 @@ router18.get("/admin/fivesim/orders", requireAdminJwt, async (req, res) => {
     handle5SimError(e2, res);
   }
 });
-router18.get("/admin/fivesim/payments", requireAdminJwt, async (req, res) => {
+router19.get("/admin/fivesim/payments", requireAdminJwt, async (req, res) => {
   const client = await get5SimClient();
   if (!client) {
     res.status(503).json({ error: "Fournisseur 5sim non configur\xE9 ou inactif" });
@@ -125557,7 +126875,7 @@ router18.get("/admin/fivesim/payments", requireAdminJwt, async (req, res) => {
     handle5SimError(e2, res);
   }
 });
-router18.get("/admin/fivesim/flash", requireAdminJwt, async (req, res) => {
+router19.get("/admin/fivesim/flash", requireAdminJwt, async (req, res) => {
   const client = await get5SimClient();
   if (!client) {
     res.status(503).json({ error: "Fournisseur 5sim non configur\xE9 ou inactif" });
@@ -125571,7 +126889,7 @@ router18.get("/admin/fivesim/flash", requireAdminJwt, async (req, res) => {
     handle5SimError(e2, res);
   }
 });
-router18.get("/admin/fivesim/prices", requireAdminJwt, async (req, res) => {
+router19.get("/admin/fivesim/prices", requireAdminJwt, async (req, res) => {
   const client = await get5SimClient();
   if (!client) {
     res.status(503).json({ error: "Fournisseur 5sim non configur\xE9 ou inactif" });
@@ -125589,7 +126907,7 @@ router18.get("/admin/fivesim/prices", requireAdminJwt, async (req, res) => {
     handle5SimError(e2, res);
   }
 });
-router18.get("/admin/fivesim/user/orders", requireAdminJwt, async (req, res) => {
+router19.get("/admin/fivesim/user/orders", requireAdminJwt, async (req, res) => {
   const client = await get5SimClient();
   if (!client) {
     res.status(503).json({ error: "Fournisseur 5sim non configur\xE9 ou inactif" });
@@ -125605,7 +126923,7 @@ router18.get("/admin/fivesim/user/orders", requireAdminJwt, async (req, res) => 
     handle5SimError(e2, res);
   }
 });
-router18.get("/admin/fivesim/user/payments", requireAdminJwt, async (req, res) => {
+router19.get("/admin/fivesim/user/payments", requireAdminJwt, async (req, res) => {
   const client = await get5SimClient();
   if (!client) {
     res.status(503).json({ error: "Fournisseur 5sim non configur\xE9 ou inactif" });
@@ -125620,7 +126938,7 @@ router18.get("/admin/fivesim/user/payments", requireAdminJwt, async (req, res) =
     handle5SimError(e2, res);
   }
 });
-router18.get("/admin/fivesim/pending-refunds", requireAdminJwt, async (_req, res) => {
+router19.get("/admin/fivesim/pending-refunds", requireAdminJwt, async (_req, res) => {
   const cutoff30 = new Date(Date.now() - 30 * 60 * 1e3);
   try {
     const rows = await db.select({
@@ -125648,7 +126966,7 @@ router18.get("/admin/fivesim/pending-refunds", requireAdminJwt, async (_req, res
     res.status(500).json({ error: "Erreur lors de la r\xE9cup\xE9ration des remboursements en attente" });
   }
 });
-router18.post("/admin/fivesim/trigger-refund-sweep", requireAdminJwt, async (_req, res) => {
+router19.post("/admin/fivesim/trigger-refund-sweep", requireAdminJwt, async (_req, res) => {
   try {
     logger.info("[admin] Manual auto-refund sweep triggered");
     const result = await triggerAutoRefundSweep();
@@ -125662,7 +126980,7 @@ router18.post("/admin/fivesim/trigger-refund-sweep", requireAdminJwt, async (_re
     res.status(500).json({ error: "Erreur lors du sweep de remboursement" });
   }
 });
-router18.post("/admin/sync/apply-availability-prices", requireAdminJwt, async (_req, res) => {
+router19.post("/admin/sync/apply-availability-prices", requireAdminJwt, async (_req, res) => {
   try {
     const result = await applyAvailabilityToServicePrices();
     res.json({
@@ -125677,7 +126995,7 @@ router18.post("/admin/sync/apply-availability-prices", requireAdminJwt, async (_
     res.status(500).json({ error: "Erreur lors de l'application des disponibilit\xE9s et prix" });
   }
 });
-router18.get("/admin/fivesim/refund-stats", requireAdminJwt, async (_req, res) => {
+router19.get("/admin/fivesim/refund-stats", requireAdminJwt, async (_req, res) => {
   try {
     const [overview] = await db.select({
       totalRefunds: sql`count(*) filter (where type = 'refund')::int`,
@@ -125747,12 +127065,12 @@ router18.get("/admin/fivesim/refund-stats", requireAdminJwt, async (_req, res) =
     res.status(500).json({ error: "Erreur lors du chargement des statistiques de remboursement" });
   }
 });
-var admin_fivesim_default = router18;
+var admin_fivesim_default = router19;
 
 // src/routes/config.ts
-var import_express20 = __toESM(require_express2(), 1);
-var router19 = (0, import_express20.Router)();
-router19.get("/config", async (_req, res) => {
+var import_express21 = __toESM(require_express2(), 1);
+var router20 = (0, import_express21.Router)();
+router20.get("/config", async (_req, res) => {
   const [
     platformName,
     supportEmail,
@@ -125820,15 +127138,15 @@ router19.get("/config", async (_req, res) => {
     }
   });
 });
-var config_default = router19;
+var config_default = router20;
 
 // src/routes/currencies.ts
-var import_express21 = __toESM(require_express2(), 1);
+var import_express22 = __toESM(require_express2(), 1);
 init_drizzle_orm();
 init_src();
 init_logger2();
-var router20 = (0, import_express21.Router)();
-router20.get("/currencies", async (_req, res) => {
+var router21 = (0, import_express22.Router)();
+router21.get("/currencies", async (_req, res) => {
   const rows = await db.select().from(currenciesTable).where(eq(currenciesTable.active, true)).orderBy(currenciesTable.countryCode);
   res.json(rows.map((r2) => ({
     id: r2.id,
@@ -125838,7 +127156,7 @@ router20.get("/currencies", async (_req, res) => {
     clientRate: Number(r2.clientRate)
   })));
 });
-router20.get("/currencies/country/:cc", async (req, res) => {
+router21.get("/currencies/country/:cc", async (req, res) => {
   const cc = req.params.cc?.toUpperCase();
   if (!cc) {
     res.status(400).json({ error: "Code pays requis" });
@@ -125865,7 +127183,7 @@ router20.get("/currencies/country/:cc", async (req, res) => {
     isXof: row.currencyCode === "XOF" || row.currencyCode === "XAF"
   });
 });
-router20.post("/payment/preview", async (req, res) => {
+router21.post("/payment/preview", async (req, res) => {
   const { country, currency: currencyCode, amount } = req.body;
   if (!country || !amount || isNaN(Number(amount)) || Number(amount) <= 0) {
     res.status(400).json({ error: "country et amount requis" });
@@ -125901,7 +127219,7 @@ router20.post("/payment/preview", async (req, res) => {
     }
   });
 });
-router20.get("/admin/currencies", requireAdminJwt, async (_req, res) => {
+router21.get("/admin/currencies", requireAdminJwt, async (_req, res) => {
   const rows = await db.select().from(currenciesTable).orderBy(currenciesTable.countryCode);
   res.json(rows.map((r2) => ({
     ...r2,
@@ -125909,7 +127227,7 @@ router20.get("/admin/currencies", requireAdminJwt, async (_req, res) => {
     clientRate: Number(r2.clientRate)
   })));
 });
-router20.post("/admin/currencies", requireAdminJwt, async (req, res) => {
+router21.post("/admin/currencies", requireAdminJwt, async (req, res) => {
   const { countryCode, currencyCode, currencyName, realRate, clientRate, active } = req.body;
   if (!countryCode || !currencyCode || !currencyName || realRate == null || clientRate == null) {
     res.status(400).json({ error: "Tous les champs sont requis" });
@@ -125926,7 +127244,7 @@ router20.post("/admin/currencies", requireAdminJwt, async (req, res) => {
   logger.info({ countryCode, currencyCode }, "[Admin] Currency created");
   res.status(201).json({ ...created, realRate: Number(created.realRate), clientRate: Number(created.clientRate) });
 });
-router20.put("/admin/currencies/:id", requireAdminJwt, async (req, res) => {
+router21.put("/admin/currencies/:id", requireAdminJwt, async (req, res) => {
   const id = Number(req.params.id);
   const { countryCode, currencyCode, currencyName, realRate, clientRate, active } = req.body;
   const updates = {};
@@ -125944,13 +127262,13 @@ router20.put("/admin/currencies/:id", requireAdminJwt, async (req, res) => {
   logger.info({ id }, "[Admin] Currency updated");
   res.json({ ...updated, realRate: Number(updated.realRate), clientRate: Number(updated.clientRate) });
 });
-router20.delete("/admin/currencies/:id", requireAdminJwt, async (req, res) => {
+router21.delete("/admin/currencies/:id", requireAdminJwt, async (req, res) => {
   const id = Number(req.params.id);
   await db.delete(currenciesTable).where(eq(currenciesTable.id, id));
   logger.info({ id }, "[Admin] Currency deleted");
   res.json({ success: true });
 });
-router20.get("/admin/fx-profits", requireAdminJwt, async (req, res) => {
+router21.get("/admin/fx-profits", requireAdminJwt, async (req, res) => {
   const limit = Math.min(Number(req.query.limit) || 50, 200);
   const offset = Number(req.query.offset) || 0;
   const rows = await db.select().from(fxProfitsTable).orderBy(desc(fxProfitsTable.createdAt)).limit(limit).offset(offset);
@@ -125967,7 +127285,7 @@ router20.get("/admin/fx-profits", requireAdminJwt, async (req, res) => {
     total
   });
 });
-router20.get("/admin/fx-profits/summary", requireAdminJwt, async (_req, res) => {
+router21.get("/admin/fx-profits/summary", requireAdminJwt, async (_req, res) => {
   const byCurrency = await db.select({
     currency: fxProfitsTable.currency,
     totalProfit: sum(fxProfitsTable.profitXof),
@@ -125995,13 +127313,13 @@ router20.get("/admin/fx-profits/summary", requireAdminJwt, async (_req, res) => 
     }))
   });
 });
-var currencies_default = router20;
+var currencies_default = router21;
 
 // src/routes/footer.ts
-var import_express22 = __toESM(require_express2(), 1);
+var import_express23 = __toESM(require_express2(), 1);
 init_drizzle_orm();
 init_src();
-var router21 = (0, import_express22.Router)();
+var router22 = (0, import_express23.Router)();
 function requireAdmin6(req, res, next) {
   if (req.adminPayload) {
     next();
@@ -126017,18 +127335,18 @@ function requireAdmin6(req, res, next) {
   }
   next();
 }
-router21.get("/footer", async (_req, res) => {
+router22.get("/footer", async (_req, res) => {
   const [socialLinks, operators] = await Promise.all([
     db.select().from(socialLinksTable).where(eq(socialLinksTable.isActive, true)).orderBy(asc(socialLinksTable.sortOrder)),
     db.select().from(paymentOperatorsTable).where(eq(paymentOperatorsTable.isActive, true)).orderBy(asc(paymentOperatorsTable.sortOrder))
   ]);
   res.json({ socialLinks, operators });
 });
-router21.get("/admin/social-links", requireAdminJwt, requireAdmin6, async (_req, res) => {
+router22.get("/admin/social-links", requireAdminJwt, requireAdmin6, async (_req, res) => {
   const links = await db.select().from(socialLinksTable).orderBy(asc(socialLinksTable.sortOrder));
   res.json({ links });
 });
-router21.post("/admin/social-links", requireAdminJwt, requireAdmin6, async (req, res) => {
+router22.post("/admin/social-links", requireAdminJwt, requireAdmin6, async (req, res) => {
   const { platform, name: name2, url: url2, color, isActive, sortOrder } = req.body;
   if (!platform || !name2 || !url2) {
     res.status(400).json({ error: "platform, name, url required" });
@@ -126044,7 +127362,7 @@ router21.post("/admin/social-links", requireAdminJwt, requireAdmin6, async (req,
   }).returning();
   res.json({ link });
 });
-router21.put("/admin/social-links/:id", requireAdminJwt, requireAdmin6, async (req, res) => {
+router22.put("/admin/social-links/:id", requireAdminJwt, requireAdmin6, async (req, res) => {
   const { id } = req.params;
   const data = req.body;
   const [link] = await db.update(socialLinksTable).set(data).where(eq(socialLinksTable.id, id)).returning();
@@ -126054,16 +127372,16 @@ router21.put("/admin/social-links/:id", requireAdminJwt, requireAdmin6, async (r
   }
   res.json({ link });
 });
-router21.delete("/admin/social-links/:id", requireAdminJwt, requireAdmin6, async (req, res) => {
+router22.delete("/admin/social-links/:id", requireAdminJwt, requireAdmin6, async (req, res) => {
   const { id } = req.params;
   await db.delete(socialLinksTable).where(eq(socialLinksTable.id, id));
   res.json({ success: true });
 });
-router21.get("/admin/payment-operators", requireAdminJwt, requireAdmin6, async (_req, res) => {
+router22.get("/admin/payment-operators", requireAdminJwt, requireAdmin6, async (_req, res) => {
   const operators = await db.select().from(paymentOperatorsTable).orderBy(asc(paymentOperatorsTable.sortOrder));
   res.json({ operators });
 });
-router21.post("/admin/payment-operators", requireAdminJwt, requireAdmin6, async (req, res) => {
+router22.post("/admin/payment-operators", requireAdminJwt, requireAdmin6, async (req, res) => {
   const { name: name2, logoUrl, logoData, websiteUrl, countries, bgColor, isActive, sortOrder } = req.body;
   if (!name2) {
     res.status(400).json({ error: "name required" });
@@ -126081,7 +127399,7 @@ router21.post("/admin/payment-operators", requireAdminJwt, requireAdmin6, async 
   }).returning();
   res.json({ operator: op });
 });
-router21.put("/admin/payment-operators/:id", requireAdminJwt, requireAdmin6, async (req, res) => {
+router22.put("/admin/payment-operators/:id", requireAdminJwt, requireAdmin6, async (req, res) => {
   const { id } = req.params;
   const data = req.body;
   const [op] = await db.update(paymentOperatorsTable).set(data).where(eq(paymentOperatorsTable.id, id)).returning();
@@ -126091,15 +127409,15 @@ router21.put("/admin/payment-operators/:id", requireAdminJwt, requireAdmin6, asy
   }
   res.json({ operator: op });
 });
-router21.delete("/admin/payment-operators/:id", requireAdminJwt, requireAdmin6, async (req, res) => {
+router22.delete("/admin/payment-operators/:id", requireAdminJwt, requireAdmin6, async (req, res) => {
   const { id } = req.params;
   await db.delete(paymentOperatorsTable).where(eq(paymentOperatorsTable.id, id));
   res.json({ success: true });
 });
-var footer_default = router21;
+var footer_default = router22;
 
 // src/routes/support.ts
-var import_express23 = __toESM(require_express2(), 1);
+var import_express24 = __toESM(require_express2(), 1);
 init_drizzle_orm();
 init_src();
 
@@ -127112,7 +128430,7 @@ var GoogleGenerativeAI = class {
 
 // src/routes/support.ts
 init_logger2();
-var router22 = (0, import_express23.Router)();
+var router23 = (0, import_express24.Router)();
 async function loadUserContext(userId) {
   const [user] = await db.select({
     fullName: usersTable.fullName,
@@ -127308,7 +128626,7 @@ ${knowledgeSection ? `
 INFOS SUPPLEMENTAIRES DE LA BASE DE CONNAISSANCES:
 ${knowledgeSection}` : ""}`;
 }
-router22.get("/support/history/:sessionId", async (req, res) => {
+router23.get("/support/history/:sessionId", async (req, res) => {
   const { sessionId } = req.params;
   if (!sessionId || sessionId.length < 8) {
     res.status(400).json({ error: "Session ID invalide" });
@@ -127322,7 +128640,7 @@ router22.get("/support/history/:sessionId", async (req, res) => {
   const msgs = await db.select().from(supportMessagesTable).where(eq(supportMessagesTable.conversationId, conv.id)).orderBy(asc(supportMessagesTable.createdAt)).limit(50);
   res.json({ conversationId: conv.id, messages: msgs });
 });
-router22.get("/support/config", async (req, res) => {
+router23.get("/support/config", async (req, res) => {
   const entries = await db.select().from(aiSupportConfigTable);
   const cfg = Object.fromEntries(entries.map((e2) => [e2.key, e2.value]));
   let greetingFr = cfg["ai_greeting_fr"] ?? "Bonjour ! Je suis Simia, votre conseill\xE8re Simix. Comment puis-je vous aider aujourd'hui ?";
@@ -127346,7 +128664,7 @@ router22.get("/support/config", async (req, res) => {
     enabled: cfg["ai_enabled"] !== "false"
   });
 });
-router22.post("/support/chat", async (req, res) => {
+router23.post("/support/chat", async (req, res) => {
   const { sessionId, message, imageData, language } = req.body;
   if (!sessionId || sessionId.length < 8) {
     res.status(400).json({ error: "Session ID requis" });
@@ -127795,7 +129113,7 @@ router22.post("/support/chat", async (req, res) => {
     res.end();
   }
 });
-router22.delete("/support/history/:sessionId", async (req, res) => {
+router23.delete("/support/history/:sessionId", async (req, res) => {
   const { sessionId } = req.params;
   const [conv] = await db.select().from(supportConversationsTable).where(eq(supportConversationsTable.sessionId, sessionId)).limit(1);
   if (conv) {
@@ -127803,30 +129121,30 @@ router22.delete("/support/history/:sessionId", async (req, res) => {
   }
   res.json({ success: true });
 });
-var support_default = router22;
+var support_default = router23;
 
 // src/routes/banners.ts
-var import_express24 = __toESM(require_express2(), 1);
+var import_express25 = __toESM(require_express2(), 1);
 init_drizzle_orm();
 init_src();
 init_logger2();
-var router23 = (0, import_express24.Router)();
-router23.get("/banners", async (_req, res) => {
+var router24 = (0, import_express25.Router)();
+router24.get("/banners", async (_req, res) => {
   const rows = await db.select().from(bannersTable).where(eq(bannersTable.isActive, true)).orderBy(asc(bannersTable.sortOrder));
   res.json(rows);
 });
-router23.get("/site-content", async (_req, res) => {
+router24.get("/site-content", async (_req, res) => {
   const rows = await db.select().from(systemSettingsTable).where(like(systemSettingsTable.key, "content_%"));
   const content = {};
   for (const r2 of rows) content[r2.key] = r2.value;
   res.json(content);
 });
-router23.use("/admin/banners", requireAdminJwt);
-router23.get("/admin/banners", async (_req, res) => {
+router24.use("/admin/banners", requireAdminJwt);
+router24.get("/admin/banners", async (_req, res) => {
   const rows = await db.select().from(bannersTable).orderBy(asc(bannersTable.sortOrder));
   res.json(rows);
 });
-router23.post("/admin/banners", async (req, res) => {
+router24.post("/admin/banners", async (req, res) => {
   const { title, subtitle, imageData, imageUrl, linkUrl, linkLabel, bgFrom, bgTo, textColor, isActive, sortOrder } = req.body;
   if (!title?.trim()) {
     res.status(400).json({ error: "Le titre est requis" });
@@ -127848,7 +129166,7 @@ router23.post("/admin/banners", async (req, res) => {
   logger.info({ bannerId: banner.id }, "[Banners] Created");
   res.status(201).json(banner);
 });
-router23.put("/admin/banners/:id", async (req, res) => {
+router24.put("/admin/banners/:id", async (req, res) => {
   const { id } = req.params;
   const { title, subtitle, imageData, imageUrl, linkUrl, linkLabel, bgFrom, bgTo, textColor, isActive, sortOrder } = req.body;
   if (!title?.trim()) {
@@ -127874,7 +129192,7 @@ router23.put("/admin/banners/:id", async (req, res) => {
   }
   res.json(banner);
 });
-router23.patch("/admin/banners/:id/toggle", async (req, res) => {
+router24.patch("/admin/banners/:id/toggle", async (req, res) => {
   const { id } = req.params;
   const [current] = await db.select().from(bannersTable).where(eq(bannersTable.id, id)).limit(1);
   if (!current) {
@@ -127884,7 +129202,7 @@ router23.patch("/admin/banners/:id/toggle", async (req, res) => {
   const [updated] = await db.update(bannersTable).set({ isActive: !current.isActive }).where(eq(bannersTable.id, id)).returning();
   res.json(updated);
 });
-router23.patch("/admin/banners/reorder", async (req, res) => {
+router24.patch("/admin/banners/reorder", async (req, res) => {
   const { order } = req.body;
   if (!Array.isArray(order)) {
     res.status(400).json({ error: "order doit \xEAtre un tableau" });
@@ -127895,20 +129213,20 @@ router23.patch("/admin/banners/reorder", async (req, res) => {
   }
   res.json({ success: true });
 });
-router23.delete("/admin/banners/:id", async (req, res) => {
+router24.delete("/admin/banners/:id", async (req, res) => {
   const { id } = req.params;
   await db.delete(bannersTable).where(eq(bannersTable.id, id));
   res.json({ success: true });
 });
-var banners_default = router23;
+var banners_default = router24;
 
 // src/routes/otp.ts
-var import_express25 = __toESM(require_express2(), 1);
+var import_express26 = __toESM(require_express2(), 1);
 init_drizzle_orm();
 init_src();
 init_logger2();
-var router24 = (0, import_express25.Router)();
-router24.post("/auth/otp/send", requireAuth, async (req, res) => {
+var router25 = (0, import_express26.Router)();
+router25.post("/auth/otp/send", requireAuth, async (req, res) => {
   const user = req.user;
   const ip = req.ip ?? "unknown";
   if (isRateLimited(`otp_send:${user.id}`, 5, 60 * 6e4)) {
@@ -127929,7 +129247,7 @@ router24.post("/auth/otp/send", requireAuth, async (req, res) => {
     res.status(500).json({ error: "Impossible d'envoyer l'email. V\xE9rifiez votre adresse email." });
   }
 });
-router24.post("/auth/otp/verify", requireAuth, async (req, res) => {
+router25.post("/auth/otp/verify", requireAuth, async (req, res) => {
   const user = req.user;
   const ip = req.ip ?? "unknown";
   const { code } = req.body;
@@ -127954,7 +129272,7 @@ router24.post("/auth/otp/verify", requireAuth, async (req, res) => {
   }).where(eq(usersTable.id, user.id));
   res.json({ success: true, message: "Email v\xE9rifi\xE9 avec succ\xE8s." });
 });
-router24.post("/auth/otp/resend", requireAuth, async (req, res) => {
+router25.post("/auth/otp/resend", requireAuth, async (req, res) => {
   const user = req.user;
   if (isRateLimited(`otp_resend:${user.id}`, 3, 60 * 6e4)) {
     res.status(429).json({ error: "Limite de renvoi atteinte. R\xE9essayez dans une heure." });
@@ -127974,7 +129292,7 @@ router24.post("/auth/otp/resend", requireAuth, async (req, res) => {
     res.status(500).json({ error: "Impossible d'envoyer l'email." });
   }
 });
-router24.get("/auth/otp/status", requireAuth, async (req, res) => {
+router25.get("/auth/otp/status", requireAuth, async (req, res) => {
   const user = req.user;
   const needsEmailVerification = !user.emailVerified;
   const needsInactivityCheck = user.emailVerified && isUserInactive(user.lastLoginAt ?? null);
@@ -127985,15 +129303,15 @@ router24.get("/auth/otp/status", requireAuth, async (req, res) => {
     email: user.email
   });
 });
-var otp_default = router24;
+var otp_default = router25;
 
 // src/routes/forgot-password.ts
-var import_express26 = __toESM(require_express2(), 1);
+var import_express27 = __toESM(require_express2(), 1);
 init_drizzle_orm();
 init_src();
 init_logger2();
-var router25 = (0, import_express26.Router)();
-router25.post("/auth/forgot-password", requireTurnstile, async (req, res) => {
+var router26 = (0, import_express27.Router)();
+router26.post("/auth/forgot-password", requireTurnstile, async (req, res) => {
   const ip = req.ip ?? "unknown";
   if (isRateLimited(`forgot_pwd:${ip}`, 5, 60 * 6e4)) {
     res.status(429).json({ error: "Trop de tentatives. R\xE9essayez dans une heure." });
@@ -128028,7 +129346,7 @@ router25.post("/auth/forgot-password", requireTurnstile, async (req, res) => {
   }
   res.json({ success: true, message: "Si un compte correspond, un email a \xE9t\xE9 envoy\xE9." });
 });
-router25.post("/auth/forgot-password/verify", async (req, res) => {
+router26.post("/auth/forgot-password/verify", async (req, res) => {
   const ip = req.ip ?? "unknown";
   if (isRateLimited(`reset_verify:${ip}`, 10, 15 * 6e4)) {
     res.status(429).json({ error: "Trop de tentatives. R\xE9essayez dans 15 minutes." });
@@ -128046,7 +129364,7 @@ router25.post("/auth/forgot-password/verify", async (req, res) => {
   }
   res.json({ success: true, resetToken: `${userId}:${code}` });
 });
-router25.post("/auth/reset-password", async (req, res) => {
+router26.post("/auth/reset-password", async (req, res) => {
   const ip = req.ip ?? "unknown";
   if (isRateLimited(`reset_pwd:${ip}`, 5, 60 * 6e4)) {
     res.status(429).json({ error: "Trop de tentatives. R\xE9essayez dans une heure." });
@@ -128070,7 +129388,7 @@ router25.post("/auth/reset-password", async (req, res) => {
   await db.update(usersTable).set({ passwordHash, lastLoginAt: /* @__PURE__ */ new Date() }).where(eq(usersTable.id, userId));
   res.json({ success: true, message: "Mot de passe r\xE9initialis\xE9 avec succ\xE8s." });
 });
-router25.post("/auth/forgot-password/resend", async (req, res) => {
+router26.post("/auth/forgot-password/resend", async (req, res) => {
   const ip = req.ip ?? "unknown";
   if (isRateLimited(`reset_resend:${ip}`, 3, 60 * 6e4)) {
     res.status(429).json({ error: "Limite atteinte. R\xE9essayez dans une heure." });
@@ -128099,14 +129417,14 @@ router25.post("/auth/forgot-password/resend", async (req, res) => {
     res.status(500).json({ error: "Impossible d'envoyer l'email." });
   }
 });
-var forgot_password_default = router25;
+var forgot_password_default = router26;
 
 // src/routes/referral.ts
-var import_express27 = __toESM(require_express2(), 1);
+var import_express28 = __toESM(require_express2(), 1);
 init_drizzle_orm();
 init_src();
-var router26 = (0, import_express27.Router)();
-router26.get("/referral/me", requireAuth, async (req, res) => {
+var router27 = (0, import_express28.Router)();
+router27.get("/referral/me", requireAuth, async (req, res) => {
   const user = req.user;
   const commissionRate = await getReferralCommissionRate();
   const commissions = await db.select({
@@ -128133,15 +129451,15 @@ router26.get("/referral/me", requireAuth, async (req, res) => {
     }))
   });
 });
-var referral_default = router26;
+var referral_default = router27;
 
 // src/routes/push-subscriptions.ts
-var import_express28 = __toESM(require_express2(), 1);
+var import_express29 = __toESM(require_express2(), 1);
 init_drizzle_orm();
 init_src();
 init_logger2();
-var router27 = (0, import_express28.Router)();
-router27.get("/push/vapid-public-key", async (_req, res) => {
+var router28 = (0, import_express29.Router)();
+router28.get("/push/vapid-public-key", async (_req, res) => {
   const key = await getVapidPublicKey();
   if (!key) {
     res.status(503).json({ error: "Push notifications not configured." });
@@ -128149,7 +129467,7 @@ router27.get("/push/vapid-public-key", async (_req, res) => {
   }
   res.json({ publicKey: key });
 });
-router27.post("/push/subscribe", requireAuth, async (req, res) => {
+router28.post("/push/subscribe", requireAuth, async (req, res) => {
   const user = req.user;
   const { endpoint, keys } = req.body;
   if (!endpoint || !keys?.p256dh || !keys?.auth) {
@@ -128164,7 +129482,7 @@ router27.post("/push/subscribe", requireAuth, async (req, res) => {
   logger.info({ userId: user.id }, "[push] Subscription saved");
   res.json({ success: true });
 });
-router27.delete("/push/unsubscribe", requireAuth, async (req, res) => {
+router28.delete("/push/unsubscribe", requireAuth, async (req, res) => {
   const user = req.user;
   const { endpoint } = req.body;
   if (!endpoint) {
@@ -128180,49 +129498,50 @@ router27.delete("/push/unsubscribe", requireAuth, async (req, res) => {
   logger.info({ userId: user.id }, "[push] Subscription removed");
   res.json({ success: true });
 });
-var push_subscriptions_default = router27;
+var push_subscriptions_default = router28;
 
 // src/routes/maintenance.ts
-var import_express29 = __toESM(require_express2(), 1);
-var router28 = (0, import_express29.Router)();
-router28.get("/maintenance/status", async (_req, res) => {
+var import_express30 = __toESM(require_express2(), 1);
+var router29 = (0, import_express30.Router)();
+router29.get("/maintenance/status", async (_req, res) => {
   const value = await getSetting("maintenance_mode", "false");
   const active = value === "true" || value === "1";
   res.json({ active });
 });
-var maintenance_default = router28;
+var maintenance_default = router29;
 
 // src/routes/index.ts
-var router29 = (0, import_express30.Router)();
-router29.use(maintenance_default);
-router29.use(health_default);
-router29.use(storage_default);
-router29.use(config_default);
-router29.use(auth_default);
-router29.use(google_auth_default);
-router29.use(services_default);
-router29.use(countries_default);
-router29.use(numbers_default);
-router29.use(wallet_default);
-router29.use(crypto_wallet_default);
-router29.use(dashboard_default);
-router29.use(currencies_default);
-router29.use(admin_auth_default);
-router29.use(footer_default);
-router29.use(support_default);
-router29.use(notifications_default);
-router29.use(banners_default);
-router29.use(otp_default);
-router29.use(forgot_password_default);
-router29.use(referral_default);
-router29.use(push_subscriptions_default);
-router29.use(admin_default);
-router29.use(admin_support_default);
-router29.use(admin_notifications_default);
-router29.use(admin_emails_default);
-router29.use(admin_payment_routing_default);
-router29.use(admin_fivesim_default);
-var routes_default = router29;
+var router30 = (0, import_express31.Router)();
+router30.use(maintenance_default);
+router30.use(seo_default);
+router30.use(health_default);
+router30.use(storage_default);
+router30.use(config_default);
+router30.use(auth_default);
+router30.use(google_auth_default);
+router30.use(services_default);
+router30.use(countries_default);
+router30.use(numbers_default);
+router30.use(wallet_default);
+router30.use(crypto_wallet_default);
+router30.use(dashboard_default);
+router30.use(currencies_default);
+router30.use(admin_auth_default);
+router30.use(footer_default);
+router30.use(support_default);
+router30.use(notifications_default);
+router30.use(banners_default);
+router30.use(otp_default);
+router30.use(forgot_password_default);
+router30.use(referral_default);
+router30.use(push_subscriptions_default);
+router30.use(admin_default);
+router30.use(admin_support_default);
+router30.use(admin_notifications_default);
+router30.use(admin_emails_default);
+router30.use(admin_payment_routing_default);
+router30.use(admin_fivesim_default);
+var routes_default = router30;
 
 // src/app.ts
 init_logger2();
@@ -128413,8 +129732,16 @@ function checkUserBlocked(req, res, next) {
 }
 
 // src/app.ts
-var app = (0, import_express31.default)();
+var app = (0, import_express32.default)();
 app.set("trust proxy", 1);
+app.use((0, import_compression.default)({
+  level: 6,
+  threshold: 1024,
+  filter: (req, res) => {
+    if (req.headers["x-no-compression"]) return false;
+    return import_compression.default.filter(req, res);
+  }
+}));
 var buildAllowedOrigins = () => {
   const origins = /* @__PURE__ */ new Set();
   const appUrl = getAppUrl();
@@ -128584,19 +129911,19 @@ var rawBodyCapture = (req, _res, buf) => {
 };
 app.use((req, res, next) => {
   if (WEBHOOK_PATHS_SET.has(req.path)) {
-    import_express31.default.json({ limit: "1mb", verify: rawBodyCapture })(req, res, next);
+    import_express32.default.json({ limit: "1mb", verify: rawBodyCapture })(req, res, next);
   } else {
     next();
   }
 });
 app.use((req, res, next) => {
   if (!WEBHOOK_PATHS_SET.has(req.path)) {
-    import_express31.default.json({ limit: "256kb", verify: rawBodyCapture })(req, res, next);
+    import_express32.default.json({ limit: "256kb", verify: rawBodyCapture })(req, res, next);
   } else {
     next();
   }
 });
-app.use(import_express31.default.urlencoded({ extended: true, limit: "64kb" }));
+app.use(import_express32.default.urlencoded({ extended: true, limit: "64kb" }));
 app.use((0, import_cookie_parser.default)());
 app.use(globalRateLimit);
 app.use(checkMaintenanceMode);
@@ -128762,7 +130089,7 @@ if (process.env.NODE_ENV !== "development") {
   if (currentDir) {
     const publicDir = import_path2.default.join(currentDir, "public");
     if ((0, import_fs3.existsSync)(publicDir)) {
-      app.use(import_express31.default.static(publicDir));
+      app.use(import_express32.default.static(publicDir));
       app.use(async (_req, res) => {
         if (await isMaintenanceMode()) {
           res.status(503).send(MAINTENANCE_HTML);
@@ -129929,6 +131256,7 @@ router/index.js:
    *)
 
 negotiator/index.js:
+negotiator/index.js:
   (*!
    * negotiator
    * Copyright(c) 2012 Federico Romero
@@ -130000,6 +131328,35 @@ serve-static/index.js:
    * MIT Licensed
    *)
 
+safe-buffer/index.js:
+  (*! safe-buffer. MIT License. Feross Aboukhadijeh <https://feross.org/opensource> *)
+
+compressible/index.js:
+  (*!
+   * compressible
+   * Copyright(c) 2013 Jonathan Ong
+   * Copyright(c) 2014 Jeremiah Senkpiel
+   * Copyright(c) 2015 Douglas Christopher Wilson
+   * MIT Licensed
+   *)
+
+on-headers/index.js:
+  (*!
+   * on-headers
+   * Copyright(c) 2014 Douglas Christopher Wilson
+   * MIT Licensed
+   *)
+
+compression/index.js:
+  (*!
+   * compression
+   * Copyright(c) 2010 Sencha Inc.
+   * Copyright(c) 2011 TJ Holowaychuk
+   * Copyright(c) 2014 Jonathan Ong
+   * Copyright(c) 2014-2015 Douglas Christopher Wilson
+   * MIT Licensed
+   *)
+
 object-assign/index.js:
   (*
   object-assign
@@ -130014,9 +131371,6 @@ cookie-parser/index.js:
    * Copyright(c) 2015 Douglas Christopher Wilson
    * MIT Licensed
    *)
-
-safe-buffer/index.js:
-  (*! safe-buffer. MIT License. Feross Aboukhadijeh <https://feross.org/opensource> *)
 
 teeny-request/build/src/agents.js:
   (**

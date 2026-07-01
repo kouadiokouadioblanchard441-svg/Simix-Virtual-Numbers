@@ -1,3 +1,4 @@
+import { SeoMeta } from "@/components/seo/SeoMeta";
 import { useState, useMemo, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { useForm } from "react-hook-form";
@@ -167,6 +168,12 @@ export default function Login() {
 
   return (
     <div className="min-h-[100dvh] bg-background flex flex-col px-6 py-6 relative overflow-hidden">
+      <SeoMeta
+        title="Connexion — SIMIX"
+        description="Connectez-vous à votre compte SIMIX pour accéder à vos numéros virtuels et recevoir vos codes SMS de vérification en FCFA."
+        path="/login"
+        noIndex
+      />
       <div className="absolute top-0 right-0 w-64 h-64 bg-primary/10 blur-[100px] rounded-full pointer-events-none" />
 
       <div className="flex items-center justify-between mb-6 z-10">

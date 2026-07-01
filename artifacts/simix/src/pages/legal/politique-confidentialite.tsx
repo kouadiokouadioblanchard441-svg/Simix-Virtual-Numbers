@@ -1,3 +1,4 @@
+import { SeoMeta } from "@/components/seo/SeoMeta";
 import { motion } from "framer-motion";
 import { ArrowLeft, Shield } from "lucide-react";
 import { SimixLogo } from "@/components/simix-logo";
@@ -27,6 +28,11 @@ export default function LegalPolitiqueConfidentialite() {
 
   return (
     <div className="min-h-[100dvh] bg-background">
+      <SeoMeta
+        title="Politique de Confidentialité — SIMIX"
+        description="Découvrez comment SIMIX protège vos données personnelles. Politique de confidentialité conforme au RGPD pour les utilisateurs de la plateforme."
+        path="/legal/politique-confidentialite"
+      />
       <div className="flex justify-center">
         <div className="w-full max-w-md bg-background relative shadow-2xl sm:border-x sm:border-border min-h-[100dvh]">
 

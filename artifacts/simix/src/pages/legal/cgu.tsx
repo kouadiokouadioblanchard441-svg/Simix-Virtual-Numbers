@@ -1,3 +1,4 @@
+import { SeoMeta } from "@/components/seo/SeoMeta";
 import { motion } from "framer-motion";
 import { ArrowLeft, FileText } from "lucide-react";
 import { SimixLogo } from "@/components/simix-logo";
@@ -20,6 +21,11 @@ export default function LegalCGU() {
 
   return (
     <div className="min-h-[100dvh] bg-background">
+      <SeoMeta
+        title="Conditions Générales d'Utilisation — SIMIX"
+        description="Lisez les Conditions Générales d'Utilisation de la plateforme SIMIX. Régissent l'accès et l'utilisation du service de numéros virtuels."
+        path="/legal/cgu"
+      />
       <div className="flex justify-center">
         <div className="w-full max-w-md bg-background relative shadow-2xl sm:border-x sm:border-border min-h-[100dvh]">
 
