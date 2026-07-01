@@ -178,33 +178,34 @@ export const METHOD_TO_CLAPAY_OPERATOR: Record<string, string> = {
  * Format a local phone number + dial code into the E.164-style string
  * Clapay expects for `customer_phone`.
  *
- * BUG FIXED: the caller used to do `${dialCode}${phoneNumber}` directly.
- * African local numbers are entered WITH their leading 0 (e.g. Ivory
- * Coast: "0701234567"), so naively concatenating produced an invalid
- * number like "+2250701234567" (dial code + a local number that still
- * has its own leading 0) — Clapay rejects this with
- * "Phone number is not valid". The leading 0 must be dropped once the
- * country's dial code is prepended.
+ * Many African countries (e.g. Ivory Coast since 2021, Senegal) have 10-digit
+ * local numbers where the leading 0 is part of the subscriber number — NOT a
+ * trunk prefix to be stripped. Stripping it produces an invalid number one
+ * digit too short (e.g. "+225701234567" instead of "+2250701234567").
+ *
+ * Rule applied here:
+ *  1. If the number already starts with the country digits → already E.164, return as-is.
+ *  2. Otherwise, prepend the country code without stripping any leading 0.
  *
  * Examples:
- *   formatClapayPhone("0701234567", "+225") → "+225701234567"
- *   formatClapayPhone("701234567",  "+225") → "+225701234567"
- *   formatClapayPhone("2250701234567", "+225") → "+225701234567"
+ *   formatClapayPhone("0701234567",    "+225") → "+2250701234567"  (CI — 0 is kept)
+ *   formatClapayPhone("701234567",     "+225") → "+225701234567"   (no leading 0)
+ *   formatClapayPhone("2250701234567", "+225") → "+2250701234567"  (already E.164)
+ *   formatClapayPhone("+2250701234567","+225") → "+2250701234567"  (already E.164 with +)
  */
 export function formatClapayPhone(phoneNumber: string, dialCode?: string): string {
   const countryDigits = (dialCode ?? "").replace(/\D/g, "");
-  let localDigits = phoneNumber.replace(/\D/g, "");
+  const localDigits = phoneNumber.replace(/\D/g, "");
 
-  // If the number already includes the country code prefix, strip it first
-  // so we don't double it up (e.g. "2250701234567" with dialCode "+225").
-  if (countryDigits && localDigits.startsWith(countryDigits)) {
-    localDigits = localDigits.slice(countryDigits.length);
+  if (!countryDigits) return `+${localDigits}`;
+
+  // If the number already includes the country code prefix, avoid doubling it.
+  if (localDigits.startsWith(countryDigits)) {
+    return `+${localDigits}`;
   }
 
-  // Drop the local trunk "0" prefix — invalid once the dial code is prepended.
-  localDigits = localDigits.replace(/^0+/, "");
-
-  return countryDigits ? `+${countryDigits}${localDigits}` : `+${localDigits}`;
+  // Prepend country code — do NOT strip leading 0, it may be part of the subscriber number.
+  return `+${countryDigits}${localDigits}`;
 }
 
 export function getOperatorCodeForMethod(methodSlug: string): string | null {

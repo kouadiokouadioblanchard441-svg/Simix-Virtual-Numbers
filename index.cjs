@@ -91124,12 +91124,12 @@ __export(clapay_exports, {
 });
 function formatClapayPhone(phoneNumber, dialCode) {
   const countryDigits = (dialCode ?? "").replace(/\D/g, "");
-  let localDigits = phoneNumber.replace(/\D/g, "");
-  if (countryDigits && localDigits.startsWith(countryDigits)) {
-    localDigits = localDigits.slice(countryDigits.length);
+  const localDigits = phoneNumber.replace(/\D/g, "");
+  if (!countryDigits) return `+${localDigits}`;
+  if (localDigits.startsWith(countryDigits)) {
+    return `+${localDigits}`;
   }
-  localDigits = localDigits.replace(/^0+/, "");
-  return countryDigits ? `+${countryDigits}${localDigits}` : `+${localDigits}`;
+  return `+${countryDigits}${localDigits}`;
 }
 function getOperatorCodeForMethod(methodSlug) {
   const slug = methodSlug.toLowerCase();
