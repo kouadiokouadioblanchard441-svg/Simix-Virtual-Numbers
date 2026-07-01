@@ -20,17 +20,33 @@ author = "agent"
 task = "workflow.run"
 args = "Start application"
 
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "API Server"
+
 [[workflows.workflow]]
 name = "Start application"
 author = "agent"
+
+[workflows.workflow.metadata]
+outputType = "webview"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "cd artifacts/simix && PORT=5000 pnpm run dev"
 waitForPort = 5000
 
+[[workflows.workflow]]
+name = "API Server"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "PORT=8080 NODE_ENV=development node --enable-source-maps index.cjs"
+waitForPort = 8080
+
 [workflows.workflow.metadata]
-outputType = "webview"
+outputType = "console"
 
 [agent]
 stack = "BEST_EFFORT_FALLBACK"
@@ -62,7 +78,7 @@ PAWAPAY_ENV = "production"
 VAPID_PUBLIC_KEY = "BPy-4QOhhUbnX3apfyA2LBL8YohvcFVV-av01mEzhI9tzfJBjzXX1Eu5UREKtOnd6W37HGZrOFwmlbYIttLATgc"
 VAPID_PRIVATE_KEY = "ZTms399zzZmgctCuW81L9ZYCAG0qFu9DcwJEFh1JVrQ"
 VAPID_SUBJECT = "mailto:support@simix.site"
-APP_URL = "https://5bff136c-16f2-44a8-882a-5d32f9923330-00-2q0yq614ryai3.picard.replit.dev"
+APP_URL = "https://81bb0add-565f-40cd-bca2-6d3e8197cf42-00-15pmv5q2igxl0.spock.replit.dev"
 PORT = "8080"
 
 [userenv.production]
