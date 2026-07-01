@@ -3,3 +3,4 @@
 - [5sim API complete integration](fivesim-complete.md) — All 19 endpoints integrated; hosting numbers (1day/3hours) require different poller (sms/inbox vs check); vendor endpoints need JWT admin auth.
 - [Auto-refund bug and sweep](auto-refund-sweep.md) — handleExpiredOrder never refunded (bug fixed); 30-min sweep runs every 5 min via triggerAutoRefundSweep(); admin endpoint POST /admin/fivesim/trigger-refund-sweep for manual trigger.
 - [Sync price protection architecture](sync-price-protection.md) — services use admin_price_modified flag; countries have same flag + popular/sortOrder excluded from conflict set; never put margin in sync SET clause.
+- [Clapay CI/BJ phone format](clapay-ci-phone-format.md) — CI and BJ reject E.164 (+2250595857098); Clapay expects local 10-digit format (0595857098). Fixed in formatClapayPhone() via LOCAL_FORMAT_ONLY_COUNTRIES set.
