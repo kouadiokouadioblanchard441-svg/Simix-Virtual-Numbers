@@ -583,18 +583,6 @@ function Hero() {
       <div className="glow-orb absolute top-1/2 -right-40 w-[500px] h-[400px] bg-purple-800/20" />
       <div className="glow-orb absolute bottom-0 left-1/3 w-[400px] h-[300px] bg-pink-900/15" />
 
-      {/* 3D phone — arrière-plan décoratif mobile */}
-      <div className="absolute inset-0 pointer-events-none overflow-hidden select-none" aria-hidden="true">
-        <img
-          src={phone3d}
-          alt=""
-          className="absolute top-1/2 -translate-y-1/2 right-[-8%] w-[75vw] max-w-[340px] opacity-40 lg:hidden object-contain drop-shadow-2xl"
-          style={{
-            maskImage: "radial-gradient(ellipse 90% 90% at 70% 50%, black 30%, transparent 75%)",
-            WebkitMaskImage: "radial-gradient(ellipse 90% 90% at 70% 50%, black 30%, transparent 75%)",
-          }}
-        />
-      </div>
 
       <Section className="relative z-10">
         <div className="grid lg:grid-cols-2 gap-10 items-center">
@@ -662,6 +650,27 @@ function Hero() {
                 </div>
               ))}
             </div>
+
+            {/* Image 3D visible sur mobile uniquement */}
+            <div className="lg:hidden flex justify-center mt-6 relative">
+              <div className="relative float-slow">
+                <img src={phone3d} alt="Simix App" className="w-[78vw] max-w-[320px] object-contain drop-shadow-2xl" />
+                <div className="absolute top-4 -left-2 glass px-3 py-1.5 rounded-xl shadow-lg border border-violet-500/20 flex items-center gap-1.5">
+                  <img src="/3d/icon-lightning.png" alt="" className="w-4 h-4 object-contain" />
+                  <div>
+                    <div className="text-[10px] text-zinc-400">Solde</div>
+                    <div className="text-xs font-bold text-white">5 000 <span className="text-[9px] text-zinc-500">FCFA</span></div>
+                  </div>
+                </div>
+                <div className="absolute bottom-10 -right-2 glass px-3 py-1.5 rounded-xl shadow-lg border border-emerald-500/20 flex items-center gap-1.5">
+                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  <div>
+                    <div className="text-[10px] font-semibold text-white">SMS reçu</div>
+                    <div className="text-[9px] text-zinc-400">Code : <span className="text-emerald-400 font-mono font-bold">847291</span></div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </motion.div>
 
           <motion.div
@@ -670,9 +679,9 @@ function Hero() {
             transition={{ duration: 0.8, delay: 0.2 }}
             className="hidden lg:flex items-center justify-center relative"
           >
-            <div className="relative w-full max-w-[480px] h-[520px] flex items-center justify-center">
+            <div className="relative w-full max-w-[500px] h-[560px] flex items-center justify-center">
               <div className="float-slow z-10">
-                <img src={phone3d} alt="Simix App" className="w-[420px] drop-shadow-2xl object-contain" />
+                <img src={phone3d} alt="Simix App" className="w-[440px] drop-shadow-2xl object-contain" />
               </div>
               <div className="absolute right-0 top-20 z-20 float-fast">
                 <div className="glass px-4 py-2.5 rounded-2xl shadow-lg border border-emerald-500/20 flex items-center gap-2">
