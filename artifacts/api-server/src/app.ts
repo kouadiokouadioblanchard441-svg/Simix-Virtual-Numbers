@@ -117,6 +117,7 @@ app.use(
      * Script nonces would be ideal but require SSR integration — this is a
      * SPA so all scripts are hashed by Vite at build time from /assets/.    */
     contentSecurityPolicy: {
+      useDefaults: false,
       directives: {
         defaultSrc: ["'self'"],
         scriptSrc: ["'self'", "'unsafe-inline'", "https://challenges.cloudflare.com"],
@@ -134,6 +135,9 @@ app.use(
         baseUri: ["'self'"],
         formAction: ["'self'"],
         scriptSrcAttr: ["'none'"],
+        // upgrade-insecure-requests is intentionally omitted — the app is served
+        // via Replit's HTTPS proxy so the browser is already on HTTPS; enabling
+        // this directive breaks HTTP-only preview contexts (e.g., Replit screenshot tool).
       },
     },
 
