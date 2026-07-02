@@ -583,6 +583,19 @@ function Hero() {
       <div className="glow-orb absolute top-1/2 -right-40 w-[500px] h-[400px] bg-purple-800/20" />
       <div className="glow-orb absolute bottom-0 left-1/3 w-[400px] h-[300px] bg-pink-900/15" />
 
+      {/* 3D phone — arrière-plan décoratif */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden select-none" aria-hidden="true">
+        <img
+          src="/simix_phone_3d.png"
+          alt=""
+          className="absolute bottom-[-2%] right-[-6%] w-[80vw] max-w-[360px] opacity-[0.18] lg:hidden object-contain"
+          style={{
+            maskImage: "radial-gradient(ellipse 85% 85% at 82% 68%, black 25%, transparent 70%)",
+            WebkitMaskImage: "radial-gradient(ellipse 85% 85% at 82% 68%, black 25%, transparent 70%)",
+          }}
+        />
+      </div>
+
       <Section className="relative z-10">
         <div className="grid lg:grid-cols-2 gap-10 items-center">
           <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7 }}>
