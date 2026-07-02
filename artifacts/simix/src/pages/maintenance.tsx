@@ -202,7 +202,7 @@ export default function MaintenancePage() {
               Pour toute information, contactez-nous :
             </div>
             <a
-              href="mailto:support@simix.site"
+              href="mailto:simixsupport@gmail.com"
               style={{
                 color: "#2563EB",
                 fontWeight: 700,
@@ -210,7 +210,7 @@ export default function MaintenancePage() {
                 textDecoration: "none",
               }}
             >
-              support@simix.site
+              simixsupport@gmail.com
             </a>
           </div>
         </div>
