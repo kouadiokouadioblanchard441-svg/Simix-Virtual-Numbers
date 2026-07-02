@@ -165,3 +165,97 @@ body {
 /* ── Hide scrollbar ── */
 .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 .hide-scrollbar::-webkit-scrollbar { display: none; }
+
+/* ═══════════════════════════════════════════════════════════════
+   MOBILE APP UX — Simix PWA feel
+   ═══════════════════════════════════════════════════════════════ */
+
+/* 1. Supprime le flash orange/bleu au tap sur mobile */
+* {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* 2. Désactive le bounce/overscroll navigateur */
+html, body {
+  overscroll-behavior: none;
+  overscroll-behavior-y: none;
+}
+
+/* 3. Élimine le délai de 300ms au tap + défilement natif iOS */
+button, a, label, [role="button"], [role="tab"], [role="menuitem"] {
+  touch-action: manipulation;
+}
+
+/* 4. Feedback press global sur les boutons (remplacé par active:scale-* Tailwind si présent) */
+button:not(:disabled):active {
+  transform: scale(0.97);
+  transition: transform 0.08s ease;
+}
+
+/* 5. Fluidité des transitions CSS */
+button, a[href] {
+  transition-property: color, background-color, border-color, opacity, transform, box-shadow;
+  transition-duration: 150ms;
+  transition-timing-function: ease;
+}
+
+/* 6. Interdit la sélection de texte sur les éléments de navigation */
+nav, [role="navigation"], [role="tablist"], .bottom-nav {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* 7. Défilement fluide natif sur iOS */
+.overflow-y-auto, .overflow-auto, .overflow-scroll {
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+}
+
+/* 8. Curseur pointer cohérent */
+button, [role="button"], [role="tab"], label[for], summary {
+  cursor: pointer;
+}
+
+/* 9. Transitions de page — fade + slide subtil */
+.page-transition-enter {
+  opacity: 0;
+  transform: translateY(6px);
+}
+.page-transition-enter-active {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 200ms ease-out, transform 200ms ease-out;
+}
+.page-transition-exit {
+  opacity: 1;
+  transform: translateY(0);
+}
+.page-transition-exit-active {
+  opacity: 0;
+  transform: translateY(-4px);
+  transition: opacity 150ms ease-in, transform 150ms ease-in;
+}
+
+/* 10. Inputs — curseur correct + no zoom sur iOS (font-size >= 16px) */
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="tel"],
+input[type="number"],
+input[type="search"],
+textarea,
+select {
+  font-size: max(16px, 1rem);
+}
+
+/* 11. Smooth scroll global */
+html {
+  scroll-behavior: smooth;
+}
+
+/* 12. Optimisation rendu GPU pour les éléments animés */
+.motion-safe {
+  will-change: transform, opacity;
+}

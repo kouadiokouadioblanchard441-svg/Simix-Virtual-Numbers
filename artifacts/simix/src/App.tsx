@@ -5,7 +5,8 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { SimixToastProvider } from "@/lib/simix-toast";
 import { ConfirmDialogProvider } from "@/components/ui/confirm-dialog";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
+import { AnimatePresence, motion, type Variants } from "framer-motion";
 
 const BASE_APP = import.meta.env.BASE_URL.replace(/\/$/, "");
 async function _fetchMaintenanceStatus(): Promise<{ active: boolean }> {
@@ -115,12 +116,33 @@ import SecureLogin from "@/pages/admin/secure-login";
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      refetchOnWindowFocus: true,
+      refetchOnWindowFocus: false,   // évite les refetch perturbants au retour de tab
       retry: 1,
-      staleTime: 0,
+      staleTime: 30_000,             // 30s — réduit les appels réseau inutiles
+      gcTime: 5 * 60 * 1000,        // 5min — conserve les données en mémoire
     },
   },
 });
+
+/* ── Variantes de transition de page ── */
+const pageVariants: Variants = {
+  initial: { opacity: 0, y: 6 },
+  animate: { opacity: 1, y: 0, transition: { duration: 0.18, ease: [0.4, 0, 0.2, 1] } },
+  exit:    { opacity: 0, y: -4, transition: { duration: 0.12, ease: [0.4, 0, 1, 1] } },
+};
+
+/* ── Réinitialise le scroll à chaque changement de route ── */
+function ScrollToTop() {
+  const [location] = useLocation();
+  const prevLocation = useRef(location);
+  useEffect(() => {
+    if (prevLocation.current !== location) {
+      prevLocation.current = location;
+      window.scrollTo({ top: 0, behavior: "instant" });
+    }
+  }, [location]);
+  return null;
+}
 
 function ThemeProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
@@ -209,39 +231,50 @@ function InnerRouter() {
   return (
     <div className="flex justify-center min-h-[100dvh] bg-black">
       <div className="w-full max-w-md bg-background relative shadow-2xl sm:border-x sm:border-border overflow-hidden">
-        <Switch>
-          <Route path="/bienvenue" component={Welcome} />
-          <Route path="/splash" component={Splash} />
-          <Route path="/login" component={Login} />
-          <Route path="/register" component={Register} />
-          <Route path="/verify-email" component={VerifyOtp} />
-          <Route path="/forgot-password" component={ForgotPassword} />
-          <Route path="/reset-password" component={ResetPassword} />
-          <Route path="/dashboard" component={Dashboard} />
-          <Route path="/profile" component={Profile} />
-          <Route path="/wallet" component={Wallet} />
-          <Route path="/history" component={History} />
-          <Route path="/history/crypto" component={CryptoHistory} />
-          <Route path="/services" component={Services} />
-          <Route path="/countries" component={Countries} />
-          <Route path="/numbers/new" component={NumberDetails} />
-          <Route path="/numbers/:id" component={NumberAssigned} />
-          <Route path="/profile/informations" component={ProfileInformations} />
-          <Route path="/profile/securite" component={ProfileSecurite} />
-          <Route path="/notifications" component={NotificationsPage} />
-          <Route path="/profile/notifications" component={ProfileNotifications} />
-          <Route path="/profile/paiement" component={ProfilePaiement} />
-          <Route path="/profile/confidentialite" component={ProfileConfidentialite} />
-          <Route path="/profile/aide" component={ProfileAide} />
-          <Route path="/profile/aide/centre" component={ProfileAideCentre} />
-          <Route path="/profile/politique-confidentialite" component={ProfilePolitiqueConfidentialite} />
-          <Route path="/profile/cgu" component={ProfileCGU} />
-          <Route path="/profile/cookies" component={ProfileCookies} />
-          <Route path="/profile/mentions-legales" component={ProfileMentionsLegales} />
-          <Route path="/profile/parrainage" component={ProfileParrainage} />
-          <Route path="/profile/api-docs" component={ProfileApiDocs} />
-          <Route component={NotFound} />
-        </Switch>
+        <AnimatePresence mode="wait" initial={false}>
+          <motion.div
+            key={location}
+            variants={pageVariants}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            style={{ minHeight: "100dvh" }}
+          >
+            <Switch>
+              <Route path="/bienvenue" component={Welcome} />
+              <Route path="/splash" component={Splash} />
+              <Route path="/login" component={Login} />
+              <Route path="/register" component={Register} />
+              <Route path="/verify-email" component={VerifyOtp} />
+              <Route path="/forgot-password" component={ForgotPassword} />
+              <Route path="/reset-password" component={ResetPassword} />
+              <Route path="/dashboard" component={Dashboard} />
+              <Route path="/profile" component={Profile} />
+              <Route path="/wallet" component={Wallet} />
+              <Route path="/history" component={History} />
+              <Route path="/history/crypto" component={CryptoHistory} />
+              <Route path="/services" component={Services} />
+              <Route path="/countries" component={Countries} />
+              <Route path="/numbers/new" component={NumberDetails} />
+              <Route path="/numbers/:id" component={NumberAssigned} />
+              <Route path="/profile/informations" component={ProfileInformations} />
+              <Route path="/profile/securite" component={ProfileSecurite} />
+              <Route path="/notifications" component={NotificationsPage} />
+              <Route path="/profile/notifications" component={ProfileNotifications} />
+              <Route path="/profile/paiement" component={ProfilePaiement} />
+              <Route path="/profile/confidentialite" component={ProfileConfidentialite} />
+              <Route path="/profile/aide" component={ProfileAide} />
+              <Route path="/profile/aide/centre" component={ProfileAideCentre} />
+              <Route path="/profile/politique-confidentialite" component={ProfilePolitiqueConfidentialite} />
+              <Route path="/profile/cgu" component={ProfileCGU} />
+              <Route path="/profile/cookies" component={ProfileCookies} />
+              <Route path="/profile/mentions-legales" component={ProfileMentionsLegales} />
+              <Route path="/profile/parrainage" component={ProfileParrainage} />
+              <Route path="/profile/api-docs" component={ProfileApiDocs} />
+              <Route component={NotFound} />
+            </Switch>
+          </motion.div>
+        </AnimatePresence>
       </div>
     </div>
   );
@@ -263,6 +296,7 @@ function AppShell() {
 
   return (
     <PinLockProvider>
+      <ScrollToTop />
       <MaintenanceGuard>
         <InnerRouter />
       </MaintenanceGuard>
