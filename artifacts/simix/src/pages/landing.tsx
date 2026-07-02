@@ -7,6 +7,7 @@ import { SimixLogo, SimixIcon } from "@/components/simix-logo";
 import { useToast } from "@/hooks/use-toast";
 import { ServiceIcon } from "@/components/service-icon";
 import { usePWAInstallContext } from "@/context/PWAInstallContext";
+import phone3d from "@/assets/simix_phone_3d_new.png";
 import wallet3d from "@/assets/simix_wallet_3d.png";
 import screenDash from "@/assets/screen-dashboard.png";
 import screenWallet from "@/assets/screen-wallet.png";
@@ -581,6 +582,20 @@ function Hero() {
       <div className="glow-orb absolute -top-20 -left-20 w-[600px] h-[600px] bg-violet-600/15" />
       <div className="glow-orb absolute top-1/2 -right-40 w-[500px] h-[400px] bg-purple-800/20" />
       <div className="glow-orb absolute bottom-0 left-1/3 w-[400px] h-[300px] bg-pink-900/15" />
+
+      {/* Image de fond téléphone */}
+      <div className="absolute inset-0 pointer-events-none select-none overflow-hidden">
+        <img
+          src={phone3d}
+          alt=""
+          aria-hidden="true"
+          className="absolute right-[-8%] top-1/2 -translate-y-1/2 w-[80vw] max-w-[420px] lg:max-w-[540px] object-contain opacity-40 lg:opacity-35 drop-shadow-2xl"
+        />
+        {/* Dégradé gauche pour protéger la lisibilité du texte */}
+        <div className="absolute inset-0 bg-gradient-to-r from-[#0d0a1f] via-[#0d0a1f]/75 to-transparent lg:via-[#0d0a1f]/50" />
+        {/* Dégradé haut/bas */}
+        <div className="absolute inset-0 bg-gradient-to-t from-[#0d0a1f]/70 via-transparent to-[#0d0a1f]/50" />
+      </div>
 
 
       <Section className="relative z-10">
