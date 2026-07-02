@@ -65,6 +65,15 @@ export function MaintenanceGuard({ children }: { children: React.ReactNode }) {
     }
   }, [status, location, setLocation]);
 
+  /* Landing page specific: while the maintenance status is still loading
+   * (status === undefined), render nothing at all. Without this, the
+   * vitrine's fixed violet Navbar (z-50) appears for ~200ms before the
+   * maintenance page mounts and replaces it. Other pages have their own
+   * loading/auth states so they don't need this treatment. */
+  if (!status && !isAdminPath && location === "/") {
+    return null;
+  }
+
   /* Block non-admin users during maintenance.
    * We render the maintenance page IN PLACE (no redirect) so:
    *  - No flash of real content before the redirect
