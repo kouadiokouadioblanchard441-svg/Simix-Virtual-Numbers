@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { adminApi } from "@/lib/admin-api";
 import { AdminGuard } from "@/components/admin-guard";
 import { AdminLayout } from "@/components/admin-layout";
-import { Loader2, Save, Wifi, WifiOff, CheckCircle2, XCircle, ChevronDown, ChevronUp, FlaskConical, RefreshCw, CheckCheck, Ban, Mail, ShieldCheck, ShieldOff, Send, Wrench } from "lucide-react";
+import { Loader2, Save, Wifi, WifiOff, CheckCircle2, XCircle, ChevronDown, ChevronUp, FlaskConical, RefreshCw, CheckCheck, Ban, Mail, ShieldCheck, ShieldOff, Send, Wrench, Power, PowerOff, Eye, AlertTriangle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 const SETTINGS_SCHEMA = [
@@ -63,18 +63,7 @@ const SETTINGS_SCHEMA = [
     group: "Fonctionnalités",
     fields: [
       { key: "registration_enabled", label: "Inscription activée", placeholder: "true", type: "text" },
-      { key: "maintenance_mode", label: "Mode maintenance", placeholder: "false", type: "text", hint: "Gérable aussi directement depuis le tableau de bord" },
       { key: "sms_simulation", label: "Simulation SMS (développement)", placeholder: "true", type: "text" },
-    ],
-  },
-  {
-    group: "Page de Maintenance",
-    fields: [
-      { key: "maintenance_title", label: "Titre de la page", placeholder: "Le site est actuellement en maintenance.", type: "text", hint: "Titre principal affiché en rouge — ex : Maintenance planifiée ce soir." },
-      { key: "maintenance_subtitle", label: "Message d'information", placeholder: "Nous travaillons à améliorer votre expérience. Veuillez réessayer dans quelques instants.", type: "textarea", hint: "Message affiché sous le titre — donnez une raison ou plus de détails." },
-      { key: "maintenance_estimated_time", label: "Temps estimé de retour", placeholder: "Bientôt disponible", type: "text", hint: "Ex : 30 minutes · 2 heures · Ce soir à 20h00" },
-      { key: "maintenance_contact_email", label: "Email de contact", placeholder: "simixsupport@gmail.com", type: "email", hint: "Email cliquable affiché dans l'encart de contact sur la page maintenance." },
-      { key: "maintenance_button_text", label: "Texte du bouton", placeholder: "Réessayer plus tard", type: "text", hint: "Texte du bouton de vérification en bas de la page." },
     ],
   },
   {
@@ -702,7 +691,7 @@ function EmailOtpSection({
   );
 }
 
-/* ─── Maintenance page live preview ─── */
+/* ─── Maintenance live preview ─── */
 function MaintenancePreview({
   title, subtitle, estimatedTime, contactEmail, buttonText,
 }: {
@@ -716,55 +705,313 @@ function MaintenancePreview({
   const bt = buttonText    || "Réessayer plus tard";
 
   return (
-    <div className="rounded-xl border border-zinc-700/60 bg-zinc-950/60 overflow-hidden">
-      {/* Header */}
-      <div className="flex items-center gap-2 px-4 py-2.5 border-b border-zinc-800 bg-zinc-900/80">
+    <div className="rounded-xl border border-zinc-700/60 bg-zinc-950/60 overflow-hidden flex flex-col h-full">
+      {/* Browser chrome */}
+      <div className="flex items-center gap-2 px-4 py-2.5 border-b border-zinc-800 bg-zinc-900/80 shrink-0">
         <div className="flex gap-1.5">
           <div className="w-2.5 h-2.5 rounded-full bg-red-500/70" />
           <div className="w-2.5 h-2.5 rounded-full bg-yellow-500/70" />
           <div className="w-2.5 h-2.5 rounded-full bg-green-500/70" />
         </div>
-        <span className="text-[10px] text-zinc-500 ml-1 font-mono">Aperçu — Page de maintenance</span>
+        <div className="flex-1 mx-2 bg-zinc-800 rounded px-3 py-0.5 text-[10px] text-zinc-500 font-mono truncate">
+          simix.site/maintenance
+        </div>
+        <Eye className="w-3 h-3 text-zinc-600" />
       </div>
 
-      {/* Preview body — white bg like real page */}
-      <div className="bg-white p-5 space-y-3.5" style={{ fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" }}>
-        {/* Title */}
-        <p style={{ color: "#DC2626", fontWeight: 800, fontSize: 13, textAlign: "center", lineHeight: 1.35, margin: 0 }}>
-          {t}
-        </p>
-
-        {/* Subtitle */}
-        <p style={{ color: "#6B7280", fontSize: 11, textAlign: "center", lineHeight: 1.55, margin: 0 }}>
-          {s}
-        </p>
-
-        <div style={{ height: 1, backgroundColor: "#E5E7EB" }} />
-
-        {/* Status */}
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <span style={{ fontWeight: 700, color: "#111827", fontSize: 11 }}>Statut :</span>
-          <span style={{ backgroundColor: "#DC2626", color: "#fff", fontWeight: 700, fontSize: 10, padding: "2px 8px", borderRadius: 999, textTransform: "uppercase" as const }}>
-            Maintenance
-          </span>
+      {/* Scrollable page preview */}
+      <div className="overflow-y-auto flex-1" style={{ fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif", backgroundColor: "#fff" }}>
+        {/* Hero area (simplified) */}
+        <div style={{ background: "linear-gradient(135deg, #FEF2F2 0%, #FFF7ED 100%)", padding: "20px 20px 14px", display: "flex", justifyContent: "center" }}>
+          <div style={{ width: 56, height: 56, borderRadius: "50%", background: "#FEE2E2", border: "2px solid #FECACA", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#DC2626" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="3" />
+              <path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14" />
+            </svg>
+          </div>
         </div>
 
-        {/* Estimated time */}
-        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-          <span style={{ color: "#374151", fontSize: 11 }}>
-            Temps estimé : <strong style={{ color: "#DC2626" }}>{et}</strong>
-          </span>
+        <div style={{ padding: "16px 20px 24px", display: "flex", flexDirection: "column", gap: 0 }}>
+          {/* Title */}
+          <p style={{ color: "#DC2626", fontWeight: 800, fontSize: 14, textAlign: "center", lineHeight: 1.35, margin: "0 0 10px" }}>
+            {t}
+          </p>
+
+          {/* Subtitle */}
+          <p style={{ color: "#6B7280", fontSize: 11.5, textAlign: "center", lineHeight: 1.6, margin: "0 0 18px" }}>
+            {s}
+          </p>
+
+          <div style={{ height: 1, backgroundColor: "#E5E7EB", margin: "0 0 16px" }} />
+
+          {/* Status row */}
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
+            <span style={{ fontWeight: 700, color: "#111827", fontSize: 12 }}>Statut :</span>
+            <span style={{ backgroundColor: "#DC2626", color: "#fff", fontWeight: 700, fontSize: 10, letterSpacing: "0.06em", padding: "3px 10px", borderRadius: 999, textTransform: "uppercase" as const }}>
+              Maintenance
+            </span>
+          </div>
+
+          {/* Estimated time */}
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
+            <span style={{ width: 26, height: 26, borderRadius: "50%", border: "2px solid #D1D5DB", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#6B7280" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10" />
+                <polyline points="12 6 12 12 16 14" />
+              </svg>
+            </span>
+            <span style={{ color: "#374151", fontSize: 12 }}>
+              Temps estimé : <strong style={{ color: "#DC2626", fontWeight: 700 }}>{et}</strong>
+            </span>
+          </div>
+
+          {/* Contact box */}
+          <div style={{ border: "1px solid #E5E7EB", borderRadius: 12, padding: "11px 14px", display: "flex", alignItems: "center", gap: 12, marginBottom: 20, backgroundColor: "#FAFAFA" }}>
+            <span style={{ width: 32, height: 32, borderRadius: "50%", border: "2px solid #BFDBFE", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, backgroundColor: "#EFF6FF" }}>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#2563EB" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="2" y="4" width="20" height="16" rx="2" />
+                <polyline points="2,4 12,14 22,4" />
+              </svg>
+            </span>
+            <div>
+              <div style={{ color: "#6B7280", fontSize: 10, marginBottom: 2 }}>Pour toute information, contactez-nous :</div>
+              <span style={{ color: "#2563EB", fontWeight: 700, fontSize: 12 }}>{em}</span>
+            </div>
+          </div>
+
+          {/* Retry button */}
+          <div style={{ backgroundColor: "#1D4ED8", borderRadius: 12, padding: "12px 16px", textAlign: "center" as const }}>
+            <span style={{ color: "#fff", fontWeight: 700, fontSize: 13 }}>{bt}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ─── Dedicated Maintenance Section ─── */
+function MaintenanceSection({
+  values,
+  onChange,
+}: {
+  values: Record<string, string>;
+  onChange: (key: string, val: string) => void;
+}) {
+  const { toast } = useToast();
+  const qc = useQueryClient();
+  const [confirmOpen, setConfirmOpen] = useState(false);
+
+  const isActive = values["maintenance_mode"] === "true";
+
+  /* Toggle mutation — saves immediately; patches cache in-place to avoid
+     overwriting unsaved maintenance text edits in the parent state. */
+  const toggleMutation = useMutation({
+    mutationFn: (activate: boolean) =>
+      adminApi.updateSettings({ maintenance_mode: activate ? "true" : "false" }),
+    onSuccess: (_data, activate) => {
+      // Update local value immediately
+      onChange("maintenance_mode", activate ? "true" : "false");
+      // Patch cached settings in-place (no refetch → no useEffect reset)
+      qc.setQueryData(["admin-settings"], (old: Record<string, string> | undefined) =>
+        old ? { ...old, maintenance_mode: activate ? "true" : "false" } : old,
+      );
+      toast({
+        title: activate ? "🔒 Mode maintenance activé" : "✅ Mode maintenance désactivé",
+        description: activate
+          ? "Les utilisateurs voient maintenant la page de maintenance."
+          : "La plateforme est de nouveau accessible à tous.",
+      });
+    },
+    onError: (e) => toast({ title: "Erreur", description: (e as Error).message, variant: "destructive" }),
+  });
+
+  /* Content-only save mutation */
+  const contentMutation = useMutation({
+    mutationFn: () =>
+      adminApi.updateSettings({
+        maintenance_title:          values["maintenance_title"]          ?? "",
+        maintenance_subtitle:       values["maintenance_subtitle"]       ?? "",
+        maintenance_estimated_time: values["maintenance_estimated_time"] ?? "",
+        maintenance_contact_email:  values["maintenance_contact_email"]  ?? "",
+        maintenance_button_text:    values["maintenance_button_text"]    ?? "",
+      }),
+    onSuccess: () => toast({ title: "Contenu de la page sauvegardé ✓" }),
+    onError: (e) => toast({ title: "Erreur", description: (e as Error).message, variant: "destructive" }),
+  });
+
+  const fields = [
+    { key: "maintenance_title",          label: "Titre principal",          placeholder: "Le site est actuellement en maintenance.", type: "text",     hint: "Affiché en rouge, en grand — soyez précis et rassurant.", maxLen: 100 },
+    { key: "maintenance_subtitle",       label: "Message d'information",    placeholder: "Nous travaillons à améliorer votre expérience. Veuillez réessayer dans quelques instants.", type: "textarea", hint: "Donnez une raison ou plus de détails sur la durée.", maxLen: 300 },
+    { key: "maintenance_estimated_time", label: "Temps estimé de retour",   placeholder: "Bientôt disponible", type: "text",     hint: "Ex : 30 minutes · 2 heures · Ce soir à 20h00", maxLen: 50 },
+    { key: "maintenance_contact_email",  label: "Email de contact",         placeholder: "simixsupport@gmail.com",  type: "email",    hint: "Lien mailto cliquable affiché dans l'encart contact.", maxLen: 80 },
+    { key: "maintenance_button_text",    label: "Texte du bouton",          placeholder: "Réessayer plus tard",     type: "text",     hint: "Texte du bouton principal en bas de la page.", maxLen: 40 },
+  ] as const;
+
+  return (
+    <div className="lg:col-span-2 bg-zinc-900 border border-red-500/30 rounded-xl overflow-hidden">
+      {/* ── Section header ── */}
+      <div className="flex items-center gap-3 px-6 py-4 border-b border-zinc-800">
+        <div className="w-8 h-8 rounded-full bg-red-500/15 border border-red-500/30 flex items-center justify-center shrink-0">
+          <Wrench className="w-4 h-4 text-red-400" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <h2 className="text-sm font-semibold text-white">Page de Maintenance</h2>
+          <p className="text-xs text-zinc-500 mt-0.5">Personnalisez le message affiché aux utilisateurs pendant une interruption de service</p>
+        </div>
+        <span className="text-[10px] px-2.5 py-1 rounded-full bg-red-500/10 text-red-400 border border-red-500/20 font-medium shrink-0">
+          Contenu de la page
+        </span>
+      </div>
+
+      {/* ── Toggle banner ── */}
+      <div className={`flex items-center gap-4 px-6 py-4 border-b border-zinc-800 transition-colors duration-300 ${
+        isActive ? "bg-red-950/30" : "bg-zinc-800/30"
+      }`}>
+        {/* Status indicator */}
+        <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${isActive ? "bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.6)] animate-pulse" : "bg-zinc-600"}`} />
+        <div className="flex-1 min-w-0">
+          <div className={`text-sm font-semibold ${isActive ? "text-red-300" : "text-zinc-300"}`}>
+            {isActive ? "Maintenance active — plateforme inaccessible aux utilisateurs" : "Plateforme opérationnelle — aucune maintenance en cours"}
+          </div>
+          <div className="text-xs text-zinc-500 mt-0.5">
+            {isActive
+              ? "Les visiteurs sont redirigés vers la page de maintenance ci-dessous"
+              : "Activez le mode maintenance avant une intervention technique"}
+          </div>
+        </div>
+        {/* ON/OFF toggle */}
+        {isActive ? (
+          <button
+            onClick={() => toggleMutation.mutate(false)}
+            disabled={toggleMutation.isPending}
+            className="shrink-0 flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-sm font-semibold rounded-lg transition-colors"
+          >
+            {toggleMutation.isPending
+              ? <Loader2 className="w-4 h-4 animate-spin" />
+              : <Power className="w-4 h-4" />}
+            Désactiver la maintenance
+          </button>
+        ) : (
+          <button
+            onClick={() => setConfirmOpen(true)}
+            disabled={toggleMutation.isPending}
+            className="shrink-0 flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white text-sm font-semibold rounded-lg transition-colors"
+          >
+            {toggleMutation.isPending
+              ? <Loader2 className="w-4 h-4 animate-spin" />
+              : <PowerOff className="w-4 h-4" />}
+            Activer la maintenance
+          </button>
+        )}
+      </div>
+
+      {/* ── Confirmation dialog overlay ── */}
+      {confirmOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="bg-zinc-900 border border-red-500/40 rounded-2xl p-6 max-w-sm w-full mx-4 shadow-2xl shadow-red-500/10">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-full bg-red-500/15 border border-red-500/30 flex items-center justify-center">
+                <AlertTriangle className="w-5 h-5 text-red-400" />
+              </div>
+              <div>
+                <h3 className="text-white font-bold text-base">Activer la maintenance ?</h3>
+                <p className="text-zinc-400 text-xs mt-0.5">Cette action bloque l'accès à la plateforme</p>
+              </div>
+            </div>
+            <p className="text-zinc-400 text-sm leading-relaxed mb-6">
+              Les utilisateurs verront immédiatement la page de maintenance et ne pourront plus accéder à la plateforme jusqu'à ce que vous désactiviez le mode.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setConfirmOpen(false)}
+                className="flex-1 px-4 py-2.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-sm font-medium rounded-lg transition-colors"
+              >
+                Annuler
+              </button>
+              <button
+                onClick={() => { setConfirmOpen(false); toggleMutation.mutate(true); }}
+                disabled={toggleMutation.isPending}
+                className="flex-1 px-4 py-2.5 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white text-sm font-bold rounded-lg transition-colors"
+              >
+                {toggleMutation.isPending ? "Activation…" : "Activer maintenant"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Editor + Preview ── */}
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-0">
+        {/* Left: Form */}
+        <div className="p-6 space-y-5 border-r border-zinc-800/60">
+          <div className="flex items-center gap-2 mb-1">
+            <h3 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">Éditeur de contenu</h3>
+          </div>
+
+          {fields.map(({ key, label, placeholder, type, hint, maxLen }) => {
+            const val = values[key] ?? "";
+            const isTextarea = type === "textarea";
+            return (
+              <div key={key}>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-xs font-medium text-zinc-300">{label}</label>
+                  <span className={`text-[10px] font-mono ${val.length > maxLen * 0.9 ? "text-orange-400" : "text-zinc-600"}`}>
+                    {val.length}/{maxLen}
+                  </span>
+                </div>
+                {isTextarea ? (
+                  <textarea
+                    value={val}
+                    onChange={e => onChange(key, e.target.value)}
+                    placeholder={placeholder}
+                    rows={3}
+                    maxLength={maxLen}
+                    className="w-full px-3 py-2.5 text-sm bg-zinc-800 border border-zinc-700 rounded-lg text-white placeholder:text-zinc-500 focus:outline-none focus:border-red-500 transition-colors resize-none"
+                  />
+                ) : (
+                  <input
+                    type={type}
+                    value={val}
+                    onChange={e => onChange(key, e.target.value)}
+                    placeholder={placeholder}
+                    maxLength={maxLen}
+                    className="w-full px-3 py-2.5 text-sm bg-zinc-800 border border-zinc-700 rounded-lg text-white placeholder:text-zinc-500 focus:outline-none focus:border-red-500 transition-colors"
+                  />
+                )}
+                {hint && <p className="text-[11px] text-zinc-600 mt-1 leading-relaxed">{hint}</p>}
+              </div>
+            );
+          })}
+
+          <button
+            onClick={() => contentMutation.mutate()}
+            disabled={contentMutation.isPending}
+            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-red-600/80 hover:bg-red-600 disabled:opacity-50 text-white text-sm font-semibold rounded-lg transition-colors mt-2"
+          >
+            {contentMutation.isPending
+              ? <><Loader2 className="w-4 h-4 animate-spin" /> Sauvegarde…</>
+              : <><Save className="w-4 h-4" /> Sauvegarder le contenu</>}
+          </button>
         </div>
 
-        {/* Contact */}
-        <div style={{ border: "1px solid #E5E7EB", borderRadius: 8, padding: "8px 10px", backgroundColor: "#FAFAFA" }}>
-          <div style={{ color: "#6B7280", fontSize: 10, marginBottom: 2 }}>Pour toute information, contactez-nous :</div>
-          <span style={{ color: "#2563EB", fontWeight: 700, fontSize: 11 }}>{em}</span>
-        </div>
-
-        {/* Button */}
-        <div style={{ backgroundColor: "#1D4ED8", borderRadius: 8, padding: "9px 14px", textAlign: "center" as const }}>
-          <span style={{ color: "#fff", fontWeight: 700, fontSize: 12 }}>{bt}</span>
+        {/* Right: Live preview */}
+        <div className="p-6 flex flex-col gap-3">
+          <div className="flex items-center justify-between mb-1">
+            <h3 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">Aperçu en direct</h3>
+            <span className="text-[10px] text-zinc-600 flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block" />
+              Mis à jour en temps réel
+            </span>
+          </div>
+          <div className="flex-1" style={{ minHeight: 420 }}>
+            <MaintenancePreview
+              title={values["maintenance_title"]}
+              subtitle={values["maintenance_subtitle"]}
+              estimatedTime={values["maintenance_estimated_time"]}
+              contactEmail={values["maintenance_contact_email"]}
+              buttonText={values["maintenance_button_text"]}
+            />
+          </div>
         </div>
       </div>
     </div>
@@ -829,22 +1076,29 @@ function SettingsContent() {
           resendApiKey={values["resend_api_key"]}
         />
 
+        {/* ── Dedicated maintenance section (full width) ── */}
+        <MaintenanceSection
+          values={values}
+          onChange={(key, val) => {
+            setValues(v => ({ ...v, [key]: val }));
+            // Don't mark global dirty for maintenance — it has its own save button
+          }}
+        />
+
         {SETTINGS_SCHEMA.map(({ group, fields }) => {
-          const isPawaPay     = group === "PawaPay — Mobile Money";
-          const isClapay      = group === "Clapay — Mobile Money";
-          const isGateway     = group === "Passerelle de paiement";
-          const isResend      = group === "Resend — Emails";
-          const isMaintenance = group === "Page de Maintenance";
+          const isPawaPay = group === "PawaPay — Mobile Money";
+          const isClapay  = group === "Clapay — Mobile Money";
+          const isGateway = group === "Passerelle de paiement";
+          const isResend  = group === "Resend — Emails";
 
           return (
             <div
               key={group}
               className={`bg-zinc-900 border rounded-xl p-5 space-y-4 ${
-                isPawaPay     ? "border-orange-500/30 lg:col-span-2" :
-                isClapay      ? "border-blue-500/30 lg:col-span-2"  :
-                isMaintenance ? "border-red-500/30 lg:col-span-2"   :
-                isGateway     ? "border-emerald-500/30"              :
-                isResend      ? "border-violet-500/30"               :
+                isPawaPay ? "border-orange-500/30 lg:col-span-2" :
+                isClapay  ? "border-blue-500/30 lg:col-span-2"  :
+                isGateway ? "border-emerald-500/30"              :
+                isResend  ? "border-violet-500/30"               :
                 "border-zinc-800"
               }`}
             >
@@ -860,11 +1114,6 @@ function SettingsContent() {
                     <Mail className="w-3 h-3 text-violet-400" />
                   </div>
                 )}
-                {isMaintenance && (
-                  <div className="w-5 h-5 rounded-full bg-red-500/20 border border-red-500/40 flex items-center justify-center">
-                    <Wrench className="w-3 h-3 text-red-400" />
-                  </div>
-                )}
                 <h2 className="text-sm font-semibold text-white">{group}</h2>
                 {isPawaPay && (
                   <span className="ml-2 text-[10px] px-2 py-0.5 rounded-full bg-orange-500/15 text-orange-400 border border-orange-500/20 font-medium">Agrégateur de dépôts</span>
@@ -877,9 +1126,6 @@ function SettingsContent() {
                 )}
                 {isResend && (
                   <span className="ml-2 text-[10px] px-2 py-0.5 rounded-full bg-violet-500/15 text-violet-400 border border-violet-500/20 font-medium">Emails transactionnels</span>
-                )}
-                {isMaintenance && (
-                  <span className="ml-2 text-[10px] px-2 py-0.5 rounded-full bg-red-500/15 text-red-400 border border-red-500/20 font-medium">Contenu de la page</span>
                 )}
               </div>
 
@@ -922,17 +1168,7 @@ function SettingsContent() {
                 </div>
               )}
 
-              {isMaintenance && (
-                <MaintenancePreview
-                  title={values["maintenance_title"]}
-                  subtitle={values["maintenance_subtitle"]}
-                  estimatedTime={values["maintenance_estimated_time"]}
-                  contactEmail={values["maintenance_contact_email"]}
-                  buttonText={values["maintenance_button_text"]}
-                />
-              )}
-
-              <div className={isPawaPay || isClapay || isMaintenance ? "grid grid-cols-1 md:grid-cols-2 gap-4" : ""}>
+              <div className={isPawaPay || isClapay ? "grid grid-cols-1 md:grid-cols-2 gap-4" : ""}>
                 {fields.map(({ key, label, placeholder, type, hint }: { key: string; label: string; placeholder: string; type: string; hint?: string }) => (
                   <div key={key} className={type === "textarea" ? "md:col-span-2" : ""}>
                     <label className="text-xs text-zinc-400 mb-1 block">{label}</label>
@@ -951,10 +1187,9 @@ function SettingsContent() {
                         onChange={e => set(key, e.target.value)}
                         placeholder={placeholder}
                         className={`w-full px-3 py-2 text-sm bg-zinc-800 border rounded-lg text-white placeholder:text-zinc-500 focus:outline-none transition-colors ${
-                          isPawaPay     ? "border-zinc-700 focus:border-orange-500"  :
-                          isClapay      ? "border-zinc-700 focus:border-blue-500"    :
-                          isMaintenance ? "border-zinc-700 focus:border-red-500"     :
-                          isGateway     ? "border-zinc-700 focus:border-emerald-500" :
+                          isPawaPay ? "border-zinc-700 focus:border-orange-500" :
+                          isClapay  ? "border-zinc-700 focus:border-blue-500"   :
+                          isGateway ? "border-zinc-700 focus:border-emerald-500" :
                           "border-zinc-700 focus:border-violet-500"
                         }`}
                       />
