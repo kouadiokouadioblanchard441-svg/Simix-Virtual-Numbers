@@ -2,6 +2,7 @@ import { Resend } from "resend";
 import { db, systemSettingsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { getAppUrl } from "./app-url";
+import { logger } from "./logger";
 
 async function getResend(): Promise<Resend | null> {
   let key = process.env.RESEND_API_KEY ?? null;
@@ -10,11 +11,14 @@ async function getResend(): Promise<Resend | null> {
       const rows = await db.select().from(systemSettingsTable)
         .where(eq(systemSettingsTable.key, "resend_api_key")).limit(1);
       key = rows[0]?.value?.trim() || null;
-    } catch {
-      /* DB not available — skip */
+    } catch (dbErr) {
+      logger.error({ err: dbErr }, "[email] Impossible de lire resend_api_key depuis la DB");
     }
   }
-  if (!key) return null;
+  if (!key) {
+    logger.warn("[email] RESEND_API_KEY introuvable — emails désactivés");
+    return null;
+  }
   return new Resend(key);
 }
 
