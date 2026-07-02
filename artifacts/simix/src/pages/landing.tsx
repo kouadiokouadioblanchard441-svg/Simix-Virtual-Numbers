@@ -1188,23 +1188,6 @@ function Testimonials() {
         ))}
       </div>
 
-      {/* Trust bar */}
-      <div className="mt-10 flex flex-wrap items-center justify-center gap-5 sm:gap-8">
-        <div className="flex items-center gap-2 text-sm text-zinc-400">
-          <img src="/3d/icon-check.png" alt="" className="w-5 h-5 object-contain drop-shadow-sm" />
-          <span>5 000+ utilisateurs actifs</span>
-        </div>
-        <div className="w-px h-4 bg-zinc-700 hidden sm:block" />
-        <div className="flex items-center gap-2 text-sm text-zinc-400">
-          <img src="/3d/icon-shield.png" alt="" className="w-5 h-5 object-contain drop-shadow-sm" />
-          <span>Avis clients authentiques</span>
-        </div>
-        <div className="w-px h-4 bg-zinc-700 hidden sm:block" />
-        <div className="flex items-center gap-2 text-sm text-zinc-400">
-          <img src="/3d/icon-lightning.png" alt="" className="w-5 h-5 object-contain drop-shadow-sm" />
-          <span>SMS reçu en moins de 30 secondes</span>
-        </div>
-      </div>
     </Section>
   );
 }
