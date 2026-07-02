@@ -1,11 +1,25 @@
 import { HelmetProvider } from "react-helmet-async";
 import { Switch, Route, Router as WouterRouter, useLocation } from "wouter";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { SimixToastProvider } from "@/lib/simix-toast";
 import { ConfirmDialogProvider } from "@/components/ui/confirm-dialog";
 import { useEffect } from "react";
+
+const BASE_APP = import.meta.env.BASE_URL.replace(/\/$/, "");
+async function _fetchMaintenanceStatus(): Promise<{ active: boolean }> {
+  try {
+    const res = await fetch(`${BASE_APP}/api/maintenance/status`, {
+      cache: "no-store",
+      headers: { "Cache-Control": "no-cache" },
+    });
+    if (!res.ok) return { active: false };
+    return res.json();
+  } catch {
+    return { active: false };
+  }
+}
 import SupportChat from "@/components/support/SupportChat";
 import { NotificationToast } from "@/components/notifications/NotificationToast";
 import { PWAUpdateBanner } from "@/components/pwa/PWAUpdateBanner";
@@ -236,17 +250,28 @@ function InnerRouter() {
 function AppShell() {
   const [location] = useLocation();
   const hideChat = location.startsWith("/admin") || location === "/console" || location === "/admin-login";
+
+  // Re-uses the cached result from MaintenanceGuard (same queryKey — no extra request).
+  // When maintenance is active we hide floating overlays (support chat, PWA prompt)
+  // so they don't appear on top of the maintenance page.
+  const { data: maintenanceStatus } = useQuery<{ active: boolean }>({
+    queryKey: ["maintenance-status"],
+    queryFn: _fetchMaintenanceStatus,
+    staleTime: 0,
+  });
+  const maintenanceActive = maintenanceStatus?.active === true;
+
   return (
     <PinLockProvider>
       <MaintenanceGuard>
         <InnerRouter />
       </MaintenanceGuard>
       <Toaster />
-      {!hideChat && <SupportChat />}
+      {!hideChat && !maintenanceActive && <SupportChat />}
       <NotificationToast />
       <OfflineIndicator />
       <PWAUpdateBanner />
-      {!hideChat && <PWAInstallPrompt />}
+      {!hideChat && !maintenanceActive && <PWAInstallPrompt />}
     </PinLockProvider>
   );
 }

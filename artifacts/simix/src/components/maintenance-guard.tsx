@@ -69,8 +69,14 @@ export function MaintenanceGuard({ children }: { children: React.ReactNode }) {
    * We render the maintenance page IN PLACE (no redirect) so:
    *  - No flash of real content before the redirect
    *  - Works even when the service worker serves a cached SPA shell
-   *  - Admin paths remain accessible — admins see the real page */
-  if (maintenanceActive && meFetched && !isAdmin && !isAdminPath) {
+   *  - Admin paths remain accessible — admins see the real page
+   *
+   * NOTE: we block even before `meFetched` is true (i.e. while the /me
+   * request is still in flight). This prevents a brief flash of the real
+   * page content (especially the landing/vitrine) while we wait to learn
+   * whether the visitor is an admin. Once we confirm they are admin we
+   * let them through; until then the maintenance screen stays. */
+  if (maintenanceActive && !isAdminPath && (!meFetched || !isAdmin)) {
     return <MaintenancePage />;
   }
 

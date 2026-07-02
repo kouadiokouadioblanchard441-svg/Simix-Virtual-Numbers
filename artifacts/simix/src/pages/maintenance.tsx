@@ -1,15 +1,24 @@
 import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { SeoMeta } from "@/components/seo/SeoMeta";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
 export default function MaintenancePage() {
   const [retrying, setRetrying] = useState(false);
+  const queryClient = useQueryClient();
 
   async function handleRetry() {
     setRetrying(true);
-    await new Promise(r => setTimeout(r, 900));
-    window.location.reload();
+    // Invalidate both queries so MaintenanceGuard re-checks immediately.
+    // Do NOT use window.location.reload() — that re-mounts the whole React
+    // tree, causing a visible flash of the real page before the maintenance
+    // guard kicks back in.
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ["maintenance-status"] }),
+      queryClient.invalidateQueries({ queryKey: ["me"] }),
+    ]);
+    setRetrying(false);
   }
 
   return (
