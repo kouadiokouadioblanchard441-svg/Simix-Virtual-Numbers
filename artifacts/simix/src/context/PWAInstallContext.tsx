@@ -35,6 +35,16 @@ export function PWAInstallProvider({ children }: { children: React.ReactNode }) 
       return;
     }
 
+    // Récupérer l'événement capturé tôt dans index.html (avant le montage React).
+    // Cela évite la race condition où beforeinstallprompt se déclenche
+    // avant que useEffect ne soit exécuté (SW déjà actif depuis une visite précédente).
+    const win = window as Window & { __pwaInstallEvent?: InstallPromptEvent | null };
+    if (win.__pwaInstallEvent) {
+      deferredPrompt.current = win.__pwaInstallEvent;
+      win.__pwaInstallEvent = null;
+      setCanInstall(true);
+    }
+
     const handler = (e: Event) => {
       e.preventDefault();
       deferredPrompt.current = e as InstallPromptEvent;
@@ -66,6 +76,7 @@ export function PWAInstallProvider({ children }: { children: React.ReactNode }) 
     if (choice.outcome === "accepted") {
       setIsInstalled(true);
     } else {
+      // Remettre à disposition pour que l'utilisateur puisse réessayer
       deferredPrompt.current = null;
     }
     return choice.outcome;

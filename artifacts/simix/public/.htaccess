@@ -1,0 +1,78 @@
+# =============================================================================
+# SIMIX — Configuration Apache pour Plesk
+# Ce fichier corrige les MIME types PWA et les en-têtes HTTP pour Apache.
+# Sans ce fichier, Apache sert manifest.webmanifest avec application/octet-stream
+# ce qui empêche Chrome de déclencher l'événement beforeinstallprompt.
+# =============================================================================
+
+# ── Activation du module mod_headers (requis pour Header set) ────────────────
+<IfModule mod_headers.c>
+
+  # ── Service Worker : jamais mis en cache, scope racine ─────────────────────
+  <Files "sw.js">
+    Header set Cache-Control "no-cache, no-store, must-revalidate"
+    Header set Pragma "no-cache"
+    Header set Expires "0"
+    Header set Service-Worker-Allowed "/"
+    Header set Content-Type "application/javascript; charset=utf-8"
+    Header set X-Content-Type-Options "nosniff"
+  </Files>
+
+  # ── Web App Manifest : MIME type correct pour PWA installability ────────────
+  <Files "manifest.webmanifest">
+    Header set Cache-Control "no-cache, must-revalidate"
+    Header set Content-Type "application/manifest+json; charset=utf-8"
+  </Files>
+  <Files "manifest.json">
+    Header set Cache-Control "no-cache, must-revalidate"
+    Header set Content-Type "application/manifest+json; charset=utf-8"
+  </Files>
+
+  # ── Assets versionnés : cache long ─────────────────────────────────────────
+  <FilesMatch "\-[a-f0-9]{8,}\.(js|css|woff2?)$">
+    Header set Cache-Control "public, max-age=31536000, immutable"
+  </FilesMatch>
+
+</IfModule>
+
+# ── MIME Types manquants dans la configuration Apache par défaut ─────────────
+<IfModule mod_mime.c>
+  # PWA manifest — type officiel W3C
+  AddType application/manifest+json  .webmanifest
+  # JavaScript modules
+  AddType application/javascript     .js
+  AddType application/javascript     .mjs
+  # Polices
+  AddType font/woff2                 .woff2
+  AddType font/woff                  .woff
+  # Images
+  AddType image/svg+xml              .svg
+  AddType image/webp                 .webp
+  AddType image/avif                 .avif
+</IfModule>
+
+# ── SPA Fallback : toutes les routes inconnues servent index.html ─────────────
+<IfModule mod_rewrite.c>
+  Options -MultiViews
+  RewriteEngine On
+  RewriteBase /
+
+  # Ne pas réécrire les fichiers et dossiers existants
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+
+  # Ne pas intercepter les routes API (proxiées vers Node.js)
+  RewriteCond %{REQUEST_URI} !^/api/
+
+  # Fallback SPA
+  RewriteRule ^ index.html [L]
+</IfModule>
+
+# ── Compression gzip pour les assets ─────────────────────────────────────────
+<IfModule mod_deflate.c>
+  AddOutputFilterByType DEFLATE application/javascript
+  AddOutputFilterByType DEFLATE application/manifest+json
+  AddOutputFilterByType DEFLATE text/css
+  AddOutputFilterByType DEFLATE text/html
+  AddOutputFilterByType DEFLATE image/svg+xml
+</IfModule>

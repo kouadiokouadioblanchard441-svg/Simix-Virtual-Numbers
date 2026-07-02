@@ -59,6 +59,21 @@
     <link rel="dns-prefetch" href="https://fonts.googleapis.com" />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
 
+    <!-- PWA: capture beforeinstallprompt avant que React ne monte.
+         L'événement peut se déclencher avant le premier useEffect React.
+         On le stocke dans window.__pwaInstallEvent pour que PWAInstallContext
+         le récupère sans risque de race condition. -->
+    <script>
+      (function () {
+        window.__pwaInstallEvent = null;
+        function capture(e) {
+          e.preventDefault();
+          window.__pwaInstallEvent = e;
+        }
+        window.addEventListener('beforeinstallprompt', capture);
+      })();
+    </script>
+
     <!-- Critical CSS: prevent flash of white, enable safe areas -->
     <style>
       html, body { background: #09090B; color: #ffffff; margin: 0; padding: 0; }

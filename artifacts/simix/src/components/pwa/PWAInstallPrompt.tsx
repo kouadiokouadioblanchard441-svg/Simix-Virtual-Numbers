@@ -2,7 +2,10 @@ import { useState, useEffect } from "react";
 import { usePWAInstallContext } from "@/context/PWAInstallContext";
 import { Download, X } from "lucide-react";
 
-const DISMISSED_KEY = "simix_install_dismissed";
+const DISMISSED_KEY = "simix_install_dismissed_at";
+// Délai de grâce : 7 jours avant de re-proposer l'installation après un refus.
+// Conforme aux recommandations Chrome (ne jamais bloquer indéfiniment).
+const DISMISS_GRACE_MS = 7 * 24 * 60 * 60 * 1000;
 
 export function PWAInstallPrompt() {
   const { canInstall, isInstalled, isStandalone, promptInstall } = usePWAInstallContext();
@@ -10,8 +13,13 @@ export function PWAInstallPrompt() {
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
-    const wasDismissed = localStorage.getItem(DISMISSED_KEY) === "true";
-    setDismissed(wasDismissed);
+    const raw = localStorage.getItem(DISMISSED_KEY);
+    if (raw) {
+      const dismissedAt = Number(raw);
+      // Re-proposer après le délai de grâce (7 jours)
+      const stillDismissed = !isNaN(dismissedAt) && Date.now() - dismissedAt < DISMISS_GRACE_MS;
+      setDismissed(stillDismissed);
+    }
   }, []);
 
   useEffect(() => {
@@ -24,7 +32,8 @@ export function PWAInstallPrompt() {
   const handleDismiss = () => {
     setVisible(false);
     setDismissed(true);
-    localStorage.setItem(DISMISSED_KEY, "true");
+    // Stocker la date de refus pour le délai de grâce (pas de refus permanent)
+    localStorage.setItem(DISMISSED_KEY, String(Date.now()));
   };
 
   const handleInstall = async () => {
