@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { adminApi } from "@/lib/admin-api";
 import { AdminGuard } from "@/components/admin-guard";
 import { AdminLayout } from "@/components/admin-layout";
-import { Loader2, Save, Wifi, WifiOff, CheckCircle2, XCircle, ChevronDown, ChevronUp, FlaskConical, RefreshCw, CheckCheck, Ban, Mail, ShieldCheck, ShieldOff, Send } from "lucide-react";
+import { Loader2, Save, Wifi, WifiOff, CheckCircle2, XCircle, ChevronDown, ChevronUp, FlaskConical, RefreshCw, CheckCheck, Ban, Mail, ShieldCheck, ShieldOff, Send, Wrench } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 const SETTINGS_SCHEMA = [
@@ -65,6 +65,16 @@ const SETTINGS_SCHEMA = [
       { key: "registration_enabled", label: "Inscription activée", placeholder: "true", type: "text" },
       { key: "maintenance_mode", label: "Mode maintenance", placeholder: "false", type: "text", hint: "Gérable aussi directement depuis le tableau de bord" },
       { key: "sms_simulation", label: "Simulation SMS (développement)", placeholder: "true", type: "text" },
+    ],
+  },
+  {
+    group: "Page de Maintenance",
+    fields: [
+      { key: "maintenance_title", label: "Titre de la page", placeholder: "Le site est actuellement en maintenance.", type: "text", hint: "Titre principal affiché en rouge — ex : Maintenance planifiée ce soir." },
+      { key: "maintenance_subtitle", label: "Message d'information", placeholder: "Nous travaillons à améliorer votre expérience. Veuillez réessayer dans quelques instants.", type: "textarea", hint: "Message affiché sous le titre — donnez une raison ou plus de détails." },
+      { key: "maintenance_estimated_time", label: "Temps estimé de retour", placeholder: "Bientôt disponible", type: "text", hint: "Ex : 30 minutes · 2 heures · Ce soir à 20h00" },
+      { key: "maintenance_contact_email", label: "Email de contact", placeholder: "simixsupport@gmail.com", type: "email", hint: "Email cliquable affiché dans l'encart de contact sur la page maintenance." },
+      { key: "maintenance_button_text", label: "Texte du bouton", placeholder: "Réessayer plus tard", type: "text", hint: "Texte du bouton de vérification en bas de la page." },
     ],
   },
   {
@@ -692,6 +702,75 @@ function EmailOtpSection({
   );
 }
 
+/* ─── Maintenance page live preview ─── */
+function MaintenancePreview({
+  title, subtitle, estimatedTime, contactEmail, buttonText,
+}: {
+  title?: string; subtitle?: string; estimatedTime?: string;
+  contactEmail?: string; buttonText?: string;
+}) {
+  const t  = title         || "Le site est actuellement en maintenance.";
+  const s  = subtitle      || "Nous travaillons à améliorer votre expérience. Veuillez réessayer dans quelques instants.";
+  const et = estimatedTime || "Bientôt disponible";
+  const em = contactEmail  || "simixsupport@gmail.com";
+  const bt = buttonText    || "Réessayer plus tard";
+
+  return (
+    <div className="rounded-xl border border-zinc-700/60 bg-zinc-950/60 overflow-hidden">
+      {/* Header */}
+      <div className="flex items-center gap-2 px-4 py-2.5 border-b border-zinc-800 bg-zinc-900/80">
+        <div className="flex gap-1.5">
+          <div className="w-2.5 h-2.5 rounded-full bg-red-500/70" />
+          <div className="w-2.5 h-2.5 rounded-full bg-yellow-500/70" />
+          <div className="w-2.5 h-2.5 rounded-full bg-green-500/70" />
+        </div>
+        <span className="text-[10px] text-zinc-500 ml-1 font-mono">Aperçu — Page de maintenance</span>
+      </div>
+
+      {/* Preview body — white bg like real page */}
+      <div className="bg-white p-5 space-y-3.5" style={{ fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" }}>
+        {/* Title */}
+        <p style={{ color: "#DC2626", fontWeight: 800, fontSize: 13, textAlign: "center", lineHeight: 1.35, margin: 0 }}>
+          {t}
+        </p>
+
+        {/* Subtitle */}
+        <p style={{ color: "#6B7280", fontSize: 11, textAlign: "center", lineHeight: 1.55, margin: 0 }}>
+          {s}
+        </p>
+
+        <div style={{ height: 1, backgroundColor: "#E5E7EB" }} />
+
+        {/* Status */}
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={{ fontWeight: 700, color: "#111827", fontSize: 11 }}>Statut :</span>
+          <span style={{ backgroundColor: "#DC2626", color: "#fff", fontWeight: 700, fontSize: 10, padding: "2px 8px", borderRadius: 999, textTransform: "uppercase" as const }}>
+            Maintenance
+          </span>
+        </div>
+
+        {/* Estimated time */}
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <span style={{ color: "#374151", fontSize: 11 }}>
+            Temps estimé : <strong style={{ color: "#DC2626" }}>{et}</strong>
+          </span>
+        </div>
+
+        {/* Contact */}
+        <div style={{ border: "1px solid #E5E7EB", borderRadius: 8, padding: "8px 10px", backgroundColor: "#FAFAFA" }}>
+          <div style={{ color: "#6B7280", fontSize: 10, marginBottom: 2 }}>Pour toute information, contactez-nous :</div>
+          <span style={{ color: "#2563EB", fontWeight: 700, fontSize: 11 }}>{em}</span>
+        </div>
+
+        {/* Button */}
+        <div style={{ backgroundColor: "#1D4ED8", borderRadius: 8, padding: "9px 14px", textAlign: "center" as const }}>
+          <span style={{ color: "#fff", fontWeight: 700, fontSize: 12 }}>{bt}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function SettingsContent() {
   const [values, setValues] = useState<Record<string, string>>({});
   const [dirty, setDirty] = useState(false);
@@ -751,19 +830,21 @@ function SettingsContent() {
         />
 
         {SETTINGS_SCHEMA.map(({ group, fields }) => {
-          const isPawaPay = group === "PawaPay — Mobile Money";
-          const isClapay  = group === "Clapay — Mobile Money";
-          const isGateway = group === "Passerelle de paiement";
-          const isResend  = group === "Resend — Emails";
+          const isPawaPay     = group === "PawaPay — Mobile Money";
+          const isClapay      = group === "Clapay — Mobile Money";
+          const isGateway     = group === "Passerelle de paiement";
+          const isResend      = group === "Resend — Emails";
+          const isMaintenance = group === "Page de Maintenance";
 
           return (
             <div
               key={group}
               className={`bg-zinc-900 border rounded-xl p-5 space-y-4 ${
-                isPawaPay ? "border-orange-500/30 lg:col-span-2" :
-                isClapay  ? "border-blue-500/30 lg:col-span-2" :
-                isGateway ? "border-emerald-500/30" :
-                isResend  ? "border-violet-500/30" :
+                isPawaPay     ? "border-orange-500/30 lg:col-span-2" :
+                isClapay      ? "border-blue-500/30 lg:col-span-2"  :
+                isMaintenance ? "border-red-500/30 lg:col-span-2"   :
+                isGateway     ? "border-emerald-500/30"              :
+                isResend      ? "border-violet-500/30"               :
                 "border-zinc-800"
               }`}
             >
@@ -779,6 +860,11 @@ function SettingsContent() {
                     <Mail className="w-3 h-3 text-violet-400" />
                   </div>
                 )}
+                {isMaintenance && (
+                  <div className="w-5 h-5 rounded-full bg-red-500/20 border border-red-500/40 flex items-center justify-center">
+                    <Wrench className="w-3 h-3 text-red-400" />
+                  </div>
+                )}
                 <h2 className="text-sm font-semibold text-white">{group}</h2>
                 {isPawaPay && (
                   <span className="ml-2 text-[10px] px-2 py-0.5 rounded-full bg-orange-500/15 text-orange-400 border border-orange-500/20 font-medium">Agrégateur de dépôts</span>
@@ -791,6 +877,9 @@ function SettingsContent() {
                 )}
                 {isResend && (
                   <span className="ml-2 text-[10px] px-2 py-0.5 rounded-full bg-violet-500/15 text-violet-400 border border-violet-500/20 font-medium">Emails transactionnels</span>
+                )}
+                {isMaintenance && (
+                  <span className="ml-2 text-[10px] px-2 py-0.5 rounded-full bg-red-500/15 text-red-400 border border-red-500/20 font-medium">Contenu de la page</span>
                 )}
               </div>
 
@@ -833,22 +922,43 @@ function SettingsContent() {
                 </div>
               )}
 
-              <div className={isPawaPay || isClapay ? "grid grid-cols-1 md:grid-cols-2 gap-4" : ""}>
+              {isMaintenance && (
+                <MaintenancePreview
+                  title={values["maintenance_title"]}
+                  subtitle={values["maintenance_subtitle"]}
+                  estimatedTime={values["maintenance_estimated_time"]}
+                  contactEmail={values["maintenance_contact_email"]}
+                  buttonText={values["maintenance_button_text"]}
+                />
+              )}
+
+              <div className={isPawaPay || isClapay || isMaintenance ? "grid grid-cols-1 md:grid-cols-2 gap-4" : ""}>
                 {fields.map(({ key, label, placeholder, type, hint }: { key: string; label: string; placeholder: string; type: string; hint?: string }) => (
-                  <div key={key}>
+                  <div key={key} className={type === "textarea" ? "md:col-span-2" : ""}>
                     <label className="text-xs text-zinc-400 mb-1 block">{label}</label>
-                    <input
-                      type={type}
-                      value={values[key] ?? ""}
-                      onChange={e => set(key, e.target.value)}
-                      placeholder={placeholder}
-                      className={`w-full px-3 py-2 text-sm bg-zinc-800 border rounded-lg text-white placeholder:text-zinc-500 focus:outline-none transition-colors ${
-                        isPawaPay ? "border-zinc-700 focus:border-orange-500" :
-                        isClapay  ? "border-zinc-700 focus:border-blue-500" :
-                        isGateway ? "border-zinc-700 focus:border-emerald-500" :
-                        "border-zinc-700 focus:border-violet-500"
-                      }`}
-                    />
+                    {type === "textarea" ? (
+                      <textarea
+                        value={values[key] ?? ""}
+                        onChange={e => set(key, e.target.value)}
+                        placeholder={placeholder}
+                        rows={3}
+                        className="w-full px-3 py-2 text-sm bg-zinc-800 border border-zinc-700 rounded-lg text-white placeholder:text-zinc-500 focus:outline-none focus:border-red-500 transition-colors resize-none"
+                      />
+                    ) : (
+                      <input
+                        type={type}
+                        value={values[key] ?? ""}
+                        onChange={e => set(key, e.target.value)}
+                        placeholder={placeholder}
+                        className={`w-full px-3 py-2 text-sm bg-zinc-800 border rounded-lg text-white placeholder:text-zinc-500 focus:outline-none transition-colors ${
+                          isPawaPay     ? "border-zinc-700 focus:border-orange-500"  :
+                          isClapay      ? "border-zinc-700 focus:border-blue-500"    :
+                          isMaintenance ? "border-zinc-700 focus:border-red-500"     :
+                          isGateway     ? "border-zinc-700 focus:border-emerald-500" :
+                          "border-zinc-700 focus:border-violet-500"
+                        }`}
+                      />
+                    )}
                     {hint && <div className="text-xs text-zinc-600 mt-1">{hint}</div>}
                     {!values[key] && !hint && <div className="text-xs text-zinc-600 mt-1">Défaut : {placeholder}</div>}
                   </div>

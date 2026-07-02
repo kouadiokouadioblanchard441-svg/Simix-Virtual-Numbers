@@ -129627,9 +129627,16 @@ var push_subscriptions_default = router27;
 var import_express29 = __toESM(require_express2(), 1);
 var router28 = (0, import_express29.Router)();
 router28.get("/maintenance/status", async (_req, res) => {
-  const value = await getSetting("maintenance_mode", "false");
-  const active = value === "true" || value === "1";
-  res.json({ active });
+  const [mode, title, subtitle, estimatedTime, contactEmail, buttonText] = await Promise.all([
+    getSetting("maintenance_mode", "false"),
+    getSetting("maintenance_title", "Le site est actuellement en maintenance."),
+    getSetting("maintenance_subtitle", "Nous travaillons \xE0 am\xE9liorer votre exp\xE9rience. Veuillez r\xE9essayer dans quelques instants."),
+    getSetting("maintenance_estimated_time", "Bient\xF4t disponible"),
+    getSetting("maintenance_contact_email", "simixsupport@gmail.com"),
+    getSetting("maintenance_button_text", "R\xE9essayer plus tard")
+  ]);
+  const active = mode === "true" || mode === "1";
+  res.json({ active, title, subtitle, estimatedTime, contactEmail, buttonText });
 });
 var maintenance_default = router28;
 

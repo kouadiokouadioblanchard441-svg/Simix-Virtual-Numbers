@@ -261,6 +261,12 @@ async function upsertSystemSettings() {
     { key: "registration_enabled",   value: "true" },
     { key: "maintenance_mode",       value: "false" },
     { key: "sms_simulation",         value: "true" },
+    /* Maintenance page content */
+    { key: "maintenance_title",          value: "Le site est actuellement en maintenance." },
+    { key: "maintenance_subtitle",       value: "Nous travaillons à améliorer votre expérience. Veuillez réessayer dans quelques instants." },
+    { key: "maintenance_estimated_time", value: "Bientôt disponible" },
+    { key: "maintenance_contact_email",  value: "simixsupport@gmail.com" },
+    { key: "maintenance_button_text",    value: "Réessayer plus tard" },
     /* Telegram notifications */
     { key: "telegram_bot_token",     value: "" },
     { key: "telegram_chat_id",       value: "" },

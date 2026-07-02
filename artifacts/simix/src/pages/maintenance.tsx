@@ -1,12 +1,57 @@
 import { useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { SeoMeta } from "@/components/seo/SeoMeta";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
+interface MaintenanceConfig {
+  active: boolean;
+  title: string;
+  subtitle: string;
+  estimatedTime: string;
+  contactEmail: string;
+  buttonText: string;
+}
+
+const DEFAULTS: Omit<MaintenanceConfig, "active"> = {
+  title:         "Le site est actuellement en maintenance.",
+  subtitle:      "Nous travaillons à améliorer votre expérience. Veuillez réessayer dans quelques instants.",
+  estimatedTime: "Bientôt disponible",
+  contactEmail:  "simixsupport@gmail.com",
+  buttonText:    "Réessayer plus tard",
+};
+
+async function fetchMaintenanceStatus(): Promise<MaintenanceConfig> {
+  try {
+    const res = await fetch(`${BASE}/api/maintenance/status`, {
+      cache: "no-store",
+      headers: { "Cache-Control": "no-cache" },
+    });
+    if (!res.ok) return { active: false, ...DEFAULTS };
+    return res.json();
+  } catch {
+    return { active: false, ...DEFAULTS };
+  }
+}
+
 export default function MaintenancePage() {
   const [retrying, setRetrying] = useState(false);
   const queryClient = useQueryClient();
+
+  /* Re-use the same cache entry populated by MaintenanceGuard —
+   * no extra network request. Falls back to a fresh fetch if the
+   * cache is somehow empty (e.g. direct /maintenance route). */
+  const { data: config } = useQuery<MaintenanceConfig>({
+    queryKey: ["maintenance-status"],
+    queryFn: fetchMaintenanceStatus,
+    staleTime: 0,
+  });
+
+  const title         = config?.title         || DEFAULTS.title;
+  const subtitle      = config?.subtitle      || DEFAULTS.subtitle;
+  const estimatedTime = config?.estimatedTime || DEFAULTS.estimatedTime;
+  const contactEmail  = config?.contactEmail  || DEFAULTS.contactEmail;
+  const buttonText    = config?.buttonText    || DEFAULTS.buttonText;
 
   async function handleRetry() {
     setRetrying(true);
@@ -40,6 +85,7 @@ export default function MaintenancePage() {
         path="/maintenance"
         noIndex={true}
       />
+
       {/* ── Hero illustration ── */}
       <div
         style={{
@@ -88,7 +134,7 @@ export default function MaintenancePage() {
             letterSpacing: "-0.01em",
           }}
         >
-          Le site est actuellement en maintenance.
+          {title}
         </h1>
 
         {/* Subtitle */}
@@ -101,8 +147,7 @@ export default function MaintenancePage() {
             lineHeight: 1.6,
           }}
         >
-          Nous travaillons à améliorer votre expérience.{" "}
-          Veuillez réessayer dans quelques instants.
+          {subtitle}
         </p>
 
         {/* Divider */}
@@ -162,7 +207,7 @@ export default function MaintenancePage() {
           </span>
           <span style={{ color: "#374151", fontSize: 14 }}>
             Temps estimé :{" "}
-            <strong style={{ color: "#DC2626", fontWeight: 700 }}>Bientôt disponible</strong>
+            <strong style={{ color: "#DC2626", fontWeight: 700 }}>{estimatedTime}</strong>
           </span>
         </div>
 
@@ -202,7 +247,7 @@ export default function MaintenancePage() {
               Pour toute information, contactez-nous :
             </div>
             <a
-              href="mailto:simixsupport@gmail.com"
+              href={`mailto:${contactEmail}`}
               style={{
                 color: "#2563EB",
                 fontWeight: 700,
@@ -210,7 +255,7 @@ export default function MaintenancePage() {
                 textDecoration: "none",
               }}
             >
-              simixsupport@gmail.com
+              {contactEmail}
             </a>
           </div>
         </div>
@@ -248,30 +293,23 @@ export default function MaintenancePage() {
             strokeWidth="2.5"
             strokeLinecap="round"
             strokeLinejoin="round"
-            style={{
-              animation: retrying ? "spin 1s linear infinite" : "none",
-            }}
+            style={{ animation: retrying ? "spin 1s linear infinite" : "none" }}
           >
             <polyline points="1 4 1 10 7 10" />
             <polyline points="23 20 23 14 17 14" />
             <path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15" />
           </svg>
-          {retrying ? "Vérification…" : "Réessayer plus tard"}
+          {retrying ? "Vérification…" : buttonText}
         </button>
       </div>
 
       <style>{`
         @keyframes spin {
           from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
+          to   { transform: rotate(360deg); }
         }
-        button:hover:not(:disabled) {
-          background-color: #1E40AF !important;
-        }
-        button:active:not(:disabled) {
-          background-color: #1E3A8A !important;
-          transform: scale(0.99);
-        }
+        button:hover:not(:disabled) { background-color: #1E40AF !important; }
+        button:active:not(:disabled) { background-color: #1E3A8A !important; transform: scale(0.99); }
       `}</style>
     </div>
   );
