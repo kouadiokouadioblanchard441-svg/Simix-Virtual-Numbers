@@ -8,6 +8,23 @@ import { logger } from "../lib/logger";
 
 const router: IRouter = Router();
 
+function generateReferralCode(): string {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  let code = "SX";
+  for (let i = 0; i < 8; i++) code += chars[Math.floor(Math.random() * chars.length)];
+  return code;
+}
+
+async function uniqueReferralCode(): Promise<string> {
+  for (let attempt = 0; attempt < 10; attempt++) {
+    const code = generateReferralCode();
+    const [existing] = await db.select({ id: usersTable.id }).from(usersTable)
+      .where(eq(usersTable.referralCode, code)).limit(1);
+    if (!existing) return code;
+  }
+  return "SX" + Date.now().toString(36).toUpperCase().slice(-8);
+}
+
 function getOAuthClient(redirectUri: string) {
   return new OAuth2Client(
     process.env.GOOGLE_CLIENT_ID,
@@ -98,6 +115,13 @@ router.get("/auth/google", (req, res): void => {
 
   res.cookie("oauth_state", state, oauthStateCookieOptions(isSecureRequest(req)));
 
+  /* Persist incoming referral code across the OAuth redirect so we can
+   * attribute the new Google user to the correct referrer on callback.  */
+  const refCode = typeof req.query.ref === "string" ? req.query.ref.trim().toUpperCase() : null;
+  if (refCode) {
+    res.cookie("oauth_ref", refCode, oauthStateCookieOptions(isSecureRequest(req)));
+  }
+
   const url = client.generateAuthUrl({
     access_type: "offline",
     scope: ["openid", "email", "profile"],
@@ -149,6 +173,14 @@ router.get("/auth/google/callback", async (req, res): Promise<void> => {
     secure: isSecureRequest(req),
     path: "/",
   });
+
+  /* Read & clear the referral code cookie (set before the OAuth redirect) */
+  const incomingRefCode: string | null = typeof req.cookies?.oauth_ref === "string"
+    ? req.cookies.oauth_ref.trim().toUpperCase()
+    : null;
+  if (incomingRefCode) {
+    res.clearCookie("oauth_ref", { httpOnly: true, sameSite: "lax", secure: isSecureRequest(req), path: "/" });
+  }
 
   if (!code || typeof code !== "string") {
     logger.error({ ip }, "[google-auth] Authorization code missing");
@@ -228,7 +260,18 @@ router.get("/auth/google/callback", async (req, res): Promise<void> => {
       .limit(1);
 
     if (!user) {
-      /* New user — create account */
+      /* New user — resolve referrer then create account */
+      let referrerId: string | null = null;
+      if (incomingRefCode) {
+        const [referrer] = await db
+          .select({ id: usersTable.id })
+          .from(usersTable)
+          .where(eq(usersTable.referralCode, incomingRefCode))
+          .limit(1);
+        if (referrer) referrerId = referrer.id;
+      }
+
+      const newReferralCode = await uniqueReferralCode();
       const username = `user_${randomBytes(4).toString("hex")}`;
       const [created] = await db
         .insert(usersTable)
@@ -245,6 +288,8 @@ router.get("/auth/google/callback", async (req, res): Promise<void> => {
           balance: 0,
           verified: true,
           emailVerified: googleEmailVerified,
+          referralCode: newReferralCode,
+          referredBy: referrerId ?? undefined,
           lastLoginAt: new Date(),
         })
         .returning();
@@ -256,7 +301,7 @@ router.get("/auth/google/callback", async (req, res): Promise<void> => {
       }
 
       user = created;
-      logger.info({ userId: user.id, email }, "[google-auth] New Google user created");
+      logger.info({ userId: user.id, email, referralCode: newReferralCode, referredBy: referrerId }, "[google-auth] New Google user created");
 
     } else {
       /* Existing user — update Google fields + last login */
@@ -267,6 +312,8 @@ router.get("/auth/google/callback", async (req, res): Promise<void> => {
       if (!user.avatar && avatar) updates.avatar = avatar;
       if (!user.emailVerified && googleEmailVerified) updates.emailVerified = true;
       if (user.authProvider === "local" && !user.googleId) updates.authProvider = "google";
+      /* Backfill referral code for existing Google users who never received one */
+      if (!user.referralCode) updates.referralCode = await uniqueReferralCode();
 
       const [updated] = await db
         .update(usersTable)
@@ -275,7 +322,7 @@ router.get("/auth/google/callback", async (req, res): Promise<void> => {
         .returning();
 
       if (updated) user = updated;
-      logger.info({ userId: user.id, email }, "[google-auth] Existing user signed in via Google");
+      logger.info({ userId: user.id, email, referralCode: user.referralCode }, "[google-auth] Existing user signed in via Google");
     }
 
     if (user.status === "Bloqué") {
