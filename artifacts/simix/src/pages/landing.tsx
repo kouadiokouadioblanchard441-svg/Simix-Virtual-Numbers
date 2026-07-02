@@ -7,7 +7,6 @@ import { SimixLogo, SimixIcon } from "@/components/simix-logo";
 import { useToast } from "@/hooks/use-toast";
 import { ServiceIcon } from "@/components/service-icon";
 import { usePWAInstallContext } from "@/context/PWAInstallContext";
-import phone3d from "@/assets/simix_phone_3d_new.png";
 import wallet3d from "@/assets/simix_wallet_3d.png";
 import screenDash from "@/assets/screen-dashboard.png";
 import screenWallet from "@/assets/screen-wallet.png";
@@ -651,58 +650,8 @@ function Hero() {
               ))}
             </div>
 
-            {/* Image 3D visible sur mobile uniquement */}
-            <div className="lg:hidden flex justify-center mt-6 relative">
-              <div className="relative float-slow">
-                <img src={phone3d} alt="Simix App" className="w-[78vw] max-w-[320px] object-contain drop-shadow-2xl" />
-                <div className="absolute top-4 -left-2 glass px-3 py-1.5 rounded-xl shadow-lg border border-violet-500/20 flex items-center gap-1.5">
-                  <img src="/3d/icon-lightning.png" alt="" className="w-4 h-4 object-contain" />
-                  <div>
-                    <div className="text-[10px] text-zinc-400">Solde</div>
-                    <div className="text-xs font-bold text-white">5 000 <span className="text-[9px] text-zinc-500">FCFA</span></div>
-                  </div>
-                </div>
-                <div className="absolute bottom-10 -right-2 glass px-3 py-1.5 rounded-xl shadow-lg border border-emerald-500/20 flex items-center gap-1.5">
-                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                  <div>
-                    <div className="text-[10px] font-semibold text-white">SMS reçu</div>
-                    <div className="text-[9px] text-zinc-400">Code : <span className="text-emerald-400 font-mono font-bold">847291</span></div>
-                  </div>
-                </div>
-              </div>
-            </div>
           </motion.div>
 
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.8, delay: 0.2 }}
-            className="hidden lg:flex items-center justify-center relative"
-          >
-            <div className="relative w-full max-w-[500px] h-[560px] flex items-center justify-center">
-              <div className="float-slow z-10">
-                <img src={phone3d} alt="Simix App" className="w-[440px] drop-shadow-2xl object-contain" />
-              </div>
-              <div className="absolute right-0 top-20 z-20 float-fast">
-                <div className="glass px-4 py-2.5 rounded-2xl shadow-lg border border-emerald-500/20 flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                  <div>
-                    <div className="text-xs font-semibold text-white">SMS reçu</div>
-                    <div className="text-[10px] text-zinc-400">Code : <span className="text-emerald-400 font-mono font-bold">847291</span></div>
-                  </div>
-                </div>
-              </div>
-              <div className="absolute left-0 top-24 z-30">
-                <div className="glass px-3 py-2 rounded-xl shadow-lg border border-violet-500/20 flex items-center gap-1.5">
-                  <img src="/3d/icon-lightning.png" alt="" className="w-4 h-4 object-contain" />
-                  <div>
-                    <div className="text-xs text-zinc-400">Solde</div>
-                    <div className="text-sm font-bold text-white">5 000 <span className="text-[10px] text-zinc-500">FCFA</span></div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </motion.div>
         </div>
       </Section>
 
