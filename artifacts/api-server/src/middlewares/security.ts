@@ -68,7 +68,14 @@ export async function checkMaintenanceMode(req: Request, res: Response, next: Ne
     req.path === "/api/maintenance/status" ||
     req.path === "/api/auth/me" ||
     req.path === "/maintenance-hero.png" ||
-    isWebhookPath(req.path)
+    isWebhookPath(req.path) ||
+    /* Admin panel frontend routes — let React load so MaintenanceGuard
+     * can verify the admin session and grant access. The admin API routes
+     * (/api/admin/*) are already exempt above; these cover the SPA HTML
+     * routes that the browser requests to render the admin panel. */
+    req.path.startsWith("/admin") ||
+    req.path === "/admin-login" ||
+    req.path === "/console"
   ) {
     next();
     return;

@@ -365,9 +365,16 @@ if (process.env.NODE_ENV !== "development") {
     const publicDir = path.join(currentDir, "public");
     if (existsSync(publicDir)) {
       app.use(express.static(publicDir));
-      /* SPA fallback — serve maintenance page instead of index.html when active */
-      app.use(async (_req, res) => {
-        if (await isMaintenanceMode()) {
+      /* SPA fallback — serve maintenance page instead of index.html when active.
+       * Admin panel routes (/admin*, /admin-login, /console) are always served
+       * normally so the React app can load and MaintenanceGuard can verify the
+       * admin session before granting access. */
+      app.use(async (req, res) => {
+        const isAdminRoute =
+          req.path.startsWith("/admin") ||
+          req.path === "/admin-login" ||
+          req.path === "/console";
+        if (!isAdminRoute && await isMaintenanceMode()) {
           res.status(503).send(MAINTENANCE_HTML);
           return;
         }
