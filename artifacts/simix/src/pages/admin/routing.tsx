@@ -45,6 +45,7 @@ interface RouteBasic {
   maintenanceMessage: string | null;
 }
 interface CountryEntry { code: string; name: string; flag: string; operatorSlugs: string[]; }
+interface CountryOption { code: string; name: string; flag: string; }
 interface RouteLog {
   id: string; eventType: string; status: string; responseTimeMs: number | null;
   errorMessage: string | null; adminId: string | null; createdAt: string;
@@ -133,6 +134,91 @@ function Modal({ title, children, onClose }: { title: string; children: React.Re
         </div>
         <div className="p-5 space-y-4 max-h-[75vh] overflow-y-auto">{children}</div>
       </motion.div>
+    </div>
+  );
+}
+
+/* ─── Country multi-select (buttons, not raw ISO codes) ─────── */
+function CountryMultiSelect({
+  allCountries,
+  loading,
+  selected,
+  onChange,
+}: {
+  allCountries: CountryOption[];
+  loading: boolean;
+  selected: string[];
+  onChange: (codes: string[]) => void;
+}) {
+  const [q, setQ] = useState("");
+  const filtered = q.trim()
+    ? allCountries.filter(c => c.name.toLowerCase().includes(q.toLowerCase()) || c.code.toLowerCase().includes(q.toLowerCase()))
+    : allCountries;
+  const toggle = (code: string) => {
+    onChange(selected.includes(code) ? selected.filter(c => c !== code) : [...selected, code]);
+  };
+
+  return (
+    <div>
+      <label className="block text-xs text-zinc-400 mb-1 font-medium">Pays disponibles</label>
+
+      {selected.length > 0 && (
+        <div className="flex flex-wrap gap-1.5 mb-2">
+          {selected.map(code => {
+            const c = allCountries.find(x => x.code === code);
+            return (
+              <button
+                key={code}
+                type="button"
+                onClick={() => toggle(code)}
+                title="Retirer ce pays"
+                className="flex items-center gap-1 text-[11px] bg-violet-500/15 border border-violet-500/30 text-violet-300 pl-1.5 pr-2 py-1 rounded-lg hover:bg-red-500/15 hover:border-red-500/30 hover:text-red-300 transition-colors"
+              >
+                <span>{c?.flag ?? "🌍"}</span>
+                <span className="font-medium">{c?.name ?? code}</span>
+                <span className="opacity-60">✕</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      <div className="relative mb-2">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-500" />
+        <input
+          value={q}
+          onChange={e => setQ(e.target.value)}
+          placeholder="Rechercher un pays…"
+          className="w-full bg-zinc-800/60 border border-zinc-700/60 rounded-xl pl-8 pr-3 py-2 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-violet-500/60"
+        />
+      </div>
+
+      <div className="max-h-48 overflow-y-auto border border-zinc-700/60 rounded-xl divide-y divide-zinc-800/60 bg-zinc-800/20">
+        {loading ? (
+          <div className="flex justify-center py-6"><Loader2 className="w-4 h-4 text-violet-400 animate-spin" /></div>
+        ) : filtered.length === 0 ? (
+          <p className="text-center text-zinc-600 text-xs py-6">Aucun pays trouvé</p>
+        ) : (
+          filtered.map(c => {
+            const isSel = selected.includes(c.code);
+            return (
+              <button
+                key={c.code}
+                type="button"
+                onClick={() => toggle(c.code)}
+                className={`w-full flex items-center gap-2.5 px-3 py-2 text-left transition-colors ${isSel ? "bg-violet-500/10" : "hover:bg-zinc-800/50"}`}
+              >
+                <span className="text-base flex-shrink-0">{c.flag}</span>
+                <span className="flex-1 text-xs text-white truncate">{c.name}</span>
+                <span className="text-[10px] text-zinc-600 font-mono">{c.code}</span>
+                <div className={`w-4 h-4 rounded flex items-center justify-center flex-shrink-0 border ${isSel ? "bg-violet-600 border-violet-600" : "border-zinc-600"}`}>
+                  {isSel && <Check className="w-3 h-3 text-white" />}
+                </div>
+              </button>
+            );
+          })
+        )}
+      </div>
     </div>
   );
 }
@@ -814,6 +900,8 @@ function OperatorsSection({ toast }: { toast: ReturnType<typeof useToast> }) {
   const [modal, setModal] = useState<null | "create" | Operator>(null);
   const [form, setForm] = useState<Partial<Operator>>({});
   const [search, setSearch] = useState("");
+  const [allCountries, setAllCountries] = useState<CountryOption[]>([]);
+  const [loadingCountries, setLoadingCountries] = useState(true);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -824,7 +912,20 @@ function OperatorsSection({ toast }: { toast: ReturnType<typeof useToast> }) {
     } finally { setLoading(false); }
   }, []);
 
-  useEffect(() => { void load(); }, [load]);
+  const loadCountries = useCallback(async () => {
+    setLoadingCountries(true);
+    try {
+      const r = await apiFetch(`${BASE()}/admin/countries`, { headers: H() });
+      const d = await r.json();
+      const list: CountryOption[] = (Array.isArray(d) ? d : []).map((c: { code: string; name: string; flag: string }) => ({ code: c.code, name: c.name, flag: c.flag }));
+      list.sort((a, b) => a.name.localeCompare(b.name));
+      setAllCountries(list);
+    } finally { setLoadingCountries(false); }
+  }, []);
+
+  const countryLookup = Object.fromEntries(allCountries.map(c => [c.code, c]));
+
+  useEffect(() => { void load(); void loadCountries(); }, [load, loadCountries]);
 
   const save = async () => {
     const isEdit = modal !== "create";
@@ -911,9 +1012,15 @@ function OperatorsSection({ toast }: { toast: ReturnType<typeof useToast> }) {
               </div>
               {(op.countryCodes as string[]).length > 0 && (
                 <div className="flex flex-wrap gap-1 mb-3">
-                  {(op.countryCodes as string[]).slice(0, 8).map((cc: string) => (
-                    <span key={cc} className="text-[10px] bg-zinc-800 text-zinc-400 px-1.5 py-0.5 rounded">{cc}</span>
-                  ))}
+                  {(op.countryCodes as string[]).slice(0, 8).map((cc: string) => {
+                    const c = countryLookup[cc];
+                    return (
+                      <span key={cc} className="flex items-center gap-1 text-[10px] bg-zinc-800 text-zinc-400 px-1.5 py-0.5 rounded" title={cc}>
+                        <span>{c?.flag ?? "🌍"}</span>
+                        <span>{c?.name ?? cc}</span>
+                      </span>
+                    );
+                  })}
                   {(op.countryCodes as string[]).length > 8 && (
                     <span className="text-[10px] text-zinc-600">+{(op.countryCodes as string[]).length - 8}</span>
                   )}
@@ -964,15 +1071,12 @@ function OperatorsSection({ toast }: { toast: ReturnType<typeof useToast> }) {
               placeholder="https://… ou uploader →"
               previewBg={form.color ?? "transparent"}
             />
-            <div>
-              <label className="block text-xs text-zinc-400 mb-1 font-medium">Pays disponibles (codes ISO séparés par virgule)</label>
-              <input
-                value={(form.countryCodes as string[] ?? []).join(",")}
-                onChange={e => setForm(p => ({ ...p, countryCodes: e.target.value.split(",").map(s => s.trim().toUpperCase()).filter(Boolean) }))}
-                className="w-full bg-zinc-800/60 border border-zinc-700/60 rounded-xl px-3 py-2 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-violet-500/60"
-                placeholder="CI,CM,SN,GH"
-              />
-            </div>
+            <CountryMultiSelect
+              allCountries={allCountries}
+              loading={loadingCountries}
+              selected={form.countryCodes as string[] ?? []}
+              onChange={codes => setForm(p => ({ ...p, countryCodes: codes }))}
+            />
             <label className="flex items-center gap-2 cursor-pointer">
               <input type="checkbox" checked={form.active ?? true} onChange={e => setForm(p => ({ ...p, active: e.target.checked }))} className="accent-violet-500" />
               <span className="text-sm text-zinc-300">Opérateur actif</span>
