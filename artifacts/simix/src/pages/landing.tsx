@@ -2063,7 +2063,7 @@ export default function Landing() {
   return (
     <div className="min-h-[100dvh] bg-black text-white overflow-x-hidden">
       <SeoMeta
-        title="SIMIX — Numéros virtuels & SMS de vérification | Payez en FCFA"
+        title="SIMIX"
         description="Achetez des numéros virtuels temporaires pour recevoir vos codes SMS de vérification. WhatsApp, Telegram, Google, Instagram et +500 services. Payez en FCFA via Orange Money, MTN Money ou Wave."
         path="/"
       />
