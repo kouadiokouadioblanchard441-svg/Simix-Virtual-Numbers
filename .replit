@@ -61,7 +61,7 @@ MOBILE_MONEY_GATEWAY = "auto_clapay_first"
 PAWAPAY_ENV = "production"
 VAPID_PUBLIC_KEY = "BPy-4QOhhUbnX3apfyA2LBL8YohvcFVV-av01mEzhI9tzfJBjzXX1Eu5UREKtOnd6W37HGZrOFwmlbYIttLATgc"
 VAPID_SUBJECT = "mailto:support@simix.site"
-PORT = "8080"
+PORT = "5000"
 APP_URL = "https://simix.site"
 
 [userenv.production]
