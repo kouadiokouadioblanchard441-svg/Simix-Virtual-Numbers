@@ -589,7 +589,7 @@ function Hero() {
           src={phone3d}
           alt=""
           aria-hidden="true"
-          className="absolute right-[-8%] top-1/2 -translate-y-1/2 w-[80vw] max-w-[420px] lg:max-w-[540px] object-contain opacity-40 lg:opacity-35 drop-shadow-2xl"
+          className="absolute right-[-8%] top-[10%] w-[80vw] max-w-[420px] lg:max-w-[540px] object-contain opacity-40 lg:opacity-35 drop-shadow-2xl"
         />
         {/* Dégradé gauche pour protéger la lisibilité du texte */}
         <div className="absolute inset-0 bg-gradient-to-r from-[#0d0a1f] via-[#0d0a1f]/75 to-transparent lg:via-[#0d0a1f]/50" />
