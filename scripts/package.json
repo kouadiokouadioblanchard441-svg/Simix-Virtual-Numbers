@@ -6,13 +6,15 @@
   "scripts": {
     "hello": "tsx ./src/hello.ts",
     "seed": "tsx ./src/seed.ts",
+    "resend-otps": "tsx ./src/resend-otps.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
     "@workspace/db": "workspace:*",
     "bcryptjs": "^2.4.3",
     "drizzle-orm": "catalog:",
-    "pg": "^8.20.0"
+    "pg": "^8.20.0",
+    "resend": "^4.0.0"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",
