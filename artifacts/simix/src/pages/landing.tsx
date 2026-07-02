@@ -1663,24 +1663,6 @@ function CommunitySection() {
             );
           })}
         </div>
-
-        {/* Bottom badge */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          whileInView={{ opacity: 1 }}
-          viewport={{ once: true }}
-          transition={{ delay: 0.4 }}
-          className="text-center mt-14"
-        >
-          <div className="inline-flex items-center gap-3 px-6 py-3 rounded-2xl border border-zinc-800 bg-zinc-900/50 text-zinc-500 text-sm">
-            <CheckCircle className="w-4 h-4 text-emerald-500" />
-            Canaux officiels et vérifiés
-            <span className="text-zinc-700">·</span>
-            <span>Mises à jour en temps réel</span>
-            <span className="text-zinc-700">·</span>
-            <span>Gratuit</span>
-          </div>
-        </motion.div>
       </div>
     </section>
   );
