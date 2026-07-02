@@ -14,7 +14,7 @@ interface SeoMetaProps {
 
 export function SeoMeta({ title, description, path = "/", image = DEFAULT_IMAGE, noIndex = false }: SeoMetaProps) {
   const canonical = `${BASE_URL}${path}`;
-  const fullTitle = title.includes(SITE_NAME) ? title : `${title} — ${SITE_NAME}`;
+  const fullTitle = title.toLowerCase().includes(SITE_NAME.toLowerCase()) ? title : `${title} — ${SITE_NAME}`;
 
   return (
     <Helmet>
