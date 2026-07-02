@@ -7,7 +7,7 @@ import { SimixLogo, SimixIcon } from "@/components/simix-logo";
 import { useToast } from "@/hooks/use-toast";
 import { ServiceIcon } from "@/components/service-icon";
 import { usePWAInstallContext } from "@/context/PWAInstallContext";
-import phone3d from "@/assets/simix_phone_3d.png";
+import phone3d from "@/assets/simix_phone_3d_new.png";
 import wallet3d from "@/assets/simix_wallet_3d.png";
 import screenDash from "@/assets/screen-dashboard.png";
 import screenWallet from "@/assets/screen-wallet.png";
@@ -583,15 +583,15 @@ function Hero() {
       <div className="glow-orb absolute top-1/2 -right-40 w-[500px] h-[400px] bg-purple-800/20" />
       <div className="glow-orb absolute bottom-0 left-1/3 w-[400px] h-[300px] bg-pink-900/15" />
 
-      {/* 3D phone — arrière-plan décoratif */}
+      {/* 3D phone — arrière-plan décoratif mobile */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden select-none" aria-hidden="true">
         <img
-          src="/simix_phone_3d.png"
+          src={phone3d}
           alt=""
-          className="absolute bottom-[-2%] right-[-6%] w-[80vw] max-w-[360px] opacity-[0.18] lg:hidden object-contain"
+          className="absolute top-1/2 -translate-y-1/2 right-[-8%] w-[75vw] max-w-[340px] opacity-40 lg:hidden object-contain drop-shadow-2xl"
           style={{
-            maskImage: "radial-gradient(ellipse 85% 85% at 82% 68%, black 25%, transparent 70%)",
-            WebkitMaskImage: "radial-gradient(ellipse 85% 85% at 82% 68%, black 25%, transparent 70%)",
+            maskImage: "radial-gradient(ellipse 90% 90% at 70% 50%, black 30%, transparent 75%)",
+            WebkitMaskImage: "radial-gradient(ellipse 90% 90% at 70% 50%, black 30%, transparent 75%)",
           }}
         />
       </div>
@@ -670,21 +670,11 @@ function Hero() {
             transition={{ duration: 0.8, delay: 0.2 }}
             className="hidden lg:flex items-center justify-center relative"
           >
-            <div className="relative w-full max-w-[440px] h-[500px]">
-              <div className="absolute left-1/2 -translate-x-1/2 top-0 z-10 float-slow">
-                <img src={phone3d} alt="Simix App" className="w-[240px] drop-shadow-2xl" />
+            <div className="relative w-full max-w-[480px] h-[520px] flex items-center justify-center">
+              <div className="float-slow z-10">
+                <img src={phone3d} alt="Simix App" className="w-[420px] drop-shadow-2xl object-contain" />
               </div>
-              <div className="absolute right-0 top-24 z-20 float-fast">
-                <div className="glass rounded-2xl overflow-hidden shadow-2xl shadow-violet-900/30 w-[130px]">
-                  <img src={screenDash} alt="Dashboard" className="w-full" />
-                </div>
-              </div>
-              <div className="absolute left-0 bottom-8 z-20 float-slow" style={{ animationDelay: "1s" }}>
-                <div className="glass rounded-2xl overflow-hidden shadow-2xl shadow-purple-900/30 w-[120px]">
-                  <img src={screenWallet} alt="Wallet" className="w-full" />
-                </div>
-              </div>
-              <div className="absolute right-4 bottom-28 z-30">
+              <div className="absolute right-0 top-20 z-20 float-fast">
                 <div className="glass px-4 py-2.5 rounded-2xl shadow-lg border border-emerald-500/20 flex items-center gap-2">
                   <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
                   <div>
@@ -693,8 +683,8 @@ function Hero() {
                   </div>
                 </div>
               </div>
-              <div className="absolute left-4 top-20 z-30">
-                <div className="glass px-3 py-2 rounded-xl shadow-lg border border-emerald-500/20 flex items-center gap-1.5">
+              <div className="absolute left-0 top-24 z-30">
+                <div className="glass px-3 py-2 rounded-xl shadow-lg border border-violet-500/20 flex items-center gap-1.5">
                   <img src="/3d/icon-lightning.png" alt="" className="w-4 h-4 object-contain" />
                   <div>
                     <div className="text-xs text-zinc-400">Solde</div>
