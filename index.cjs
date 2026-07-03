@@ -64051,6 +64051,58 @@ var init_logger2 = __esm({
   }
 });
 
+// src/lib/settings.ts
+async function loadCache() {
+  if (cache && Date.now() < cacheExpiresAt) return cache;
+  try {
+    const rows = await db.select().from(systemSettingsTable);
+    cache = Object.fromEntries(rows.map((r3) => [r3.key, r3.value]));
+    cacheExpiresAt = Date.now() + CACHE_TTL_MS;
+  } catch (e3) {
+    logger.warn({ err: e3.message }, "[settings] Failed to load settings, using stale cache or defaults");
+    if (!cache) cache = {};
+  }
+  return cache;
+}
+function clearSettingsCache() {
+  cache = null;
+  cacheExpiresAt = 0;
+}
+async function getSetting(key, defaultValue) {
+  const c2 = await loadCache();
+  return c2[key] ?? defaultValue;
+}
+async function getSettingInt(key, defaultValue) {
+  const raw = await getSetting(key, String(defaultValue));
+  const parsed = parseInt(raw, 10);
+  return isNaN(parsed) ? defaultValue : parsed;
+}
+async function getSettingBool(key, defaultValue) {
+  const raw = await getSetting(key, defaultValue ? "true" : "false");
+  return raw === "true" || raw === "1" || raw === "yes";
+}
+var CACHE_TTL_MS, cache, cacheExpiresAt, isMaintenanceMode, isRegistrationEnabled, getNumberValidityMinutes, getExtendMinutes, getExtendFee, getMinDepositFcfa, getMaxBalanceFcfa, getMaxOrdersPerMinute, isEmailOtpEnabled, getReferralCommissionRate;
+var init_settings = __esm({
+  "src/lib/settings.ts"() {
+    "use strict";
+    init_src();
+    init_logger2();
+    CACHE_TTL_MS = 3e4;
+    cache = null;
+    cacheExpiresAt = 0;
+    isMaintenanceMode = () => getSettingBool("maintenance_mode", false);
+    isRegistrationEnabled = () => getSettingBool("registration_enabled", true);
+    getNumberValidityMinutes = () => getSettingInt("number_validity_minutes", 20);
+    getExtendMinutes = () => getSettingInt("extend_minutes", 10);
+    getExtendFee = () => getSettingInt("extend_fee_fcfa", 50);
+    getMinDepositFcfa = () => getSettingInt("min_deposit_fcfa", 500);
+    getMaxBalanceFcfa = () => getSettingInt("max_balance_fcfa", 5e5);
+    getMaxOrdersPerMinute = () => getSettingInt("max_orders_per_minute", 10);
+    isEmailOtpEnabled = () => getSettingBool("email_otp_enabled", true);
+    getReferralCommissionRate = () => getSettingInt("referral_commission_rate", 10);
+  }
+});
+
 // ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/applicationIn.js
 var require_applicationIn = __commonJS({
   "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/applicationIn.js"(exports2) {
@@ -128709,15 +128761,9 @@ function isSyncInProgress() {
 async function getSyncLogs() {
   return readSyncLogs();
 }
-function calcAutoApplyPrice(providerFcfa) {
-  if (providerFcfa <= 0) return 350;
-  if (providerFcfa <= 100) return 300;
-  if (providerFcfa <= 200) return 350;
-  if (providerFcfa <= 300) return 400;
-  return 450;
-}
 async function applyAvailabilityToServicePrices() {
   const BATCH = 150;
+  const defaultMargin = await getSettingInt("default_margin", 200);
   const allSCA = await db.select().from(serviceCountryAvailabilityTable);
   const availableSet = new Set(
     allSCA.filter((r3) => r3.available > 0).map((r3) => `${r3.serviceSlug.toLowerCase()}::${r3.countryCode.toLowerCase()}`)
@@ -128747,7 +128793,7 @@ async function applyAvailabilityToServicePrices() {
     const batch = availableRows.slice(i2, i2 + BATCH).map((r3) => ({
       serviceSlug: r3.serviceSlug.toLowerCase(),
       countryCode: r3.countryCode.toLowerCase(),
-      price: calcAutoApplyPrice(r3.providerPriceFcfa),
+      price: Math.round(r3.providerPriceFcfa * (1 + defaultMargin / 100)),
       enabled: true,
       adminModified: false
     }));
@@ -128837,9 +128883,38 @@ async function syncFiveSimProducts(triggeredBy = "scheduler") {
       throw new Error("Aucun fournisseur 5sim actif avec cl\xE9 API");
     }
     const client = new FiveSimClient(provider.apiKey);
-    const markup = provider.markup;
+    const [marginSetting] = await db.select({ value: systemSettingsTable.value }).from(systemSettingsTable).where(eq(systemSettingsTable.key, "default_margin")).limit(1);
+    const markup = marginSetting?.value && !Number.isNaN(Number(marginSetting.value)) ? Number(marginSetting.value) : provider.markup;
+    logger.info({ markup }, "[5sim-sync] Using default margin from system_settings");
+    const eurRate = await getSettingInt("eur_to_fcfa_rate", 655);
+    logger.info({ eurRate }, "[5sim-sync] Using EUR\u2192FCFA rate from system_settings");
     const merged = {};
     const availRows = [];
+    const slugToIso = { ...FIVESIM_TO_ISO };
+    try {
+      const cResp = await fetch("https://5sim.net/v1/guest/countries", {
+        headers: { Accept: "application/json" },
+        signal: AbortSignal.timeout(15e3)
+      });
+      if (cResp.ok) {
+        const rawC = await cResp.json();
+        let enriched = 0;
+        for (const [slug, info] of Object.entries(rawC)) {
+          if (!slugToIso[slug]) {
+            const isoRaw = Object.keys(info.iso ?? {})[0];
+            if (isoRaw) {
+              slugToIso[slug] = isoRaw.toUpperCase();
+              enriched++;
+            }
+          }
+        }
+        if (enriched > 0) {
+          logger.info({ enriched }, "[5sim-sync] Dynamic slug\u2192ISO mapping enriched with new countries");
+        }
+      }
+    } catch (e3) {
+      logger.debug({ err: e3.message }, "[5sim-sync] Dynamic slug\u2192ISO fetch skipped \u2014 using static map only");
+    }
     let usedBulkPrices = false;
     const sampledIsoCodes = /* @__PURE__ */ new Set();
     try {
@@ -128848,7 +128923,7 @@ async function syncFiveSimProducts(triggeredBy = "scheduler") {
       usedBulkPrices = true;
       for (const [countrySlug, productMap] of Object.entries(allPrices)) {
         if (!productMap || typeof productMap !== "object") continue;
-        const isoCode = FIVESIM_TO_ISO[countrySlug]?.toUpperCase();
+        const isoCode = slugToIso[countrySlug]?.toUpperCase();
         for (const [productName, operatorMap] of Object.entries(productMap)) {
           if (!operatorMap || typeof operatorMap !== "object") continue;
           let totalQty = 0;
@@ -128875,7 +128950,7 @@ async function syncFiveSimProducts(triggeredBy = "scheduler") {
               serviceSlug: productName.toLowerCase(),
               countryCode: isoCode,
               available: totalQty,
-              providerPriceFcfa: Math.round(minCost * 655)
+              providerPriceFcfa: Math.round(minCost * eurRate)
             });
           }
         }
@@ -128887,7 +128962,7 @@ async function syncFiveSimProducts(triggeredBy = "scheduler") {
     } catch (bulkErr) {
       logger.warn({ err: bulkErr.message }, "[5sim-sync] Bulk /guest/prices failed \u2014 falling back to per-country fetch");
       for (const country of SAMPLE_COUNTRIES) {
-        const isoCode = FIVESIM_TO_ISO[country]?.toUpperCase();
+        const isoCode = slugToIso[country]?.toUpperCase();
         try {
           const products = await client.getProducts(country, "any");
           for (const [name3, info] of Object.entries(products)) {
@@ -128907,7 +128982,7 @@ async function syncFiveSimProducts(triggeredBy = "scheduler") {
                 serviceSlug: name3.toLowerCase(),
                 countryCode: isoCode,
                 available: info.Qty,
-                providerPriceFcfa: Math.round(info.Price * 655)
+                providerPriceFcfa: Math.round(info.Price * eurRate)
               });
             }
           }
@@ -128958,7 +129033,7 @@ async function syncFiveSimProducts(triggeredBy = "scheduler") {
     for (let i2 = 0; i2 < productList.length; i2 += BATCH_SIZE) {
       const batch = productList.slice(i2, i2 + BATCH_SIZE);
       const rows = batch.map(([slug, info]) => {
-        const priceInFcfa = Math.round(info.price * 655);
+        const priceInFcfa = Math.round(info.price * eurRate);
         const priceWithMarkup = Math.round(priceInFcfa * (1 + markup / 100));
         const prettyName = slug.charAt(0).toUpperCase() + slug.slice(1).replace(/_/g, " ");
         const slugLower = slug.toLowerCase();
@@ -129184,6 +129259,7 @@ var init_fivesim_sync = __esm({
     init_drizzle_orm();
     init_fivesim();
     init_logger2();
+    init_settings();
     FIVESIM_TO_ISO = Object.fromEntries(
       Object.entries(ISO_TO_5SIM).map(([iso, slug]) => [slug, iso])
     );
@@ -148934,51 +149010,8 @@ async function blockUser(userId, reason) {
   logger.warn({ userId, reason }, "[SECURITY] User blocked");
 }
 
-// src/lib/settings.ts
-init_src();
-init_logger2();
-var CACHE_TTL_MS = 3e4;
-var cache = null;
-var cacheExpiresAt = 0;
-async function loadCache() {
-  if (cache && Date.now() < cacheExpiresAt) return cache;
-  try {
-    const rows = await db.select().from(systemSettingsTable);
-    cache = Object.fromEntries(rows.map((r3) => [r3.key, r3.value]));
-    cacheExpiresAt = Date.now() + CACHE_TTL_MS;
-  } catch (e3) {
-    logger.warn({ err: e3.message }, "[settings] Failed to load settings, using stale cache or defaults");
-    if (!cache) cache = {};
-  }
-  return cache;
-}
-function clearSettingsCache() {
-  cache = null;
-  cacheExpiresAt = 0;
-}
-async function getSetting(key, defaultValue) {
-  const c2 = await loadCache();
-  return c2[key] ?? defaultValue;
-}
-async function getSettingInt(key, defaultValue) {
-  const raw = await getSetting(key, String(defaultValue));
-  const parsed = parseInt(raw, 10);
-  return isNaN(parsed) ? defaultValue : parsed;
-}
-async function getSettingBool(key, defaultValue) {
-  const raw = await getSetting(key, defaultValue ? "true" : "false");
-  return raw === "true" || raw === "1" || raw === "yes";
-}
-var isMaintenanceMode = () => getSettingBool("maintenance_mode", false);
-var isRegistrationEnabled = () => getSettingBool("registration_enabled", true);
-var getNumberValidityMinutes = () => getSettingInt("number_validity_minutes", 20);
-var getExtendMinutes = () => getSettingInt("extend_minutes", 10);
-var getExtendFee = () => getSettingInt("extend_fee_fcfa", 50);
-var getMinDepositFcfa = () => getSettingInt("min_deposit_fcfa", 500);
-var getMaxBalanceFcfa = () => getSettingInt("max_balance_fcfa", 5e5);
-var getMaxOrdersPerMinute = () => getSettingInt("max_orders_per_minute", 10);
-var isEmailOtpEnabled = () => getSettingBool("email_otp_enabled", true);
-var getReferralCommissionRate = () => getSettingInt("referral_commission_rate", 10);
+// src/routes/auth.ts
+init_settings();
 
 // src/lib/otp.ts
 var import_node_crypto5 = require("node:crypto");
@@ -155238,6 +155271,7 @@ var import_web_push = __toESM(require_src17(), 1);
 init_src();
 init_drizzle_orm();
 init_logger2();
+init_settings();
 var _configured = false;
 async function configurePush() {
   if (_configured) return true;
@@ -155434,6 +155468,7 @@ var notifications_default = router7;
 
 // src/routes/numbers.ts
 init_src();
+init_settings();
 var router8 = (0, import_express9.Router)();
 function extractCode(text2) {
   const match = text2.match(/\b(\d{4,8})\b/);
@@ -156984,6 +157019,7 @@ async function resolveGateway(countryCode, methodSlug, _amount) {
 }
 
 // src/routes/wallet.ts
+init_settings();
 init_src();
 var router10 = (0, import_express11.Router)();
 async function getPawaPayClient() {
@@ -159044,6 +159080,7 @@ var NowPaymentsSDK = class {
 };
 
 // src/lib/nowpayments.ts
+init_settings();
 async function getNowPaymentsApiKey() {
   const envKey = process.env.NOWPAYMENTS_API_KEY;
   if (envKey) return envKey;
@@ -159079,6 +159116,7 @@ var CRYPTO_NETWORKS = {
 };
 
 // src/routes/crypto-wallet.ts
+init_settings();
 init_src();
 var import_node_crypto11 = require("node:crypto");
 var router11 = (0, import_express12.Router)();
@@ -159408,6 +159446,7 @@ init_drizzle_orm();
 init_src();
 init_fivesim();
 init_logger2();
+init_settings();
 var router13 = (0, import_express14.Router)();
 router13.use(requireAdminJwt);
 function requireAdmin2(req, res, next) {
@@ -160980,6 +161019,7 @@ router13.get("/admin/live-prices", requireAdmin2, async (req, res) => {
   }
   const client = new FiveSimClient(provider.apiKey);
   const markup = provider.markup;
+  const eurRate = await getSettingInt("eur_to_fcfa_rate", 655);
   const results = await Promise.allSettled(
     SAMPLE_COUNTRIES_PRICE.map(async (c2) => {
       const products = await client.getProducts(c2.code, "any");
@@ -160991,8 +161031,8 @@ router13.get("/admin/live-prices", requireAdmin2, async (req, res) => {
           available: p ? p.Qty > 0 : false,
           qty: p?.Qty ?? 0,
           priceUsd: p?.Price ?? 0,
-          priceFcfa: p ? Math.round(p.Price * 655) : 0,
-          priceWithMarkup: p ? Math.round(p.Price * 655 * (1 + markup / 100)) : 0,
+          priceFcfa: p ? Math.round(p.Price * eurRate) : 0,
+          priceWithMarkup: p ? Math.round(p.Price * eurRate * (1 + markup / 100)) : 0,
           markup
         };
       }
@@ -161000,8 +161040,8 @@ router13.get("/admin/live-prices", requireAdmin2, async (req, res) => {
         name: name3,
         qty: v8.Qty,
         priceUsd: v8.Price,
-        priceFcfa: Math.round(v8.Price * 655),
-        priceWithMarkup: Math.round(v8.Price * 655 * (1 + markup / 100))
+        priceFcfa: Math.round(v8.Price * eurRate),
+        priceWithMarkup: Math.round(v8.Price * eurRate * (1 + markup / 100))
       }));
       return { ...c2, products: top };
     })
@@ -161019,6 +161059,7 @@ router13.get("/admin/live-prices/services", requireAdmin2, async (req, res) => {
   }
   const client = new FiveSimClient(provider.apiKey);
   const markup = provider.markup;
+  const eurRate = await getSettingInt("eur_to_fcfa_rate", 655);
   try {
     const products = await client.getProducts("france", "any");
     const services = Object.entries(products).filter(([, v8]) => v8.Qty > 0).sort(([, a], [, b3]) => b3.Qty - a.Qty).map(([name3, v8]) => ({
@@ -161026,8 +161067,8 @@ router13.get("/admin/live-prices/services", requireAdmin2, async (req, res) => {
       name: name3.charAt(0).toUpperCase() + name3.slice(1),
       qty: v8.Qty,
       priceUsd: v8.Price,
-      priceFcfa: Math.round(v8.Price * 655),
-      priceWithMarkup: Math.round(v8.Price * 655 * (1 + markup / 100)),
+      priceFcfa: Math.round(v8.Price * eurRate),
+      priceWithMarkup: Math.round(v8.Price * eurRate * (1 + markup / 100)),
       margin: markup
     }));
     res.json({ services, markup, total: services.length, country: "france" });
@@ -162998,6 +163039,7 @@ var admin_fivesim_default = router18;
 
 // src/routes/config.ts
 var import_express20 = __toESM(require_express2(), 1);
+init_settings();
 var router19 = (0, import_express20.Router)();
 router19.get("/config", async (_req, res) => {
   const [
@@ -165352,6 +165394,7 @@ var forgot_password_default = router25;
 var import_express27 = __toESM(require_express2(), 1);
 init_drizzle_orm();
 init_src();
+init_settings();
 var router26 = (0, import_express27.Router)();
 router26.get("/referral/me", requireAuth, async (req, res) => {
   const user = req.user;
@@ -165431,6 +165474,7 @@ var push_subscriptions_default = router27;
 
 // src/routes/maintenance.ts
 var import_express29 = __toESM(require_express2(), 1);
+init_settings();
 var router28 = (0, import_express29.Router)();
 router28.get("/maintenance/status", async (_req, res) => {
   const [mode, title, subtitle, estimatedTime, contactEmail, buttonText] = await Promise.all([
@@ -165596,6 +165640,7 @@ init_drizzle_orm();
 // src/middlewares/security.ts
 init_drizzle_orm();
 init_src();
+init_settings();
 
 // src/lib/maintenance-html.ts
 var MAINTENANCE_HTML = `<!DOCTYPE html>
@@ -165780,6 +165825,7 @@ function checkUserBlocked(req, res, next) {
 }
 
 // src/app.ts
+init_settings();
 var app = (0, import_express32.default)();
 app.set("trust proxy", 1);
 app.use((0, import_compression.default)({
@@ -166427,16 +166473,7 @@ var PAYMENT_METHODS = [
 async function seedPaymentMethods() {
   try {
     for (const pm of PAYMENT_METHODS) {
-      await db.insert(paymentMethodsTable).values(pm).onConflictDoUpdate({
-        target: paymentMethodsTable.slug,
-        set: {
-          name: pm.name,
-          description: pm.description,
-          color: pm.color,
-          recommended: pm.recommended,
-          sortOrder: pm.sortOrder
-        }
-      });
+      await db.insert(paymentMethodsTable).values(pm).onConflictDoNothing();
     }
     logger.info({ count: PAYMENT_METHODS.length }, "[seed-payments] Payment methods seeded");
   } catch (err) {
@@ -166471,7 +166508,7 @@ async function seedProvidersFromEnv() {
         baseUrl: "https://5sim.net/v1",
         active: true,
         priority: 1,
-        markup: 20
+        markup: 200
       });
       logger.info("[seed-providers] 5sim provider created from FIVESIM_API_KEY env var");
     }
