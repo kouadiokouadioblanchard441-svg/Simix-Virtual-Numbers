@@ -5,8 +5,8 @@ import { AdminLayout } from "@/components/admin-layout";
 import { formatFCFA } from "@/lib/format";
 import {
   RotateCcw, TrendingUp, CheckCircle2, Loader2, RefreshCw,
-  Wallet, Users, Zap, AlertTriangle, Play, BarChart2,
-  Clock, Ban, Calendar, ArrowUpRight,
+  Wallet, Zap, AlertTriangle, Play, BarChart2,
+  Clock, Calendar, ShieldAlert, BadgeAlert,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -77,6 +77,119 @@ function StatCard({
         <div className="text-2xl font-bold text-white">{value}</div>
         {sub && <div className="text-xs text-zinc-400 mt-1">{sub}</div>}
       </div>
+    </div>
+  );
+}
+
+/* ── Missing refunds monitoring section ── */
+function MissingRefundsAlert() {
+  const { toast } = useToast();
+  const qc = useQueryClient();
+
+  const { data, isLoading, refetch, isFetching } = useQuery({
+    queryKey: ["admin-missing-refunds"],
+    queryFn: adminApi.getMissingRefunds,
+    refetchInterval: 120_000,
+  });
+
+  const manualRefund = useMutation({
+    mutationFn: (numberId: string) => adminApi.issueManualRefund(numberId),
+    onSuccess: (r) => {
+      toast({ title: "Remboursement effectué", description: `${formatFCFA(r.amount)} crédités` });
+      qc.invalidateQueries({ queryKey: ["admin-missing-refunds"] });
+      qc.invalidateQueries({ queryKey: ["admin-refund-stats"] });
+    },
+    onError: (e) => toast({ title: "Erreur", description: (e as Error).message, variant: "destructive" }),
+  });
+
+  const list = data?.missingRefunds ?? [];
+
+  return (
+    <div className={`rounded-2xl border p-6 ${list.length > 0 ? "border-red-700/50 bg-red-950/20" : "border-zinc-800 bg-zinc-900"}`}>
+      <div className="flex items-center justify-between mb-5">
+        <div className="flex items-center gap-3">
+          <div className={`w-10 h-10 rounded-xl flex items-center justify-center shadow-lg ${list.length > 0 ? "bg-red-600" : "bg-emerald-600"}`}>
+            {list.length > 0 ? <ShieldAlert className="w-5 h-5 text-white" /> : <CheckCircle2 className="w-5 h-5 text-white" />}
+          </div>
+          <div>
+            <h2 className="text-white font-semibold flex items-center gap-2">
+              Surveillance — Remboursements manquants
+              {list.length > 0 && (
+                <span className="text-xs bg-red-600 text-white px-2 py-0.5 rounded-full font-bold">{list.length}</span>
+              )}
+            </h2>
+            <p className="text-xs text-zinc-400 mt-0.5">
+              Numéros expirés/annulés sans SMS ni remboursement détecté
+            </p>
+          </div>
+        </div>
+        <button
+          onClick={() => refetch()}
+          disabled={isFetching}
+          className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-lg border border-zinc-700 transition-colors disabled:opacity-50"
+        >
+          <RefreshCw className={`w-3 h-3 ${isFetching ? "animate-spin" : ""}`} />
+          Actualiser
+        </button>
+      </div>
+
+      {isLoading ? (
+        <div className="flex items-center justify-center py-8">
+          <Loader2 className="w-6 h-6 text-violet-500 animate-spin" />
+        </div>
+      ) : list.length === 0 ? (
+        <div className="flex items-center gap-3 py-4 text-emerald-400">
+          <CheckCircle2 className="w-5 h-5 shrink-0" />
+          <span className="text-sm font-medium">Aucun remboursement manquant détecté — tout est en ordre ✓</span>
+        </div>
+      ) : (
+        <div className="space-y-2 max-h-96 overflow-y-auto pr-1">
+          {list.map((row) => {
+            const age = Math.round((Date.now() - new Date(row.createdAt).getTime()) / 3_600_000);
+            const isPending = manualRefund.isPending && manualRefund.variables === row.id;
+            return (
+              <div
+                key={row.id}
+                className="flex items-center gap-3 p-3 rounded-xl bg-red-950/30 border border-red-800/30"
+              >
+                <div className="w-8 h-8 rounded-full bg-red-900/50 flex items-center justify-center shrink-0">
+                  <BadgeAlert className="w-4 h-4 text-red-400" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-white text-sm font-medium truncate">
+                      {row.phoneNumber ?? row.id.slice(0, 8) + "…"}
+                    </span>
+                    <span className="text-[10px] px-1.5 py-0.5 rounded-full border bg-zinc-800 border-zinc-700 text-zinc-400">
+                      {row.status}
+                    </span>
+                    {row.service && (
+                      <span className="text-[10px] text-violet-400">{row.service}</span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-3 mt-0.5 flex-wrap">
+                    <span className="text-zinc-400 text-xs">{row.userName ?? row.userPhone ?? row.userId.slice(0, 8)}</span>
+                    <span className="text-zinc-600 text-xs">il y a {age}h</span>
+                    <span className="text-amber-400 text-xs font-mono">{formatFCFA(row.price)}</span>
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    if (confirm(`Rembourser ${formatFCFA(row.price)} à ${row.userName ?? row.userPhone ?? "cet utilisateur"} ?`)) {
+                      manualRefund.mutate(row.id);
+                    }
+                  }}
+                  disabled={isPending || manualRefund.isPending}
+                  className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors disabled:opacity-50"
+                >
+                  {isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <RotateCcw className="w-3 h-3" />}
+                  Rembourser
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
@@ -163,6 +276,9 @@ function RefundsContent() {
           </button>
         </div>
       </div>
+
+      {/* Missing refunds surveillance */}
+      <MissingRefundsAlert />
 
       {/* Stat cards — 4 metrics */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">

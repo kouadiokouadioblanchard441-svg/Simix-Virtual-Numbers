@@ -356,6 +356,31 @@ export const adminApi = {
 
   getRefundStats: () => req<RefundStats>("GET", "/admin/fivesim/refund-stats"),
 
+  getMissingRefunds: () => req<{
+    count: number;
+    missingRefunds: Array<{
+      id: string;
+      phoneNumber: string | null;
+      status: string;
+      price: number;
+      createdAt: string;
+      expiresAt: string;
+      externalOrderId: string | null;
+      userId: string;
+      userPhone: string | null;
+      userName: string | null;
+      userBalance: number | null;
+      service: string | null;
+      smsCount: number;
+    }>;
+  }>("GET", "/admin/fivesim/missing-refunds"),
+
+  issueManualRefund: (numberId: string) => req<{
+    success: boolean;
+    amount: number;
+    numberId: string;
+  }>("POST", `/admin/fivesim/manual-refund/${numberId}`),
+
   /* ── Pricing Matrix (global + per-country unified view) ── */
   getPricingMatrix: (serviceSlug: string) =>
     req<PricingMatrix>("GET", `/admin/pricing/matrix?serviceSlug=${encodeURIComponent(serviceSlug)}`),

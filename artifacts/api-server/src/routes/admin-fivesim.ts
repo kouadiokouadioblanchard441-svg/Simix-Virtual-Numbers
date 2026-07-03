@@ -210,6 +210,138 @@ router.get("/admin/fivesim/pending-refunds", requireAdminJwt, async (_req, res):
   }
 });
 
+/* ─── Missing refunds: expired/cancelled numbers with no refund transaction ── */
+
+router.get("/admin/fivesim/missing-refunds", requireAdminJwt, async (_req, res): Promise<void> => {
+  try {
+    /* Find virtual numbers that are expired or cancelled, received 0 SMS,
+     * and have no matching refund transaction within 2 hours of purchase.
+     * We use a time-window heuristic (userId + amount + 2h) because the
+     * transactions table has no direct FK to virtual_numbers. */
+    const rows = await db
+      .select({
+        id:              virtualNumbersTable.id,
+        phoneNumber:     virtualNumbersTable.phoneNumber,
+        status:          virtualNumbersTable.status,
+        price:           virtualNumbersTable.price,
+        createdAt:       virtualNumbersTable.createdAt,
+        expiresAt:       virtualNumbersTable.expiresAt,
+        externalOrderId: virtualNumbersTable.externalOrderId,
+        userId:          virtualNumbersTable.userId,
+        userPhone:       usersTable.phone,
+        userName:        usersTable.fullName,
+        userBalance:     usersTable.balance,
+        service:         servicesTable.name,
+        smsCount:        sql<number>`(SELECT count(*)::int FROM sms_messages sm WHERE sm.number_id = ${virtualNumbersTable.id})`,
+        refundExists:    sql<boolean>`EXISTS (
+          SELECT 1 FROM transactions t
+          WHERE t.user_id = ${virtualNumbersTable.userId}
+            AND t.type = 'refund'
+            AND t.amount = ${virtualNumbersTable.price}
+            AND t.created_at > ${virtualNumbersTable.createdAt}
+            AND t.created_at < ${virtualNumbersTable.createdAt} + interval '2 hours'
+        )`,
+      })
+      .from(virtualNumbersTable)
+      .leftJoin(usersTable, eq(usersTable.id, virtualNumbersTable.userId))
+      .leftJoin(servicesTable, eq(servicesTable.id, virtualNumbersTable.serviceId))
+      .where(
+        and(
+          or(
+            eq(virtualNumbersTable.status, "expired"),
+            eq(virtualNumbersTable.status, "cancelled"),
+          ),
+          isNotNull(virtualNumbersTable.externalOrderId),
+        ),
+      )
+      .orderBy(desc(virtualNumbersTable.createdAt));
+
+    /* Keep only rows where no refund was found */
+    const missing = rows.filter(r => !r.refundExists && (r.smsCount ?? 0) === 0);
+
+    res.json({ missingRefunds: missing, count: missing.length });
+  } catch (e) {
+    logger.error({ err: (e as Error).message }, "[admin] Error fetching missing refunds");
+    res.status(500).json({ error: "Erreur lors de la récupération des remboursements manquants" });
+  }
+});
+
+/* ─── Manual refund: rembourser manuellement un numéro précis ──── */
+
+router.post("/admin/fivesim/manual-refund/:numberId", requireAdminJwt, async (req, res): Promise<void> => {
+  const { numberId } = req.params;
+  try {
+    /* Fetch the number */
+    const [vn] = await db
+      .select()
+      .from(virtualNumbersTable)
+      .where(eq(virtualNumbersTable.id, numberId))
+      .limit(1);
+
+    if (!vn) { res.status(404).json({ error: "Numéro introuvable" }); return; }
+
+    /* Guard: only expired or cancelled numbers qualify */
+    if (vn.status !== "expired" && vn.status !== "cancelled") {
+      res.status(400).json({ error: `Impossible de rembourser un numéro en statut "${vn.status}"` });
+      return;
+    }
+
+    /* Guard: must have 0 SMS */
+    const [{ smsCount }] = await db
+      .select({ smsCount: sql<number>`count(*)::int` })
+      .from(smsMessagesTable)
+      .where(eq(smsMessagesTable.numberId, numberId));
+    if ((smsCount ?? 0) > 0) {
+      res.status(400).json({ error: "Ce numéro a reçu des SMS — remboursement non éligible" });
+      return;
+    }
+
+    /* Guard: check if a refund was already issued (same time-window heuristic) */
+    const [{ alreadyRefunded }] = await db
+      .select({
+        alreadyRefunded: sql<boolean>`EXISTS (
+          SELECT 1 FROM transactions t
+          WHERE t.user_id = ${vn.userId}
+            AND t.type = 'refund'
+            AND t.amount = ${vn.price}
+            AND t.created_at > ${vn.createdAt}
+            AND t.created_at < ${vn.createdAt} + interval '2 hours'
+        )`,
+      })
+      .from(virtualNumbersTable)
+      .where(eq(virtualNumbersTable.id, numberId))
+      .limit(1);
+
+    if (alreadyRefunded) {
+      res.status(409).json({ error: "Un remboursement semble déjà avoir été effectué pour ce numéro" });
+      return;
+    }
+
+    /* Atomic: credit balance + insert transaction */
+    await db.transaction(async (tx) => {
+      await tx
+        .update(usersTable)
+        .set({ balance: sql`${usersTable.balance} + ${vn.price}` })
+        .where(eq(usersTable.id, vn.userId));
+
+      await tx.insert(transactionsTable).values({
+        userId:      vn.userId,
+        type:        "refund",
+        amount:      vn.price,
+        status:      "completed",
+        method:      "wallet",
+        description: `Remboursement manuel admin — numéro ${vn.phoneNumber ?? numberId}`,
+      });
+    });
+
+    logger.info({ numberId, userId: vn.userId, amount: vn.price }, "[admin] Manual refund issued");
+    res.json({ success: true, amount: vn.price, numberId });
+  } catch (e) {
+    logger.error({ err: (e as Error).message, numberId }, "[admin] Error in manual refund");
+    res.status(500).json({ error: "Erreur lors du remboursement manuel" });
+  }
+});
+
 /* ─── Manual trigger: déclencher le sweep de remboursement ────── */
 
 router.post("/admin/fivesim/trigger-refund-sweep", requireAdminJwt, async (_req, res): Promise<void> => {

@@ -163057,6 +163057,95 @@ router18.get("/admin/fivesim/pending-refunds", requireAdminJwt, async (_req, res
     res.status(500).json({ error: "Erreur lors de la r\xE9cup\xE9ration des remboursements en attente" });
   }
 });
+router18.get("/admin/fivesim/missing-refunds", requireAdminJwt, async (_req, res) => {
+  try {
+    const rows = await db.select({
+      id: virtualNumbersTable.id,
+      phoneNumber: virtualNumbersTable.phoneNumber,
+      status: virtualNumbersTable.status,
+      price: virtualNumbersTable.price,
+      createdAt: virtualNumbersTable.createdAt,
+      expiresAt: virtualNumbersTable.expiresAt,
+      externalOrderId: virtualNumbersTable.externalOrderId,
+      userId: virtualNumbersTable.userId,
+      userPhone: usersTable.phone,
+      userName: usersTable.fullName,
+      userBalance: usersTable.balance,
+      service: servicesTable.name,
+      smsCount: sql`(SELECT count(*)::int FROM sms_messages sm WHERE sm.number_id = ${virtualNumbersTable.id})`,
+      refundExists: sql`EXISTS (
+          SELECT 1 FROM transactions t
+          WHERE t.user_id = ${virtualNumbersTable.userId}
+            AND t.type = 'refund'
+            AND t.amount = ${virtualNumbersTable.price}
+            AND t.created_at > ${virtualNumbersTable.createdAt}
+            AND t.created_at < ${virtualNumbersTable.createdAt} + interval '2 hours'
+        )`
+    }).from(virtualNumbersTable).leftJoin(usersTable, eq(usersTable.id, virtualNumbersTable.userId)).leftJoin(servicesTable, eq(servicesTable.id, virtualNumbersTable.serviceId)).where(
+      and(
+        or(
+          eq(virtualNumbersTable.status, "expired"),
+          eq(virtualNumbersTable.status, "cancelled")
+        ),
+        isNotNull(virtualNumbersTable.externalOrderId)
+      )
+    ).orderBy(desc(virtualNumbersTable.createdAt));
+    const missing = rows.filter((r3) => !r3.refundExists && (r3.smsCount ?? 0) === 0);
+    res.json({ missingRefunds: missing, count: missing.length });
+  } catch (e3) {
+    logger.error({ err: e3.message }, "[admin] Error fetching missing refunds");
+    res.status(500).json({ error: "Erreur lors de la r\xE9cup\xE9ration des remboursements manquants" });
+  }
+});
+router18.post("/admin/fivesim/manual-refund/:numberId", requireAdminJwt, async (req, res) => {
+  const { numberId } = req.params;
+  try {
+    const [vn3] = await db.select().from(virtualNumbersTable).where(eq(virtualNumbersTable.id, numberId)).limit(1);
+    if (!vn3) {
+      res.status(404).json({ error: "Num\xE9ro introuvable" });
+      return;
+    }
+    if (vn3.status !== "expired" && vn3.status !== "cancelled") {
+      res.status(400).json({ error: `Impossible de rembourser un num\xE9ro en statut "${vn3.status}"` });
+      return;
+    }
+    const [{ smsCount }] = await db.select({ smsCount: sql`count(*)::int` }).from(smsMessagesTable).where(eq(smsMessagesTable.numberId, numberId));
+    if ((smsCount ?? 0) > 0) {
+      res.status(400).json({ error: "Ce num\xE9ro a re\xE7u des SMS \u2014 remboursement non \xE9ligible" });
+      return;
+    }
+    const [{ alreadyRefunded }] = await db.select({
+      alreadyRefunded: sql`EXISTS (
+          SELECT 1 FROM transactions t
+          WHERE t.user_id = ${vn3.userId}
+            AND t.type = 'refund'
+            AND t.amount = ${vn3.price}
+            AND t.created_at > ${vn3.createdAt}
+            AND t.created_at < ${vn3.createdAt} + interval '2 hours'
+        )`
+    }).from(virtualNumbersTable).where(eq(virtualNumbersTable.id, numberId)).limit(1);
+    if (alreadyRefunded) {
+      res.status(409).json({ error: "Un remboursement semble d\xE9j\xE0 avoir \xE9t\xE9 effectu\xE9 pour ce num\xE9ro" });
+      return;
+    }
+    await db.transaction(async (tx) => {
+      await tx.update(usersTable).set({ balance: sql`${usersTable.balance} + ${vn3.price}` }).where(eq(usersTable.id, vn3.userId));
+      await tx.insert(transactionsTable).values({
+        userId: vn3.userId,
+        type: "refund",
+        amount: vn3.price,
+        status: "completed",
+        method: "wallet",
+        description: `Remboursement manuel admin \u2014 num\xE9ro ${vn3.phoneNumber ?? numberId}`
+      });
+    });
+    logger.info({ numberId, userId: vn3.userId, amount: vn3.price }, "[admin] Manual refund issued");
+    res.json({ success: true, amount: vn3.price, numberId });
+  } catch (e3) {
+    logger.error({ err: e3.message, numberId }, "[admin] Error in manual refund");
+    res.status(500).json({ error: "Erreur lors du remboursement manuel" });
+  }
+});
 router18.post("/admin/fivesim/trigger-refund-sweep", requireAdminJwt, async (_req, res) => {
   try {
     logger.info("[admin] Manual auto-refund sweep triggered");
