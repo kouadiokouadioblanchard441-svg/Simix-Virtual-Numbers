@@ -20,7 +20,7 @@ import {
   mobileOperatorsTable,
   paymentRoutesTable,
 } from "@workspace/db";
-import { eq, and, sql } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { logger } from "./logger";
 
 /* ── Types ── */
@@ -336,24 +336,13 @@ async function seedPaymentRoutes(
           maintenanceMode:    false,
           notes:              "Auto-seeded at startup",
         })
-        .onConflictDoUpdate({
-          target: [
-            paymentRoutesTable.countryCode,
-            paymentRoutesTable.operatorSlug,
-            paymentRoutesTable.transactionType,
-          ],
-          /* Always refresh gateway IDs to reflect current API key configuration.
-           * active + maintenanceMode are preserved so admin toggles survive reboots. */
-          set: {
-            primaryGatewayId:   sql`EXCLUDED.primary_gateway_id`,
-            secondaryGatewayId: sql`EXCLUDED.secondary_gateway_id`,
-            notes:              sql`EXCLUDED.notes`,
-            updatedAt:          sql`NOW()`,
-          },
-        });
+        /* NEVER overwrite admin-configured routes — only insert when the row
+         * does not yet exist. Admin changes made via the UI are the authoritative
+         * source of truth and must survive any server restart or re-seed. */
+        .onConflictDoNothing();
       seeded++;
     } catch (e) {
-      logger.warn({ cc: r.cc, op: r.op, err: (e as Error).message }, "[seed-routing] Route upsert failed");
+      logger.warn({ cc: r.cc, op: r.op, err: (e as Error).message }, "[seed-routing] Route seed failed");
     }
   }
 
