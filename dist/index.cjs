@@ -154080,7 +154080,7 @@ async function getFromEmail() {
     if (val) return val;
   } catch {
   }
-  const appUrl = await getAppUrl().catch(() => "simix.site");
+  const appUrl = getAppUrl();
   const domain = appUrl.replace(/^https?:\/\//, "").replace(/\/.*$/, "");
   return `Simix <noreply@${domain}>`;
 }
@@ -154926,7 +154926,8 @@ function getRedirectUri(req) {
   return `${proto}://${host}/api/auth/google/callback`;
 }
 function isSecureRequest(req) {
-  return req.secure || req.headers["x-forwarded-proto"] === "https";
+  const proto = req.headers["x-forwarded-proto"];
+  return req.secure || proto === "https" || Array.isArray(proto) && proto[0] === "https";
 }
 function oauthStateCookieOptions(secure) {
   return {
@@ -155236,7 +155237,8 @@ router6.get("/countries", async (req, res) => {
       popular: r3.popular,
       sortOrder: r3.sort_order,
       enabled: r3.enabled,
-      numbersEnabled: r3.numbers_enabled
+      numbersEnabled: r3.numbers_enabled,
+      adminPriceModified: false
     })));
     return;
   }
@@ -157133,7 +157135,7 @@ router10.post(
     let localAmount = amount;
     let fxMeta = null;
     if (!isXofCurrency) {
-      const [currRow] = await db.select().from(currenciesTable).where(eq(currenciesTable.countryCode, countryCode.toUpperCase())).limit(1);
+      const [currRow] = await db.select().from(currenciesTable).where(eq(currenciesTable.countryCode, (countryCode ?? "").toUpperCase())).limit(1);
       if (currRow && currRow.active) {
         const clientRate = Number(currRow.clientRate);
         const realRate = Number(currRow.realRate);
@@ -159145,13 +159147,13 @@ async function creditCryptoDeposit(txId, userId, amountFcfa, paymentId, partial 
   if (!justCompleted) return false;
   await db.update(usersTable).set({ balance: sql`${usersTable.balance} + ${amountFcfa}` }).where(eq(usersTable.id, userId));
   const body = partial ? `${amountFcfa.toLocaleString("fr-FR")} FCFA cr\xE9dit\xE9s (paiement crypto partiel).` : `${amountFcfa.toLocaleString("fr-FR")} FCFA ont \xE9t\xE9 cr\xE9dit\xE9s via crypto.`;
-  await db.insert(notificationsTable).values({
+  const [notif] = await db.insert(notificationsTable).values({
     userId,
     title: `Recharge ${label} \u2713`,
     body,
     type: "deposit_success"
-  });
-  broadcastNotification(userId, { title: `Recharge ${label} \u2713`, body, type: "deposit_success" });
+  }).returning();
+  if (notif) broadcastNotification(notif);
   logger.info({ paymentId, userId, amountFcfa, partial }, "[Crypto] Balance credited");
   return true;
 }
@@ -160945,8 +160947,9 @@ router13.post("/admin/blacklist", requireAdmin2, async (req, res) => {
   res.json(entry);
 });
 router13.delete("/admin/blacklist/:id", requireAdmin2, async (req, res) => {
-  await db.delete(ipBlacklistTable).where(eq(ipBlacklistTable.id, req.params.id));
-  await logAdminAction(adminId2(req), "blacklist_remove", req.ip, "blacklist", req.params.id);
+  const blacklistId = req.params.id;
+  await db.delete(ipBlacklistTable).where(eq(ipBlacklistTable.id, blacklistId));
+  await logAdminAction(adminId2(req), "blacklist_remove", req.ip, "blacklist", blacklistId);
   res.json({ success: true });
 });
 router13.get("/admin/blacklist/check", requireAdmin2, async (req, res) => {
@@ -161363,7 +161366,7 @@ router13.get("/admin/diagnostics", requireAdmin2, async (_req, res) => {
       const { PawaPayClient: PawaPayClient2 } = await Promise.resolve().then(() => (init_pawapay(), pawapay_exports));
       const client = new PawaPayClient2(token2, env);
       const t0 = Date.now();
-      await client.getActiveConfig();
+      await client.getActiveConfiguration();
       checks.push({ name: "pawapay", label: "PawaPay", status: "ok", detail: `Connect\xE9 (${env})`, latencyMs: Date.now() - t0 });
     }
   } catch (e3) {
