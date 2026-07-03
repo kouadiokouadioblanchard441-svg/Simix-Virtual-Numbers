@@ -182,7 +182,9 @@ async function upsertServices() {
   for (const s of SERVICES) {
     await db.insert(servicesTable).values(s).onConflictDoUpdate({
       target: servicesTable.slug,
-      set: { name: s.name, price: s.price, available: s.available, color: s.color, category: s.category, popular: s.popular, sortOrder: s.sortOrder },
+      /* Only update non-admin fields (name, color, category).
+         price, popular, sortOrder are admin-owned — never overwrite them. */
+      set: { name: s.name, color: s.color, category: s.category },
     });
   }
   console.log(`  ✓ ${SERVICES.length} services`);
@@ -193,7 +195,9 @@ async function upsertCountries() {
   for (const c of COUNTRIES) {
     await db.insert(countriesTable).values(c).onConflictDoUpdate({
       target: countriesTable.code,
-      set: { name: c.name, dialCode: c.dialCode, flag: c.flag, available: c.available, price: c.price, popular: c.popular, sortOrder: c.sortOrder },
+      /* Only update non-admin fields (name, dialCode, flag, available).
+         price, popular, sortOrder are admin-owned — never overwrite them. */
+      set: { name: c.name, dialCode: c.dialCode, flag: c.flag, available: c.available },
     });
   }
   console.log(`  ✓ ${COUNTRIES.length} countries`);
@@ -284,11 +288,9 @@ async function upsertSystemSettings() {
     await db
       .insert(systemSettingsTable)
       .values(s)
-      .onConflictDoUpdate({
-        target: systemSettingsTable.key,
-        /* Only set value if not already configured (don't overwrite admin changes) */
-        set: { value: s.value },
-      });
+      /* Never overwrite an existing value — the admin may have changed it.
+         onConflictDoNothing ensures seed never resets admin-configured settings. */
+      .onConflictDoNothing();
   }
   console.log(`  ✓ ${settings.length} system settings`);
 }

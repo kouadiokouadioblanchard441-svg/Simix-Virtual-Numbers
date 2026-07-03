@@ -32,16 +32,10 @@ export async function seedPaymentMethods(): Promise<void> {
       await db
         .insert(paymentMethodsTable)
         .values(pm)
-        .onConflictDoUpdate({
-          target: paymentMethodsTable.slug,
-          set: {
-            name:        pm.name,
-            description: pm.description,
-            color:       pm.color,
-            recommended: pm.recommended,
-            sortOrder:   pm.sortOrder,
-          },
-        });
+        /* Never overwrite existing payment method config — the admin may have
+           modified sortOrder, recommended, or color. Use onConflictDoNothing
+           so the seed only creates missing rows without resetting admin config. */
+        .onConflictDoNothing();
     }
     logger.info({ count: PAYMENT_METHODS.length }, "[seed-payments] Payment methods seeded");
   } catch (err) {

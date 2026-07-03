@@ -688,6 +688,35 @@ export async function syncFiveSimProducts(triggeredBy: "scheduler" | "admin" = "
     const merged: Record<string, { category: string; qty: number; price: number }> = {};
     const availRows: Array<{ serviceSlug: string; countryCode: string; available: number; providerPriceFcfa: number }> = [];
 
+    /* ── Build a complete slug → ISO mapping (static + live /guest/countries) ──────
+     * FIVESIM_TO_ISO is derived from the static ISO_TO_5SIM table in fivesim.ts.
+     * If 5sim adds new countries after the last deploy, their slugs won't be in
+     * the static map and would be silently skipped. Fetching /guest/countries
+     * (public endpoint, no auth) fills in any gaps so every 5sim country is indexed.
+     * Failure is non-fatal — we fall back to the static map only.              */
+    const slugToIso: Record<string, string> = { ...FIVESIM_TO_ISO };
+    try {
+      const cResp = await fetch("https://5sim.net/v1/guest/countries", {
+        headers: { Accept: "application/json" },
+        signal:  AbortSignal.timeout(15_000),
+      });
+      if (cResp.ok) {
+        const rawC = await cResp.json() as Record<string, { iso?: Record<string, number> }>;
+        let enriched = 0;
+        for (const [slug, info] of Object.entries(rawC)) {
+          if (!slugToIso[slug]) {
+            const isoRaw = Object.keys(info.iso ?? {})[0];
+            if (isoRaw) { slugToIso[slug] = isoRaw.toUpperCase(); enriched++; }
+          }
+        }
+        if (enriched > 0) {
+          logger.info({ enriched }, "[5sim-sync] Dynamic slug→ISO mapping enriched with new countries");
+        }
+      }
+    } catch (e) {
+      logger.debug({ err: (e as Error).message }, "[5sim-sync] Dynamic slug→ISO fetch skipped — using static map only");
+    }
+
     let usedBulkPrices = false;
     /* Tracks ISO codes successfully fetched in fallback mode (per-country loop).
        Used by zeroOutStaleSCAEntries to limit the zero-out to sampled countries only. */
@@ -699,7 +728,7 @@ export async function syncFiveSimProducts(triggeredBy: "scheduler" | "admin" = "
 
       for (const [countrySlug, productMap] of Object.entries(allPrices)) {
         if (!productMap || typeof productMap !== "object") continue;
-        const isoCode = FIVESIM_TO_ISO[countrySlug]?.toUpperCase();
+        const isoCode = slugToIso[countrySlug]?.toUpperCase();
 
         for (const [productName, operatorMap] of Object.entries(productMap)) {
           if (!operatorMap || typeof operatorMap !== "object") continue;
@@ -747,7 +776,7 @@ export async function syncFiveSimProducts(triggeredBy: "scheduler" | "admin" = "
       logger.warn({ err: (bulkErr as Error).message }, "[5sim-sync] Bulk /guest/prices failed — falling back to per-country fetch");
 
       for (const country of SAMPLE_COUNTRIES) {
-        const isoCode = FIVESIM_TO_ISO[country]?.toUpperCase();
+        const isoCode = slugToIso[country]?.toUpperCase();
         try {
           const products: FiveSimProductsResponse = await client.getProducts(country, "any");
           for (const [name, info] of Object.entries(products)) {
