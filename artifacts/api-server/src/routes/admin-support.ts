@@ -55,11 +55,16 @@ const DEFAULT_AI_CONFIG: Array<{ key: string; value: string; label: string; grou
   { key: "ai_quick_replies_fr", value: "Comment recharger ?|Numéro pas reçu|SMS non reçu|Mon solde|Contacter le support", label: "Réponses rapides (FR, séparées par |)", group: "messages" },
   { key: "ai_quick_replies_en", value: "How to top up?|Number not received|SMS not received|My balance|Contact support", label: "Réponses rapides (EN, séparées par |)", group: "messages" },
   { key: "company_name", value: "Simix", label: "Nom de l'entreprise", group: "entreprise" },
-  { key: "company_email", value: "simixsupport@gmail.com", label: "Email support", group: "entreprise" },
-  { key: "company_whatsapp", value: "", label: "Numéro WhatsApp support", group: "entreprise" },
-  { key: "company_telegram", value: "", label: "Lien Telegram support", group: "entreprise" },
-  { key: "company_phone", value: "", label: "Téléphone support", group: "entreprise" },
 ];
+
+/* NOTE: company_email / company_whatsapp / company_telegram / company_phone
+ * used to live here too, duplicating system_settings.support_email/support_phone/
+ * support_whatsapp/social_telegram_url. That duplication caused Simia to keep
+ * showing a stale phone number after it was updated in Admin → Paramètres.
+ * Contact info now has a single source of truth (system_settings, edited from
+ * Admin → Paramètres → Contact & Service Client) — see buildSystemPrompt()
+ * in routes/support.ts, which reads it via getSetting(). Do not re-add these
+ * keys here. */
 
 /* ─── CONVERSATIONS ───────────────────────────────────────── */
 

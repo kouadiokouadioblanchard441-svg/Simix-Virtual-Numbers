@@ -161545,11 +161545,7 @@ var DEFAULT_AI_CONFIG = [
   { key: "ai_image_analysis", value: "true", label: "Analyse d'images activ\xE9e", group: "technique" },
   { key: "ai_quick_replies_fr", value: "Comment recharger ?|Num\xE9ro pas re\xE7u|SMS non re\xE7u|Mon solde|Contacter le support", label: "R\xE9ponses rapides (FR, s\xE9par\xE9es par |)", group: "messages" },
   { key: "ai_quick_replies_en", value: "How to top up?|Number not received|SMS not received|My balance|Contact support", label: "R\xE9ponses rapides (EN, s\xE9par\xE9es par |)", group: "messages" },
-  { key: "company_name", value: "Simix", label: "Nom de l'entreprise", group: "entreprise" },
-  { key: "company_email", value: "simixsupport@gmail.com", label: "Email support", group: "entreprise" },
-  { key: "company_whatsapp", value: "", label: "Num\xE9ro WhatsApp support", group: "entreprise" },
-  { key: "company_telegram", value: "", label: "Lien Telegram support", group: "entreprise" },
-  { key: "company_phone", value: "", label: "T\xE9l\xE9phone support", group: "entreprise" }
+  { key: "company_name", value: "Simix", label: "Nom de l'entreprise", group: "entreprise" }
 ];
 router14.get("/admin/support/conversations", requireAdmin3, async (req, res) => {
   const limit = Math.min(Number(req.query.limit) || 50, 200);
@@ -164496,6 +164492,7 @@ var GoogleGenerativeAI = class {
 
 // src/routes/support.ts
 init_logger2();
+init_settings();
 var router22 = (0, import_express23.Router)();
 async function loadUserContext(userId) {
   const [user] = await db.select({
@@ -164567,12 +164564,18 @@ async function buildSystemPrompt(language, userContext, isFirstMessageOfDay = tr
     db.select().from(aiKnowledgeBaseTable).where(eq(aiKnowledgeBaseTable.isActive, true)).orderBy(asc(aiKnowledgeBaseTable.category), asc(aiKnowledgeBaseTable.sortOrder))
   ]);
   const cfg = Object.fromEntries(configEntries.map((e3) => [e3.key, e3.value]));
+  const [supportEmail, supportPhone, supportWhatsapp, socialTelegramUrl] = await Promise.all([
+    getSetting("support_email", "simixsupport@gmail.com"),
+    getSetting("support_phone", ""),
+    getSetting("support_whatsapp", ""),
+    getSetting("social_telegram_url", "")
+  ]);
   const aiName = cfg["ai_name"] ?? "Simia";
   const companyName = cfg["company_name"] ?? "Simix";
-  const companyEmail = cfg["company_email"] ?? "simixsupport@gmail.com";
-  const companyWA = cfg["company_whatsapp"] ?? "";
-  const companyTG = cfg["company_telegram"] ?? "";
-  const companyPhone = cfg["company_phone"] ?? "";
+  const companyEmail = supportEmail;
+  const companyWA = supportWhatsapp;
+  const companyTG = socialTelegramUrl;
+  const companyPhone = supportPhone;
   const tone = cfg["ai_tone"] ?? "professional_friendly";
   const responseStyle = cfg["ai_response_style"] ?? "concise";
   const businessHours = cfg["ai_business_hours"] ?? "Lun-Ven 08h-18h";

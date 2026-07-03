@@ -15,6 +15,7 @@ import {
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { logger } from "../lib/logger";
+import { getSetting } from "../lib/settings";
 
 const router: IRouter = Router();
 
@@ -127,12 +128,23 @@ async function buildSystemPrompt(
 
   const cfg = Object.fromEntries(configEntries.map(e => [e.key, e.value]));
 
+  /* Contact info (phone/email/WhatsApp/Telegram) has ONE source of truth:
+   * system_settings, edited from Admin → Paramètres → Contact & Service Client.
+   * We no longer read these from ai_support_config to avoid the two configs
+   * drifting apart (Simia showing a stale number after an admin update). */
+  const [supportEmail, supportPhone, supportWhatsapp, socialTelegramUrl] = await Promise.all([
+    getSetting("support_email", "simixsupport@gmail.com"),
+    getSetting("support_phone", ""),
+    getSetting("support_whatsapp", ""),
+    getSetting("social_telegram_url", ""),
+  ]);
+
   const aiName        = cfg["ai_name"]          ?? "Simia";
   const companyName   = cfg["company_name"]      ?? "Simix";
-  const companyEmail  = cfg["company_email"]     ?? "simixsupport@gmail.com";
-  const companyWA     = cfg["company_whatsapp"]  ?? "";
-  const companyTG     = cfg["company_telegram"]  ?? "";
-  const companyPhone  = cfg["company_phone"]     ?? "";
+  const companyEmail  = supportEmail;
+  const companyWA     = supportWhatsapp;
+  const companyTG     = socialTelegramUrl;
+  const companyPhone  = supportPhone;
   const tone          = cfg["ai_tone"]           ?? "professional_friendly";
   const responseStyle = cfg["ai_response_style"] ?? "concise";
   const businessHours = cfg["ai_business_hours"] ?? "Lun-Ven 08h-18h";
