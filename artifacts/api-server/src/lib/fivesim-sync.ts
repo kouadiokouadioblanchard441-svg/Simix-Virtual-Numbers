@@ -674,7 +674,19 @@ export async function syncFiveSimProducts(triggeredBy: "scheduler" | "admin" = "
     }
 
     const client = new FiveSimClient(provider.apiKey);
-    const markup  = provider.markup;
+
+    /* ── Read default margin from system_settings (admin-configurable) ──
+     * Falls back to provider.markup if the setting is missing or invalid.
+     * Admin can change "default_margin" in the admin panel at any time. */
+    const [marginSetting] = await db
+      .select({ value: systemSettingsTable.value })
+      .from(systemSettingsTable)
+      .where(eq(systemSettingsTable.key, "default_margin"))
+      .limit(1);
+    const markup = (marginSetting?.value && !Number.isNaN(Number(marginSetting.value)))
+      ? Number(marginSetting.value)
+      : provider.markup;
+    logger.info({ markup }, "[5sim-sync] Using default margin from system_settings");
 
     /* ── 1. Collect products — single bulk call to /guest/prices ──────────────────
      *
