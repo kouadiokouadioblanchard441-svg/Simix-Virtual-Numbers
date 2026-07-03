@@ -5,11 +5,12 @@
  * Decides Clapay vs PawaPay per country + operator — zero hardcoded logic.
  * Falls back to secondary/tertiary gateway automatically on failure.
  */
-import { db, mobileOperatorsTable, systemSettingsTable } from "@workspace/db";
+import { db, mobileOperatorsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { resolvePaymentRoute, type ResolvedRoute } from "../routes/admin-payment-routing";
 import { PawaPayClient, getProviderForCountry } from "./pawapay";
 import { ClapayClient, getOperatorCodeForMethod } from "./clapay";
+import { resolvePawaPayCredentials, resolveClapayCredentials } from "./gateway-credentials";
 import { logger } from "./logger";
 
 /* ── Operator slug normalizer ────────────────────────────────────────────
@@ -79,53 +80,19 @@ export interface RouterResultClapay {
 }
 export type RouterResult = RouterResultPawaPay | RouterResultClapay;
 
-/* ── Build PawaPay client — reads gateway record, then env, then system_settings ── */
+/* ── Build PawaPay/Clapay clients — see lib/gateway-credentials.ts for the
+ * single documented priority order: route override → system_settings (DB,
+ * authoritative) → env var (last-resort fallback). ── */
 async function buildPawaPayClient(route: ResolvedRoute): Promise<PawaPayClient | null> {
-  let token = route.apiKey ?? process.env.PAWAPAY_API_TOKEN ?? null;
-  let envStr = process.env.PAWAPAY_ENV?.trim().toLowerCase() ?? null;
-
-  if (!token || !envStr) {
-    try {
-      if (!token) {
-        const rows = await db.select().from(systemSettingsTable)
-          .where(eq(systemSettingsTable.key, "pawapay_api_token")).limit(1);
-        token = rows[0]?.value?.trim() || null;
-      }
-      if (!envStr) {
-        const envRows = await db.select().from(systemSettingsTable)
-          .where(eq(systemSettingsTable.key, "pawapay_env")).limit(1);
-        envStr = envRows[0]?.value?.trim().toLowerCase() || null;
-      }
-    } catch { /* non-fatal — fall back to defaults */ }
-  }
-
-  if (!token) return null;
-  const env: "sandbox" | "production" = (envStr === "production") ? "production" : "sandbox";
-  return new PawaPayClient(token, env);
+  const creds = await resolvePawaPayCredentials(route.apiKey);
+  if (!creds) return null;
+  return new PawaPayClient(creds.token, creds.env);
 }
 
-/* ── Build Clapay client — reads gateway record, then env, then system_settings ── */
 async function buildClapayClient(route: ResolvedRoute): Promise<ClapayClient | null> {
-  let token = route.apiKey ?? process.env.CLAPAY_API_TOKEN ?? null;
-  let baseUrl: string | undefined = route.apiUrl ?? process.env.CLAPAY_BASE_URL ?? undefined;
-
-  if (!token || !baseUrl) {
-    try {
-      if (!token) {
-        const rows = await db.select().from(systemSettingsTable)
-          .where(eq(systemSettingsTable.key, "clapay_api_token")).limit(1);
-        token = rows[0]?.value?.trim() || null;
-      }
-      if (!baseUrl) {
-        const urlRows = await db.select().from(systemSettingsTable)
-          .where(eq(systemSettingsTable.key, "clapay_base_url")).limit(1);
-        baseUrl = urlRows[0]?.value?.trim() || undefined;
-      }
-    } catch { /* non-fatal */ }
-  }
-
-  if (!token) return null;
-  return new ClapayClient(token, baseUrl);
+  const creds = await resolveClapayCredentials(route.apiKey, route.apiUrl);
+  if (!creds) return null;
+  return new ClapayClient(creds.token, creds.baseUrl);
 }
 
 /* ════════════════════════════════════════════════════════════════════

@@ -260,25 +260,18 @@ router.post("/admin/payment-routing/gateways/:id/test", requireAdmin, async (req
 
   /* ── PawaPay: use dedicated client test ── */
   if (slug === "pawapay" || slug.includes("pawapay")) {
-    /* Read token + env: gateway record → env var → system_settings (where admin configures it) */
-    let token = gw.apiKey ?? process.env.PAWAPAY_API_TOKEN ?? null;
-    let envStr = process.env.PAWAPAY_ENV?.trim().toLowerCase() ?? null;
-    if (!token || !envStr) {
-      const settingRows = await db.select().from(systemSettingsTable)
-        .where(eq(systemSettingsTable.key, "pawapay_api_token"));
-      const envRows = await db.select().from(systemSettingsTable)
-        .where(eq(systemSettingsTable.key, "pawapay_env"));
-      if (!token) token = settingRows[0]?.value?.trim() || null;
-      if (!envStr) envStr = envRows[0]?.value?.trim().toLowerCase() || null;
-    }
-    if (!token) {
+    /* Credential resolution centralized in lib/gateway-credentials.ts —
+     * route override → system_settings (DB, authoritative) → env var. */
+    const { resolvePawaPayCredentials } = await import("../lib/gateway-credentials");
+    const creds = await resolvePawaPayCredentials(gw.apiKey);
+    if (!creds) {
       res.json({ status: "no_token", message: "Aucun token PawaPay configuré. Ajoutez la clé API dans les paramètres système (Paramètres → pawapay_api_token)." });
       return;
     }
     try {
       const { PawaPayClient } = await import("../lib/pawapay");
-      const env: "sandbox" | "production" = (envStr === "production") ? "production" : "sandbox";
-      const client = new PawaPayClient(token, env);
+      const env = creds.env;
+      const client = new PawaPayClient(creds.token, env);
       const config = await client.getActiveConfiguration();
       const responseTimeMs = Date.now() - start;
       const providers = config.countries?.flatMap((c: { providers?: { nameDisplayedToCustomer?: string; provider: string }[]; country: string }) =>
@@ -310,24 +303,17 @@ router.post("/admin/payment-routing/gateways/:id/test", requireAdmin, async (req
 
   /* ── Clapay: use dedicated client test ── */
   if (slug === "clapay" || slug.includes("clapay")) {
-    /* Read token + baseUrl: gateway record → env var → system_settings (where admin configures it) */
-    let token = gw.apiKey ?? process.env.CLAPAY_API_TOKEN ?? null;
-    let baseUrl: string | undefined = gw.apiUrl ?? process.env.CLAPAY_BASE_URL ?? undefined;
-    if (!token || !baseUrl) {
-      const settingRows = await db.select().from(systemSettingsTable)
-        .where(eq(systemSettingsTable.key, "clapay_api_token"));
-      const urlRows = await db.select().from(systemSettingsTable)
-        .where(eq(systemSettingsTable.key, "clapay_base_url"));
-      if (!token) token = settingRows[0]?.value?.trim() || null;
-      if (!baseUrl) baseUrl = urlRows[0]?.value?.trim() || undefined;
-    }
-    if (!token) {
+    /* Credential resolution centralized in lib/gateway-credentials.ts —
+     * route override → system_settings (DB, authoritative) → env var. */
+    const { resolveClapayCredentials } = await import("../lib/gateway-credentials");
+    const creds = await resolveClapayCredentials(gw.apiKey, gw.apiUrl);
+    if (!creds) {
       res.json({ status: "no_token", message: "Aucun token Clapay configuré. Ajoutez la clé API dans les paramètres système (Paramètres → clapay_api_token)." });
       return;
     }
     try {
       const { ClapayClient } = await import("../lib/clapay");
-      const client = new ClapayClient(token, baseUrl);
+      const client = new ClapayClient(creds.token, creds.baseUrl);
       const countries = await client.getCountries();
       const responseTimeMs = Date.now() - start;
 

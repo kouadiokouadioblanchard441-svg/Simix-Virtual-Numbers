@@ -23,38 +23,22 @@
  */
 
 import { and, eq, lt, sql, like } from "drizzle-orm";
-import { db, transactionsTable, usersTable, notificationsTable, systemSettingsTable } from "@workspace/db";
+import { db, transactionsTable, usersTable, notificationsTable } from "@workspace/db";
 import { logger } from "./logger";
 import { ClapayClient, isClapayDeposit } from "./clapay";
+import { resolveClapayCredentials } from "./gateway-credentials";
 import { broadcastNotification } from "../routes/notifications";
 
 const RECONCILE_INTERVAL_MS = 5 * 60 * 1000;      // run every 5 minutes
 const FAIL_AFTER_MS          = 2 * 60 * 60 * 1000; // mark as failed after 2 hours pending
 const HEALTH_CHECK_COUNTRY   = "CI";               // country used for balance health check
 
-/* ── Load Clapay client — DB takes priority over env var (allows live key rotation) ── */
+/* ── Load Clapay client — see lib/gateway-credentials.ts for the single
+ * documented priority order shared by every Clapay code path. ── */
 async function getClapayClientForReconcile(): Promise<ClapayClient | null> {
-  let token: string | null = null;
-  let baseUrl: string | null = process.env.CLAPAY_BASE_URL ?? null;
-
-  // DB first: allows updating the key without redeploying
-  try {
-    const rows = await db.select().from(systemSettingsTable)
-      .where(eq(systemSettingsTable.key, "clapay_api_token")).limit(1);
-    token = rows[0]?.value?.trim() || null;
-
-    if (!baseUrl) {
-      const urlRows = await db.select().from(systemSettingsTable)
-        .where(eq(systemSettingsTable.key, "clapay_base_url")).limit(1);
-      baseUrl = urlRows[0]?.value?.trim() || null;
-    }
-  } catch { /* non-fatal */ }
-
-  // Env var as fallback
-  if (!token) token = process.env.CLAPAY_API_TOKEN ?? null;
-
-  if (!token) return null;
-  return new ClapayClient(token, baseUrl ?? undefined);
+  const creds = await resolveClapayCredentials();
+  if (!creds) return null;
+  return new ClapayClient(creds.token, creds.baseUrl);
 }
 
 async function reconcilePendingClapayTransactions(): Promise<void> {

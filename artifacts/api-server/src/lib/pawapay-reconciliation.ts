@@ -15,9 +15,10 @@
  */
 
 import { and, eq, gte, lt, sql, not, like } from "drizzle-orm";
-import { db, transactionsTable, usersTable, notificationsTable, systemSettingsTable } from "@workspace/db";
+import { db, transactionsTable, usersTable, notificationsTable } from "@workspace/db";
 import { logger } from "./logger";
 import { PawaPayClient } from "./pawapay";
+import { resolvePawaPayCredentials } from "./gateway-credentials";
 import { broadcastNotification } from "../routes/notifications";
 import { sendDepositConfirmationEmail } from "./email";
 
@@ -25,31 +26,12 @@ const RECONCILE_INTERVAL_MS = 30 * 1000;      // poll every 30 seconds
 const MIN_AGE_MS             = 30 * 1000;      // skip deposits < 30s old (may still be processing)
 const MAX_AGE_MS             = 24 * 60 * 60 * 1000; // skip deposits > 24h old (stale)
 
-/* ── Load PawaPay client (mirrors wallet.ts logic) ── */
+/* ── Load PawaPay client — see lib/gateway-credentials.ts for the single
+ * documented priority order shared by every PawaPay code path. ── */
 async function getPawaPayClientForReconcile(): Promise<PawaPayClient | null> {
-  let token = process.env.PAWAPAY_API_TOKEN ?? null;
-  let env: "sandbox" | "production" = "sandbox";
-
-  const rawEnv = process.env.PAWAPAY_ENV?.trim().toLowerCase();
-  if (rawEnv === "sandbox" || rawEnv === "production") env = rawEnv;
-
-  if (!token) {
-    try {
-      const rows = await db.select().from(systemSettingsTable)
-        .where(eq(systemSettingsTable.key, "pawapay_api_token")).limit(1);
-      token = rows[0]?.value?.trim() || null;
-
-      if (token) {
-        const envRows = await db.select().from(systemSettingsTable)
-          .where(eq(systemSettingsTable.key, "pawapay_env")).limit(1);
-        const dbEnv = envRows[0]?.value?.trim().toLowerCase();
-        if (dbEnv === "sandbox" || dbEnv === "production") env = dbEnv;
-      }
-    } catch { /* non-fatal */ }
-  }
-
-  if (!token) return null;
-  return new PawaPayClient(token, env);
+  const creds = await resolvePawaPayCredentials();
+  if (!creds) return null;
+  return new PawaPayClient(creds.token, creds.env);
 }
 
 async function reconcilePendingPawaPayTransactions(): Promise<void> {
