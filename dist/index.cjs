@@ -128297,7 +128297,7 @@ var init_pawapay = __esm({
       GA: "XAF",
       CG: "XAF",
       TD: "XAF",
-      MR: "MRO",
+      MR: "MRU",
       GH: "GHS",
       NG: "NGN",
       KE: "KES",
@@ -128704,6 +128704,66 @@ var init_clapay = __esm({
       }
     };
     CLAPAY_PREFIX = "clapay:";
+  }
+});
+
+// src/lib/gateway-credentials.ts
+var gateway_credentials_exports = {};
+__export(gateway_credentials_exports, {
+  resolveClapayCredentials: () => resolveClapayCredentials,
+  resolvePawaPayCredentials: () => resolvePawaPayCredentials
+});
+async function resolvePawaPayCredentials(routeApiKey) {
+  let token2 = routeApiKey?.trim() || null;
+  let env = null;
+  if (!token2) {
+    try {
+      const rows = await db.select().from(systemSettingsTable).where(eq(systemSettingsTable.key, "pawapay_api_token")).limit(1);
+      token2 = rows[0]?.value?.trim() || null;
+    } catch {
+    }
+  }
+  try {
+    const envRows = await db.select().from(systemSettingsTable).where(eq(systemSettingsTable.key, "pawapay_env")).limit(1);
+    const dbEnv = envRows[0]?.value?.trim().toLowerCase();
+    if (dbEnv === "sandbox" || dbEnv === "production") env = dbEnv;
+  } catch {
+  }
+  if (!token2) token2 = process.env.PAWAPAY_API_TOKEN?.trim() || null;
+  if (!env) {
+    const rawEnvVar = process.env.PAWAPAY_ENV?.trim().toLowerCase();
+    env = rawEnvVar === "production" ? "production" : "sandbox";
+  }
+  if (!token2) return null;
+  return { token: token2, env };
+}
+async function resolveClapayCredentials(routeApiKey, routeApiUrl) {
+  let token2 = routeApiKey?.trim() || null;
+  let baseUrl2 = routeApiUrl?.trim() || null;
+  if (!token2) {
+    try {
+      const rows = await db.select().from(systemSettingsTable).where(eq(systemSettingsTable.key, "clapay_api_token")).limit(1);
+      token2 = rows[0]?.value?.trim() || null;
+    } catch {
+    }
+  }
+  if (!baseUrl2) {
+    try {
+      const urlRows = await db.select().from(systemSettingsTable).where(eq(systemSettingsTable.key, "clapay_base_url")).limit(1);
+      baseUrl2 = urlRows[0]?.value?.trim() || null;
+    } catch {
+    }
+  }
+  if (!token2) token2 = process.env.CLAPAY_API_TOKEN?.trim() || null;
+  if (!baseUrl2) baseUrl2 = process.env.CLAPAY_BASE_URL?.trim() || null;
+  if (!token2) return null;
+  return { token: token2, baseUrl: baseUrl2 ?? void 0 };
+}
+var init_gateway_credentials = __esm({
+  "src/lib/gateway-credentials.ts"() {
+    "use strict";
+    init_drizzle_orm();
+    init_src();
   }
 });
 
@@ -156259,22 +156319,16 @@ router9.post("/admin/payment-routing/gateways/:id/test", requireAdmin, async (re
   const slug = gw.slug.toLowerCase();
   const start2 = Date.now();
   if (slug === "pawapay" || slug.includes("pawapay")) {
-    let token2 = gw.apiKey ?? process.env.PAWAPAY_API_TOKEN ?? null;
-    let envStr = process.env.PAWAPAY_ENV?.trim().toLowerCase() ?? null;
-    if (!token2 || !envStr) {
-      const settingRows = await db.select().from(systemSettingsTable).where(eq(systemSettingsTable.key, "pawapay_api_token"));
-      const envRows = await db.select().from(systemSettingsTable).where(eq(systemSettingsTable.key, "pawapay_env"));
-      if (!token2) token2 = settingRows[0]?.value?.trim() || null;
-      if (!envStr) envStr = envRows[0]?.value?.trim().toLowerCase() || null;
-    }
-    if (!token2) {
+    const { resolvePawaPayCredentials: resolvePawaPayCredentials2 } = await Promise.resolve().then(() => (init_gateway_credentials(), gateway_credentials_exports));
+    const creds = await resolvePawaPayCredentials2(gw.apiKey);
+    if (!creds) {
       res.json({ status: "no_token", message: "Aucun token PawaPay configur\xE9. Ajoutez la cl\xE9 API dans les param\xE8tres syst\xE8me (Param\xE8tres \u2192 pawapay_api_token)." });
       return;
     }
     try {
       const { PawaPayClient: PawaPayClient2 } = await Promise.resolve().then(() => (init_pawapay(), pawapay_exports));
-      const env = envStr === "production" ? "production" : "sandbox";
-      const client = new PawaPayClient2(token2, env);
+      const env = creds.env;
+      const client = new PawaPayClient2(creds.token, env);
       const config = await client.getActiveConfiguration();
       const responseTimeMs = Date.now() - start2;
       const providers = config.countries?.flatMap(
@@ -156309,21 +156363,15 @@ router9.post("/admin/payment-routing/gateways/:id/test", requireAdmin, async (re
     return;
   }
   if (slug === "clapay" || slug.includes("clapay")) {
-    let token2 = gw.apiKey ?? process.env.CLAPAY_API_TOKEN ?? null;
-    let baseUrl2 = gw.apiUrl ?? process.env.CLAPAY_BASE_URL ?? void 0;
-    if (!token2 || !baseUrl2) {
-      const settingRows = await db.select().from(systemSettingsTable).where(eq(systemSettingsTable.key, "clapay_api_token"));
-      const urlRows = await db.select().from(systemSettingsTable).where(eq(systemSettingsTable.key, "clapay_base_url"));
-      if (!token2) token2 = settingRows[0]?.value?.trim() || null;
-      if (!baseUrl2) baseUrl2 = urlRows[0]?.value?.trim() || void 0;
-    }
-    if (!token2) {
+    const { resolveClapayCredentials: resolveClapayCredentials2 } = await Promise.resolve().then(() => (init_gateway_credentials(), gateway_credentials_exports));
+    const creds = await resolveClapayCredentials2(gw.apiKey, gw.apiUrl);
+    if (!creds) {
       res.json({ status: "no_token", message: "Aucun token Clapay configur\xE9. Ajoutez la cl\xE9 API dans les param\xE8tres syst\xE8me (Param\xE8tres \u2192 clapay_api_token)." });
       return;
     }
     try {
       const { ClapayClient: ClapayClient2 } = await Promise.resolve().then(() => (init_clapay(), clapay_exports));
-      const client = new ClapayClient2(token2, baseUrl2);
+      const client = new ClapayClient2(creds.token, creds.baseUrl);
       const countries = await client.getCountries();
       const responseTimeMs = Date.now() - start2;
       await db.insert(paymentRouteLogsTable).values({
@@ -156907,6 +156955,7 @@ var admin_payment_routing_default = router9;
 // src/lib/payment-router.ts
 init_pawapay();
 init_clapay();
+init_gateway_credentials();
 init_logger2();
 var KNOWN_OPERATOR_SLUGS = [
   "mtn",
@@ -156947,43 +156996,14 @@ async function resolveOperatorSlugFromDb(methodSlug) {
   return null;
 }
 async function buildPawaPayClient(route) {
-  let token2 = route.apiKey ?? process.env.PAWAPAY_API_TOKEN ?? null;
-  let envStr = process.env.PAWAPAY_ENV?.trim().toLowerCase() ?? null;
-  if (!token2 || !envStr) {
-    try {
-      if (!token2) {
-        const rows = await db.select().from(systemSettingsTable).where(eq(systemSettingsTable.key, "pawapay_api_token")).limit(1);
-        token2 = rows[0]?.value?.trim() || null;
-      }
-      if (!envStr) {
-        const envRows = await db.select().from(systemSettingsTable).where(eq(systemSettingsTable.key, "pawapay_env")).limit(1);
-        envStr = envRows[0]?.value?.trim().toLowerCase() || null;
-      }
-    } catch {
-    }
-  }
-  if (!token2) return null;
-  const env = envStr === "production" ? "production" : "sandbox";
-  return new PawaPayClient(token2, env);
+  const creds = await resolvePawaPayCredentials(route.apiKey);
+  if (!creds) return null;
+  return new PawaPayClient(creds.token, creds.env);
 }
 async function buildClapayClient(route) {
-  let token2 = route.apiKey ?? process.env.CLAPAY_API_TOKEN ?? null;
-  let baseUrl2 = route.apiUrl ?? process.env.CLAPAY_BASE_URL ?? void 0;
-  if (!token2 || !baseUrl2) {
-    try {
-      if (!token2) {
-        const rows = await db.select().from(systemSettingsTable).where(eq(systemSettingsTable.key, "clapay_api_token")).limit(1);
-        token2 = rows[0]?.value?.trim() || null;
-      }
-      if (!baseUrl2) {
-        const urlRows = await db.select().from(systemSettingsTable).where(eq(systemSettingsTable.key, "clapay_base_url")).limit(1);
-        baseUrl2 = urlRows[0]?.value?.trim() || void 0;
-      }
-    } catch {
-    }
-  }
-  if (!token2) return null;
-  return new ClapayClient(token2, baseUrl2);
+  const creds = await resolveClapayCredentials(route.apiKey, route.apiUrl);
+  if (!creds) return null;
+  return new ClapayClient(creds.token, creds.baseUrl);
 }
 async function resolveGateway(countryCode, methodSlug, _amount) {
   const country = countryCode.toUpperCase();
@@ -157020,40 +157040,19 @@ async function resolveGateway(countryCode, methodSlug, _amount) {
 }
 
 // src/routes/wallet.ts
+init_gateway_credentials();
 init_settings();
 init_src();
 var router10 = (0, import_express11.Router)();
 async function getPawaPayClient() {
-  let token2 = process.env.PAWAPAY_API_TOKEN ?? null;
-  const rawEnvFromEnvVar = process.env.PAWAPAY_ENV?.trim().toLowerCase();
-  let env = rawEnvFromEnvVar === "production" ? "production" : "sandbox";
-  if (!token2) {
-    const rows = await db.select().from(systemSettingsTable).where(eq(systemSettingsTable.key, "pawapay_api_token")).limit(1);
-    token2 = rows[0]?.value?.trim() || null;
-    if (token2) {
-      const envRows = await db.select().from(systemSettingsTable).where(eq(systemSettingsTable.key, "pawapay_env")).limit(1);
-      const rawDbEnv = envRows[0]?.value?.trim().toLowerCase();
-      env = rawDbEnv === "production" ? "production" : "sandbox";
-    }
-  }
-  if (!token2) return null;
-  return { client: new PawaPayClient(token2, env), env };
+  const creds = await resolvePawaPayCredentials();
+  if (!creds) return null;
+  return { client: new PawaPayClient(creds.token, creds.env), env: creds.env };
 }
 async function getClapayClient() {
-  let token2 = null;
-  let baseUrl2 = process.env.CLAPAY_BASE_URL ?? null;
-  try {
-    const rows = await db.select().from(systemSettingsTable).where(eq(systemSettingsTable.key, "clapay_api_token")).limit(1);
-    token2 = rows[0]?.value?.trim() || null;
-    if (!baseUrl2) {
-      const urlRows = await db.select().from(systemSettingsTable).where(eq(systemSettingsTable.key, "clapay_base_url")).limit(1);
-      baseUrl2 = urlRows[0]?.value?.trim() || null;
-    }
-  } catch {
-  }
-  if (!token2) token2 = process.env.CLAPAY_API_TOKEN ?? null;
-  if (!token2) return null;
-  return { client: new ClapayClient(token2, baseUrl2 ?? void 0) };
+  const creds = await resolveClapayCredentials();
+  if (!creds) return null;
+  return { client: new ClapayClient(creds.token, creds.baseUrl) };
 }
 async function getGatewayPreference() {
   const envPref = process.env.MOBILE_MONEY_GATEWAY;
@@ -157535,7 +157534,14 @@ async function processDepositCallback(payload) {
       return;
     }
     const creditAmount = tx.amount;
-    await db.update(transactionsTable).set({ status: "completed" }).where(eq(transactionsTable.id, tx.id));
+    const [justCompleted] = await db.update(transactionsTable).set({ status: "completed" }).where(and(
+      eq(transactionsTable.id, tx.id),
+      eq(transactionsTable.status, "pending")
+    )).returning();
+    if (!justCompleted) {
+      logger.info({ depositId }, "[PawaPay Webhook] Already processed \u2014 skipping double-credit");
+      return;
+    }
     await db.update(usersTable).set({ balance: sql`${usersTable.balance} + ${creditAmount}` }).where(eq(usersTable.id, tx.userId));
     logger.info({ depositId, userId: tx.userId, creditAmount }, "[PawaPay Webhook] Deposit COMPLETED \u2014 balance credited \u2713");
     try {
@@ -160568,6 +160574,12 @@ router13.put("/admin/settings", requireAdmin2, async (req, res) => {
     for (const [key, value] of Object.entries(updates)) {
       await db.insert(systemSettingsTable).values({ key, value: String(value) }).onConflictDoUpdate({ target: systemSettingsTable.key, set: { value: String(value) } });
     }
+    if (typeof updates["pawapay_api_token"] === "string" && updates["pawapay_api_token"].trim()) {
+      await db.update(paymentGatewaysTable).set({ apiKey: updates["pawapay_api_token"].trim() }).where(eq(paymentGatewaysTable.slug, "pawapay"));
+    }
+    if (typeof updates["clapay_api_token"] === "string" && updates["clapay_api_token"].trim()) {
+      await db.update(paymentGatewaysTable).set({ apiKey: updates["clapay_api_token"].trim() }).where(eq(paymentGatewaysTable.slug, "clapay"));
+    }
     clearSettingsCache();
     if (typeof updates["app_url"] === "string" && updates["app_url"].trim()) {
       setAppUrl(updates["app_url"].trim());
@@ -160657,7 +160669,14 @@ router13.post("/admin/pawapay/simulate-deposit", requireAdmin2, async (req, res)
   }
   if (status === "COMPLETED") {
     const actualAmount = depositedAmount ? Math.round(Number(depositedAmount)) : tx.amount;
-    await db.update(transactionsTable).set({ status: "completed" }).where(eq(transactionsTable.id, tx.id));
+    const [justCompleted] = await db.update(transactionsTable).set({ status: "completed" }).where(and(
+      eq(transactionsTable.id, tx.id),
+      eq(transactionsTable.status, "pending")
+    )).returning();
+    if (!justCompleted) {
+      res.status(400).json({ error: "La transaction a d\xE9j\xE0 \xE9t\xE9 trait\xE9e entre-temps" });
+      return;
+    }
     await db.update(usersTable).set({ balance: sql`${usersTable.balance} + ${actualAmount}` }).where(eq(usersTable.id, tx.userId));
     logger.info({ depositId, userId: tx.userId, amount: actualAmount }, "[PawaPay SIM] Deposit simulated as COMPLETED");
     try {
@@ -160775,7 +160794,14 @@ router13.post("/admin/clapay/simulate-deposit", requireAdmin2, async (req, res) 
   }
   if (status === "COMPLETED") {
     const actualAmount = depositedAmount ? Math.round(Number(depositedAmount)) : tx.amount;
-    await db.update(transactionsTable).set({ status: "completed" }).where(eq(transactionsTable.id, tx.id));
+    const [justCompleted] = await db.update(transactionsTable).set({ status: "completed" }).where(and(
+      eq(transactionsTable.id, tx.id),
+      eq(transactionsTable.status, "pending")
+    )).returning();
+    if (!justCompleted) {
+      res.status(400).json({ error: "La transaction a d\xE9j\xE0 \xE9t\xE9 trait\xE9e entre-temps" });
+      return;
+    }
     await db.update(usersTable).set({ balance: sql`${usersTable.balance} + ${actualAmount}` }).where(eq(usersTable.id, tx.userId));
     logger.info({ depositId, userId: tx.userId, amount: actualAmount }, "[Clapay SIM] Deposit simulated as COMPLETED");
     try {
@@ -166443,24 +166469,14 @@ init_drizzle_orm();
 init_src();
 init_logger2();
 init_clapay();
+init_gateway_credentials();
 var RECONCILE_INTERVAL_MS = 5 * 60 * 1e3;
 var FAIL_AFTER_MS = 2 * 60 * 60 * 1e3;
 var HEALTH_CHECK_COUNTRY = "CI";
 async function getClapayClientForReconcile() {
-  let token2 = null;
-  let baseUrl2 = process.env.CLAPAY_BASE_URL ?? null;
-  try {
-    const rows = await db.select().from(systemSettingsTable).where(eq(systemSettingsTable.key, "clapay_api_token")).limit(1);
-    token2 = rows[0]?.value?.trim() || null;
-    if (!baseUrl2) {
-      const urlRows = await db.select().from(systemSettingsTable).where(eq(systemSettingsTable.key, "clapay_base_url")).limit(1);
-      baseUrl2 = urlRows[0]?.value?.trim() || null;
-    }
-  } catch {
-  }
-  if (!token2) token2 = process.env.CLAPAY_API_TOKEN ?? null;
-  if (!token2) return null;
-  return new ClapayClient(token2, baseUrl2 ?? void 0);
+  const creds = await resolveClapayCredentials();
+  if (!creds) return null;
+  return new ClapayClient(creds.token, creds.baseUrl);
 }
 async function reconcilePendingClapayTransactions() {
   const clapay = await getClapayClientForReconcile();
@@ -166530,28 +166546,14 @@ init_drizzle_orm();
 init_src();
 init_logger2();
 init_pawapay();
+init_gateway_credentials();
 var RECONCILE_INTERVAL_MS2 = 30 * 1e3;
 var MIN_AGE_MS = 30 * 1e3;
 var MAX_AGE_MS = 24 * 60 * 60 * 1e3;
 async function getPawaPayClientForReconcile() {
-  let token2 = process.env.PAWAPAY_API_TOKEN ?? null;
-  let env = "sandbox";
-  const rawEnv = process.env.PAWAPAY_ENV?.trim().toLowerCase();
-  if (rawEnv === "sandbox" || rawEnv === "production") env = rawEnv;
-  if (!token2) {
-    try {
-      const rows = await db.select().from(systemSettingsTable).where(eq(systemSettingsTable.key, "pawapay_api_token")).limit(1);
-      token2 = rows[0]?.value?.trim() || null;
-      if (token2) {
-        const envRows = await db.select().from(systemSettingsTable).where(eq(systemSettingsTable.key, "pawapay_env")).limit(1);
-        const dbEnv = envRows[0]?.value?.trim().toLowerCase();
-        if (dbEnv === "sandbox" || dbEnv === "production") env = dbEnv;
-      }
-    } catch {
-    }
-  }
-  if (!token2) return null;
-  return new PawaPayClient(token2, env);
+  const creds = await resolvePawaPayCredentials();
+  if (!creds) return null;
+  return new PawaPayClient(creds.token, creds.env);
 }
 async function reconcilePendingPawaPayTransactions() {
   const client = await getPawaPayClientForReconcile();
