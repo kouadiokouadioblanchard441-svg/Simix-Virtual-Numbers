@@ -47,54 +47,19 @@ import { sendDepositConfirmationEmail } from "../lib/email";
 const router: IRouter = Router();
 
 /* ── Load PawaPay client from env or DB ── */
+/* ── Credential resolution is centralized in lib/gateway-credentials.ts —
+ * see that file for the single documented priority order (DB always wins
+ * over env vars) shared by every PawaPay/Clapay code path in the app. ── */
 async function getPawaPayClient(): Promise<{ client: PawaPayClient; env: string } | null> {
-  let token = process.env.PAWAPAY_API_TOKEN ?? null;
-
-  /* Normalize env — trim spaces and lowercase to handle "Production ", "SANDBOX", etc. */
-  const rawEnvFromEnvVar = process.env.PAWAPAY_ENV?.trim().toLowerCase();
-  let env: "sandbox" | "production" = (rawEnvFromEnvVar === "production") ? "production" : "sandbox";
-
-  if (!token) {
-    const rows = await db.select().from(systemSettingsTable)
-      .where(eq(systemSettingsTable.key, "pawapay_api_token")).limit(1);
-    token = rows[0]?.value?.trim() || null;
-
-    if (token) {
-      const envRows = await db.select().from(systemSettingsTable)
-        .where(eq(systemSettingsTable.key, "pawapay_env")).limit(1);
-      /* Normalize: trim + lowercase to handle "Production ", "SANDBOX", "sandbox", etc. */
-      const rawDbEnv = envRows[0]?.value?.trim().toLowerCase();
-      env = (rawDbEnv === "production") ? "production" : "sandbox";
-    }
-  }
-
-  if (!token) return null;
-  return { client: new PawaPayClient(token, env), env };
+  const creds = await resolvePawaPayCredentials();
+  if (!creds) return null;
+  return { client: new PawaPayClient(creds.token, creds.env), env: creds.env };
 }
 
-/* ── Load Clapay client — DB takes priority over env var (allows live key rotation) ── */
 async function getClapayClient(): Promise<{ client: ClapayClient } | null> {
-  let token: string | null = null;
-  let baseUrl: string | null = process.env.CLAPAY_BASE_URL ?? null;
-
-  // DB first: allows updating the key without redeploying
-  try {
-    const rows = await db.select().from(systemSettingsTable)
-      .where(eq(systemSettingsTable.key, "clapay_api_token")).limit(1);
-    token = rows[0]?.value?.trim() || null;
-
-    if (!baseUrl) {
-      const urlRows = await db.select().from(systemSettingsTable)
-        .where(eq(systemSettingsTable.key, "clapay_base_url")).limit(1);
-      baseUrl = urlRows[0]?.value?.trim() || null;
-    }
-  } catch { /* non-fatal — fall through to env */ }
-
-  // Env var as fallback
-  if (!token) token = process.env.CLAPAY_API_TOKEN ?? null;
-
-  if (!token) return null;
-  return { client: new ClapayClient(token, baseUrl ?? undefined) };
+  const creds = await resolveClapayCredentials();
+  if (!creds) return null;
+  return { client: new ClapayClient(creds.token, creds.baseUrl) };
 }
 
 /* ── Active gateway preference from env or DB ── */
