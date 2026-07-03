@@ -128776,6 +128776,50 @@ async function applyAvailabilityToServicePrices() {
   );
   return { enabled, disabled, priceUpdated, priceFixed };
 }
+async function zeroOutStaleSCAEntries(availRows, usedBulkPrices, sampledIsoCodes) {
+  const keepKeys = availRows.map(
+    (r3) => `${r3.serviceSlug.toLowerCase()}::${r3.countryCode.toUpperCase()}`
+  );
+  try {
+    if (usedBulkPrices) {
+      if (keepKeys.length === 0) return;
+      const result = await pool.query(
+        `UPDATE service_country_availability
+           SET available = 0, updated_at = NOW()
+         WHERE available > 0
+           AND CONCAT(service_slug, '::', country_code) <> ALL($1::text[])`,
+        [keepKeys]
+      );
+      const zeroed = result.rowCount ?? 0;
+      if (zeroed > 0) {
+        logger.info({ zeroed }, "[5sim-sync] Stale SCA entries zeroed (bulk mode)");
+      }
+    } else {
+      const sampled = [...sampledIsoCodes];
+      if (sampled.length === 0) return;
+      const result = keepKeys.length > 0 ? await pool.query(
+        `UPDATE service_country_availability
+               SET available = 0, updated_at = NOW()
+             WHERE available > 0
+               AND country_code = ANY($1::text[])
+               AND CONCAT(service_slug, '::', country_code) <> ALL($2::text[])`,
+        [sampled, keepKeys]
+      ) : await pool.query(
+        `UPDATE service_country_availability
+               SET available = 0, updated_at = NOW()
+             WHERE available > 0
+               AND country_code = ANY($1::text[])`,
+        [sampled]
+      );
+      const zeroed = result.rowCount ?? 0;
+      if (zeroed > 0) {
+        logger.info({ zeroed }, "[5sim-sync] Stale SCA entries zeroed (fallback mode)");
+      }
+    }
+  } catch (err) {
+    logger.warn({ err: err.message }, "[5sim-sync] Stale SCA zero-out skipped (non-fatal)");
+  }
+}
 async function syncFiveSimProducts(triggeredBy = "scheduler") {
   if (currentlySyncing) {
     throw new Error("Une synchronisation est d\xE9j\xE0 en cours. Veuillez patienter.");
@@ -128797,6 +128841,7 @@ async function syncFiveSimProducts(triggeredBy = "scheduler") {
     const merged = {};
     const availRows = [];
     let usedBulkPrices = false;
+    const sampledIsoCodes = /* @__PURE__ */ new Set();
     try {
       logger.info("[5sim-sync] Fetching all prices via /guest/prices (bulk mode)");
       const allPrices = await client.getPricesAll();
@@ -128866,6 +128911,7 @@ async function syncFiveSimProducts(triggeredBy = "scheduler") {
               });
             }
           }
+          if (isoCode) sampledIsoCodes.add(isoCode);
         } catch (e3) {
           const msg = `Pays "${country}": ${e3.message}`;
           errors.push(msg);
@@ -128894,6 +128940,7 @@ async function syncFiveSimProducts(triggeredBy = "scheduler") {
       }
       logger.info({ rows: availRows.length }, "[5sim-sync] Per-country availability cache updated");
     }
+    await zeroOutStaleSCAEntries(availRows, usedBulkPrices, sampledIsoCodes);
     const productList = Object.entries(merged);
     logger.info({ count: productList.length, countryErrors }, "[5sim-sync] Products fetched");
     if (productList.length === 0) {
@@ -128955,8 +129002,13 @@ async function syncFiveSimProducts(triggeredBy = "scheduler") {
               END
             `,
           /* margin is NEVER updated by the sync — admin owns this field entirely */
-          /* Auto-enable if 5sim confirms stock is available */
-          enabled: sql`CASE WHEN excluded.available > 0 THEN true ELSE services.enabled END`
+          /* enabled is intentionally NOT auto-modified by sync.
+             Admin controls service visibility (enabled/disabled).
+             Per-country availability is managed via service_country_availability
+             + service_prices.enabled — never at the global service level.
+             New rows (INSERT) receive enabled = true from the values above;
+             existing rows keep whatever the admin configured. */
+          enabled: sql`services.enabled`
         }
       });
     }
@@ -155133,6 +155185,7 @@ router6.get("/countries", async (req, res) => {
          ON LOWER(c.code) = sp.country_code
         AND sp.service_slug = $1
        WHERE sca.service_slug = $2
+         AND sca.available > 0
          AND c.enabled = true
          AND (sp.enabled IS NULL OR sp.enabled = true)
        ${searchClause}

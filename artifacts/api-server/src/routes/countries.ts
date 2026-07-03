@@ -85,6 +85,7 @@ router.get("/countries", async (req, res): Promise<void> => {
          ON LOWER(c.code) = sp.country_code
         AND sp.service_slug = $1
        WHERE sca.service_slug = $2
+         AND sca.available > 0
          AND c.enabled = true
          AND (sp.enabled IS NULL OR sp.enabled = true)
        ${searchClause}

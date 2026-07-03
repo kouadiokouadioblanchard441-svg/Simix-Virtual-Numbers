@@ -15,7 +15,7 @@
  */
 
 import { sql } from "drizzle-orm";
-import { db, apiProvidersTable, servicesTable, systemSettingsTable, countriesTable, serviceCountryAvailabilityTable, servicePricesTable } from "@workspace/db";
+import { db, pool, apiProvidersTable, servicesTable, systemSettingsTable, countriesTable, serviceCountryAvailabilityTable, servicePricesTable } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
 import { FiveSimClient, type FiveSimProductsResponse, ISO_TO_5SIM } from "./fivesim";
 import { logger } from "./logger";
@@ -567,6 +567,73 @@ export async function applyAvailabilityToServicePrices(): Promise<{
 }
 
 /**
+ * Zero out SCA entries whose (service_slug, country_code) pairs are no longer
+ * reported by 5sim as having available stock.
+ *
+ * Bulk mode:  we have the complete 5sim catalogue → zero ALL stale entries.
+ * Fallback:   we only fetched a sample of countries → zero only entries for
+ *             those countries, leaving un-sampled countries untouched.
+ *
+ * Non-fatal: errors are logged as warnings and do not interrupt the caller.
+ */
+async function zeroOutStaleSCAEntries(
+  availRows: Array<{ serviceSlug: string; countryCode: string }>,
+  usedBulkPrices: boolean,
+  sampledIsoCodes: Set<string>,
+): Promise<void> {
+  /* Composite keys for entries still active in 5sim */
+  const keepKeys = availRows.map(
+    r => `${r.serviceSlug.toLowerCase()}::${r.countryCode.toUpperCase()}`,
+  );
+
+  try {
+    if (usedBulkPrices) {
+      /* Bulk mode — complete catalogue received: zero everything NOT in new data */
+      if (keepKeys.length === 0) return; /* safety: never zero everything on empty payload */
+      const result = await pool.query(
+        `UPDATE service_country_availability
+           SET available = 0, updated_at = NOW()
+         WHERE available > 0
+           AND CONCAT(service_slug, '::', country_code) <> ALL($1::text[])`,
+        [keepKeys],
+      );
+      const zeroed = (result as unknown as { rowCount: number }).rowCount ?? 0;
+      if (zeroed > 0) {
+        logger.info({ zeroed }, "[5sim-sync] Stale SCA entries zeroed (bulk mode)");
+      }
+    } else {
+      /* Fallback mode — only zero entries for countries we actually sampled */
+      const sampled = [...sampledIsoCodes];
+      if (sampled.length === 0) return;
+
+      const result = keepKeys.length > 0
+        ? await pool.query(
+            `UPDATE service_country_availability
+               SET available = 0, updated_at = NOW()
+             WHERE available > 0
+               AND country_code = ANY($1::text[])
+               AND CONCAT(service_slug, '::', country_code) <> ALL($2::text[])`,
+            [sampled, keepKeys],
+          )
+        : await pool.query(
+            `UPDATE service_country_availability
+               SET available = 0, updated_at = NOW()
+             WHERE available > 0
+               AND country_code = ANY($1::text[])`,
+            [sampled],
+          );
+
+      const zeroed = (result as unknown as { rowCount: number }).rowCount ?? 0;
+      if (zeroed > 0) {
+        logger.info({ zeroed }, "[5sim-sync] Stale SCA entries zeroed (fallback mode)");
+      }
+    }
+  } catch (err) {
+    logger.warn({ err: (err as Error).message }, "[5sim-sync] Stale SCA zero-out skipped (non-fatal)");
+  }
+}
+
+/**
  * Sync 5sim products (services) into the local DB.
  *
  * Price protection logic:
@@ -622,6 +689,9 @@ export async function syncFiveSimProducts(triggeredBy: "scheduler" | "admin" = "
     const availRows: Array<{ serviceSlug: string; countryCode: string; available: number; providerPriceFcfa: number }> = [];
 
     let usedBulkPrices = false;
+    /* Tracks ISO codes successfully fetched in fallback mode (per-country loop).
+       Used by zeroOutStaleSCAEntries to limit the zero-out to sampled countries only. */
+    const sampledIsoCodes = new Set<string>();
     try {
       logger.info("[5sim-sync] Fetching all prices via /guest/prices (bulk mode)");
       const allPrices = await client.getPricesAll();
@@ -701,6 +771,9 @@ export async function syncFiveSimProducts(triggeredBy: "scheduler" | "admin" = "
               });
             }
           }
+          /* Record this country as successfully sampled so zeroOutStaleSCAEntries
+             can limit the zero-out scope to only countries we actually fetched. */
+          if (isoCode) sampledIsoCodes.add(isoCode);
         } catch (e) {
           const msg = `Pays "${country}": ${(e as Error).message}`;
           errors.push(msg);
@@ -734,6 +807,16 @@ export async function syncFiveSimProducts(triggeredBy: "scheduler" | "admin" = "
       }
       logger.info({ rows: availRows.length }, "[5sim-sync] Per-country availability cache updated");
     }
+
+    /* ── 1c. Zero out SCA entries that disappeared from 5sim ──────────────────────
+     * Any (service, country) combo that was in SCA from a previous sync but is NOT
+     * present in the current 5sim response gets available = 0. This ensures that:
+     *   - Countries removed from 5sim stop appearing in the country picker
+     *   - applyAvailabilityToServicePrices() correctly disables those combos
+     * In bulk mode: complete dataset — zero ALL stale entries.
+     * In fallback mode: partial dataset — zero only entries for sampled countries.
+     * ─────────────────────────────────────────────────────────────────────────── */
+    await zeroOutStaleSCAEntries(availRows, usedBulkPrices, sampledIsoCodes);
 
     const productList = Object.entries(merged);
     logger.info({ count: productList.length, countryErrors }, "[5sim-sync] Products fetched");
@@ -836,8 +919,13 @@ export async function syncFiveSimProducts(triggeredBy: "scheduler" | "admin" = "
 
             /* margin is NEVER updated by the sync — admin owns this field entirely */
 
-            /* Auto-enable if 5sim confirms stock is available */
-            enabled: sql`CASE WHEN excluded.available > 0 THEN true ELSE services.enabled END`,
+            /* enabled is intentionally NOT auto-modified by sync.
+               Admin controls service visibility (enabled/disabled).
+               Per-country availability is managed via service_country_availability
+               + service_prices.enabled — never at the global service level.
+               New rows (INSERT) receive enabled = true from the values above;
+               existing rows keep whatever the admin configured. */
+            enabled: sql`services.enabled`,
           },
         });
     }
