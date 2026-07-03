@@ -197,7 +197,7 @@ export const COUNTRY_TO_PAWAPAY_PROVIDER: Record<string, string[]> = {
 /* ── Currency mapping by country ISO-2 ── */
 export const COUNTRY_CURRENCY: Record<string, string> = {
   CI: "XOF", SN: "XOF", BJ: "XOF", BF: "XOF", ML: "XOF", NE: "XOF", TG: "XOF", GW: "XOF",
-  CM: "XAF", GA: "XAF", CG: "XAF", TD: "XAF", MR: "MRO",
+  CM: "XAF", GA: "XAF", CG: "XAF", TD: "XAF", MR: "MRU",
   GH: "GHS", NG: "NGN", KE: "KES", TZ: "TZS", UG: "UGX",
   MZ: "MZN", ZM: "ZMW", RW: "RWF", MW: "MWK", ZW: "ZWL",
   MG: "MGA", GN: "GNF", ZA: "ZAR", AO: "AOA", ET: "ETB",
