@@ -23,6 +23,7 @@ import {
   loginHistoryTable,
   ipBlacklistTable,
   servicePricesTable,
+  paymentGatewaysTable,
 } from "@workspace/db";
 import { FiveSimClient } from "../lib/fivesim";
 
@@ -1314,6 +1315,20 @@ router.put("/admin/settings", requireAdmin, async (req, res): Promise<void> => {
         .insert(systemSettingsTable)
         .values({ key, value: String(value) })
         .onConflictDoUpdate({ target: systemSettingsTable.key, set: { value: String(value) } });
+    }
+
+    /* Keep payment_gateways.apiKey in sync — the payment router reads the
+     * gateway record FIRST, before falling back to system_settings, so a
+     * stale apiKey there would silently shadow a freshly-saved token here. */
+    if (typeof updates["pawapay_api_token"] === "string" && updates["pawapay_api_token"].trim()) {
+      await db.update(paymentGatewaysTable)
+        .set({ apiKey: updates["pawapay_api_token"].trim() })
+        .where(eq(paymentGatewaysTable.slug, "pawapay"));
+    }
+    if (typeof updates["clapay_api_token"] === "string" && updates["clapay_api_token"].trim()) {
+      await db.update(paymentGatewaysTable)
+        .set({ apiKey: updates["clapay_api_token"].trim() })
+        .where(eq(paymentGatewaysTable.slug, "clapay"));
     }
 
     /* Invalidate settings cache so changes apply within 30s */
