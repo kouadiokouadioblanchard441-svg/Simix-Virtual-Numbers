@@ -1720,6 +1720,116 @@ router.get("/admin/transactions", requireAdmin, async (req, res): Promise<void> 
   res.json({ transactions: rows, total: totalRow?.c ?? 0 });
 });
 
+/* GET /admin/transactions/:id — full detail for one transaction */
+router.get("/admin/transactions/:id", requireAdmin, async (req, res): Promise<void> => {
+  const { id } = req.params;
+
+  const [row] = await db
+    .select({
+      id: transactionsTable.id,
+      type: transactionsTable.type,
+      amount: transactionsTable.amount,
+      status: transactionsTable.status,
+      method: transactionsTable.method,
+      description: transactionsTable.description,
+      externalDepositId: transactionsTable.externalDepositId,
+      gatewayMeta: transactionsTable.gatewayMeta,
+      createdAt: transactionsTable.createdAt,
+      userId: usersTable.id,
+      userFullName: usersTable.fullName,
+      userUsername: usersTable.username,
+      userPhone: usersTable.phone,
+      userEmail: usersTable.email,
+      userCountry: usersTable.country,
+      userCountryCode: usersTable.countryCode,
+      userBalance: usersTable.balance,
+      userStatus: usersTable.status,
+      userVerified: usersTable.verified,
+      userIsAdmin: usersTable.isAdmin,
+      userRiskScore: usersTable.riskScore,
+      userCreatedAt: usersTable.createdAt,
+    })
+    .from(transactionsTable)
+    .leftJoin(usersTable, eq(transactionsTable.userId, usersTable.id))
+    .where(eq(transactionsTable.id, id))
+    .limit(1);
+
+  if (!row) { res.status(404).json({ error: "Transaction introuvable" }); return; }
+
+  let gatewayMeta: Record<string, unknown> | null = null;
+  if (row.gatewayMeta) {
+    try { gatewayMeta = JSON.parse(row.gatewayMeta); } catch { gatewayMeta = null; }
+  }
+
+  /* Best-effort: find the closest virtual number for this user around the
+   * transaction's creation time — useful context for "purchase" transactions. */
+  let relatedNumber: {
+    id: string; phoneNumber: string; status: string; serviceName: string; countryName: string;
+  } | null = null;
+
+  if (row.type === "purchase" && row.userId) {
+    const windowMs = 5 * 60 * 1000;
+    const txTime = new Date(row.createdAt).getTime();
+    const [numRow] = await db
+      .select({
+        id: virtualNumbersTable.id,
+        phoneNumber: virtualNumbersTable.phoneNumber,
+        status: virtualNumbersTable.status,
+        createdAt: virtualNumbersTable.createdAt,
+        serviceName: servicesTable.name,
+        countryName: countriesTable.name,
+      })
+      .from(virtualNumbersTable)
+      .leftJoin(servicesTable, eq(virtualNumbersTable.serviceId, servicesTable.id))
+      .leftJoin(countriesTable, eq(virtualNumbersTable.countryId, countriesTable.id))
+      .where(and(
+        eq(virtualNumbersTable.userId, row.userId),
+        gte(virtualNumbersTable.createdAt, new Date(txTime - windowMs)),
+        lte(virtualNumbersTable.createdAt, new Date(txTime + windowMs)),
+      ))
+      .orderBy(desc(virtualNumbersTable.createdAt))
+      .limit(1);
+
+    if (numRow) {
+      relatedNumber = {
+        id: numRow.id,
+        phoneNumber: numRow.phoneNumber,
+        status: numRow.status,
+        serviceName: numRow.serviceName ?? "—",
+        countryName: numRow.countryName ?? "—",
+      };
+    }
+  }
+
+  res.json({
+    id: row.id,
+    type: row.type,
+    amount: row.amount,
+    status: row.status,
+    method: row.method,
+    description: row.description,
+    externalDepositId: row.externalDepositId,
+    gatewayMeta,
+    createdAt: row.createdAt,
+    user: row.userId ? {
+      id: row.userId,
+      fullName: row.userFullName,
+      username: row.userUsername,
+      phone: row.userPhone,
+      email: row.userEmail,
+      country: row.userCountry,
+      countryCode: row.userCountryCode,
+      balance: row.userBalance,
+      status: row.userStatus,
+      verified: row.userVerified,
+      isAdmin: row.userIsAdmin,
+      riskScore: row.userRiskScore,
+      createdAt: row.userCreatedAt,
+    } : null,
+    relatedNumber,
+  });
+});
+
 /* ─────────────────── REALTIME DASHBOARD ─────────────────── */
 router.get("/admin/realtime", requireAdmin, async (req, res): Promise<void> => {
   const now = new Date();

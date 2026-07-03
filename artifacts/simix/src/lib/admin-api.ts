@@ -76,6 +76,7 @@ export const adminApi = {
     if (params?.export) q.set("export", "true");
     return req<{ transactions: AdminTransaction[]; total: number }>("GET", `/admin/transactions?${q}`);
   },
+  getTransaction: (id: string) => req<AdminTransactionDetail>("GET", `/admin/transactions/${id}`),
 
   getServices: () => req<AdminService[]>("GET", "/admin/services"),
   createService: (data: Partial<AdminService> & { name: string; slug: string }) => req<AdminService>("POST", "/admin/services", data),
@@ -529,6 +530,40 @@ export interface AdminTransaction {
   createdAt: string;
   userFullName: string;
   userPhone: string;
+}
+
+export interface AdminTransactionDetail {
+  id: string;
+  type: string;
+  amount: number;
+  status: string;
+  method?: string | null;
+  description?: string | null;
+  externalDepositId?: string | null;
+  gatewayMeta?: Record<string, unknown> | null;
+  createdAt: string;
+  user: {
+    id: string;
+    fullName: string;
+    username?: string | null;
+    phone?: string | null;
+    email: string;
+    country?: string | null;
+    countryCode: string;
+    balance: number;
+    status: string;
+    verified: boolean;
+    isAdmin: boolean;
+    riskScore: number;
+    createdAt: string;
+  } | null;
+  relatedNumber: {
+    id: string;
+    phoneNumber: string;
+    status: string;
+    serviceName: string;
+    countryName: string;
+  } | null;
 }
 
 export interface AdminService {

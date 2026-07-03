@@ -6,6 +6,7 @@ import { AdminLayout } from "@/components/admin-layout";
 import { formatFCFA } from "@/lib/format";
 import { Loader2, ChevronLeft, ChevronRight, Download } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { TransactionDetailModal } from "@/components/admin/transaction-detail-modal";
 
 const TX_COLORS: Record<string, string> = {
   recharge: "bg-emerald-500/20 text-emerald-400",
@@ -37,9 +38,12 @@ function exportToCsv(filename: string, rows: Record<string, unknown>[]) {
   URL.revokeObjectURL(url);
 }
 
-function TxRow({ tx }: { tx: AdminTransaction }) {
+function TxRow({ tx, onSelect }: { tx: AdminTransaction; onSelect: (id: string) => void }) {
   return (
-    <tr className="border-b border-zinc-800 hover:bg-zinc-800/30 transition-colors">
+    <tr
+      className="border-b border-zinc-800 hover:bg-zinc-800/30 transition-colors cursor-pointer"
+      onClick={() => onSelect(tx.id)}
+    >
       <td className="py-3 px-4">
         <div className="text-zinc-300 text-sm">{tx.userFullName}</div>
         <div className="text-zinc-500 text-xs">{tx.userPhone}</div>
@@ -68,6 +72,7 @@ function TransactionsContent() {
   const [page, setPage] = useState(0);
   const [typeFilter, setTypeFilter] = useState("Tous");
   const [exporting, setExporting] = useState(false);
+  const [selectedTxId, setSelectedTxId] = useState<string | null>(null);
   const PER_PAGE = 30;
   const { toast } = useToast();
 
@@ -157,7 +162,7 @@ function TransactionsContent() {
               ) : data?.transactions.length === 0 ? (
                 <tr><td colSpan={7} className="py-16 text-center text-zinc-500">Aucune transaction</td></tr>
               ) : (
-                data?.transactions.map(tx => <TxRow key={tx.id} tx={tx} />)
+                data?.transactions.map(tx => <TxRow key={tx.id} tx={tx} onSelect={setSelectedTxId} />)
               )}
             </tbody>
           </table>
@@ -172,6 +177,8 @@ function TransactionsContent() {
           </div>
         )}
       </div>
+
+      <TransactionDetailModal transactionId={selectedTxId} onClose={() => setSelectedTxId(null)} />
     </div>
   );
 }
