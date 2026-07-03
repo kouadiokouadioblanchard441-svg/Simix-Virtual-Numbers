@@ -43,7 +43,7 @@ export async function seedProvidersFromEnv(): Promise<void> {
         baseUrl: "https://5sim.net/v1",
         active: true,
         priority: 1,
-        markup: 200,
+        markup: 400,
       });
       logger.info("[seed-providers] 5sim provider created from FIVESIM_API_KEY env var");
     }

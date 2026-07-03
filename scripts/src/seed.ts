@@ -152,7 +152,7 @@ const API_PROVIDERS: ApiProviderSeed[] = [
     baseUrl: "https://5sim.net/v1",
     active: false,
     priority: 1,
-    markup: 20,
+    markup: 400,
   },
   // PawaPay is a deposit-only payment aggregator and belongs in payment_gateways,
   // NOT in api_providers (which is reserved for SMS/number providers like 5sim).

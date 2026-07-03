@@ -128763,7 +128763,7 @@ async function getSyncLogs() {
 }
 async function applyAvailabilityToServicePrices() {
   const BATCH = 150;
-  const defaultMargin = await getSettingInt("default_margin", 200);
+  const defaultMargin = await getSettingInt("default_margin", 400);
   const allSCA = await db.select().from(serviceCountryAvailabilityTable);
   const availableSet = new Set(
     allSCA.filter((r3) => r3.available > 0).map((r3) => `${r3.serviceSlug.toLowerCase()}::${r3.countryCode.toLowerCase()}`)
@@ -160402,7 +160402,7 @@ router13.post("/admin/api-providers", requireAdmin2, async (req, res) => {
       baseUrl: String(baseUrl2 || ""),
       active: Boolean(active),
       priority: Number(priority || 1),
-      markup: Number(markup || 20)
+      markup: Number(markup || 400)
     }).onConflictDoUpdate({
       target: apiProvidersTable.slug,
       set: {
@@ -160411,7 +160411,7 @@ router13.post("/admin/api-providers", requireAdmin2, async (req, res) => {
         baseUrl: String(baseUrl2 || ""),
         active: Boolean(active),
         priority: Number(priority || 1),
-        markup: Number(markup || 20)
+        markup: Number(markup || 400)
       }
     }).returning();
     await logAdminAction(adminId2(req), "create_provider", req.ip, "provider", provider.id, { name: name3, slug });
@@ -166508,7 +166508,7 @@ async function seedProvidersFromEnv() {
         baseUrl: "https://5sim.net/v1",
         active: true,
         priority: 1,
-        markup: 200
+        markup: 400
       });
       logger.info("[seed-providers] 5sim provider created from FIVESIM_API_KEY env var");
     }

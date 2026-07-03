@@ -470,7 +470,7 @@ export async function applyAvailabilityToServicePrices(): Promise<{
   const BATCH = 150;
   /* Read default margin from system_settings so service_prices prices
      are calculated using the same formula as services (not hardcoded tiers). */
-  const defaultMargin = await getSettingInt("default_margin", 200);
+  const defaultMargin = await getSettingInt("default_margin", 400);
 
   const allSCA = await db.select().from(serviceCountryAvailabilityTable);
 

@@ -1137,7 +1137,7 @@ router.post("/admin/api-providers", requireAdmin, async (req, res): Promise<void
         baseUrl: String(baseUrl || ""),
         active: Boolean(active),
         priority: Number(priority || 1),
-        markup: Number(markup || 20),
+        markup: Number(markup || 400),
       })
       .onConflictDoUpdate({
         target: apiProvidersTable.slug,
@@ -1147,7 +1147,7 @@ router.post("/admin/api-providers", requireAdmin, async (req, res): Promise<void
           baseUrl: String(baseUrl || ""),
           active: Boolean(active),
           priority: Number(priority || 1),
-          markup: Number(markup || 20),
+          markup: Number(markup || 400),
         },
       })
       .returning();
