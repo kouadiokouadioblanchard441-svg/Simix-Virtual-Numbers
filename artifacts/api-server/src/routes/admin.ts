@@ -1455,9 +1455,20 @@ router.post("/admin/pawapay/simulate-deposit", requireAdmin, async (req, res): P
   if (status === "COMPLETED") {
     const actualAmount = depositedAmount ? Math.round(Number(depositedAmount)) : tx.amount;
 
-    await db.update(transactionsTable)
+    /* Atomic transition pending → completed — guards against double-credit if
+     * this endpoint is called twice in quick succession (double-click, retry). */
+    const [justCompleted] = await db.update(transactionsTable)
       .set({ status: "completed" })
-      .where(eq(transactionsTable.id, tx.id));
+      .where(and(
+        eq(transactionsTable.id, tx.id),
+        eq(transactionsTable.status, "pending"),
+      ))
+      .returning();
+
+    if (!justCompleted) {
+      res.status(400).json({ error: "La transaction a déjà été traitée entre-temps" });
+      return;
+    }
 
     await db.update(usersTable)
       .set({ balance: sql`${usersTable.balance} + ${actualAmount}` })
@@ -1616,9 +1627,20 @@ router.post("/admin/clapay/simulate-deposit", requireAdmin, async (req, res): Pr
   if (status === "COMPLETED") {
     const actualAmount = depositedAmount ? Math.round(Number(depositedAmount)) : tx.amount;
 
-    await db.update(transactionsTable)
+    /* Atomic transition pending → completed — guards against double-credit if
+     * this endpoint is called twice in quick succession (double-click, retry). */
+    const [justCompleted] = await db.update(transactionsTable)
       .set({ status: "completed" })
-      .where(eq(transactionsTable.id, tx.id));
+      .where(and(
+        eq(transactionsTable.id, tx.id),
+        eq(transactionsTable.status, "pending"),
+      ))
+      .returning();
+
+    if (!justCompleted) {
+      res.status(400).json({ error: "La transaction a déjà été traitée entre-temps" });
+      return;
+    }
 
     await db.update(usersTable)
       .set({ balance: sql`${usersTable.balance} + ${actualAmount}` })

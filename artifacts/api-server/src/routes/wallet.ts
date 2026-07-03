@@ -731,10 +731,23 @@ async function processDepositCallback(payload: PawaPayDepositCallback): Promise<
      * which may differ from our internal FCFA amount after FX conversion. */
     const creditAmount = tx.amount;
 
-    /* Atomic: update transaction + credit user balance */
-    await db.update(transactionsTable)
+    /* Atomic transition pending → completed. Re-check status="pending" in the
+     * WHERE clause and inspect .returning() — this guards against a race where
+     * the webhook fires twice (PawaPay retries) or fires concurrently with the
+     * reconciliation poller / status-poll endpoint. Only the caller that wins
+     * the atomic transition may credit the balance. */
+    const [justCompleted] = await db.update(transactionsTable)
       .set({ status: "completed" })
-      .where(eq(transactionsTable.id, tx.id));
+      .where(and(
+        eq(transactionsTable.id, tx.id),
+        eq(transactionsTable.status, "pending"),
+      ))
+      .returning();
+
+    if (!justCompleted) {
+      logger.info({ depositId }, "[PawaPay Webhook] Already processed — skipping double-credit");
+      return;
+    }
 
     await db.update(usersTable)
       .set({ balance: sql`${usersTable.balance} + ${creditAmount}` })
