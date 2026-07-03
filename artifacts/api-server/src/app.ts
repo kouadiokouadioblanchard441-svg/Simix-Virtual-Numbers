@@ -256,6 +256,17 @@ const rawBodyCapture = (req: express.Request, _res: express.Response, buf: Buffe
   (req as express.Request & { rawBody?: string }).rawBody = buf.toString("utf8");
 };
 
+/* Routes that accept base64-encoded images in the JSON body (banners, site
+ * content, etc.) need a much higher limit than plain API calls — a single
+ * uploaded image encoded as base64 can easily be several MB.               */
+const LARGE_JSON_PATH_PREFIXES = [
+  "/api/admin/banners",
+  "/api/admin/site-content",
+];
+
+const isLargeJsonPath = (path: string): boolean =>
+  LARGE_JSON_PATH_PREFIXES.some((prefix) => path.startsWith(prefix));
+
 /* Webhook paths: higher limit, always capture raw body */
 app.use((req, res, next) => {
   if (WEBHOOK_PATHS_SET.has(req.path)) {
@@ -265,9 +276,18 @@ app.use((req, res, next) => {
   }
 });
 
+/* Routes carrying base64 image payloads: 10 MB limit */
+app.use((req, res, next) => {
+  if (!WEBHOOK_PATHS_SET.has(req.path) && isLargeJsonPath(req.path)) {
+    express.json({ limit: "10mb", verify: rawBodyCapture })(req, res, next);
+  } else {
+    next();
+  }
+});
+
 /* All other routes: 256 KB limit */
 app.use((req, res, next) => {
-  if (!WEBHOOK_PATHS_SET.has(req.path)) {
+  if (!WEBHOOK_PATHS_SET.has(req.path) && !isLargeJsonPath(req.path)) {
     express.json({ limit: "256kb", verify: rawBodyCapture })(req, res, next);
   } else {
     next();

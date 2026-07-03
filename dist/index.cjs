@@ -166010,6 +166010,11 @@ var WEBHOOK_PATHS_SET = /* @__PURE__ */ new Set([
 var rawBodyCapture = (req, _res, buf) => {
   req.rawBody = buf.toString("utf8");
 };
+var LARGE_JSON_PATH_PREFIXES = [
+  "/api/admin/banners",
+  "/api/admin/site-content"
+];
+var isLargeJsonPath = (path6) => LARGE_JSON_PATH_PREFIXES.some((prefix) => path6.startsWith(prefix));
 app.use((req, res, next) => {
   if (WEBHOOK_PATHS_SET.has(req.path)) {
     import_express32.default.json({ limit: "1mb", verify: rawBodyCapture })(req, res, next);
@@ -166018,7 +166023,14 @@ app.use((req, res, next) => {
   }
 });
 app.use((req, res, next) => {
-  if (!WEBHOOK_PATHS_SET.has(req.path)) {
+  if (!WEBHOOK_PATHS_SET.has(req.path) && isLargeJsonPath(req.path)) {
+    import_express32.default.json({ limit: "10mb", verify: rawBodyCapture })(req, res, next);
+  } else {
+    next();
+  }
+});
+app.use((req, res, next) => {
+  if (!WEBHOOK_PATHS_SET.has(req.path) && !isLargeJsonPath(req.path)) {
     import_express32.default.json({ limit: "256kb", verify: rawBodyCapture })(req, res, next);
   } else {
     next();
