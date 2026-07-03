@@ -551,12 +551,14 @@ router.get("/numbers/:numberId", requireAuth, async (req, res): Promise<void> =>
 
   if (!row) { res.status(404).json({ error: "Numéro introuvable" }); return; }
 
-  /* Auto-expire if past due */
+  /* Auto-expire display only — do NOT update DB status here.
+   * Previously this code set status="expired" without issuing a refund,
+   * which permanently blocked the poller (guard: status!="waiting") and
+   * the sweep (filter: status="waiting") from ever refunding the user.
+   * The poller and sweep are the only code paths authorised to change
+   * status and issue refunds atomically. Here we only reflect expiry
+   * in the JSON response so the UI shows the correct state immediately. */
   if (row.n.expiresAt.getTime() < Date.now() && row.n.status === "waiting") {
-    await db
-      .update(virtualNumbersTable)
-      .set({ status: "expired" })
-      .where(eq(virtualNumbersTable.id, numberId));
     row.n.status = "expired";
   }
 
