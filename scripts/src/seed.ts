@@ -264,6 +264,9 @@ async function upsertSystemSettings() {
     /* Default margin applied to new services created by the 5sim sync.
        Admin can update this from the admin panel (system_settings). */
     { key: "default_margin",         value: "200" },
+    /* EUR → FCFA conversion rate used to convert 5sim prices (in EUR) to FCFA.
+       Admin can update this in the admin panel (system_settings). */
+    { key: "eur_to_fcfa_rate",       value: "655" },
     /* Features / modes */
     { key: "registration_enabled",   value: "true" },
     { key: "maintenance_mode",       value: "false" },

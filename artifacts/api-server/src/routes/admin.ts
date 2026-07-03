@@ -29,7 +29,7 @@ import { FiveSimClient } from "../lib/fivesim";
 import { blockUser, logSecurityEvent } from "../lib/fraud-detection";
 import { sendDepositConfirmationEmail } from "../lib/email";
 import { logger } from "../lib/logger";
-import { clearSettingsCache } from "../lib/settings";
+import { clearSettingsCache, getSettingInt } from "../lib/settings";
 import { setAppUrl, clearAppUrlCache } from "../lib/app-url";
 import { requireAdminJwt } from "../lib/admin-jwt-middleware";
 
@@ -1976,7 +1976,8 @@ router.get("/admin/live-prices", requireAdmin, async (req, res): Promise<void> =
   }
 
   const client = new FiveSimClient(provider.apiKey);
-  const markup = provider.markup;
+  const markup  = provider.markup;
+  const eurRate = await getSettingInt("eur_to_fcfa_rate", 655);
 
   const results = await Promise.allSettled(
     SAMPLE_COUNTRIES_PRICE.map(async (c) => {
@@ -1989,8 +1990,8 @@ router.get("/admin/live-prices", requireAdmin, async (req, res): Promise<void> =
           available: p ? p.Qty > 0 : false,
           qty: p?.Qty ?? 0,
           priceUsd: p?.Price ?? 0,
-          priceFcfa: p ? Math.round(p.Price * 655) : 0,
-          priceWithMarkup: p ? Math.round(p.Price * 655 * (1 + markup / 100)) : 0,
+          priceFcfa: p ? Math.round(p.Price * eurRate) : 0,
+          priceWithMarkup: p ? Math.round(p.Price * eurRate * (1 + markup / 100)) : 0,
           markup,
         };
       }
@@ -2003,8 +2004,8 @@ router.get("/admin/live-prices", requireAdmin, async (req, res): Promise<void> =
           name,
           qty: v.Qty,
           priceUsd: v.Price,
-          priceFcfa: Math.round(v.Price * 655),
-          priceWithMarkup: Math.round(v.Price * 655 * (1 + markup / 100)),
+          priceFcfa: Math.round(v.Price * eurRate),
+          priceWithMarkup: Math.round(v.Price * eurRate * (1 + markup / 100)),
         }));
       return { ...c, products: top };
     })
@@ -2027,7 +2028,8 @@ router.get("/admin/live-prices/services", requireAdmin, async (req, res): Promis
   if (!provider?.apiKey) { res.status(404).json({ error: "Aucun fournisseur 5sim actif" }); return; }
 
   const client = new FiveSimClient(provider.apiKey);
-  const markup = provider.markup;
+  const markup  = provider.markup;
+  const eurRate = await getSettingInt("eur_to_fcfa_rate", 655);
 
   /* Get all services from a reliable country (France as base) */
   try {
@@ -2040,8 +2042,8 @@ router.get("/admin/live-prices/services", requireAdmin, async (req, res): Promis
         name: name.charAt(0).toUpperCase() + name.slice(1),
         qty: v.Qty,
         priceUsd: v.Price,
-        priceFcfa: Math.round(v.Price * 655),
-        priceWithMarkup: Math.round(v.Price * 655 * (1 + markup / 100)),
+        priceFcfa: Math.round(v.Price * eurRate),
+        priceWithMarkup: Math.round(v.Price * eurRate * (1 + markup / 100)),
         margin: markup,
       }));
     res.json({ services, markup, total: services.length, country: "france" });

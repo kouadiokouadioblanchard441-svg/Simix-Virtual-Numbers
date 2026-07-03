@@ -19,6 +19,7 @@ import { db, pool, apiProvidersTable, servicesTable, systemSettingsTable, countr
 import { eq, and } from "drizzle-orm";
 import { FiveSimClient, type FiveSimProductsResponse, ISO_TO_5SIM } from "./fivesim";
 import { logger } from "./logger";
+import { getSettingInt } from "./settings";
 
 /** Reverse map: 5sim country slug → ISO code */
 const FIVESIM_TO_ISO: Record<string, string> = Object.fromEntries(
@@ -445,18 +446,6 @@ export async function getSyncLogs(): Promise<SyncLogEntry[]> {
 }
 
 /* ─── Social service slugs (price preserved on conflict) ─── */
-const AUTO_APPLY_SOCIAL_SLUGS = new Set([
-  "whatsapp", "telegram", "instagram", "google", "youtube",
-  "facebook", "tiktok", "snapchat", "binance",
-]);
-
-function calcAutoApplyPrice(providerFcfa: number): number {
-  if (providerFcfa <= 0)   return 350;
-  if (providerFcfa <= 100) return 300;
-  if (providerFcfa <= 200) return 350;
-  if (providerFcfa <= 300) return 400;
-  return 450;
-}
 
 /**
  * Apply service_country_availability cache → service_prices.
@@ -479,6 +468,9 @@ export async function applyAvailabilityToServicePrices(): Promise<{
   enabled: number; disabled: number; priceUpdated: number; priceFixed: number;
 }> {
   const BATCH = 150;
+  /* Read default margin from system_settings so service_prices prices
+     are calculated using the same formula as services (not hardcoded tiers). */
+  const defaultMargin = await getSettingInt("default_margin", 200);
 
   const allSCA = await db.select().from(serviceCountryAvailabilityTable);
 
@@ -522,7 +514,7 @@ export async function applyAvailabilityToServicePrices(): Promise<{
     const batch = availableRows.slice(i, i + BATCH).map(r => ({
       serviceSlug:   r.serviceSlug.toLowerCase(),
       countryCode:   r.countryCode.toLowerCase(),
-      price:         calcAutoApplyPrice(r.providerPriceFcfa),
+      price:         Math.round(r.providerPriceFcfa * (1 + defaultMargin / 100)),
       enabled:       true as const,
       adminModified: false as const,
     }));
@@ -688,6 +680,11 @@ export async function syncFiveSimProducts(triggeredBy: "scheduler" | "admin" = "
       : provider.markup;
     logger.info({ markup }, "[5sim-sync] Using default margin from system_settings");
 
+    /* ── Read EUR→FCFA rate from system_settings (admin-configurable) ──
+     * 5sim prices are in EUR. Falls back to 655 (fixed CFA peg) if missing. */
+    const eurRate = await getSettingInt("eur_to_fcfa_rate", 655);
+    logger.info({ eurRate }, "[5sim-sync] Using EUR→FCFA rate from system_settings");
+
     /* ── 1. Collect products — single bulk call to /guest/prices ──────────────────
      *
      * A single GET /guest/prices returns ALL countries × ALL services × operators.
@@ -774,7 +771,7 @@ export async function syncFiveSimProducts(triggeredBy: "scheduler" | "admin" = "
               serviceSlug:       productName.toLowerCase(),
               countryCode:       isoCode,
               available:         totalQty,
-              providerPriceFcfa: Math.round(minCost * 655),
+              providerPriceFcfa: Math.round(minCost * eurRate),
             });
           }
         }
@@ -808,7 +805,7 @@ export async function syncFiveSimProducts(triggeredBy: "scheduler" | "admin" = "
                 serviceSlug:       name.toLowerCase(),
                 countryCode:       isoCode,
                 available:         info.Qty,
-                providerPriceFcfa: Math.round(info.Price * 655),
+                providerPriceFcfa: Math.round(info.Price * eurRate),
               });
             }
           }
@@ -893,7 +890,7 @@ export async function syncFiveSimProducts(triggeredBy: "scheduler" | "admin" = "
       const batch = productList.slice(i, i + BATCH_SIZE);
 
       const rows = batch.map(([slug, info]) => {
-        const priceInFcfa     = Math.round(info.price * 655);
+        const priceInFcfa     = Math.round(info.price * eurRate);
         const priceWithMarkup = Math.round(priceInFcfa * (1 + markup / 100));
         const prettyName      = slug.charAt(0).toUpperCase() + slug.slice(1).replace(/_/g, " ");
         const slugLower = slug.toLowerCase();

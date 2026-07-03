@@ -97,3 +97,8 @@ export const isEmailOtpEnabled = () => getSettingBool("email_otp_enabled", true)
 
 /** Referral commission rate in percent (e.g. 10 = 10%). */
 export const getReferralCommissionRate = () => getSettingInt("referral_commission_rate", 10);
+
+/** EUR → FCFA exchange rate used to convert 5sim prices (in EUR) to FCFA.
+ *  5sim API returns prices in EUR. 1 EUR ≈ 655 FCFA (fixed CFA peg).
+ *  Admin can override in system_settings under key "eur_to_fcfa_rate". */
+export const getEurToFcfaRate = () => getSettingInt("eur_to_fcfa_rate", 655);
