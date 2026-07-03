@@ -468,17 +468,9 @@ router.delete("/admin/services/:serviceId", requireAdmin, async (req, res): Prom
 });
 
 /* ─────────────────── COUNTRIES MANAGEMENT ─────────────────── */
-const SUBSAHARAN_AFRICA_CODES_ADMIN = [
-  "ZA","AO","BJ","BW","BF","BI","CM","CV","TD","KM","CG","CI",
-  "DJ","SZ","ET","GA","GM","GH","GN","GQ","GW","KE","LS","LR",
-  "MG","MW","ML","MU","MZ","NA","NE","NG","UG","RW","SN","SC",
-  "SL","SO","SS","ST","CF","TZ","TG","ZM","ZW","ER","CD",
-];
 
 router.get("/admin/countries", requireAdmin, async (_req, res): Promise<void> => {
-  const { inArray: inArrayFn } = await import("drizzle-orm");
   const rows = await db.select().from(countriesTable)
-    .where(inArrayFn(countriesTable.code, SUBSAHARAN_AFRICA_CODES_ADMIN))
     .orderBy(countriesTable.sortOrder, countriesTable.name);
   res.json(rows);
 });
