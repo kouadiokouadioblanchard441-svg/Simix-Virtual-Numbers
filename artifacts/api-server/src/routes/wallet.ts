@@ -39,6 +39,7 @@ import {
 } from "../lib/clapay";
 import { logger } from "../lib/logger";
 import { resolveGateway } from "../lib/payment-router";
+import { resolvePawaPayCredentials, resolveClapayCredentials } from "../lib/gateway-credentials";
 import { getMinDepositFcfa, getMaxBalanceFcfa } from "../lib/settings";
 import { broadcastNotification } from "./notifications";
 import { notificationsTable } from "@workspace/db";
