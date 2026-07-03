@@ -366,7 +366,9 @@ app.use((err: unknown, _req: express.Request, res: express.Response, _next: expr
 if (process.env.NODE_ENV !== "development") {
   const currentDir = (globalThis as { __dirname?: string }).__dirname;
   if (currentDir) {
-    const publicDir = path.join(currentDir, "public");
+    const publicDir = existsSync(path.join(currentDir, "public"))
+      ? path.join(currentDir, "public")
+      : path.join(currentDir, "..", "public");
     if (existsSync(publicDir)) {
       app.use(express.static(publicDir));
       /* SPA fallback — serve maintenance page instead of index.html when active.

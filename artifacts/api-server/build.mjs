@@ -10,11 +10,12 @@ globalThis.require = createRequire(import.meta.url);
 const artifactDir = path.dirname(fileURLToPath(import.meta.url));
 const rootDir = path.resolve(artifactDir, "..", "..");
 
-// Output directly to workspace root — Plesk pulls root files reliably
-const outDir = rootDir;
+// Output to dist/ — matches Plesk startup file: dist/index.cjs
+const distDir = path.join(rootDir, "dist");
+const outDir = distDir;
 
 async function buildAll() {
-  // Clean previous API build files from root
+  // Clean previous build files from dist/
   const apiFiles = [
     "index.cjs",
     "pino-file.cjs",
@@ -27,17 +28,16 @@ async function buildAll() {
     apiFiles.map((f) => rm(path.join(outDir, f), { recursive: true, force: true }))
   );
 
-  // Clean old CJS worker files from dist/ (but keep dist/index.cjs — it's a static Plesk wrapper)
-  const distDir = path.join(rootDir, "dist");
-  const oldDistFiles = [
+  // Also clean old root-level CJS files left from previous builds
+  const oldRootFiles = [
+    "index.cjs",
     "pino-file.cjs",
     "pino-pretty.cjs",
     "pino-worker.cjs",
     "thread-stream-worker.cjs",
-    "migrations",
   ];
   await Promise.all(
-    oldDistFiles.map((f) => rm(path.join(distDir, f), { recursive: true, force: true }))
+    oldRootFiles.map((f) => rm(path.join(rootDir, f), { recursive: true, force: true }))
   );
 
   await esbuild({

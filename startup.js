@@ -163,7 +163,7 @@ function run(cmd, label) {
 }
 
 function needsBuild() {
-  const bundle = path.join(root, "index.cjs");
+  const bundle = path.join(root, "dist", "index.cjs");
   if (!fs.existsSync(bundle)) return true;
 
   // Frontend assets must exist — if icons or index.html are missing, rebuild
@@ -241,7 +241,7 @@ if (buildError) {
 
 /* ── DÉMARRAGE ─────────────────────────────────────────────────── */
 try {
-  require("./index.cjs");
+  require("./dist/index.cjs");
 } catch (err) {
   console.error("[startup] Erreur fatale au démarrage :", err.message);
   startDiagnosticServer([], err.message);
