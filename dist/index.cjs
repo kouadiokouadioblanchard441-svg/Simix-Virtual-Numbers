@@ -160858,6 +160858,98 @@ router13.get("/admin/transactions", requireAdmin2, async (req, res) => {
   const [totalRow] = await db.select({ c: count() }).from(transactionsTable).where(where);
   res.json({ transactions: rows, total: totalRow?.c ?? 0 });
 });
+router13.get("/admin/transactions/:id", requireAdmin2, async (req, res) => {
+  const { id } = req.params;
+  const [row] = await db.select({
+    id: transactionsTable.id,
+    type: transactionsTable.type,
+    amount: transactionsTable.amount,
+    status: transactionsTable.status,
+    method: transactionsTable.method,
+    description: transactionsTable.description,
+    externalDepositId: transactionsTable.externalDepositId,
+    gatewayMeta: transactionsTable.gatewayMeta,
+    createdAt: transactionsTable.createdAt,
+    userId: usersTable.id,
+    userFullName: usersTable.fullName,
+    userUsername: usersTable.username,
+    userPhone: usersTable.phone,
+    userEmail: usersTable.email,
+    userCountry: usersTable.country,
+    userCountryCode: usersTable.countryCode,
+    userBalance: usersTable.balance,
+    userStatus: usersTable.status,
+    userVerified: usersTable.verified,
+    userIsAdmin: usersTable.isAdmin,
+    userRiskScore: usersTable.riskScore,
+    userCreatedAt: usersTable.createdAt
+  }).from(transactionsTable).leftJoin(usersTable, eq(transactionsTable.userId, usersTable.id)).where(eq(transactionsTable.id, id)).limit(1);
+  if (!row) {
+    res.status(404).json({ error: "Transaction introuvable" });
+    return;
+  }
+  let gatewayMeta = null;
+  if (row.gatewayMeta) {
+    try {
+      gatewayMeta = JSON.parse(row.gatewayMeta);
+    } catch {
+      gatewayMeta = null;
+    }
+  }
+  let relatedNumber = null;
+  if (row.type === "purchase" && row.userId) {
+    const windowMs = 5 * 60 * 1e3;
+    const txTime = new Date(row.createdAt).getTime();
+    const [numRow] = await db.select({
+      id: virtualNumbersTable.id,
+      phoneNumber: virtualNumbersTable.phoneNumber,
+      status: virtualNumbersTable.status,
+      createdAt: virtualNumbersTable.createdAt,
+      serviceName: servicesTable.name,
+      countryName: countriesTable.name
+    }).from(virtualNumbersTable).leftJoin(servicesTable, eq(virtualNumbersTable.serviceId, servicesTable.id)).leftJoin(countriesTable, eq(virtualNumbersTable.countryId, countriesTable.id)).where(and(
+      eq(virtualNumbersTable.userId, row.userId),
+      gte(virtualNumbersTable.createdAt, new Date(txTime - windowMs)),
+      lte(virtualNumbersTable.createdAt, new Date(txTime + windowMs))
+    )).orderBy(desc(virtualNumbersTable.createdAt)).limit(1);
+    if (numRow) {
+      relatedNumber = {
+        id: numRow.id,
+        phoneNumber: numRow.phoneNumber,
+        status: numRow.status,
+        serviceName: numRow.serviceName ?? "\u2014",
+        countryName: numRow.countryName ?? "\u2014"
+      };
+    }
+  }
+  res.json({
+    id: row.id,
+    type: row.type,
+    amount: row.amount,
+    status: row.status,
+    method: row.method,
+    description: row.description,
+    externalDepositId: row.externalDepositId,
+    gatewayMeta,
+    createdAt: row.createdAt,
+    user: row.userId ? {
+      id: row.userId,
+      fullName: row.userFullName,
+      username: row.userUsername,
+      phone: row.userPhone,
+      email: row.userEmail,
+      country: row.userCountry,
+      countryCode: row.userCountryCode,
+      balance: row.userBalance,
+      status: row.userStatus,
+      verified: row.userVerified,
+      isAdmin: row.userIsAdmin,
+      riskScore: row.userRiskScore,
+      createdAt: row.userCreatedAt
+    } : null,
+    relatedNumber
+  });
+});
 router13.get("/admin/realtime", requireAdmin2, async (req, res) => {
   const now = /* @__PURE__ */ new Date();
   const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());

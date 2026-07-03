@@ -61,6 +61,7 @@ PAWAPAY_ENV = "production"
 VAPID_PUBLIC_KEY = "BPy-4QOhhUbnX3apfyA2LBL8YohvcFVV-av01mEzhI9tzfJBjzXX1Eu5UREKtOnd6W37HGZrOFwmlbYIttLATgc"
 VAPID_SUBJECT = "mailto:support@simix.site"
 APP_URL = "https://simix.site"
+ADMIN_JWT_SECRET = "a9cfaaaf3e3918eb4da269a8c10d8d83f7c9e07fa9d92a277961e404bedfc42ab653391defbf2683bcc56e93739ebe12"
 
 [userenv.production]
 GOOGLE_REDIRECT_URI = "https://simix.site/api/auth/google/callback"
