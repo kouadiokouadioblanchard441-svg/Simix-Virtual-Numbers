@@ -864,7 +864,7 @@ function DepositContent() {
           countryCode: selectedCountry.code,
           dialCode: selectedCountry.dialCode,
           currencyCode: currencyCode !== "XOF" ? currencyCode : undefined,
-        },
+        } as any,
       }) as { pending?: boolean; depositId?: string; status?: string; payment_url?: string | null };
 
       if (result.pending && result.depositId) {

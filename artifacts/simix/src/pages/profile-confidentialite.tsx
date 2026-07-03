@@ -54,7 +54,7 @@ function ConfidentialiteContent() {
   }, [prefs]);
 
   const update = (k: keyof typeof prefs, v: boolean) => {
-    setPrefs((p) => ({ ...p, [k]: v }));
+    setPrefs((p: typeof prefs) => ({ ...p, [k]: v }));
     toast({ title: "Préférence mise à jour ✓", description: "Vos choix de confidentialité ont été enregistrés." });
   };
 

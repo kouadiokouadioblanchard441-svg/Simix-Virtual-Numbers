@@ -499,7 +499,7 @@ function PricingContent() {
           {/* ── NIVEAU 1 : Prix Global ── */}
           <GlobalPriceCard
             matrix={matrix}
-            onSave={(price) => saveGlobal.mutateAsync({ slug: selectedSlug, price })}
+            onSave={async (price) => { await saveGlobal.mutateAsync({ slug: selectedSlug, price }); }}
             isSaving={saveGlobal.isPending}
           />
 

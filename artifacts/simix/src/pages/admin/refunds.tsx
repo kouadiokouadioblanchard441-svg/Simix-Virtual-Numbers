@@ -316,7 +316,7 @@ function RefundsContent() {
                     </div>
                     <div className="text-right shrink-0">
                       <div className="text-emerald-400 text-sm font-semibold">+{formatFCFA(r.amount)}</div>
-                      <div className="text-zinc-600 text-[10px]">{relativeDate(r.createdAt instanceof Date ? r.createdAt.toISOString() : String(r.createdAt))}</div>
+                      <div className="text-zinc-600 text-[10px]">{relativeDate(String(r.createdAt))}</div>
                     </div>
                   </div>
                 );

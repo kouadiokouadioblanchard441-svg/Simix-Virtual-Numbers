@@ -164,7 +164,7 @@ function InformationsContent() {
     }
   };
 
-  const avatarSrc = avatarPreview ?? user?.avatar ?? null;
+  const avatarSrc = avatarPreview ?? (user as any)?.avatar ?? null;
   const initials = (user?.fullName ?? "S")
     .split(" ")
     .map((w: string) => w[0])

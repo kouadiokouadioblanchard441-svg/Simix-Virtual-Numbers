@@ -163,7 +163,7 @@ router.get("/notifications/unread-count", requireAuth, async (req: Request, res:
 /* ── PATCH /notifications/:id/read ───────────────────────── */
 router.patch("/notifications/:id/read", requireAuth, async (req: Request, res: Response): Promise<void> => {
   const userId = req.user!.id;
-  const { id } = req.params;
+  const { id } = req.params as Record<string, string>;
 
   const [notif] = await db
     .select()
@@ -210,7 +210,7 @@ router.patch("/notifications/read-all", requireAuth, async (req: Request, res: R
 /* ── DELETE /notifications/:id ───────────────────────────── */
 router.delete("/notifications/:id", requireAuth, async (req: Request, res: Response): Promise<void> => {
   const userId = req.user!.id;
-  const { id } = req.params;
+  const { id } = req.params as Record<string, string>;
 
   await db.delete(notificationsTable)
     .where(and(eq(notificationsTable.id, id), eq(notificationsTable.userId, userId)));

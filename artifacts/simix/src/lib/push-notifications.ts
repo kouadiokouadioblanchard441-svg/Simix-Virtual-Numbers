@@ -38,7 +38,7 @@ export async function subscribeToPush(vapidPublicKey: string): Promise<PushSubsc
   const applicationServerKey = urlBase64ToUint8Array(vapidPublicKey);
   const subscription = await registration.pushManager.subscribe({
     userVisibleOnly: true,
-    applicationServerKey,
+    applicationServerKey: applicationServerKey as unknown as BufferSource,
   });
 
   localStorage.setItem(STORAGE_KEY, JSON.stringify(subscription));

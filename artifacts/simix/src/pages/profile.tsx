@@ -218,8 +218,8 @@ function ProfileContent() {
               {/* Avatar */}
               <div className="relative flex-shrink-0">
                 <div className="w-[72px] h-[72px] rounded-2xl overflow-hidden border-2 border-violet-500/40 shadow-lg shadow-violet-900/30">
-                  {user?.avatar ? (
-                    <img src={user.avatar} alt="Avatar" className="w-full h-full object-cover" />
+                  {(user as any)?.avatar ? (
+                    <img src={(user as any).avatar} alt="Avatar" className="w-full h-full object-cover" />
                   ) : (
                     <div className="w-full h-full bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center text-white text-2xl font-black">
                       {initials}

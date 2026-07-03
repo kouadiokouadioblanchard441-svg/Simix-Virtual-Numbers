@@ -1861,8 +1861,9 @@ router.post("/admin/blacklist", requireAdmin, async (req, res): Promise<void> =>
 });
 
 router.delete("/admin/blacklist/:id", requireAdmin, async (req, res): Promise<void> => {
-  await db.delete(ipBlacklistTable).where(eq(ipBlacklistTable.id, req.params.id));
-  await logAdminAction(adminId(req), "blacklist_remove", req.ip, "blacklist", req.params.id);
+  const blacklistId = req.params.id as string;
+  await db.delete(ipBlacklistTable).where(eq(ipBlacklistTable.id, blacklistId));
+  await logAdminAction(adminId(req), "blacklist_remove", req.ip, "blacklist", blacklistId);
   res.json({ success: true });
 });
 
@@ -2270,19 +2271,20 @@ router.post("/admin/service-prices", requireAdmin, async (req, res): Promise<voi
 });
 
 router.put("/admin/service-prices/:id", requireAdmin, async (req, res): Promise<void> => {
-  const { id } = req.params;
+  const { id } = req.params as Record<string, string>;
   const { price, enabled } = req.body as { price?: number; enabled?: boolean };
   const updates: Record<string, unknown> = { updatedAt: new Date() };
   if (price != null) { updates.price = Number(price); updates.adminModified = true; }
   if (enabled != null) updates.enabled = enabled;
-  const [row] = await db.update(servicePricesTable).set(updates).where(eq(servicePricesTable.id, id!)).returning();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [row] = await db.update(servicePricesTable).set(updates as any).where(eq(servicePricesTable.id, id!)).returning();
   if (!row) { res.status(404).json({ error: "Prix introuvable" }); return; }
   await logAdminAction(adminId(req), "service_price_update", req.ip, "service_price", id, updates);
   res.json(row);
 });
 
 router.delete("/admin/service-prices/:id", requireAdmin, async (req, res): Promise<void> => {
-  const { id } = req.params;
+  const { id } = req.params as Record<string, string>;
   await db.delete(servicePricesTable).where(eq(servicePricesTable.id, id!));
   await logAdminAction(adminId(req), "service_price_delete", req.ip, "service_price", id);
   res.json({ success: true });
@@ -2450,7 +2452,7 @@ router.get("/admin/diagnostics", requireAdmin, async (_req, res): Promise<void> 
       const { PawaPayClient } = await import("../lib/pawapay");
       const client = new PawaPayClient(token, env);
       const t0 = Date.now();
-      await client.getActiveConfig();
+      await client.getActiveConfiguration();
       checks.push({ name: "pawapay", label: "PawaPay", status: "ok", detail: `Connecté (${env})`, latencyMs: Date.now() - t0 });
     }
   } catch (e) {

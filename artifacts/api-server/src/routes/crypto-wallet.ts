@@ -81,14 +81,14 @@ async function creditCryptoDeposit(
     ? `${amountFcfa.toLocaleString("fr-FR")} FCFA crédités (paiement crypto partiel).`
     : `${amountFcfa.toLocaleString("fr-FR")} FCFA ont été crédités via crypto.`;
 
-  await db.insert(notificationsTable).values({
+  const [notif] = await db.insert(notificationsTable).values({
     userId,
     title: `Recharge ${label} ✓`,
     body,
     type: "deposit_success",
-  });
+  }).returning();
 
-  broadcastNotification(userId, { title: `Recharge ${label} ✓`, body, type: "deposit_success" });
+  if (notif) broadcastNotification(notif);
 
   logger.info({ paymentId, userId, amountFcfa, partial }, "[Crypto] Balance credited");
   return true;
@@ -252,7 +252,7 @@ router.post("/wallet/crypto/initiate", requireAuth, async (req, res): Promise<vo
  * ──────────────────────────────────────────────────────────────── */
 router.get("/wallet/crypto/:paymentId/status", requireAuth, async (req, res): Promise<void> => {
   const user      = req.user!;
-  const { paymentId } = req.params;
+  const { paymentId } = req.params as Record<string, string>;
   const externalDepositId = `${CRYPTO_PREFIX}${paymentId}`;
 
   const [tx] = await db

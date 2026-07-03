@@ -252,7 +252,7 @@ declare global {
   }
 }
 
-const rawBodyCapture: express.RequestHandler = (req, _res, buf) => {
+const rawBodyCapture = (req: express.Request, _res: express.Response, buf: Buffer): void => {
   (req as express.Request & { rawBody?: string }).rawBody = buf.toString("utf8");
 };
 

@@ -123,7 +123,7 @@ router.get("/admin/notifications/stats", requireAdmin, async (_req: Request, res
 
 /* ── DELETE /admin/notifications/:id ────────────────────── */
 router.delete("/admin/notifications/:id", requireAdmin, async (req: Request, res: Response): Promise<void> => {
-  const { id } = req.params;
+  const { id } = req.params as Record<string, string>;
   await db.delete(notificationsTable).where(eq(notificationsTable.id, id));
   res.json({ success: true });
 });

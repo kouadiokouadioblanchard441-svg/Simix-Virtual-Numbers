@@ -210,7 +210,7 @@ router.post(
       const [currRow] = await db
         .select()
         .from(currenciesTable)
-        .where(eq(currenciesTable.countryCode, countryCode.toUpperCase()))
+        .where(eq(currenciesTable.countryCode, (countryCode ?? "").toUpperCase()))
         .limit(1);
 
       if (currRow && currRow.active) {

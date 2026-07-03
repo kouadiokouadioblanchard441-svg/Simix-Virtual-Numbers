@@ -428,7 +428,7 @@ function ToastCard({
       onDragEnd={handleDragEnd}
       onHoverStart={() => setIsPaused(true)}
       onHoverEnd={() => setIsPaused(false)}
-      initial={SLIDE_IN[position]}
+      initial={SLIDE_IN[position] as any}
       animate={{ x: 0, y: 0, opacity: 1, scale: 1 }}
       exit={{
         opacity: 0,

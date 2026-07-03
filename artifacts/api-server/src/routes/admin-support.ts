@@ -101,7 +101,7 @@ router.get("/admin/support/conversations", requireAdmin, async (req, res): Promi
 });
 
 router.get("/admin/support/conversations/:id/messages", requireAdmin, async (req, res): Promise<void> => {
-  const { id } = req.params;
+  const { id } = req.params as Record<string, string>;
   const msgs = await db
     .select()
     .from(supportMessagesTable)
@@ -111,7 +111,7 @@ router.get("/admin/support/conversations/:id/messages", requireAdmin, async (req
 });
 
 router.post("/admin/support/conversations/:id/messages", requireAdmin, async (req, res): Promise<void> => {
-  const { id } = req.params;
+  const { id } = req.params as Record<string, string>;
   const { content, imageData } = req.body as { content: string; imageData?: string };
   if (!content?.trim() && !imageData) { res.status(400).json({ error: "Message requis" }); return; }
 
@@ -135,7 +135,7 @@ router.post("/admin/support/conversations/:id/messages", requireAdmin, async (re
 });
 
 router.put("/admin/support/conversations/:id/status", requireAdmin, async (req, res): Promise<void> => {
-  const { id } = req.params;
+  const { id } = req.params as Record<string, string>;
   const { status, isHumanTakeover, agentNote, priority } = req.body as {
     status?: string;
     isHumanTakeover?: boolean;
@@ -149,12 +149,13 @@ router.put("/admin/support/conversations/:id/status", requireAdmin, async (req, 
   if (agentNote !== undefined) updates.agentNote = agentNote;
   if (priority !== undefined) updates.priority = priority;
 
-  await db.update(supportConversationsTable).set(updates).where(eq(supportConversationsTable.id, id));
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  await db.update(supportConversationsTable).set(updates as any).where(eq(supportConversationsTable.id, id));
   res.json({ success: true });
 });
 
 router.delete("/admin/support/conversations/:id", requireAdmin, async (req, res): Promise<void> => {
-  const { id } = req.params;
+  const { id } = req.params as Record<string, string>;
   await db.delete(supportConversationsTable).where(eq(supportConversationsTable.id, id));
   res.json({ success: true });
 });
@@ -223,7 +224,7 @@ router.post("/admin/support/knowledge", requireAdmin, async (req, res): Promise<
 });
 
 router.put("/admin/support/knowledge/:id", requireAdmin, async (req, res): Promise<void> => {
-  const { id } = req.params;
+  const { id } = req.params as Record<string, string>;
   const { category, title, content, isActive, sortOrder } = req.body as {
     category?: string;
     title?: string;
@@ -241,12 +242,13 @@ router.put("/admin/support/knowledge/:id", requireAdmin, async (req, res): Promi
 
   if (Object.keys(updates).length === 0) { res.status(400).json({ error: "Aucun champ à mettre à jour" }); return; }
 
-  const [entry] = await db.update(aiKnowledgeBaseTable).set(updates).where(eq(aiKnowledgeBaseTable.id, id)).returning();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [entry] = await db.update(aiKnowledgeBaseTable).set(updates as any).where(eq(aiKnowledgeBaseTable.id, id)).returning();
   res.json(entry);
 });
 
 router.delete("/admin/support/knowledge/:id", requireAdmin, async (req, res): Promise<void> => {
-  const { id } = req.params;
+  const { id } = req.params as Record<string, string>;
   await db.delete(aiKnowledgeBaseTable).where(eq(aiKnowledgeBaseTable.id, id));
   res.json({ success: true });
 });

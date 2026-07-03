@@ -304,9 +304,9 @@ function DashboardContent() {
       {/* Header */}
       <div className="relative z-10 flex justify-between items-center mb-5 px-5">
         <div className="flex items-center gap-3">
-          {me?.avatar ? (
+          {(me as any)?.avatar ? (
             <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-violet-500/40 shadow-md">
-              <img src={me.avatar} alt="avatar" className="w-full h-full object-cover" />
+              <img src={(me as any).avatar} alt="avatar" className="w-full h-full object-cover" />
             </div>
           ) : (
             <div className="w-10 h-10 rounded-full bg-gradient-to-br from-violet-500 to-violet-700 flex items-center justify-center text-white font-bold text-sm shadow-lg shadow-violet-500/30">

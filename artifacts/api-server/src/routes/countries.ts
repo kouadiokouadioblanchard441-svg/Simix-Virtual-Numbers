@@ -105,6 +105,7 @@ router.get("/countries", async (req, res): Promise<void> => {
       sortOrder: r.sort_order,
       enabled: r.enabled,
       numbersEnabled: r.numbers_enabled,
+      adminPriceModified: false,
     })));
     return;
   }

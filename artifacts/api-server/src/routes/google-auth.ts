@@ -33,7 +33,7 @@ function getOAuthClient(redirectUri: string) {
   );
 }
 
-function getRedirectUri(req: { headers: { host?: string; "x-forwarded-proto"?: string }; protocol: string; secure: boolean }): string {
+function getRedirectUri(req: { headers: { host?: string | undefined; "x-forwarded-host"?: string | string[] | undefined; "x-forwarded-proto"?: string | string[] | undefined }; protocol?: string; secure: boolean }): string {
   /* Explicit override always wins — set GOOGLE_REDIRECT_URI in production env only
    * (not in shared) so dev falls through to REPLIT_DEV_DOMAIN automatically. */
   if (process.env.GOOGLE_REDIRECT_URI) return process.env.GOOGLE_REDIRECT_URI;
@@ -53,8 +53,11 @@ function getRedirectUri(req: { headers: { host?: string; "x-forwarded-proto"?: s
  *   - dev on Replit (HTTPS via proxy) → secure: true
  *   - production → secure: true
  * NOTE: requires `app.set("trust proxy", 1)` to be in place.             */
-function isSecureRequest(req: { secure: boolean; headers: { "x-forwarded-proto"?: string } }): boolean {
-  return req.secure || req.headers["x-forwarded-proto"] === "https";
+// Accept express.Request via structural subtyping — headers is a superset of what we need
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function isSecureRequest(req: any): boolean {
+  const proto = req.headers["x-forwarded-proto"] as string | string[] | undefined;
+  return (req.secure as boolean) || proto === "https" || (Array.isArray(proto) && proto[0] === "https");
 }
 
 /* Cookie options — secure flag is dynamic so it works in all environments */

@@ -9,6 +9,7 @@ export function OfflineIndicator() {
   useEffect(() => {
     if (!isOnline) {
       setShow(true);
+      return;
     } else {
       const timer = setTimeout(() => setShow(false), 2000);
       return () => clearTimeout(timer);

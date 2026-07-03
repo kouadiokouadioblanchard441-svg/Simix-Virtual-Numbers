@@ -4,7 +4,7 @@ import { adminApi, type AdminPaymentMethod, type PaymentConfig } from "@/lib/adm
 import { AdminGuard } from "@/components/admin-guard";
 import { AdminLayout } from "@/components/admin-layout";
 import { formatFCFA } from "@/lib/format";
-import { LogoUploadCard } from "@/components/image-upload-button";
+import { LogoUploadCard, ImageUploadButton } from "@/components/image-upload-button";
 import {
   Loader2, ToggleLeft, ToggleRight, Globe, Search, Plus, Pencil, Check, X,
   Trash2, Star, ArrowUpDown, CreditCard, MapPin, RefreshCw,
@@ -107,7 +107,7 @@ function MethodRow({ method, onSaved, onDeleted }: { method: AdminPaymentMethod;
         <div className="flex gap-1.5 ml-auto flex-shrink-0">
           {editing ? (
             <>
-              <button onClick={() => update.mutate()} disabled={update.isPending} className="p-1.5 rounded bg-emerald-600 hover:bg-emerald-700 text-white transition-colors">
+              <button onClick={() => update.mutate(undefined as any)} disabled={update.isPending} className="p-1.5 rounded bg-emerald-600 hover:bg-emerald-700 text-white transition-colors">
                 {update.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
               </button>
               <button onClick={() => setEditing(false)} className="p-1.5 rounded bg-zinc-700 hover:bg-zinc-600 text-zinc-400 transition-colors"><X className="w-3.5 h-3.5" /></button>
@@ -205,7 +205,7 @@ function AddMethodForm({ onDone }: { onDone: () => void }) {
           <label className="text-xs text-zinc-500 mb-1 block">Logo (URL ou fichier)</label>
           <div className="flex gap-1.5">
             <input value={logoUrl} onChange={e => setLogoUrl(e.target.value)} placeholder="https://... ou uploader →" className="flex-1 px-3 py-2 text-sm bg-zinc-900 border border-zinc-700 rounded-lg text-white placeholder:text-zinc-600 focus:outline-none focus:border-violet-500" />
-            <ImageUploadButton onUploaded={url => setLogoUrl(url)} uploading={create.isPending} />
+            <ImageUploadButton onUploaded={url => setLogoUrl(url)} busy={create.isPending} />
           </div>
         </div>
         <div>

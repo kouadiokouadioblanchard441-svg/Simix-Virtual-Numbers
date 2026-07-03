@@ -6,7 +6,7 @@ import {
   useListServices, getListServicesQueryKey,
 } from "@workspace/api-client-react";
 import { useState, useMemo } from "react";
-import { Link, useSearch } from "wouter";
+import { Link, useSearch, useLocation } from "wouter";
 import { useGoBack } from "@/hooks/use-go-back";
 import { Search, ChevronLeft, ChevronRight, Edit2, Zap, Globe, ShieldCheck } from "lucide-react";
 import { motion } from "framer-motion";
@@ -84,6 +84,7 @@ export default function Countries() {
 
 function CountriesContent() {
   const goBack = useGoBack("/services");
+  const [, setLocation] = useLocation();
   const locationSearch = useSearch();
   const searchParams = new URLSearchParams(locationSearch);
   const serviceId = searchParams.get("serviceId") || undefined;

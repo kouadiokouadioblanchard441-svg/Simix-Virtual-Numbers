@@ -32,7 +32,7 @@ async function getFromEmail(): Promise<string> {
   } catch {
     /* DB not available — skip */
   }
-  const appUrl = await getAppUrl().catch(() => "simix.site");
+  const appUrl = getAppUrl();
   const domain = appUrl.replace(/^https?:\/\//, "").replace(/\/.*$/, "");
   return `Simix <noreply@${domain}>`;
 }

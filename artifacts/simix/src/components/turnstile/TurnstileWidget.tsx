@@ -71,7 +71,7 @@ async function getSiteKey(): Promise<string | null> {
       return null;
     }
     const data = await res.json();
-    cachedSiteKey = data.turnstileSiteKey ?? null;
+    cachedSiteKey = (data.turnstileSiteKey ?? null) as string | null;
     return cachedSiteKey;
   } catch {
     cachedSiteKey = null;

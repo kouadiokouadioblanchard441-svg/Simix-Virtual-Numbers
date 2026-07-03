@@ -347,8 +347,7 @@ function CryptoDetailModal({ tx, liveStatus, onClose }: {
           {tx.expiresAt && resolvedStatus === "pending" && (
             <DetailRow
               label="Expire"
-              value={format(new Date(tx.expiresAt), "dd/MM/yyyy HH:mm")}
-              valueClass="text-amber-400"
+              value={<span className="text-amber-400">{format(new Date(tx.expiresAt), "dd/MM/yyyy HH:mm")}</span>}
             />
           )}
         </div>

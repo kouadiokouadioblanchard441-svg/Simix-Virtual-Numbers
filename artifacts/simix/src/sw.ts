@@ -109,7 +109,7 @@ self.addEventListener("push", (event) => {
     data = { title: "SIMIX", body: event.data.text() };
   }
 
-  const options: NotificationOptions = {
+  const options: NotificationOptions & { vibrate?: number[]; actions?: Array<{ action: string; title: string }> } = {
     body: data.body ?? "",
     icon: data.icon ?? "/icons/icon-192x192.png",
     badge: "/icons/icon-96x96.png",

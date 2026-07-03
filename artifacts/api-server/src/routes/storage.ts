@@ -106,7 +106,7 @@ router.post(
  * Serve files uploaded via /uploads/direct.
  */
 router.get("/storage/uploads/files/:filename", (req: Request, res: Response) => {
-  const { filename } = req.params;
+  const { filename } = req.params as Record<string, string>;
 
   if (!filename || filename.includes("..") || filename.includes("/") || filename.includes("\\")) {
     res.status(400).end();

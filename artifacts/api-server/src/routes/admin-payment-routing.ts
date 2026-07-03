@@ -134,12 +134,13 @@ router.post("/admin/payment-routing/operators", requireAdmin, async (req: Reques
 });
 
 router.put("/admin/payment-routing/operators/:id", requireAdmin, async (req: Request, res: Response): Promise<void> => {
-  const { id } = req.params;
+  const { id } = req.params as Record<string, string>;
   const { name, slug, logoUrl, color, countryCodes, active, sortOrder } = req.body as Partial<{
     name: string; slug: string; logoUrl: string; color: string;
     countryCodes: string[]; active: boolean; sortOrder: number;
   }>;
   const [op] = await db.update(mobileOperatorsTable)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     .set({
       ...(name && { name: name.trim() }),
       ...(slug && { slug: slug.trim().toLowerCase() }),
@@ -149,7 +150,7 @@ router.put("/admin/payment-routing/operators/:id", requireAdmin, async (req: Req
       ...(active !== undefined && { active }),
       ...(sortOrder !== undefined && { sortOrder }),
       updatedAt: new Date(),
-    })
+    } as any)
     .where(eq(mobileOperatorsTable.id, id))
     .returning();
   if (!op) { res.status(404).json({ error: "Opérateur introuvable" }); return; }
@@ -157,7 +158,7 @@ router.put("/admin/payment-routing/operators/:id", requireAdmin, async (req: Req
 });
 
 router.delete("/admin/payment-routing/operators/:id", requireAdmin, async (req: Request, res: Response): Promise<void> => {
-  await db.delete(mobileOperatorsTable).where(eq(mobileOperatorsTable.id, req.params.id));
+  await db.delete(mobileOperatorsTable).where(eq(mobileOperatorsTable.id, req.params.id as string));
   res.json({ success: true });
 });
 
@@ -211,7 +212,7 @@ router.post("/admin/payment-routing/gateways", requireAdmin, async (req: Request
 });
 
 router.put("/admin/payment-routing/gateways/:id", requireAdmin, async (req: Request, res: Response): Promise<void> => {
-  const { id } = req.params;
+  const { id } = req.params as Record<string, string>;
   const body = req.body as Partial<{
     name: string; slug: string; logoUrl: string; apiUrl: string;
     apiKey: string; apiSecret: string; webhookSecret: string;
@@ -243,14 +244,14 @@ router.put("/admin/payment-routing/gateways/:id", requireAdmin, async (req: Requ
 });
 
 router.delete("/admin/payment-routing/gateways/:id", requireAdmin, async (req: Request, res: Response): Promise<void> => {
-  await db.delete(paymentGatewaysTable).where(eq(paymentGatewaysTable.id, req.params.id));
+  await db.delete(paymentGatewaysTable).where(eq(paymentGatewaysTable.id, req.params.id as string));
   logger.info({ id: req.params.id, adminId: adminId(req) }, "[payment-routing] Gateway deleted");
   res.json({ success: true });
 });
 
 /* ── Test gateway connectivity ─── */
 router.post("/admin/payment-routing/gateways/:id/test", requireAdmin, async (req: Request, res: Response): Promise<void> => {
-  const { id } = req.params;
+  const { id } = req.params as Record<string, string>;
   const [gw] = await db.select().from(paymentGatewaysTable).where(eq(paymentGatewaysTable.id, id)).limit(1);
   if (!gw) { res.status(404).json({ error: "Passerelle introuvable" }); return; }
 
@@ -556,7 +557,7 @@ router.post("/admin/payment-routing/routes/upsert", requireAdmin, async (req: Re
 });
 
 router.put("/admin/payment-routing/routes/:id", requireAdmin, async (req: Request, res: Response): Promise<void> => {
-  const { id } = req.params;
+  const { id } = req.params as Record<string, string>;
   const body = req.body as Partial<{
     countryCode: string; operatorSlug: string; transactionType: string;
     primaryGatewayId: string | null; secondaryGatewayId: string | null; tertiaryGatewayId: string | null;
@@ -595,13 +596,13 @@ router.put("/admin/payment-routing/routes/:id", requireAdmin, async (req: Reques
 });
 
 router.delete("/admin/payment-routing/routes/:id", requireAdmin, async (req: Request, res: Response): Promise<void> => {
-  await db.delete(paymentRoutesTable).where(eq(paymentRoutesTable.id, req.params.id));
+  await db.delete(paymentRoutesTable).where(eq(paymentRoutesTable.id, req.params.id as string));
   res.json({ success: true });
 });
 
 /* ── Quick switch: change primary gateway for a route ─── */
 router.post("/admin/payment-routing/routes/:id/switch", requireAdmin, async (req: Request, res: Response): Promise<void> => {
-  const { id } = req.params;
+  const { id } = req.params as Record<string, string>;
   const { gatewayId } = req.body as { gatewayId: string };
 
   const [route] = await db.update(paymentRoutesTable)
@@ -628,7 +629,7 @@ router.post("/admin/payment-routing/routes/:id/switch", requireAdmin, async (req
 
 /* ── Toggle maintenance mode ─── */
 router.post("/admin/payment-routing/routes/:id/maintenance", requireAdmin, async (req: Request, res: Response): Promise<void> => {
-  const { id } = req.params;
+  const { id } = req.params as Record<string, string>;
   const { maintenanceMode, maintenanceMessage } = req.body as { maintenanceMode: boolean; maintenanceMessage?: string };
 
   const [route] = await db.update(paymentRoutesTable)
@@ -960,7 +961,7 @@ router.get("/admin/payment-routing/gateway-stats", requireAdminJwt, async (_req,
 
   /* Map logs into structure */
   const dayMap: Record<string, Record<string, DayEntry>> = { clapay: {}, pawapay: {} };
-  for (const row of (logsRaw as { rows: Record<string, unknown>[] }).rows ?? logsRaw as Record<string, unknown>[]) {
+  for (const row of (logsRaw as { rows: Record<string, unknown>[] }).rows ?? (logsRaw as unknown as Record<string, unknown>[])) {
     const gw = String(row.gateway ?? "");
     if (!(gw in gateways)) continue;
     const day = String(row.day ?? "").slice(0, 10);
@@ -994,7 +995,7 @@ router.get("/admin/payment-routing/gateway-stats", requireAdminJwt, async (_req,
   }
 
   /* Pending counts */
-  for (const row of (pendingRaw as { rows: Record<string, unknown>[] }).rows ?? pendingRaw as Record<string, unknown>[]) {
+  for (const row of (pendingRaw as { rows: Record<string, unknown>[] }).rows ?? (pendingRaw as unknown as Record<string, unknown>[])) {
     const gw = String(row.gateway ?? "");
     if (gw in gateways) gateways[gw].pending = Number(row.pending_count ?? 0);
   }

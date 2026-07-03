@@ -27,6 +27,7 @@ export function PWAInstallPrompt() {
       const timer = setTimeout(() => setVisible(true), 4000);
       return () => clearTimeout(timer);
     }
+    return;
   }, [canInstall, dismissed, isInstalled, isStandalone]);
 
   const handleDismiss = () => {

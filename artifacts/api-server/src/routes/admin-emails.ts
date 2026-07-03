@@ -344,7 +344,7 @@ router.get("/admin/emails/campaigns", requireAdmin, async (req: Request, res: Re
 
 /* ── GET /admin/emails/campaigns/:id/progress ─────────────── */
 router.get("/admin/emails/campaigns/:id/progress", requireAdmin, async (req: Request, res: Response): Promise<void> => {
-  const { id } = req.params;
+  const { id } = req.params as Record<string, string>;
 
   const campaign = await db
     .select()
@@ -378,7 +378,7 @@ router.get("/admin/emails/campaigns/:id/progress", requireAdmin, async (req: Req
 
 /* ── GET /admin/emails/campaigns/:id/logs ─────────────────── */
 router.get("/admin/emails/campaigns/:id/logs", requireAdmin, async (req: Request, res: Response): Promise<void> => {
-  const { id } = req.params;
+  const { id } = req.params as Record<string, string>;
   const limit = Math.min(Number(req.query.limit) || 50, 200);
   const offset = Number(req.query.offset) || 0;
 

@@ -257,9 +257,7 @@ export default function ToastDemo() {
           network: toast.showNetwork, payment: toast.showPayment,
           security: toast.showSecurity,
         } as const;
-        if (demo.type !== "loading") {
-          methods[demo.type as keyof typeof methods]({ ...ex, position });
-        }
+        methods[demo.type as keyof typeof methods]({ ...ex, position });
       }, i * 280);
     });
   };
@@ -288,13 +286,11 @@ export default function ToastDemo() {
             network: toast.showNetwork, payment: toast.showPayment,
             security: toast.showSecurity,
           } as const;
-          if (step.type !== "loading") {
-            methods[step.type as keyof typeof methods]({
-              title: step.title,
-              description: step.description,
-              position,
-            });
-          }
+          methods[step.type as keyof typeof methods]({
+            title: step.title,
+            description: step.description,
+            position,
+          });
         }
         if (idx === scenario.steps.length - 1) {
           setTimeout(() => setRunningScenario(null), 600);

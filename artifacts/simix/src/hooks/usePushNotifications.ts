@@ -89,7 +89,7 @@ export function usePushNotifications() {
       const reg = await navigator.serviceWorker.ready;
       const sub = await reg.pushManager.subscribe({
         userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(vapidKey),
+        applicationServerKey: urlBase64ToUint8Array(vapidKey) as unknown as BufferSource,
       });
 
       await saveSubscription(sub.toJSON() as PushSubscriptionJSON);

@@ -187,7 +187,7 @@ function SmsCard({ num }: { num: NumberWithMessages }) {
         className="w-full flex items-center gap-3 px-4 py-3 border-b border-card-border/40 hover:bg-secondary/40 transition-colors"
       >
         <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-violet-500/10 flex-shrink-0">
-          <ServiceIcon slug={num.service.slug} size={20} />
+          <ServiceIcon name={num.service.name} slug={num.service.slug} size={20} />
         </div>
         <div className="flex-1 min-w-0 text-left">
           <p className="text-sm font-bold text-foreground truncate">{num.service.name}</p>
@@ -315,7 +315,7 @@ function NotificationsTab() {
 /* ─── Messages tab ──────────────────────────────────────────────── */
 
 function MessagesTab() {
-  const { data, isLoading } = useListNumberHistory({ limit: 50, offset: 0 });
+  const { data, isLoading } = useListNumberHistory();
 
   const numbersWithMessages: NumberWithMessages[] = (
     (data as any)?.numbers ?? []
