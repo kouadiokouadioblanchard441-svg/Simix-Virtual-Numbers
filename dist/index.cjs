@@ -164639,6 +164639,51 @@ var GoogleGenerativeAI = class {
 init_logger2();
 init_settings();
 var router22 = (0, import_express23.Router)();
+var LANG_STOPWORDS = {
+  fr: ["le", "la", "les", "de", "des", "un", "une", "est", "je", "tu", "il", "elle", "nous", "vous", "ils", "elles", "bonjour", "salut", "merci", "pas", "avec", "pour", "dans", "mon", "ma", "mes", "suis", "avez", "comment", "pourquoi", "numero", "num\xE9ro", "solde", "quoi", "cette", "tres", "tr\xE8s", "bien", "oui", "non", "svp", "merci"],
+  en: ["the", "is", "are", "you", "i'm", "we", "they", "hello", "hi", "thanks", "thank", "please", "with", "for", "in", "my", "have", "how", "why", "number", "balance", "what", "can", "does", "not", "yes", "help", "need"],
+  es: ["el", "la", "los", "las", "de", "un", "una", "es", "yo", "t\xFA", "nosotros", "ustedes", "hola", "gracias", "con", "para", "en", "mi", "como", "c\xF3mo", "por", "que", "qu\xE9", "numero", "n\xFAmero", "saldo", "necesito", "ayuda", "por favor"],
+  pt: ["o", "a", "os", "as", "de", "um", "uma", "\xE9", "eu", "n\xF3s", "voc\xEAs", "ol\xE1", "obrigado", "obrigada", "com", "para", "em", "meu", "minha", "como", "porque", "n\xFAmero", "saldo", "preciso", "ajuda", "por favor"],
+  de: ["der", "die", "das", "und", "ist", "ich", "du", "er", "sie", "wir", "ihr", "hallo", "danke", "bitte", "mit", "f\xFCr", "in", "mein", "wie", "warum", "nummer", "guthaben", "hilfe", "brauche"],
+  it: ["il", "la", "i", "le", "di", "un", "una", "\xE8", "io", "tu", "lui", "lei", "noi", "voi", "ciao", "grazie", "con", "per", "in", "mio", "come", "perch\xE9", "numero", "saldo", "aiuto", "bisogno"]
+};
+function detectLanguage(text2) {
+  const trimmed = (text2 ?? "").trim();
+  if (!trimmed) return "auto";
+  if (/[\u0600-\u06FF]/.test(trimmed)) return "ar";
+  if (/[\u3040-\u30FF]/.test(trimmed)) return "ja";
+  if (/[\uAC00-\uD7AF]/.test(trimmed)) return "ko";
+  if (/[\u4E00-\u9FFF]/.test(trimmed)) return "zh";
+  if (/[\u0400-\u04FF]/.test(trimmed)) return "ru";
+  const words = trimmed.toLowerCase().normalize("NFC").replace(/[^\p{L}\s']/gu, " ").split(/\s+/).filter(Boolean);
+  if (words.length === 0) return "auto";
+  const scores = {};
+  for (const [lang, stopwords] of Object.entries(LANG_STOPWORDS)) {
+    scores[lang] = words.filter((w3) => stopwords.includes(w3)).length;
+  }
+  let bestLang = "auto";
+  let bestScore = 0;
+  for (const [lang, score] of Object.entries(scores)) {
+    if (score > bestScore) {
+      bestScore = score;
+      bestLang = lang;
+    }
+  }
+  return bestScore > 0 ? bestLang : "auto";
+}
+var LANG_NAMES = {
+  fr: "fran\xE7ais",
+  en: "anglais",
+  es: "espagnol",
+  pt: "portugais",
+  de: "allemand",
+  it: "italien",
+  ar: "arabe",
+  zh: "chinois",
+  ja: "japonais",
+  ko: "cor\xE9en",
+  ru: "russe"
+};
 async function loadUserContext(userId) {
   const [user] = await db.select({
     fullName: usersTable.fullName,
@@ -164741,7 +164786,12 @@ ${items.join("\n\n")}`).join("\n\n");
   ].filter(Boolean).join(" | ");
   const toneInstr = tone === "formal" ? "Ton formel, professionnel et \xE9l\xE9gant." : tone === "casual" ? "Ton d\xE9contract\xE9, sympathique et proche." : "Ton professionnel, chaleureux et naturel \u2014 comme un vrai conseiller humain de confiance.";
   const styleInstr = responseStyle === "detailed" ? "Donne des r\xE9ponses compl\xE8tes avec tous les d\xE9tails utiles." : "Sois directe, pr\xE9cise et concise. Va droit au but sans superflu.";
-  const langInstr = language === "en" ? "The user writes in English \u2014 always respond in English." : "L'utilisateur \xE9crit en fran\xE7ais \u2014 r\xE9ponds toujours en fran\xE7ais, sauf si l'utilisateur change de langue.";
+  const detectedLangName = language && language !== "auto" ? LANG_NAMES[language] : void 0;
+  const langInstr = `LANGUE \u2014 DETECTION AUTOMATIQUE ET ADAPTATION TOTALE:
+Avant chaque r\xE9ponse, identifie automatiquement la langue exacte du DERNIER message de l'utilisateur (pas celle des messages pr\xE9c\xE9dents). R\xE9ponds TOUJOURS dans cette m\xEAme langue, quelle qu'elle soit : fran\xE7ais, anglais, espagnol, portugais, allemand, italien, arabe, chinois, japonais, cor\xE9en, ou toute autre langue que tu comprends. Ne demande jamais \xE0 l'utilisateur de choisir une langue, ne lui demande jamais de confirmer \u2014 fais-le silencieusement et naturellement.${detectedLangName ? ` Indice: le dernier message semble \xEAtre en ${detectedLangName}, mais fie-toi avant tout \xE0 ta propre lecture du texte.` : ""}
+Si l'utilisateur change de langue en cours de conversation (ex: il commence en fran\xE7ais puis \xE9crit en anglais, ou passe de l'espagnol au portugais), bascule IMM\xC9DIATEMENT et ENTI\xC8REMENT vers la nouvelle langue d\xE8s CE message-l\xE0 \u2014 ta r\xE9ponse doit \xEAtre r\xE9dig\xE9e \xE0 100% dans la nouvelle langue, du premier au dernier mot, sans aucune phrase r\xE9siduelle dans l'ancienne langue. INTERDICTION ABSOLUE de commenter, signaler, remarquer ou faire la moindre allusion au changement de langue lui-m\xEAme (interdit d'\xE9crire des phrases comme "je vois que vous passez \xE0 l'anglais", "I see you're switching to English", "ah, agora voc\xEA est\xE1 falando portugu\xEAs" ou toute variante) \u2014 une vraie conseill\xE8re bilingue ne rel\xE8ve jamais ce genre de changement, elle bascule sans y penser. Ne m\xE9lange jamais deux langues dans une m\xEAme r\xE9ponse, sauf pour un nom propre, une marque (ex: "Simix", "Orange Money") ou un terme technique intraduisible.
+Continue de t'appuyer sur tout l'historique de la conversation (informations d\xE9j\xE0 donn\xE9es, questions pr\xE9c\xE9dentes, contexte) m\xEAme quand la langue change \u2014 le changement de langue ne doit jamais faire perdre le fil de la conversation.
+Adapte \xE0 la langue cible : les salutations, les formules de politesse, le registre de politesse (tutoiement/vouvoiement en fran\xE7ais, formes polies en cor\xE9en/japonais si pertinent), les tournures idiomatiques naturelles de cette langue. \xC9vite les traductions mot \xE0 mot depuis le fran\xE7ais \u2014 formule directement une phrase naturelle et fluide comme le ferait une personne native de cette langue. Ta personnalit\xE9 (chaleureuse, professionnelle, directe, humaine) et toutes tes r\xE8gles de fond (identit\xE9, formatage, ce que tu fais ou non) restent rigoureusement identiques quelle que soit la langue utilis\xE9e.`;
   const hasUser = !!userContext;
   const greetingInstr = isFirstMessageOfDay ? hasUser ? `PREMIER MESSAGE DU JOUR \u2014 SALUTATION REQUISE:
 C'est la premi\xE8re fois aujourd'hui que cet utilisateur t'\xE9crit. Accueille-le chaleureusement par son pr\xE9nom ou son @username de fa\xE7on naturelle, spontan\xE9e. Ne r\xE9cite pas une formule froide \u2014 fais comme si tu retrouvais quelqu'un que tu connais. Ex: "Salut [pr\xE9nom] ! Contente de te voir." ou "Bonjour [pr\xE9nom], qu'est-ce que je peux faire pour toi ?" Adapte selon le contexte de sa question.` : `PREMIER MESSAGE DU JOUR \u2014 SALUTATION REQUISE:
@@ -164952,7 +165002,9 @@ router22.post("/support/chat", async (req, res) => {
     content: message || "[Image]",
     imageData: imageData ?? null
   });
-  await db.update(supportConversationsTable).set({ updatedAt: /* @__PURE__ */ new Date() }).where(eq(supportConversationsTable.id, conv.id));
+  const detected = detectLanguage(message || "");
+  const effectiveLanguage = detected !== "auto" ? detected : conv.language ?? language ?? "auto";
+  await db.update(supportConversationsTable).set({ updatedAt: /* @__PURE__ */ new Date(), language: effectiveLanguage !== "auto" ? effectiveLanguage : conv.language }).where(eq(supportConversationsTable.id, conv.id));
   const history = await db.select().from(supportMessagesTable).where(eq(supportMessagesTable.conversationId, conv.id)).orderBy(asc(supportMessagesTable.createdAt)).limit(20);
   const userId = conv.userId ?? req.user?.id;
   const userContext = userId ? await loadUserContext(userId) : void 0;
@@ -164962,7 +165014,7 @@ router22.post("/support/chat", async (req, res) => {
     (m2) => m2.role === "assistant" && new Date(m2.createdAt) >= todayStart
   );
   const isFirstMessageOfDay = previousAssistantMsgsToday.length === 0;
-  const systemPrompt = await buildSystemPrompt(conv.language ?? language ?? "fr", userContext, isFirstMessageOfDay);
+  const systemPrompt = await buildSystemPrompt(effectiveLanguage, userContext, isFirstMessageOfDay);
   const chatMessages = [
     { role: "system", content: systemPrompt },
     ...history.slice(0, -1).map((m2) => ({
@@ -165150,7 +165202,7 @@ router22.post("/support/chat", async (req, res) => {
         }
       }
     } else if (aiProvider === "scripted") {
-      const lang = conv.language ?? "fr";
+      const lang = effectiveLanguage !== "auto" ? effectiveLanguage : "fr";
       const msgLower = message.toLowerCase();
       const rules = [
         /* Prix / tarifs — must come before generic "numéro" to win on "combien coûte un numéro" */
@@ -165225,7 +165277,19 @@ router22.post("/support/chat", async (req, res) => {
           ]
         }
       ];
-      let bestResponse = lang === "en" ? "Hello! I'm Simia, your Simix advisor. How can I help you today? You can ask me about recharging, virtual numbers, SMS codes, prices, or how the platform works." : "Bonjour ! Je suis Simia, votre conseill\xE8re Simix. Je suis l\xE0 pour vous aider ! Vous pouvez me poser des questions sur la recharge, les num\xE9ros virtuels, les codes SMS, les tarifs, ou le fonctionnement de la plateforme.";
+      const defaultGreetings = {
+        fr: "Bonjour ! Je suis Simia, votre conseill\xE8re Simix. Je suis l\xE0 pour vous aider ! Vous pouvez me poser des questions sur la recharge, les num\xE9ros virtuels, les codes SMS, les tarifs, ou le fonctionnement de la plateforme.",
+        en: "Hello! I'm Simia, your Simix advisor. How can I help you today? You can ask me about recharging, virtual numbers, SMS codes, prices, or how the platform works.",
+        es: "\xA1Hola! Soy Simia, tu asesora de Simix. Puedes preguntarme sobre recargas, n\xFAmeros virtuales, c\xF3digos SMS, precios o c\xF3mo funciona la plataforma.",
+        pt: "Ol\xE1! Sou a Simia, sua consultora Simix. Pode me perguntar sobre recargas, n\xFAmeros virtuais, c\xF3digos SMS, pre\xE7os ou como a plataforma funciona.",
+        de: "Hallo! Ich bin Simia, Ihre Simix-Beraterin. Fragen Sie mich gerne nach Aufladen, virtuellen Nummern, SMS-Codes, Preisen oder wie die Plattform funktioniert.",
+        it: "Ciao! Sono Simia, la tua consulente Simix. Chiedimi pure informazioni su ricariche, numeri virtuali, codici SMS, prezzi o come funziona la piattaforma.",
+        ar: "\u0645\u0631\u062D\u0628\u0627\u064B! \u0623\u0646\u0627 \u0633\u064A\u0645\u064A\u0627\u060C \u0645\u0633\u062A\u0634\u0627\u0631\u062A\u0643 \u0641\u064A \u0633\u064A\u0645\u064A\u0643\u0633. \u064A\u0645\u0643\u0646\u0643 \u0633\u0624\u0627\u0644\u064A \u0639\u0646 \u0627\u0644\u0634\u062D\u0646\u060C \u0627\u0644\u0623\u0631\u0642\u0627\u0645 \u0627\u0644\u0627\u0641\u062A\u0631\u0627\u0636\u064A\u0629\u060C \u0631\u0645\u0648\u0632 \u0627\u0644\u0631\u0633\u0627\u0626\u0644 \u0627\u0644\u0646\u0635\u064A\u0629\u060C \u0627\u0644\u0623\u0633\u0639\u0627\u0631 \u0623\u0648 \u0643\u064A\u0641\u064A\u0629 \u0639\u0645\u0644 \u0627\u0644\u0645\u0646\u0635\u0629.",
+        zh: "\u60A8\u597D\uFF01\u6211\u662FSimia\uFF0C\u60A8\u7684Simix\u987E\u95EE\u3002\u60A8\u53EF\u4EE5\u95EE\u6211\u5173\u4E8E\u5145\u503C\u3001\u865A\u62DF\u53F7\u7801\u3001\u77ED\u4FE1\u9A8C\u8BC1\u7801\u3001\u4EF7\u683C\u6216\u5E73\u53F0\u4F7F\u7528\u65B9\u6CD5\u7684\u95EE\u9898\u3002",
+        ja: "\u3053\u3093\u306B\u3061\u306F\u3001Simia\u3067\u3059\u3002Simix\u306E\u30A2\u30C9\u30D0\u30A4\u30B6\u30FC\u3067\u3059\u3002\u30C1\u30E3\u30FC\u30B8\u3001\u30D0\u30FC\u30C1\u30E3\u30EB\u756A\u53F7\u3001SMS\u30B3\u30FC\u30C9\u3001\u6599\u91D1\u3001\u4F7F\u3044\u65B9\u306B\u3064\u3044\u3066\u4F55\u3067\u3082\u805E\u3044\u3066\u304F\u3060\u3055\u3044\u3002",
+        ko: "\uC548\uB155\uD558\uC138\uC694! \uC800\uB294 Simix \uC0C1\uB2F4\uC6D0 Simia\uC785\uB2C8\uB2E4. \uCDA9\uC804, \uAC00\uC0C1 \uBC88\uD638, SMS \uCF54\uB4DC, \uC694\uAE08, \uD50C\uB7AB\uD3FC \uC774\uC6A9 \uBC29\uBC95\uC5D0 \uB300\uD574 \uBB34\uC5C7\uC774\uB4E0 \uBB3C\uC5B4\uBCF4\uC138\uC694."
+      };
+      let bestResponse = defaultGreetings[lang] ?? defaultGreetings.fr;
       for (const rule of rules) {
         if (rule.test(msgLower)) {
           const responses = rule.responses;

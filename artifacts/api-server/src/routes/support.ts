@@ -19,6 +19,66 @@ import { getSetting } from "../lib/settings";
 
 const router: IRouter = Router();
 
+/* ── Lightweight language auto-detection ─────────────────────
+ * Used as a hint for the system prompt and to persist the
+ * conversation's current language for analytics / scripted
+ * fallback. The real multilingual behaviour comes from the AI
+ * model itself (instructed to mirror the user's language), this
+ * heuristic just gives it (and non-AI code paths) a confident
+ * nudge for the most common languages. Falls back to "auto" when
+ * unsure, in which case the model relies purely on its own
+ * understanding of the message. */
+const LANG_STOPWORDS: Record<string, string[]> = {
+  fr: ["le", "la", "les", "de", "des", "un", "une", "est", "je", "tu", "il", "elle", "nous", "vous", "ils", "elles", "bonjour", "salut", "merci", "pas", "avec", "pour", "dans", "mon", "ma", "mes", "suis", "avez", "comment", "pourquoi", "numero", "numéro", "solde", "quoi", "cette", "tres", "très", "bien", "oui", "non", "svp", "merci"],
+  en: ["the", "is", "are", "you", "i'm", "we", "they", "hello", "hi", "thanks", "thank", "please", "with", "for", "in", "my", "have", "how", "why", "number", "balance", "what", "can", "does", "not", "yes", "help", "need"],
+  es: ["el", "la", "los", "las", "de", "un", "una", "es", "yo", "tú", "nosotros", "ustedes", "hola", "gracias", "con", "para", "en", "mi", "como", "cómo", "por", "que", "qué", "numero", "número", "saldo", "necesito", "ayuda", "por favor"],
+  pt: ["o", "a", "os", "as", "de", "um", "uma", "é", "eu", "nós", "vocês", "olá", "obrigado", "obrigada", "com", "para", "em", "meu", "minha", "como", "porque", "número", "saldo", "preciso", "ajuda", "por favor"],
+  de: ["der", "die", "das", "und", "ist", "ich", "du", "er", "sie", "wir", "ihr", "hallo", "danke", "bitte", "mit", "für", "in", "mein", "wie", "warum", "nummer", "guthaben", "hilfe", "brauche"],
+  it: ["il", "la", "i", "le", "di", "un", "una", "è", "io", "tu", "lui", "lei", "noi", "voi", "ciao", "grazie", "con", "per", "in", "mio", "come", "perché", "numero", "saldo", "aiuto", "bisogno"],
+};
+
+function detectLanguage(text: string): string {
+  const trimmed = (text ?? "").trim();
+  if (!trimmed) return "auto";
+
+  if (/[\u0600-\u06FF]/.test(trimmed)) return "ar";
+  if (/[\u3040-\u30FF]/.test(trimmed)) return "ja";
+  if (/[\uAC00-\uD7AF]/.test(trimmed)) return "ko";
+  if (/[\u4E00-\u9FFF]/.test(trimmed)) return "zh";
+  if (/[\u0400-\u04FF]/.test(trimmed)) return "ru";
+
+  const words = trimmed
+    .toLowerCase()
+    .normalize("NFC")
+    .replace(/[^\p{L}\s']/gu, " ")
+    .split(/\s+/)
+    .filter(Boolean);
+
+  if (words.length === 0) return "auto";
+
+  const scores: Record<string, number> = {};
+  for (const [lang, stopwords] of Object.entries(LANG_STOPWORDS)) {
+    scores[lang] = words.filter(w => stopwords.includes(w)).length;
+  }
+
+  let bestLang = "auto";
+  let bestScore = 0;
+  for (const [lang, score] of Object.entries(scores)) {
+    if (score > bestScore) {
+      bestScore = score;
+      bestLang = lang;
+    }
+  }
+
+  return bestScore > 0 ? bestLang : "auto";
+}
+
+const LANG_NAMES: Record<string, string> = {
+  fr: "français", en: "anglais", es: "espagnol", pt: "portugais",
+  de: "allemand", it: "italien", ar: "arabe", zh: "chinois",
+  ja: "japonais", ko: "coréen", ru: "russe",
+};
+
 /* ── Load full user context from DB ──────────────────────── */
 async function loadUserContext(userId: string): Promise<string> {
   const [user] = await db
@@ -176,9 +236,13 @@ async function buildSystemPrompt(
     ? "Donne des réponses complètes avec tous les détails utiles."
     : "Sois directe, précise et concise. Va droit au but sans superflu.";
 
-  const langInstr = language === "en"
-    ? "The user writes in English — always respond in English."
-    : "L'utilisateur écrit en français — réponds toujours en français, sauf si l'utilisateur change de langue.";
+  const detectedLangName = language && language !== "auto" ? LANG_NAMES[language] : undefined;
+
+  const langInstr = `LANGUE — DETECTION AUTOMATIQUE ET ADAPTATION TOTALE:
+Avant chaque réponse, identifie automatiquement la langue exacte du DERNIER message de l'utilisateur (pas celle des messages précédents). Réponds TOUJOURS dans cette même langue, quelle qu'elle soit : français, anglais, espagnol, portugais, allemand, italien, arabe, chinois, japonais, coréen, ou toute autre langue que tu comprends. Ne demande jamais à l'utilisateur de choisir une langue, ne lui demande jamais de confirmer — fais-le silencieusement et naturellement.${detectedLangName ? ` Indice: le dernier message semble être en ${detectedLangName}, mais fie-toi avant tout à ta propre lecture du texte.` : ""}
+Si l'utilisateur change de langue en cours de conversation (ex: il commence en français puis écrit en anglais, ou passe de l'espagnol au portugais), bascule IMMÉDIATEMENT et ENTIÈREMENT vers la nouvelle langue dès CE message-là — ta réponse doit être rédigée à 100% dans la nouvelle langue, du premier au dernier mot, sans aucune phrase résiduelle dans l'ancienne langue. INTERDICTION ABSOLUE de commenter, signaler, remarquer ou faire la moindre allusion au changement de langue lui-même (interdit d'écrire des phrases comme "je vois que vous passez à l'anglais", "I see you're switching to English", "ah, agora você está falando português" ou toute variante) — une vraie conseillère bilingue ne relève jamais ce genre de changement, elle bascule sans y penser. Ne mélange jamais deux langues dans une même réponse, sauf pour un nom propre, une marque (ex: "Simix", "Orange Money") ou un terme technique intraduisible.
+Continue de t'appuyer sur tout l'historique de la conversation (informations déjà données, questions précédentes, contexte) même quand la langue change — le changement de langue ne doit jamais faire perdre le fil de la conversation.
+Adapte à la langue cible : les salutations, les formules de politesse, le registre de politesse (tutoiement/vouvoiement en français, formes polies en coréen/japonais si pertinent), les tournures idiomatiques naturelles de cette langue. Évite les traductions mot à mot depuis le français — formule directement une phrase naturelle et fluide comme le ferait une personne native de cette langue. Ta personnalité (chaleureuse, professionnelle, directe, humaine) et toutes tes règles de fond (identité, formatage, ce que tu fais ou non) restent rigoureusement identiques quelle que soit la langue utilisée.`;
 
   const hasUser = !!userContext;
 
@@ -457,9 +521,17 @@ router.post("/support/chat", async (req, res): Promise<void> => {
     imageData: imageData ?? null,
   });
 
+  /* ── Auto-detect the language of THIS message (may differ from
+   * previous turns — mid-conversation language switches are expected
+   * and handled transparently). Falls back to the conversation's last
+   * known language when the message is too short/ambiguous to detect
+   * (e.g. image-only messages, single emoji, "ok"). ── */
+  const detected = detectLanguage(message || "");
+  const effectiveLanguage = detected !== "auto" ? detected : (conv.language ?? language ?? "auto");
+
   await db
     .update(supportConversationsTable)
-    .set({ updatedAt: new Date() })
+    .set({ updatedAt: new Date(), language: effectiveLanguage !== "auto" ? effectiveLanguage : conv.language })
     .where(eq(supportConversationsTable.id, conv.id));
 
   /* ── Load history ── */
@@ -483,7 +555,7 @@ router.post("/support/chat", async (req, res): Promise<void> => {
   const isFirstMessageOfDay = previousAssistantMsgsToday.length === 0;
 
   /* ── Build dynamic system prompt ── */
-  const systemPrompt = await buildSystemPrompt(conv.language ?? language ?? "fr", userContext, isFirstMessageOfDay);
+  const systemPrompt = await buildSystemPrompt(effectiveLanguage, userContext, isFirstMessageOfDay);
 
   const chatMessages: Array<{ role: "system" | "user" | "assistant"; content: string | unknown[] }> = [
     { role: "system", content: systemPrompt },
@@ -700,8 +772,13 @@ router.post("/support/chat", async (req, res): Promise<void> => {
       }
 
     } else if (aiProvider === "scripted") {
-      /* ── Scripted fallback — keyword-matching, no API key required ── */
-      const lang = conv.language ?? "fr";
+      /* ── Scripted fallback — keyword-matching, no API key required.
+       * Note: true multilingual understanding requires an AI provider;
+       * this fallback only swaps its default greeting by detected
+       * language since it can't translate the keyword-matched answers
+       * below (those stay in French/English, the two languages its
+       * regex patterns are written to catch). ── */
+      const lang = effectiveLanguage !== "auto" ? effectiveLanguage : "fr";
       const msgLower = message.toLowerCase();
 
       type ScriptedRule = { test: (m: string) => boolean; responses: string[] };
@@ -782,9 +859,19 @@ router.post("/support/chat", async (req, res): Promise<void> => {
       ];
 
       /* Find best matching rule */
-      let bestResponse = lang === "en"
-        ? "Hello! I'm Simia, your Simix advisor. How can I help you today? You can ask me about recharging, virtual numbers, SMS codes, prices, or how the platform works."
-        : "Bonjour ! Je suis Simia, votre conseillère Simix. Je suis là pour vous aider ! Vous pouvez me poser des questions sur la recharge, les numéros virtuels, les codes SMS, les tarifs, ou le fonctionnement de la plateforme.";
+      const defaultGreetings: Record<string, string> = {
+        fr: "Bonjour ! Je suis Simia, votre conseillère Simix. Je suis là pour vous aider ! Vous pouvez me poser des questions sur la recharge, les numéros virtuels, les codes SMS, les tarifs, ou le fonctionnement de la plateforme.",
+        en: "Hello! I'm Simia, your Simix advisor. How can I help you today? You can ask me about recharging, virtual numbers, SMS codes, prices, or how the platform works.",
+        es: "¡Hola! Soy Simia, tu asesora de Simix. Puedes preguntarme sobre recargas, números virtuales, códigos SMS, precios o cómo funciona la plataforma.",
+        pt: "Olá! Sou a Simia, sua consultora Simix. Pode me perguntar sobre recargas, números virtuais, códigos SMS, preços ou como a plataforma funciona.",
+        de: "Hallo! Ich bin Simia, Ihre Simix-Beraterin. Fragen Sie mich gerne nach Aufladen, virtuellen Nummern, SMS-Codes, Preisen oder wie die Plattform funktioniert.",
+        it: "Ciao! Sono Simia, la tua consulente Simix. Chiedimi pure informazioni su ricariche, numeri virtuali, codici SMS, prezzi o come funziona la piattaforma.",
+        ar: "مرحباً! أنا سيميا، مستشارتك في سيميكس. يمكنك سؤالي عن الشحن، الأرقام الافتراضية، رموز الرسائل النصية، الأسعار أو كيفية عمل المنصة.",
+        zh: "您好！我是Simia，您的Simix顾问。您可以问我关于充值、虚拟号码、短信验证码、价格或平台使用方法的问题。",
+        ja: "こんにちは、Simiaです。Simixのアドバイザーです。チャージ、バーチャル番号、SMSコード、料金、使い方について何でも聞いてください。",
+        ko: "안녕하세요! 저는 Simix 상담원 Simia입니다. 충전, 가상 번호, SMS 코드, 요금, 플랫폼 이용 방법에 대해 무엇이든 물어보세요.",
+      };
+      let bestResponse = defaultGreetings[lang] ?? defaultGreetings.fr;
 
       for (const rule of rules) {
         if (rule.test(msgLower)) {
