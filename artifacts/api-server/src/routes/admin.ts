@@ -1011,8 +1011,17 @@ router.post("/admin/orders/:orderId/cancel", requireAdmin, async (req, res): Pro
     return;
   }
 
-  /* Best-effort: cancel on 5sim before touching DB */
-  if (order.externalOrderId) {
+  /* Check SMS before touching anything — hosting numbers stay "waiting" even after SMS arrives,
+   * so a status check alone is insufficient. Refund must only happen when no SMS was received. */
+  const [msgCount] = await db
+    .select({ c: sql<number>`count(*)::int` })
+    .from(smsMessagesTable)
+    .where(eq(smsMessagesTable.numberId, orderId));
+
+  const smsReceived = msgCount?.c ?? 0;
+
+  /* Best-effort: cancel on 5sim before touching DB (only if no SMS, to not interrupt delivery) */
+  if (order.externalOrderId && smsReceived === 0) {
     try {
       const [provider] = await db
         .select()
@@ -1025,11 +1034,11 @@ router.post("/admin/orders/:orderId/cancel", requireAdmin, async (req, res): Pro
         logger.info({ orderId: order.externalOrderId, numberId: orderId }, "[admin] Order cancelled on 5sim");
       }
     } catch (e) {
-      logger.warn({ err: (e as Error).message, orderId: order.externalOrderId }, "[admin] Could not cancel on 5sim — continuing with DB refund");
+      logger.warn({ err: (e as Error).message, orderId: order.externalOrderId }, "[admin] Could not cancel on 5sim — continuing with DB update");
     }
   }
 
-  /* Atomic: cancel + credit balance + insert transaction */
+  /* Atomic: cancel + (refund only if no SMS) */
   try {
     await db.transaction(async (tx) => {
       const updated = await tx
@@ -1042,19 +1051,24 @@ router.post("/admin/orders/:orderId/cancel", requireAdmin, async (req, res): Pro
         throw new Error("La commande a déjà été modifiée par un autre processus.");
       }
 
-      await tx
-        .update(usersTable)
-        .set({ balance: sql`${usersTable.balance} + ${order.price}` })
-        .where(eq(usersTable.id, order.userId));
+      /* Refund only when no SMS was received — hosting numbers with SMS must not be refunded */
+      if (smsReceived === 0) {
+        await tx
+          .update(usersTable)
+          .set({ balance: sql`${usersTable.balance} + ${order.price}` })
+          .where(eq(usersTable.id, order.userId));
 
-      await tx.insert(transactionsTable).values({
-        userId:      order.userId,
-        type:        "refund",
-        amount:      order.price,
-        status:      "completed",
-        method:      "wallet",
-        description: `Remboursement commande ${order.phoneNumber ?? orderId} (annulée par admin)`,
-      });
+        await tx.insert(transactionsTable).values({
+          userId:      order.userId,
+          type:        "refund",
+          amount:      order.price,
+          status:      "completed",
+          method:      "wallet",
+          description: `Remboursement commande ${order.phoneNumber ?? orderId} (annulée par admin)`,
+        });
+      } else {
+        logger.info({ orderId, smsReceived }, "[admin] Order cancelled without refund — SMS was already received");
+      }
     });
   } catch (e) {
     logger.error({ err: (e as Error).message, orderId }, "[admin] cancelOrder transaction failed");

@@ -794,15 +794,22 @@ router.post("/numbers/:numberId/cancel", requireAuth, async (req, res): Promise<
     .limit(1);
 
   if (!row) { res.status(404).json({ error: "Numéro introuvable" }); return; }
+
+  /* Only waiting or received numbers can be cancelled by the user.
+   * expired  → already handled by the sweep (refund issued), cannot cancel again.
+   * cancelled → already cancelled, avoid double-refund.              */
   if (row.n.status === "cancelled") { res.status(400).json({ error: "Numéro déjà annulé" }); return; }
+  if (row.n.status === "expired")   { res.status(400).json({ error: "Ce numéro a déjà expiré et a été remboursé automatiquement." }); return; }
 
   const messages = await db
     .select()
     .from(smsMessagesTable)
     .where(eq(smsMessagesTable.numberId, numberId));
 
-  /* Cancel on 5sim only if no SMS received yet */
-  if (row.n.externalOrderId && messages.length === 0) {
+  const hasSms = messages.length > 0;
+
+  /* Cancel on 5sim best-effort (only if no SMS yet, to avoid interrupting a pending activation) */
+  if (row.n.externalOrderId && !hasSms) {
     const fiveSimClient = await getActive5SimClient();
     if (fiveSimClient) {
       try {
@@ -814,29 +821,62 @@ router.post("/numbers/:numberId/cancel", requireAuth, async (req, res): Promise<
     }
   }
 
-  /* Refund only if no SMS was received */
-  if (messages.length === 0 && row.n.status !== "cancelled") {
-    await db.update(usersTable)
-      .set({ balance: sql`${usersTable.balance} + ${row.n.price}` })
-      .where(eq(usersTable.id, user.id));
+  /* Atomic transaction: status update + refund (only if no SMS) must succeed together.
+   * Previously these were separate statements — a concurrent second cancel request could
+   * pass the status check before the first had updated it, causing a double-refund.
+   * Using .returning() on the UPDATE with a status guard ensures exactly-once semantics. */
+  let updated: typeof virtualNumbersTable.$inferSelect | undefined;
+  try {
+    const result = await db.transaction(async (tx) => {
+      /* Status guard in WHERE prevents overwriting a status that changed since we read it */
+      const [updatedVn] = await tx
+        .update(virtualNumbersTable)
+        .set({ status: "cancelled", expiresAt: new Date() })
+        .where(and(
+          eq(virtualNumbersTable.id, numberId),
+          eq(virtualNumbersTable.userId, user.id),
+          /* Guard: only process if still in waiting/received — prevents double-cancel */
+          sql`${virtualNumbersTable.status} IN ('waiting', 'received')`,
+        ))
+        .returning();
 
-    await db.insert(transactionsTable).values({
-      userId: user.id,
-      type: "refund",
-      amount: row.n.price,
-      status: "completed",
-      method: "wallet",
-      description: `Remboursement – ${row.s.name} (${row.c.name})`,
+      if (!updatedVn) {
+        /* Another process already changed the status — abort without refund */
+        return null;
+      }
+
+      /* Refund only if no SMS was received */
+      if (!hasSms) {
+        await tx
+          .update(usersTable)
+          .set({ balance: sql`${usersTable.balance} + ${row.n.price}` })
+          .where(eq(usersTable.id, user.id));
+
+        await tx.insert(transactionsTable).values({
+          userId:      user.id,
+          type:        "refund",
+          amount:      row.n.price,
+          status:      "completed",
+          method:      "wallet",
+          description: `Remboursement – ${row.s.name} (${row.c.name})`,
+        });
+      }
+
+      return updatedVn;
     });
+
+    if (!result) {
+      res.status(409).json({ error: "Ce numéro a déjà été modifié. Veuillez rafraîchir la page." });
+      return;
+    }
+    updated = result;
+  } catch (txErr) {
+    logger.error({ err: (txErr as Error).message, numberId }, "[cancel] Transaction failed");
+    res.status(500).json({ error: "Erreur lors de l'annulation. Veuillez réessayer." });
+    return;
   }
 
-  const [updated] = await db
-    .update(virtualNumbersTable)
-    .set({ status: "cancelled", expiresAt: new Date() })
-    .where(eq(virtualNumbersTable.id, numberId))
-    .returning();
-
-  res.json(toNumber(updated!, row.s, row.c, messages));
+  res.json(toNumber(updated, row.s, row.c, messages));
 });
 
 export default router;

@@ -156044,8 +156044,13 @@ router8.post("/numbers/:numberId/cancel", requireAuth, async (req, res) => {
     res.status(400).json({ error: "Num\xE9ro d\xE9j\xE0 annul\xE9" });
     return;
   }
+  if (row.n.status === "expired") {
+    res.status(400).json({ error: "Ce num\xE9ro a d\xE9j\xE0 expir\xE9 et a \xE9t\xE9 rembours\xE9 automatiquement." });
+    return;
+  }
   const messages = await db.select().from(smsMessagesTable).where(eq(smsMessagesTable.numberId, numberId));
-  if (row.n.externalOrderId && messages.length === 0) {
+  const hasSms = messages.length > 0;
+  if (row.n.externalOrderId && !hasSms) {
     const fiveSimClient = await getActive5SimClient();
     if (fiveSimClient) {
       try {
@@ -156056,18 +156061,41 @@ router8.post("/numbers/:numberId/cancel", requireAuth, async (req, res) => {
       }
     }
   }
-  if (messages.length === 0 && row.n.status !== "cancelled") {
-    await db.update(usersTable).set({ balance: sql`${usersTable.balance} + ${row.n.price}` }).where(eq(usersTable.id, user.id));
-    await db.insert(transactionsTable).values({
-      userId: user.id,
-      type: "refund",
-      amount: row.n.price,
-      status: "completed",
-      method: "wallet",
-      description: `Remboursement \u2013 ${row.s.name} (${row.c.name})`
+  let updated;
+  try {
+    const result = await db.transaction(async (tx) => {
+      const [updatedVn] = await tx.update(virtualNumbersTable).set({ status: "cancelled", expiresAt: /* @__PURE__ */ new Date() }).where(and(
+        eq(virtualNumbersTable.id, numberId),
+        eq(virtualNumbersTable.userId, user.id),
+        /* Guard: only process if still in waiting/received — prevents double-cancel */
+        sql`${virtualNumbersTable.status} IN ('waiting', 'received')`
+      )).returning();
+      if (!updatedVn) {
+        return null;
+      }
+      if (!hasSms) {
+        await tx.update(usersTable).set({ balance: sql`${usersTable.balance} + ${row.n.price}` }).where(eq(usersTable.id, user.id));
+        await tx.insert(transactionsTable).values({
+          userId: user.id,
+          type: "refund",
+          amount: row.n.price,
+          status: "completed",
+          method: "wallet",
+          description: `Remboursement \u2013 ${row.s.name} (${row.c.name})`
+        });
+      }
+      return updatedVn;
     });
+    if (!result) {
+      res.status(409).json({ error: "Ce num\xE9ro a d\xE9j\xE0 \xE9t\xE9 modifi\xE9. Veuillez rafra\xEEchir la page." });
+      return;
+    }
+    updated = result;
+  } catch (txErr) {
+    logger.error({ err: txErr.message, numberId }, "[cancel] Transaction failed");
+    res.status(500).json({ error: "Erreur lors de l'annulation. Veuillez r\xE9essayer." });
+    return;
   }
-  const [updated] = await db.update(virtualNumbersTable).set({ status: "cancelled", expiresAt: /* @__PURE__ */ new Date() }).where(eq(virtualNumbersTable.id, numberId)).returning();
   res.json(toNumber(updated, row.s, row.c, messages));
 });
 var numbers_default = router8;
@@ -160329,7 +160357,9 @@ router13.post("/admin/orders/:orderId/cancel", requireAdmin2, async (req, res) =
     res.status(400).json({ error: `Impossible d'annuler une commande en statut "${order.status}". Seules les commandes en attente peuvent \xEAtre annul\xE9es.` });
     return;
   }
-  if (order.externalOrderId) {
+  const [msgCount] = await db.select({ c: sql`count(*)::int` }).from(smsMessagesTable).where(eq(smsMessagesTable.numberId, orderId));
+  const smsReceived = msgCount?.c ?? 0;
+  if (order.externalOrderId && smsReceived === 0) {
     try {
       const [provider] = await db.select().from(apiProvidersTable).where(and(eq(apiProvidersTable.slug, "5sim"), eq(apiProvidersTable.active, true))).limit(1);
       if (provider?.apiKey) {
@@ -160338,7 +160368,7 @@ router13.post("/admin/orders/:orderId/cancel", requireAdmin2, async (req, res) =
         logger.info({ orderId: order.externalOrderId, numberId: orderId }, "[admin] Order cancelled on 5sim");
       }
     } catch (e3) {
-      logger.warn({ err: e3.message, orderId: order.externalOrderId }, "[admin] Could not cancel on 5sim \u2014 continuing with DB refund");
+      logger.warn({ err: e3.message, orderId: order.externalOrderId }, "[admin] Could not cancel on 5sim \u2014 continuing with DB update");
     }
   }
   try {
@@ -160347,15 +160377,19 @@ router13.post("/admin/orders/:orderId/cancel", requireAdmin2, async (req, res) =
       if (updated.length === 0) {
         throw new Error("La commande a d\xE9j\xE0 \xE9t\xE9 modifi\xE9e par un autre processus.");
       }
-      await tx.update(usersTable).set({ balance: sql`${usersTable.balance} + ${order.price}` }).where(eq(usersTable.id, order.userId));
-      await tx.insert(transactionsTable).values({
-        userId: order.userId,
-        type: "refund",
-        amount: order.price,
-        status: "completed",
-        method: "wallet",
-        description: `Remboursement commande ${order.phoneNumber ?? orderId} (annul\xE9e par admin)`
-      });
+      if (smsReceived === 0) {
+        await tx.update(usersTable).set({ balance: sql`${usersTable.balance} + ${order.price}` }).where(eq(usersTable.id, order.userId));
+        await tx.insert(transactionsTable).values({
+          userId: order.userId,
+          type: "refund",
+          amount: order.price,
+          status: "completed",
+          method: "wallet",
+          description: `Remboursement commande ${order.phoneNumber ?? orderId} (annul\xE9e par admin)`
+        });
+      } else {
+        logger.info({ orderId, smsReceived }, "[admin] Order cancelled without refund \u2014 SMS was already received");
+      }
     });
   } catch (e3) {
     logger.error({ err: e3.message, orderId }, "[admin] cancelOrder transaction failed");
