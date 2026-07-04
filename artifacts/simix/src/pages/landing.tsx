@@ -1426,16 +1426,16 @@ function PlatformLogo({ platform, size = 80 }: { platform: string; size?: number
       alt="Facebook"
       width={size}
       height={size}
-      style={{ width: size, height: size, objectFit: "contain", borderRadius: "50%" }}
+      style={{ width: size, height: size, objectFit: "contain" }}
     />
   );
   if (platform === "whatsapp") return (
     <img
-      src="/social-logos/whatsapp.svg"
+      src="/social-logos/whatsapp.png"
       alt="WhatsApp"
       width={size}
       height={size}
-      style={{ width: size, height: size, objectFit: "contain", borderRadius: "50%" }}
+      style={{ width: size, height: size, objectFit: "contain" }}
     />
   );
   if (platform === "instagram") return (
@@ -1501,16 +1501,17 @@ function PlatformLogo({ platform, size = 80 }: { platform: string; size?: number
 }
 
 /* ─── Platform meta (label + description) ─── */
+const DARK_CARD_BG = "linear-gradient(145deg, #1a1a24, #13131c, #0e0e16)";
 const PLATFORM_META: Record<string, { label: string; cta: string; desc: string; gradient: string }> = {
-  telegram:  { label: "Telegram",   cta: "Rejoindre le canal",   desc: "Annonces exclusives, offres spéciales et actualités en temps réel directement dans votre Telegram.", gradient: "linear-gradient(135deg, #1a3a5c, #0d1f35, #0a1628)" },
-  facebook:  { label: "Facebook",   cta: "Suivre la page",       desc: "Offres, promotions, témoignages clients et toute l'actualité de la communauté Simix.", gradient: "linear-gradient(135deg, #1a2a4a, #0d1830, #080f20)" },
-  whatsapp:  { label: "WhatsApp",   cta: "Rejoindre le groupe",  desc: "Support communautaire, alertes instantanées et échanges avec les membres actifs.", gradient: "linear-gradient(135deg, #0a1f0f, #061409, #030a05)" },
-  instagram: { label: "Instagram",  cta: "Suivre le compte",     desc: "Contenus exclusifs, coulisses de Simix et actus visuelles pour la communauté.", gradient: "linear-gradient(135deg, #2a1a30, #1a0f20, #0f0815)" },
-  youtube:   { label: "YouTube",    cta: "S'abonner",            desc: "Tutoriels vidéo, guides pratiques et démos pour maîtriser Simix en quelques minutes.", gradient: "linear-gradient(135deg, #2a0a0a, #1a0505, #100303)" },
-  tiktok:    { label: "TikTok",     cta: "Nous suivre",          desc: "Astuces courtes, challenges et contenu engageant pour la communauté mobile.", gradient: "linear-gradient(135deg, #0a0a0a, #111111, #0d0d0d)" },
-  discord:   { label: "Discord",    cta: "Rejoindre le serveur", desc: "Communauté active, entraide entre membres et discussions en temps réel 24h/24.", gradient: "linear-gradient(135deg, #1a1a3a, #0f0f2a, #08081a)" },
-  linkedin:  { label: "LinkedIn",   cta: "Suivre",               desc: "Actualités professionnelles, partenariats et opportunités d'affaires avec Simix.", gradient: "linear-gradient(135deg, #0a1f35, #06142a, #040d1c)" },
-  twitter:   { label: "X / Twitter",cta: "Nous suivre",          desc: "Dernières nouvelles, mises à jour produit et échanges directs avec l'équipe Simix.", gradient: "linear-gradient(135deg, #0d0d0d, #111111, #0a0a0a)" },
+  telegram:  { label: "Telegram",   cta: "Rejoindre le canal",   desc: "Annonces exclusives, offres spéciales et actualités en temps réel directement dans votre Telegram.", gradient: DARK_CARD_BG },
+  facebook:  { label: "Facebook",   cta: "Suivre la page",       desc: "Offres, promotions, témoignages clients et toute l'actualité de la communauté Simix.", gradient: DARK_CARD_BG },
+  whatsapp:  { label: "WhatsApp",   cta: "Rejoindre le groupe",  desc: "Support communautaire, alertes instantanées et échanges avec les membres actifs.", gradient: DARK_CARD_BG },
+  instagram: { label: "Instagram",  cta: "Suivre le compte",     desc: "Contenus exclusifs, coulisses de Simix et actus visuelles pour la communauté.", gradient: DARK_CARD_BG },
+  youtube:   { label: "YouTube",    cta: "S'abonner",            desc: "Tutoriels vidéo, guides pratiques et démos pour maîtriser Simix en quelques minutes.", gradient: DARK_CARD_BG },
+  tiktok:    { label: "TikTok",     cta: "Nous suivre",          desc: "Astuces courtes, challenges et contenu engageant pour la communauté mobile.", gradient: DARK_CARD_BG },
+  discord:   { label: "Discord",    cta: "Rejoindre le serveur", desc: "Communauté active, entraide entre membres et discussions en temps réel 24h/24.", gradient: DARK_CARD_BG },
+  linkedin:  { label: "LinkedIn",   cta: "Suivre",               desc: "Actualités professionnelles, partenariats et opportunités d'affaires avec Simix.", gradient: DARK_CARD_BG },
+  twitter:   { label: "X / Twitter",cta: "Nous suivre",          desc: "Dernières nouvelles, mises à jour produit et échanges directs avec l'équipe Simix.", gradient: DARK_CARD_BG },
 };
 
 /* ─── Community Section ─── */
@@ -1582,27 +1583,28 @@ function CommunitySection() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: i * 0.1, duration: 0.5 }}
-                whileHover={{ y: -8 }}
-                className="group relative rounded-3xl overflow-hidden cursor-pointer block"
+                whileHover={{ y: -6, scale: 1.01 }}
+                className="group relative rounded-2xl overflow-hidden cursor-pointer block"
                 style={{
                   background: meta.gradient,
-                  border: `1.5px solid ${brandColor}20`,
-                  transition: "box-shadow 0.3s ease, border-color 0.3s ease",
+                  border: `1px solid rgba(255,255,255,0.07)`,
+                  boxShadow: "0 4px 6px rgba(0,0,0,0.4), 0 8px 24px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.06)",
+                  transition: "box-shadow 0.3s ease, transform 0.3s ease, border-color 0.3s ease",
                 }}
                 onMouseEnter={e => {
-                  (e.currentTarget as HTMLElement).style.boxShadow = `0 30px 80px ${brandColor}30, 0 0 0 1px ${brandColor}40`;
-                  (e.currentTarget as HTMLElement).style.borderColor = `${brandColor}50`;
+                  (e.currentTarget as HTMLElement).style.boxShadow = `0 8px 32px rgba(0,0,0,0.5), 0 20px 60px ${brandColor}25, inset 0 1px 0 rgba(255,255,255,0.08)`;
+                  (e.currentTarget as HTMLElement).style.borderColor = `${brandColor}35`;
                 }}
                 onMouseLeave={e => {
-                  (e.currentTarget as HTMLElement).style.boxShadow = "none";
-                  (e.currentTarget as HTMLElement).style.borderColor = `${brandColor}20`;
+                  (e.currentTarget as HTMLElement).style.boxShadow = "0 4px 6px rgba(0,0,0,0.4), 0 8px 24px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.06)";
+                  (e.currentTarget as HTMLElement).style.borderColor = "rgba(255,255,255,0.07)";
                 }}
               >
                 {/* Top color band */}
-                <div className="h-1.5 w-full" style={{ background: `linear-gradient(90deg, ${brandColor}00, ${brandColor}, ${brandColor}00)` }} />
+                <div className="h-1 w-full" style={{ background: `linear-gradient(90deg, ${brandColor}00, ${brandColor}cc, ${brandColor}00)` }} />
 
                 {/* Ambient glow */}
-                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-64 h-32 blur-3xl opacity-0 group-hover:opacity-30 transition-opacity duration-500 pointer-events-none" style={{ background: brandColor }} />
+                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-64 h-32 blur-3xl opacity-0 group-hover:opacity-20 transition-opacity duration-500 pointer-events-none" style={{ background: brandColor }} />
 
                 <div className="p-8 sm:p-10">
                   {/* Logo + platform name row */}
