@@ -1504,7 +1504,7 @@ function PlatformLogo({ platform, size = 80 }: { platform: string; size?: number
 const PLATFORM_META: Record<string, { label: string; cta: string; desc: string; gradient: string }> = {
   telegram:  { label: "Telegram",   cta: "Rejoindre le canal",   desc: "Annonces exclusives, offres spéciales et actualités en temps réel directement dans votre Telegram.", gradient: "linear-gradient(135deg, #1a3a5c, #0d1f35, #0a1628)" },
   facebook:  { label: "Facebook",   cta: "Suivre la page",       desc: "Offres, promotions, témoignages clients et toute l'actualité de la communauté Simix.", gradient: "linear-gradient(135deg, #1a2a4a, #0d1830, #080f20)" },
-  whatsapp:  { label: "WhatsApp",   cta: "Rejoindre le groupe",  desc: "Support communautaire, alertes instantanées et échanges avec les membres actifs.", gradient: "linear-gradient(135deg, #1a0a2e, #0d0520, #08001a)" },
+  whatsapp:  { label: "WhatsApp",   cta: "Rejoindre le groupe",  desc: "Support communautaire, alertes instantanées et échanges avec les membres actifs.", gradient: "linear-gradient(135deg, #0a1f0f, #061409, #030a05)" },
   instagram: { label: "Instagram",  cta: "Suivre le compte",     desc: "Contenus exclusifs, coulisses de Simix et actus visuelles pour la communauté.", gradient: "linear-gradient(135deg, #2a1a30, #1a0f20, #0f0815)" },
   youtube:   { label: "YouTube",    cta: "S'abonner",            desc: "Tutoriels vidéo, guides pratiques et démos pour maîtriser Simix en quelques minutes.", gradient: "linear-gradient(135deg, #2a0a0a, #1a0505, #100303)" },
   tiktok:    { label: "TikTok",     cta: "Nous suivre",          desc: "Astuces courtes, challenges et contenu engageant pour la communauté mobile.", gradient: "linear-gradient(135deg, #0a0a0a, #111111, #0d0d0d)" },
@@ -1709,7 +1709,7 @@ function FinalCTA() {
 /* ─── Social icon registry ─── */
 const SOCIAL_ICONS: Record<string, { Icon: React.ElementType; color: string }> = {
   telegram:  { Icon: FaTelegram,  color: "#2AABEE" },
-  whatsapp:  { Icon: FaWhatsapp,  color: "#7C3AED" },
+  whatsapp:  { Icon: FaWhatsapp,  color: "#25D366" },
   facebook:  { Icon: FaFacebook,  color: "#1877F2" },
   twitter:   { Icon: FaTwitter,   color: "#1DA1F2" },
   instagram: { Icon: FaInstagram, color: "#E1306C" },
