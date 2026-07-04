@@ -1421,22 +1421,22 @@ function PlatformLogo({ platform, size = 80 }: { platform: string; size?: number
     </svg>
   );
   if (platform === "facebook") return (
-    <svg width={size} height={size} viewBox="0 0 240 240" fill="none">
-      <circle cx="120" cy="120" r="120" fill="#1877F2"/>
-      <path d="M167 120c0-26.01-21-47-47-47s-47 20.99-47 47c0 23.44 17.17 42.88 39.62 46.39V134.5h-11.9V120h11.9v-10.32c0-11.74 7-18.22 17.7-18.22 5.12 0 10.48.91 10.48.91v11.53h-5.9c-5.82 0-7.63 3.61-7.63 7.31V120h12.98l-2.07 14.5h-10.9v31.89C149.83 162.88 167 143.44 167 120z" fill="white"/>
-    </svg>
+    <img
+      src="/social-logos/facebook.png"
+      alt="Facebook"
+      width={size}
+      height={size}
+      style={{ width: size, height: size, objectFit: "contain", borderRadius: "50%" }}
+    />
   );
   if (platform === "whatsapp") return (
-    <svg width={size} height={size} viewBox="0 0 240 240" fill="none">
-      <defs>
-        <linearGradient id="wa-grad" x1="0" y1="0" x2="240" y2="240" gradientUnits="userSpaceOnUse">
-          <stop stopColor="#7C3AED"/>
-          <stop offset="1" stopColor="#5B21B6"/>
-        </linearGradient>
-      </defs>
-      <circle cx="120" cy="120" r="120" fill="url(#wa-grad)"/>
-      <path fillRule="evenodd" clipRule="evenodd" d="M120 60c-33.14 0-60 26.86-60 60 0 10.54 2.73 20.44 7.5 29.01L60 180l31.77-8.31A59.75 59.75 0 00120 180c33.14 0 60-26.86 60-60s-26.86-60-60-60zm35.6 85.4c-1.47 4.12-8.57 7.89-11.76 8.38-3 .44-6.82.63-11-.7-2.54-.82-5.8-1.92-9.96-3.75-17.5-7.55-28.9-25.4-29.77-26.56-.86-1.16-7.03-9.35-7.03-17.84 0-8.48 4.45-12.65 6.03-14.37 1.57-1.72 3.43-2.15 4.57-2.15 1.14 0 2.29.01 3.29.06 1.05.05 2.47-.4 3.87 2.95 1.44 3.44 4.89 11.93 5.31 12.8.43.86.71 1.87.14 3.01-.57 1.14-3.27 5.44-3.27 5.44s-.72.86.14 2.3c.86 1.43 6.33 9.7 13.58 13.72 3.81 2.14 9.43 4.07 9.43 4.07s1.58.54 2.44-.57c.87-1.12 3.72-4.4 4.72-5.9 1-1.5 2-1.21 3.43-.72 1.43.5 9.14 4.3 10.72 5.09 1.57.78 2.6 1.17 3 1.82.43.64.43 3.72-1.04 7.82z" fill="white"/>
-    </svg>
+    <img
+      src="/social-logos/whatsapp.svg"
+      alt="WhatsApp"
+      width={size}
+      height={size}
+      style={{ width: size, height: size, objectFit: "contain", borderRadius: "50%" }}
+    />
   );
   if (platform === "instagram") return (
     <svg width={size} height={size} viewBox="0 0 240 240" fill="none">
