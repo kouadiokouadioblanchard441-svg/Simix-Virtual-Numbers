@@ -99,7 +99,15 @@ function MissingRefundsAlert() {
       qc.invalidateQueries({ queryKey: ["admin-missing-refunds"] });
       qc.invalidateQueries({ queryKey: ["admin-refund-stats"] });
     },
-    onError: (e) => toast({ title: "Erreur", description: (e as Error).message, variant: "destructive" }),
+    onError: (e) => {
+      const msg = (e as Error).message ?? "";
+      if (msg.includes("déjà avoir été effectué")) {
+        toast({ title: "Déjà remboursé", description: "Ce numéro a déjà été remboursé — la liste va se rafraîchir." });
+        qc.invalidateQueries({ queryKey: ["admin-missing-refunds"] });
+      } else {
+        toast({ title: "Erreur", description: msg || "Erreur lors du remboursement", variant: "destructive" });
+      }
+    },
   });
 
   const list = data?.missingRefunds ?? [];
