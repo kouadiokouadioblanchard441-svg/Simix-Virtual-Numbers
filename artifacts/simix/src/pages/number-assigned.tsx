@@ -119,7 +119,7 @@ function NumberAssignedContent({ id }: { id: string }) {
         </div>
       </div>
 
-      <div className={`flex-1 overflow-y-auto overflow-x-hidden px-5 py-6 ${number.status === 'waiting' ? 'pb-32' : ''}`}>
+      <div className={`flex-1 overflow-y-auto overflow-x-hidden px-5 py-6 ${number.status === 'waiting' ? 'pb-48' : ''}`}>
         
         {/* HERO CARD */}
         <div className="bg-gradient-to-br from-violet-700 to-violet-900 rounded-3xl p-5 mb-4 flex items-center relative overflow-hidden shadow-lg">
@@ -239,20 +239,20 @@ function NumberAssignedContent({ id }: { id: string }) {
                     key={msg.id}
                     initial={{ opacity: 0, y: 10, scale: 0.95 }}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
-                    className="bg-card border border-card-border rounded-2xl p-4 shadow-sm"
+                    className="bg-card border border-card-border rounded-2xl p-4 shadow-sm overflow-hidden min-w-0"
                   >
-                    <div className="flex justify-between items-center mb-2 border-b border-card-border pb-2">
-                      <span className="text-sm font-bold text-foreground flex items-center gap-2">
-                         <div className="w-6 h-6 bg-secondary rounded-full flex items-center justify-center">
+                    <div className="flex justify-between items-center mb-2 border-b border-card-border pb-2 min-w-0">
+                      <span className="text-sm font-bold text-foreground flex items-center gap-2 min-w-0">
+                         <div className="w-6 h-6 bg-secondary rounded-full flex items-center justify-center shrink-0">
                            <MessageSquare className="w-3 h-3 text-muted-foreground" />
                          </div>
-                         {msg.sender}
+                         <span className="truncate">{msg.sender}</span>
                       </span>
-                      <span className="text-xs font-medium text-muted-foreground">
+                      <span className="text-xs font-medium text-muted-foreground shrink-0 ml-2">
                         {formatDistanceToNow(new Date(msg.receivedAt), { addSuffix: true, locale: fr })}
                       </span>
                     </div>
-                    <p className="text-sm text-foreground mb-4 leading-relaxed break-words [overflow-wrap:anywhere]">{msg.body}</p>
+                    <p className="text-sm text-foreground mb-4 leading-relaxed break-all">{msg.body}</p>
                     {msg.code && (
                       <div className="bg-secondary/50 border border-card-border rounded-xl p-3 flex justify-between items-center">
                         <div>
