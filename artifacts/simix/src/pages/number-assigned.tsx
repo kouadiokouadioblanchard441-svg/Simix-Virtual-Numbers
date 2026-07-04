@@ -119,7 +119,7 @@ function NumberAssignedContent({ id }: { id: string }) {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-5 py-6">
+      <div className={`flex-1 overflow-y-auto overflow-x-hidden px-5 py-6 ${number.status === 'waiting' ? 'pb-32' : ''}`}>
         
         {/* HERO CARD */}
         <div className="bg-gradient-to-br from-violet-700 to-violet-900 rounded-3xl p-5 mb-4 flex items-center relative overflow-hidden shadow-lg">
@@ -252,7 +252,7 @@ function NumberAssignedContent({ id }: { id: string }) {
                         {formatDistanceToNow(new Date(msg.receivedAt), { addSuffix: true, locale: fr })}
                       </span>
                     </div>
-                    <p className="text-sm text-foreground mb-4 leading-relaxed">{msg.body}</p>
+                    <p className="text-sm text-foreground mb-4 leading-relaxed break-words [overflow-wrap:anywhere]">{msg.body}</p>
                     {msg.code && (
                       <div className="bg-secondary/50 border border-card-border rounded-xl p-3 flex justify-between items-center">
                         <div>
