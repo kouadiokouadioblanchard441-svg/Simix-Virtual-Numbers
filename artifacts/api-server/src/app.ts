@@ -82,6 +82,11 @@ const buildAllowedOrigins = (): Set<string> => {
   origins.add("http://localhost:5000");
   origins.add("http://localhost:3000");
   origins.add("http://localhost:5173");
+  /* Loopback origins for dev tooling (screenshot tools, curl, etc.) — non-production only */
+  if (process.env.NODE_ENV !== "production") {
+    origins.add("http://127.0.0.1:5000");
+    origins.add("http://127.0.0.1:3000");
+  }
 
   logger.info({ origins: [...origins] }, "[cors] Allowed origins");
   return origins;
