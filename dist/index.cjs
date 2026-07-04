@@ -155954,7 +155954,24 @@ router8.post("/numbers/:numberId/poll", requireAuth, async (req, res) => {
           }
         }
         if (order.status === "TIMEOUT") {
-          await db.update(virtualNumbersTable).set({ status: "expired", expiresAt: /* @__PURE__ */ new Date() }).where(eq(virtualNumbersTable.id, numberId));
+          const [{ smsCount }] = await db.select({ smsCount: sql`count(*)::int` }).from(smsMessagesTable).where(eq(smsMessagesTable.numberId, numberId));
+          const hasSms = (smsCount ?? 0) > 0;
+          await db.transaction(async (tx) => {
+            const [current] = await tx.select({ status: virtualNumbersTable.status }).from(virtualNumbersTable).where(eq(virtualNumbersTable.id, numberId)).limit(1);
+            if (!current || current.status !== "waiting") return;
+            await tx.update(virtualNumbersTable).set({ status: "expired", expiresAt: /* @__PURE__ */ new Date() }).where(and(eq(virtualNumbersTable.id, numberId), eq(virtualNumbersTable.status, "waiting")));
+            if (!hasSms) {
+              await tx.update(usersTable).set({ balance: sql`${usersTable.balance} + ${row.n.price}` }).where(eq(usersTable.id, user.id));
+              await tx.insert(transactionsTable).values({
+                userId: user.id,
+                type: "refund",
+                amount: row.n.price,
+                status: "completed",
+                method: "wallet",
+                description: "Remboursement automatique (num\xE9ro expir\xE9 sans SMS re\xE7u)"
+              });
+            }
+          });
         }
       } catch (e3) {
         logger.warn(

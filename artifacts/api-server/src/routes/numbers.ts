@@ -641,12 +641,48 @@ router.post("/numbers/:numberId/poll", requireAuth, async (req, res): Promise<vo
           }
         }
 
-        /* Handle expired/cancelled by provider */
+        /* Handle expired/cancelled by provider — atomically expire + refund.
+         * Previously this only updated the status without issuing a refund,
+         * which permanently blocked both the poller and the sweep (both filter
+         * status="waiting") from ever refunding the user.                      */
         if (order.status === "TIMEOUT") {
-          await db
-            .update(virtualNumbersTable)
-            .set({ status: "expired", expiresAt: new Date() })
-            .where(eq(virtualNumbersTable.id, numberId));
+          const [{ smsCount }] = await db
+            .select({ smsCount: sql<number>`count(*)::int` })
+            .from(smsMessagesTable)
+            .where(eq(smsMessagesTable.numberId, numberId));
+          const hasSms = (smsCount ?? 0) > 0;
+
+          await db.transaction(async (tx) => {
+            /* Re-check status to avoid double-processing */
+            const [current] = await tx
+              .select({ status: virtualNumbersTable.status })
+              .from(virtualNumbersTable)
+              .where(eq(virtualNumbersTable.id, numberId))
+              .limit(1);
+
+            if (!current || current.status !== "waiting") return;
+
+            await tx
+              .update(virtualNumbersTable)
+              .set({ status: "expired", expiresAt: new Date() })
+              .where(and(eq(virtualNumbersTable.id, numberId), eq(virtualNumbersTable.status, "waiting")));
+
+            if (!hasSms) {
+              await tx
+                .update(usersTable)
+                .set({ balance: sql`${usersTable.balance} + ${row.n.price}` })
+                .where(eq(usersTable.id, user.id));
+
+              await tx.insert(transactionsTable).values({
+                userId:      user.id,
+                type:        "refund",
+                amount:      row.n.price,
+                status:      "completed",
+                method:      "wallet",
+                description: "Remboursement automatique (numéro expiré sans SMS reçu)",
+              });
+            }
+          });
         }
       } catch (e) {
         logger.warn(
