@@ -64028,6 +64028,10 @@ var init_drizzle_orm = __esm({
 });
 
 // artifacts/api-server/src/lib/logger.ts
+var logger_exports = {};
+__export(logger_exports, {
+  logger: () => logger
+});
 var import_pino, isProduction, logger;
 var init_logger2 = __esm({
   "artifacts/api-server/src/lib/logger.ts"() {
@@ -154849,12 +154853,30 @@ router3.patch("/auth/me/profile", requireAuth, async (req, res) => {
     res.status(400).json({ error: "Aucun champ valide \xE0 mettre \xE0 jour" });
     return;
   }
-  const [user] = await db.update(usersTable).set(updates).where(eq(usersTable.id, req.user.id)).returning();
-  if (!user) {
-    res.status(404).json({ error: "Utilisateur non trouv\xE9" });
-    return;
+  try {
+    const [user] = await db.update(usersTable).set(updates).where(eq(usersTable.id, req.user.id)).returning();
+    if (!user) {
+      res.status(404).json({ error: "Utilisateur non trouv\xE9" });
+      return;
+    }
+    res.json({ user: toUser(user) });
+  } catch (err) {
+    const pgCode = err?.code;
+    const pgDetail = err?.detail ?? "";
+    if (pgCode === "23505") {
+      if (pgDetail.includes("username")) {
+        res.status(409).json({ error: "Ce nom d'utilisateur est d\xE9j\xE0 pris. Veuillez en choisir un autre." });
+      } else if (pgDetail.includes("email")) {
+        res.status(409).json({ error: "Cette adresse e-mail est d\xE9j\xE0 utilis\xE9e par un autre compte." });
+      } else {
+        res.status(409).json({ error: "Ces informations sont d\xE9j\xE0 utilis\xE9es par un autre compte." });
+      }
+      return;
+    }
+    const { logger: logger2 } = await Promise.resolve().then(() => (init_logger2(), logger_exports));
+    logger2.error({ err }, "[profile] Unexpected error updating user profile");
+    res.status(500).json({ error: "Une erreur est survenue lors de la mise \xE0 jour du profil. R\xE9essayez." });
   }
-  res.json({ user: toUser(user) });
 });
 router3.get("/auth/me", requireAuth, async (req, res) => {
   const user = req.user;

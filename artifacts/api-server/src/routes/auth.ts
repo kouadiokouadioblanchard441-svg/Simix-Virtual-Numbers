@@ -359,13 +359,33 @@ router.patch("/auth/me/profile", requireAuth, async (req, res): Promise<void> =>
     res.status(400).json({ error: "Aucun champ valide à mettre à jour" });
     return;
   }
-  const [user] = await db
-    .update(usersTable)
-    .set(updates as any)
-    .where(eq(usersTable.id, req.user!.id))
-    .returning();
-  if (!user) { res.status(404).json({ error: "Utilisateur non trouvé" }); return; }
-  res.json({ user: toUser(user) });
+  try {
+    const [user] = await db
+      .update(usersTable)
+      .set(updates as any)
+      .where(eq(usersTable.id, req.user!.id))
+      .returning();
+    if (!user) { res.status(404).json({ error: "Utilisateur non trouvé" }); return; }
+    res.json({ user: toUser(user) });
+  } catch (err: unknown) {
+    /* Postgres unique constraint violation → code 23505 */
+    const pgCode = (err as { code?: string })?.code;
+    const pgDetail: string = (err as { detail?: string })?.detail ?? "";
+    if (pgCode === "23505") {
+      if (pgDetail.includes("username")) {
+        res.status(409).json({ error: "Ce nom d'utilisateur est déjà pris. Veuillez en choisir un autre." });
+      } else if (pgDetail.includes("email")) {
+        res.status(409).json({ error: "Cette adresse e-mail est déjà utilisée par un autre compte." });
+      } else {
+        res.status(409).json({ error: "Ces informations sont déjà utilisées par un autre compte." });
+      }
+      return;
+    }
+    /* Any other DB error — log it but never expose raw SQL to the client */
+    const { logger } = await import("../lib/logger");
+    logger.error({ err }, "[profile] Unexpected error updating user profile");
+    res.status(500).json({ error: "Une erreur est survenue lors de la mise à jour du profil. Réessayez." });
+  }
 });
 
 router.get("/auth/me", requireAuth, async (req, res): Promise<void> => {
