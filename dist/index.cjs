@@ -154861,8 +154861,9 @@ router3.patch("/auth/me/profile", requireAuth, async (req, res) => {
     }
     res.json({ user: toUser(user) });
   } catch (err) {
-    const pgCode = err?.code;
-    const pgDetail = err?.detail ?? "";
+    const pgErr = err?.cause ?? err;
+    const pgCode = pgErr?.code ?? "";
+    const pgDetail = pgErr?.detail ?? "";
     if (pgCode === "23505") {
       if (pgDetail.includes("username")) {
         res.status(409).json({ error: "Ce nom d'utilisateur est d\xE9j\xE0 pris. Veuillez en choisir un autre." });

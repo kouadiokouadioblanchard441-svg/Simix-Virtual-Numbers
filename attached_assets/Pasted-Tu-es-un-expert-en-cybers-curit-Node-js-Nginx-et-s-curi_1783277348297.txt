@@ -1,0 +1,44 @@
+Tu es un expert en cybersécurité, Node.js, Nginx et sécurité des applications web.
+
+Analyse entièrement mon projet Simix et corrige tous les problèmes de sécurité signalés par Mozilla Observatory et SecurityHeaders sans casser aucune fonctionnalité existante.
+
+Les problèmes détectés sont :
+
+- Absence de Strict-Transport-Security (HSTS)
+- Absence de Content-Security-Policy (CSP)
+- Absence de X-Frame-Options
+- Absence de X-Content-Type-Options
+- Absence de Referrer-Policy
+- Absence de Permissions-Policy
+- Le serveur divulgue des informations inutiles (X-Powered-By)
+- Vérifier également Cross-Origin-Resource-Policy (CORP)
+- Cross-Origin-Embedder-Policy (COEP)
+- Cross-Origin-Opener-Policy (COOP)
+- Subresource Integrity (SRI) lorsque c'est applicable.
+
+Tâches à réaliser :
+
+1. Analyse toute l'architecture du projet.
+2. Détermine si les en-têtes doivent être ajoutés dans le code ou dans la configuration du serveur.
+3. Implémente les en-têtes de sécurité selon les recommandations de l'OWASP.
+4. Configure une Content Security Policy compatible avec mon site sans casser les scripts, les paiements, les API, les images, les polices, WebSocket, ni les intégrations externes.
+5. Force HTTPS et configure HSTS correctement.
+6. Ajoute X-Frame-Options SAMEORIGIN ou l'équivalent via CSP frame-ancestors.
+7. Ajoute X-Content-Type-Options: nosniff.
+8. Ajoute Referrer-Policy: strict-origin-when-cross-origin.
+9. Configure Permissions-Policy en désactivant toutes les API inutiles.
+10. Supprime tous les en-têtes qui révèlent des informations sur le serveur comme X-Powered-By lorsque cela est possible.
+11. Vérifie que les cookies de session utilisent Secure, HttpOnly et SameSite.
+12. Vérifie que CORS est correctement configuré.
+13. Vérifie que les pages d'authentification, les paiements et les API restent entièrement fonctionnels.
+14. N'effectue aucune modification qui pourrait empêcher le fonctionnement de Simix.
+
+À la fin :
+
+- Explique chaque modification effectuée.
+- Liste tous les fichiers modifiés.
+- Indique pourquoi chaque changement améliore la sécurité.
+- Vérifie que le site est compatible avec Mozilla Observatory, SecurityHeaders et les recommandations OWASP.
+- Signale les points qui nécessitent une configuration côté Nginx ou hébergeur si le code seul ne suffit pas.
+
+Ne casse aucune fonctionnalité existante. Préserve entièrement le fonctionnement des paiements, des connexions, des API, du tableau de bord et de toutes les pages du site.

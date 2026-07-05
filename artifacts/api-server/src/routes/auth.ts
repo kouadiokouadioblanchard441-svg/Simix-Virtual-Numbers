@@ -368,9 +368,11 @@ router.patch("/auth/me/profile", requireAuth, async (req, res): Promise<void> =>
     if (!user) { res.status(404).json({ error: "Utilisateur non trouvé" }); return; }
     res.json({ user: toUser(user) });
   } catch (err: unknown) {
-    /* Postgres unique constraint violation → code 23505 */
-    const pgCode = (err as { code?: string })?.code;
-    const pgDetail: string = (err as { detail?: string })?.detail ?? "";
+    /* Drizzle 0.45+ wraps pg errors in DrizzleQueryError — the raw pg error
+     * is at err.cause. We check both levels to be safe. */
+    const pgErr = (err as any)?.cause ?? err;
+    const pgCode: string = pgErr?.code ?? "";
+    const pgDetail: string = pgErr?.detail ?? "";
     if (pgCode === "23505") {
       if (pgDetail.includes("username")) {
         res.status(409).json({ error: "Ce nom d'utilisateur est déjà pris. Veuillez en choisir un autre." });
