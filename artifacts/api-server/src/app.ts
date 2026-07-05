@@ -20,6 +20,17 @@ import { MAINTENANCE_HTML } from "./lib/maintenance-html";
 
 const app: Express = express();
 
+/* ── Explicitly disable X-Powered-By before any middleware runs ──
+ * Belt-and-suspenders: helmet also removes it, but being explicit
+ * ensures it's gone even if helmet config changes in the future.  */
+app.disable("x-powered-by");
+
+/* ── Strip Server header (set by node-http/Express internals) ── */
+app.use((_req, res, next) => {
+  res.removeHeader("Server");
+  next();
+});
+
 /* ── Trust reverse proxy (Plesk / nginx / Cloudflare) ──
  * Allows Express to correctly read X-Forwarded-Proto and X-Forwarded-For
  * headers set by the upstream proxy, so req.protocol returns "https"
@@ -118,58 +129,110 @@ app.use(
     /* CORP: cross-origin to allow PWA assets fetched from the same server */
     crossOriginResourcePolicy: { policy: "cross-origin" },
 
-    /* CSP: block XSS. 'unsafe-inline' for styles is required by Tailwind v4.
-     * Script nonces would be ideal but require SSR integration — this is a
-     * SPA so all scripts are hashed by Vite at build time from /assets/.    */
+    /* COOP: isolates the browsing context to prevent cross-origin window
+     * references. "same-origin-allow-popups" is used instead of "same-origin"
+     * so Google OAuth popups can communicate back via postMessage.           */
+    crossOriginOpenerPolicy: { policy: "same-origin-allow-popups" },
+
+    /* COEP: "unsafe-none" is required because Google Fonts, Cloudflare
+     * Turnstile and other third-party resources do not set CORP headers.
+     * Enabling "require-corp" would break font loading and Cloudflare widgets.
+     * COEP is therefore explicitly opted out here with documentation.        */
+    crossOriginEmbedderPolicy: false,
+
+    /* CSP: block XSS.
+     * - Scripts: 'unsafe-inline' removed — the PWA bootstrap script is now
+     *   served from /pwa-init.js (external), so no inline scripts remain.
+     *   All other JS is served as hashed ES modules from /assets/ by Vite.
+     * - Styles: 'unsafe-inline' is required by Tailwind v4 (utility classes
+     *   are injected at runtime; nonces would require SSR integration).
+     * - frame-ancestors: restricted to 'self' in production to prevent
+     *   clickjacking from arbitrary third-party sites. Replit preview
+     *   domains are added only in non-production environments.              */
     contentSecurityPolicy: {
       useDefaults: false,
       directives: {
-        defaultSrc: ["'self'"],
-        scriptSrc: ["'self'", "'unsafe-inline'", "https://challenges.cloudflare.com"],
-        scriptSrcElem: ["'self'", "'unsafe-inline'", "https://challenges.cloudflare.com"],
-        styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
-        imgSrc: ["'self'", "data:", "blob:", "https:"],
-        connectSrc: ["'self'", "wss:", "ws:", "https:"],
-        fontSrc: ["'self'", "data:", "https://fonts.gstatic.com"],
-        mediaSrc: ["'self'", "blob:"],
-        workerSrc: ["'self'", "blob:"],
-        childSrc: ["'self'", "blob:", "https://challenges.cloudflare.com"],
-        frameSrc: ["'self'", "https://challenges.cloudflare.com"],
-        frameAncestors: ["'self'", "https://*.replit.dev", "https://*.repl.co", "https://*.replit.app", "https://*.kirk.replit.dev"],
-        objectSrc: ["'none'"],
-        baseUri: ["'self'"],
-        formAction: ["'self'"],
-        scriptSrcAttr: ["'none'"],
-        // upgrade-insecure-requests is intentionally omitted — the app is served
-        // via Replit's HTTPS proxy so the browser is already on HTTPS; enabling
-        // this directive breaks HTTP-only preview contexts (e.g., Replit screenshot tool).
+        defaultSrc:     ["'self'"],
+        scriptSrc:      ["'self'", "https://challenges.cloudflare.com"],
+        scriptSrcElem:  ["'self'", "https://challenges.cloudflare.com"],
+        scriptSrcAttr:  ["'none'"],
+        styleSrc:       ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+        imgSrc:         ["'self'", "data:", "blob:", "https:"],
+        connectSrc:     ["'self'", "wss:", "ws:", "https:"],
+        fontSrc:        ["'self'", "data:", "https://fonts.gstatic.com"],
+        mediaSrc:       ["'self'", "blob:"],
+        workerSrc:      ["'self'", "blob:"],
+        manifestSrc:    ["'self'"],
+        childSrc:       ["'self'", "blob:", "https://challenges.cloudflare.com"],
+        frameSrc:       ["'self'", "https://challenges.cloudflare.com"],
+        frameAncestors: process.env.NODE_ENV === "production"
+          /* Production: only same origin can embed — strict clickjacking protection */
+          ? ["'self'"]
+          /* Dev/Replit: allow preview iframes from Replit domains */
+          : ["'self'", "https://*.replit.dev", "https://*.repl.co", "https://*.replit.app", "https://*.kirk.replit.dev"],
+        objectSrc:      ["'none'"],
+        baseUri:        ["'self'"],
+        formAction:     ["'self'"],
+        // upgrade-insecure-requests is intentionally omitted — the app is
+        // served via Replit's HTTPS proxy; enabling it breaks HTTP-only
+        // preview contexts (e.g. Replit screenshot tool, local dev).
       },
     },
 
-    /* Clickjacking: disabled so Replit preview iframe can embed the app.
-     * Protection is handled by the CSP frame-ancestors directive above.  */
+    /* Clickjacking: frameguard disabled — Replit preview iframes need to
+     * embed the app. Protection is provided by CSP frame-ancestors above. */
     frameguard: false,
 
-    /* HSTS: force HTTPS for 1 year, include subdomains */
+    /* HSTS: force HTTPS for 1 year, include subdomains, allow preload list */
     hsts: {
       maxAge: 31_536_000,
       includeSubDomains: true,
       preload: true,
     },
 
-    /* Block MIME sniffing */
+    /* Block MIME sniffing attacks */
     noSniff: true,
 
-    /* Referrer policy */
+    /* Referrer policy: send origin only on cross-origin requests */
     referrerPolicy: { policy: "strict-origin-when-cross-origin" },
+
+    /* hidePoweredBy: true by default in helmet — removes X-Powered-By */
+    hidePoweredBy: true,
   }),
 );
 
-/* ── Permissions-Policy — restrict powerful browser features ── */
+/* ── Permissions-Policy — comprehensive OWASP-aligned feature restriction ──
+ * Disables powerful browser APIs that Simix does not use. This prevents
+ * malicious scripts (e.g. via XSS) from accessing device sensors, cameras,
+ * microphones, or other sensitive platform features.                        */
 app.use((_req, res, next) => {
   res.setHeader(
     "Permissions-Policy",
-    "camera=(), microphone=(), geolocation=(), payment=(), usb=(), interest-cohort=()",
+    [
+      "accelerometer=()",
+      "ambient-light-sensor=()",
+      "autoplay=()",
+      "battery=()",
+      "camera=()",
+      "display-capture=()",
+      "document-domain=()",
+      "encrypted-media=()",
+      "fullscreen=()",
+      "geolocation=()",
+      "gyroscope=()",
+      "interest-cohort=()",
+      "magnetometer=()",
+      "microphone=()",
+      "midi=()",
+      "payment=()",
+      "picture-in-picture=()",
+      "publickey-credentials-get=()",
+      "screen-wake-lock=()",
+      "sync-xhr=()",
+      "usb=()",
+      "web-share=()",
+      "xr-spatial-tracking=()",
+    ].join(", "),
   );
   next();
 });

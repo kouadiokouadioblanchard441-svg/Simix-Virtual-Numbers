@@ -7,3 +7,4 @@
 - [Admin country picker pattern](admin-country-picker-pattern.md) — never use free-text ISO code inputs for admin country selection; use searchable button/chip picker from GET /admin/countries.
 - [Seed idempotency rules](seed-idempotency.md) — seed functions must use onConflictDoNothing for admin-owned fields; only technical fields (name, dialCode, flag, color, category) may be updated on conflict.
 - [SIMIA multilingual support chat](simia-multilingual-chat.md) — language detection lives in the system prompt, not hard-coded branches; models narrate language switches unless explicitly forbidden; Groq has 12k TPM shared limit.
+- [Drizzle ORM error wrapping](drizzle-error-wrapping.md) — Drizzle 0.45+ wraps pg errors in DrizzleQueryError; raw pg err (code, detail) is at err.cause, not err directly.

@@ -54,25 +54,22 @@
     <meta http-equiv="Permissions-Policy" content="camera=(), microphone=(), geolocation=()" />
 
     <!-- Performance -->
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="dns-prefetch" href="https://fonts.googleapis.com" />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+    <!-- crossorigin="anonymous" required for CORP compliance with Google Fonts.
+         SRI (integrity attribute) is intentionally omitted here: Google Fonts
+         returns a dynamic CSS payload that varies by user-agent, making a static
+         hash impossible. Use self-hosted fonts if SRI is a hard requirement. -->
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap"
+      rel="stylesheet"
+      crossorigin="anonymous"
+    />
 
     <!-- PWA: capture beforeinstallprompt avant que React ne monte.
-         L'événement peut se déclencher avant le premier useEffect React.
-         On le stocke dans window.__pwaInstallEvent pour que PWAInstallContext
-         le récupère sans risque de race condition. -->
-    <script>
-      (function () {
-        window.__pwaInstallEvent = null;
-        function capture(e) {
-          e.preventDefault();
-          window.__pwaInstallEvent = e;
-        }
-        window.addEventListener('beforeinstallprompt', capture);
-      })();
-    </script>
+         Chargé en externe (pas inline) pour permettre une CSP sans 'unsafe-inline'. -->
+    <script src="/pwa-init.js"></script>
 
     <!-- Critical CSS: prevent flash of white, enable safe areas -->
     <style>
