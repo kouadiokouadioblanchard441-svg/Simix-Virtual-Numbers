@@ -825,9 +825,18 @@ router.post("/admin/payment-routing/pawapay-sync", requireAdmin, async (req: Req
       }
     }
 
-    /* 8. Upsert payment_routes (deposit) */
+    /* 8. Upsert payment_routes (deposit)
+     *
+     * IMPORTANT: admin-configured routes are NEVER overwritten.
+     * - If a route already has a primaryGatewayId set → keep it as-is (admin choice).
+     *   We only add PawaPay as secondaryGateway if the slot is empty, so it can serve
+     *   as fallback without displacing the chosen primary.
+     * - If a route exists with no primary → PawaPay becomes primary.
+     * - If no route exists at all → create one with PawaPay as primary.
+     */
     let routesCreated = 0;
     let routesUpdated = 0;
+    let routesSkipped = 0;
     const existingRoutes = await db.select().from(paymentRoutesTable)
       .where(eq(paymentRoutesTable.transactionType, "deposit"));
     const existingRouteMap = new Map(existingRoutes.map(r => [`${r.countryCode}:${r.operatorSlug}`, r]));
@@ -838,10 +847,22 @@ router.post("/admin/payment-routing/pawapay-sync", requireAdmin, async (req: Req
 
       try {
         if (existing) {
-          await db.update(paymentRoutesTable)
-            .set({ primaryGatewayId: gw.id, active: true, maintenanceMode: false })
-            .where(eq(paymentRoutesTable.id, existing.id));
-          routesUpdated++;
+          if (!existing.primaryGatewayId) {
+            /* Route exists but has no primary yet — PawaPay fills the slot */
+            await db.update(paymentRoutesTable)
+              .set({ primaryGatewayId: gw.id, active: true, maintenanceMode: false })
+              .where(eq(paymentRoutesTable.id, existing.id));
+            routesUpdated++;
+          } else if (existing.primaryGatewayId !== gw.id && !existing.secondaryGatewayId) {
+            /* Admin already chose a different primary — add PawaPay as secondary fallback */
+            await db.update(paymentRoutesTable)
+              .set({ secondaryGatewayId: gw.id })
+              .where(eq(paymentRoutesTable.id, existing.id));
+            routesUpdated++;
+          } else {
+            /* Route already fully configured — do not touch */
+            routesSkipped++;
+          }
         } else {
           await db.insert(paymentRoutesTable).values({
             countryCode, operatorSlug: slug, transactionType: "deposit",
@@ -854,7 +875,7 @@ router.post("/admin/payment-routing/pawapay-sync", requireAdmin, async (req: Req
       }
     }
 
-    logger.info({ operatorsCreated, operatorsUpdated, routesCreated, routesUpdated, env }, "[PawaPay Sync] Sync complete");
+    logger.info({ operatorsCreated, operatorsUpdated, routesCreated, routesUpdated, routesSkipped, env }, "[PawaPay Sync] Sync complete");
 
     res.json({
       success: true,
@@ -863,7 +884,7 @@ router.post("/admin/payment-routing/pawapay-sync", requireAdmin, async (req: Req
         countries: (config.countries ?? []).length,
         providers: routePairs.length,
         operatorsCreated, operatorsUpdated,
-        routesCreated, routesUpdated,
+        routesCreated, routesUpdated, routesSkipped,
         errors,
       },
     });
