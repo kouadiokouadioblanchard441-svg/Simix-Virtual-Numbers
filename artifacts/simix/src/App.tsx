@@ -231,50 +231,41 @@ function InnerRouter() {
   return (
     <div className="flex justify-center min-h-[100dvh] bg-black">
       <div className="w-full max-w-md bg-background relative shadow-2xl sm:border-x sm:border-border overflow-hidden">
-        <AnimatePresence mode="wait" initial={false}>
-          <motion.div
-            key={location}
-            variants={pageVariants}
-            initial="initial"
-            animate="animate"
-            exit="exit"
-            style={{ minHeight: "100dvh" }}
-          >
-            <Switch>
-              <Route path="/bienvenue" component={Welcome} />
-              <Route path="/splash" component={Splash} />
-              <Route path="/login" component={Login} />
-              <Route path="/register" component={Register} />
-              <Route path="/verify-email" component={VerifyOtp} />
-              <Route path="/forgot-password" component={ForgotPassword} />
-              <Route path="/reset-password" component={ResetPassword} />
-              <Route path="/dashboard" component={Dashboard} />
-              <Route path="/profile" component={Profile} />
-              <Route path="/wallet" component={Wallet} />
-              <Route path="/history" component={History} />
-              <Route path="/history/crypto" component={CryptoHistory} />
-              <Route path="/services" component={Services} />
-              <Route path="/countries" component={Countries} />
-              <Route path="/numbers/new" component={NumberDetails} />
-              <Route path="/numbers/:id" component={NumberAssigned} />
-              <Route path="/profile/informations" component={ProfileInformations} />
-              <Route path="/profile/securite" component={ProfileSecurite} />
-              <Route path="/notifications" component={NotificationsPage} />
-              <Route path="/profile/notifications" component={ProfileNotifications} />
-              <Route path="/profile/paiement" component={ProfilePaiement} />
-              <Route path="/profile/confidentialite" component={ProfileConfidentialite} />
-              <Route path="/profile/aide" component={ProfileAide} />
-              <Route path="/profile/aide/centre" component={ProfileAideCentre} />
-              <Route path="/profile/politique-confidentialite" component={ProfilePolitiqueConfidentialite} />
-              <Route path="/profile/cgu" component={ProfileCGU} />
-              <Route path="/profile/cookies" component={ProfileCookies} />
-              <Route path="/profile/mentions-legales" component={ProfileMentionsLegales} />
-              <Route path="/profile/parrainage" component={ProfileParrainage} />
-              <Route path="/profile/api-docs" component={ProfileApiDocs} />
-              <Route component={NotFound} />
-            </Switch>
-          </motion.div>
-        </AnimatePresence>
+        <div style={{ minHeight: "100dvh" }}>
+          <Switch>
+            <Route path="/bienvenue" component={Welcome} />
+            <Route path="/splash" component={Splash} />
+            <Route path="/login" component={Login} />
+            <Route path="/register" component={Register} />
+            <Route path="/verify-email" component={VerifyOtp} />
+            <Route path="/forgot-password" component={ForgotPassword} />
+            <Route path="/reset-password" component={ResetPassword} />
+            <Route path="/dashboard" component={Dashboard} />
+            <Route path="/profile" component={Profile} />
+            <Route path="/wallet" component={Wallet} />
+            <Route path="/history" component={History} />
+            <Route path="/history/crypto" component={CryptoHistory} />
+            <Route path="/services" component={Services} />
+            <Route path="/countries" component={Countries} />
+            <Route path="/numbers/new" component={NumberDetails} />
+            <Route path="/numbers/:id" component={NumberAssigned} />
+            <Route path="/profile/informations" component={ProfileInformations} />
+            <Route path="/profile/securite" component={ProfileSecurite} />
+            <Route path="/notifications" component={NotificationsPage} />
+            <Route path="/profile/notifications" component={ProfileNotifications} />
+            <Route path="/profile/paiement" component={ProfilePaiement} />
+            <Route path="/profile/confidentialite" component={ProfileConfidentialite} />
+            <Route path="/profile/aide" component={ProfileAide} />
+            <Route path="/profile/aide/centre" component={ProfileAideCentre} />
+            <Route path="/profile/politique-confidentialite" component={ProfilePolitiqueConfidentialite} />
+            <Route path="/profile/cgu" component={ProfileCGU} />
+            <Route path="/profile/cookies" component={ProfileCookies} />
+            <Route path="/profile/mentions-legales" component={ProfileMentionsLegales} />
+            <Route path="/profile/parrainage" component={ProfileParrainage} />
+            <Route path="/profile/api-docs" component={ProfileApiDocs} />
+            <Route component={NotFound} />
+          </Switch>
+        </div>
       </div>
     </div>
   );
