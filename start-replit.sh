@@ -2,10 +2,17 @@
 set -e
 
 export PORT=5000
-export DATABASE_URL="${SUPABASE_DATABASE_URL:-$DATABASE_URL}"
 
-# Build backend if dist/index.cjs is missing or stale
-if [ ! -f "dist/index.cjs" ] || [ ! -f "dist/thread-stream-worker.cjs" ]; then
+# Build backend if any required output files are missing
+NEED_BACKEND_BUILD=0
+for f in dist/index.cjs dist/thread-stream-worker.cjs dist/pino-worker.cjs; do
+  if [ ! -f "$f" ]; then
+    NEED_BACKEND_BUILD=1
+    break
+  fi
+done
+
+if [ "$NEED_BACKEND_BUILD" = "1" ]; then
   echo "[start-replit] Building backend..."
   node artifacts/api-server/build.mjs
 fi
