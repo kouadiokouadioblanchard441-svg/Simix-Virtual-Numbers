@@ -12,8 +12,13 @@ const router = Router();
  * recognises the manifest and shows the PWA install prompt.              */
 router.get("/manifest.webmanifest", (req, res) => {
   const currentDir = (globalThis as { __dirname?: string }).__dirname ?? __dirname;
-  const manifestPath = path.join(currentDir, "public", "manifest.webmanifest");
-  const fallback = path.join(currentDir, "public", "manifest.json");
+  /* Mirror the same two-step publicDir resolution used in app.ts so the
+   * manifest is found whether the server runs from dist/ or from the root. */
+  const publicDir = existsSync(path.join(currentDir, "public"))
+    ? path.join(currentDir, "public")
+    : path.join(currentDir, "..", "public");
+  const manifestPath = path.join(publicDir, "manifest.webmanifest");
+  const fallback     = path.join(publicDir, "manifest.json");
 
   const filePath = existsSync(manifestPath) ? manifestPath : existsSync(fallback) ? fallback : null;
 

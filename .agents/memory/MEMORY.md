@@ -8,3 +8,4 @@
 - [Seed idempotency rules](seed-idempotency.md) — seed functions must use onConflictDoNothing for admin-owned fields; only technical fields (name, dialCode, flag, color, category) may be updated on conflict.
 - [SIMIA multilingual support chat](simia-multilingual-chat.md) — language detection lives in the system prompt, not hard-coded branches; models narrate language switches unless explicitly forbidden; Groq has 12k TPM shared limit.
 - [Drizzle ORM error wrapping](drizzle-error-wrapping.md) — Drizzle 0.45+ wraps pg errors in DrizzleQueryError; raw pg err (code, detail) is at err.cause, not err directly.
+- [SEO router publicDir resolution](seo-router-publicdir.md) — seo.ts routes reading files from dist must use two-step publicDir fallback (currentDir/public → currentDir/../public), same as app.ts; direct path.join(currentDir,"public") fails at runtime.
