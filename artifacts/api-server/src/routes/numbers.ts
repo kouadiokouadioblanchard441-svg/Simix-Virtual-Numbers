@@ -27,6 +27,9 @@ import {
 } from "../lib/fraud-detection";
 import { FiveSimClient, FiveSimError, ISO_TO_5SIM, SERVICE_TO_5SIM, type FiveSimOrder } from "../lib/fivesim";
 import { logger } from "../lib/logger";
+import { auditLog } from "../lib/audit";
+import { sendNumberBuyAlert } from "../lib/telegram";
+import { lookupIp } from "../lib/geoip";
 import { broadcastNotification } from "./notifications";
 import { notificationsTable } from "@workspace/db";
 import {
@@ -483,6 +486,25 @@ router.post("/numbers", requireAuth, async (req, res): Promise<void> => {
     }).returning();
     if (notif) broadcastNotification(notif);
   } catch { /* non-critical */ }
+
+  /* Audit log + Telegram — fire-and-forget */
+  void (async () => {
+    try {
+      const geo = await lookupIp(ip);
+      auditLog({ userId: user.id, userName: user.fullName, action: "number_buy", entity: "virtual_number", entityId: vn!.id, ip, userAgent: ua, severity: "info", description: `Achat ${service.name} ${country.name} — ${price} FCFA` });
+      await sendNumberBuyAlert({
+        userId: user.id,
+        userName: user.fullName,
+        userPhone: user.phone,
+        service: service.name,
+        numberCountry: country.name,
+        price,
+        virtualNumber: phoneNumber,
+        ip,
+        geo,
+      });
+    } catch { /* non-fatal */ }
+  })();
 
   res.json(toNumber(vn, service, country, []));
 });

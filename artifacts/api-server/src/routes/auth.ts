@@ -19,6 +19,9 @@ import { isRegistrationEnabled, isEmailOtpEnabled } from "../lib/settings";
 import { createOtp, isUserInactive } from "../lib/otp";
 import { sendOtpEmail } from "../lib/email";
 import { requireTurnstile } from "../middlewares/turnstile";
+import { lookupIp } from "../lib/geoip";
+import { sendLoginAlert, sendRegisterAlert } from "../lib/telegram";
+import { auditLog } from "../lib/audit";
 
 function generateReferralCode(): string {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -135,6 +138,22 @@ router.post("/auth/register", requireTurnstile, async (req, res): Promise<void> 
   } catch (emailErr) {
     logger.error({ err: emailErr }, "[auth] registration OTP email error");
   }
+
+  /* Telegram alert + audit log — fire-and-forget */
+  void (async () => {
+    try {
+      const geo = await lookupIp(ip);
+      await sendRegisterAlert({
+        userId: user.id,
+        userName: user.fullName,
+        userPhone: user.phone,
+        countryCode: user.countryCode ?? "",
+        ip,
+        geo,
+      });
+      auditLog({ userId: user.id, userName: user.fullName, action: "register", entity: "user", entityId: user.id, ip, userAgent: req.headers["user-agent"] ?? "", severity: "info", description: `Nouvel utilisateur inscrit: ${user.phone}` });
+    } catch { /* non-fatal */ }
+  })();
 
   res.json({ user: toUser(user), token: session.id, requiresEmailVerification: true });
 });
@@ -263,17 +282,30 @@ router.post("/auth/login", requireTurnstile, async (req, res): Promise<void> => 
   /* Normal login — update last login timestamp + log history */
   await db.update(usersTable).set({ lastLoginAt: new Date() }).where(eq(usersTable.id, user.id));
 
-  /* Log login history (fire-and-forget) */
+  /* Géolocalisation + Telegram + historique — fire-and-forget */
   void (async () => {
     try {
-      const ua = req.headers["user-agent"] ?? "";
       const deviceType = /mobile|android|iphone|ipad/i.test(ua) ? "mobile" : "desktop";
+      const geo = await lookupIp(ip);
       await db.insert(loginHistoryTable).values({
         userId: user.id,
         ip,
         userAgent: ua,
         deviceType,
+        country: geo.country ?? null,
+        city: geo.city ?? null,
+        region: geo.region ?? null,
+        isp: geo.isp ?? null,
         success: "true",
+      });
+      await sendLoginAlert({
+        userId: user.id,
+        userName: user.fullName,
+        userPhone: user.phone,
+        ip,
+        userAgent: ua,
+        geo,
+        success: true,
       });
     } catch { /* non-fatal */ }
   })();
@@ -309,6 +341,18 @@ router.patch("/auth/me/password", requireAuth, async (req, res): Promise<void> =
   }
   const newHash = await bcrypt.hash(newPassword, 10);
   await db.update(usersTable).set({ passwordHash: newHash }).where(eq(usersTable.id, user.id));
+  auditLog({
+    userId: user.id,
+    userName: user.fullName,
+    action: "password_change",
+    entity: "user",
+    entityId: user.id,
+    ip: req.ip ?? "unknown",
+    userAgent: req.headers["user-agent"] ?? "",
+    severity: "warning",
+    description: `Changement de mot de passe: ${user.phone}`,
+    notifyTelegram: true,
+  });
   res.json({ success: true });
 });
 

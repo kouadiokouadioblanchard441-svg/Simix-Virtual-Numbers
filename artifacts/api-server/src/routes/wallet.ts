@@ -44,6 +44,7 @@ import { getMinDepositFcfa, getMaxBalanceFcfa } from "../lib/settings";
 import { broadcastNotification } from "./notifications";
 import { notificationsTable } from "@workspace/db";
 import { sendDepositConfirmationEmail } from "../lib/email";
+import { auditLog } from "../lib/audit";
 
 const router: IRouter = Router();
 
@@ -334,6 +335,8 @@ router.post(
           method: method?.name ?? methodSlug, description, externalDepositId: depositId,
         }).returning();
 
+        auditLog({ userId: user.id, userName: user.fullName, action: "deposit_initiated", entity: "transaction", entityId: pendingTx.id, ip: req.ip ?? "unknown", userAgent: req.headers["user-agent"] ?? "", severity: "info", description: `Recharge ${amountXof} FCFA via PawaPay (${methodSlug})` });
+
         /* Record pending FX profit if multi-currency */
         if (fxMeta && !isXofCurrency) {
           await db.insert(fxProfitsTable).values({
@@ -432,6 +435,8 @@ router.post(
           userId: user.id, type: "recharge", amount: amountXof, status: "pending",
           method: method?.name ?? methodSlug, description, externalDepositId,
         }).returning();
+
+        auditLog({ userId: user.id, userName: user.fullName, action: "deposit_initiated", entity: "transaction", entityId: pendingTx.id, ip: req.ip ?? "unknown", userAgent: req.headers["user-agent"] ?? "", severity: "info", description: `Recharge ${amountXof} FCFA via Clapay (${methodSlug})` });
 
         /* Record pending FX profit if multi-currency */
         if (fxMeta && !isXofCurrency) {
