@@ -1,20 +1,12 @@
 # See https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files for more about ignoring files.
 
 # compiled output
-# Root-level index.cjs, public/, migrations/ are the build outputs — committed for Plesk
-# dist/index.cjs is a tiny wrapper that delegates to root index.cjs — also committed
-# Everything else in dist/ is ignored
+# dist/ is fully committed for Plesk (pre-built deployment strategy)
 lib/*/dist
 lib/integrations/*/dist
 scripts/dist
 artifacts/api-server/dist
 artifacts/simix/dist
-dist/public/
-dist/migrations/
-dist/pino-file.cjs
-dist/pino-pretty.cjs
-dist/pino-worker.cjs
-dist/thread-stream-worker.cjs
 tmp
 out-tsc
 *.tsbuildinfo
