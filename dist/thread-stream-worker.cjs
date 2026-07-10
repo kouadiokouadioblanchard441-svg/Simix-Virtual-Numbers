@@ -9,9 +9,9 @@ var __commonJS = (cb, mod) => function __require() {
   }
 };
 
-// node_modules/.pnpm/real-require@0.2.0/node_modules/real-require/src/index.js
+// ../../node_modules/.pnpm/real-require@0.2.0/node_modules/real-require/src/index.js
 var require_src = __commonJS({
-  "node_modules/.pnpm/real-require@0.2.0/node_modules/real-require/src/index.js"(exports2, module2) {
+  "../../node_modules/.pnpm/real-require@0.2.0/node_modules/real-require/src/index.js"(exports2, module2) {
     var realImport2 = new Function("modulePath", "return import(modulePath)");
     function realRequire2(modulePath) {
       if (typeof __non_webpack__require__ === "function") {
@@ -23,9 +23,9 @@ var require_src = __commonJS({
   }
 });
 
-// node_modules/.pnpm/thread-stream@3.1.0/node_modules/thread-stream/lib/indexes.js
+// ../../node_modules/.pnpm/thread-stream@3.1.0/node_modules/thread-stream/lib/indexes.js
 var require_indexes = __commonJS({
-  "node_modules/.pnpm/thread-stream@3.1.0/node_modules/thread-stream/lib/indexes.js"(exports2, module2) {
+  "../../node_modules/.pnpm/thread-stream@3.1.0/node_modules/thread-stream/lib/indexes.js"(exports2, module2) {
     "use strict";
     var WRITE_INDEX2 = 4;
     var READ_INDEX2 = 8;
@@ -36,9 +36,9 @@ var require_indexes = __commonJS({
   }
 });
 
-// node_modules/.pnpm/thread-stream@3.1.0/node_modules/thread-stream/lib/wait.js
+// ../../node_modules/.pnpm/thread-stream@3.1.0/node_modules/thread-stream/lib/wait.js
 var require_wait = __commonJS({
-  "node_modules/.pnpm/thread-stream@3.1.0/node_modules/thread-stream/lib/wait.js"(exports2, module2) {
+  "../../node_modules/.pnpm/thread-stream@3.1.0/node_modules/thread-stream/lib/wait.js"(exports2, module2) {
     "use strict";
     var MAX_TIMEOUT = 1e3;
     function wait(state2, index, expected, timeout, done) {
@@ -94,7 +94,7 @@ var require_wait = __commonJS({
   }
 });
 
-// node_modules/.pnpm/thread-stream@3.1.0/node_modules/thread-stream/lib/worker.js
+// ../../node_modules/.pnpm/thread-stream@3.1.0/node_modules/thread-stream/lib/worker.js
 var { realImport, realRequire } = require_src();
 var { workerData, parentPort } = require("worker_threads");
 var { WRITE_INDEX, READ_INDEX } = require_indexes();

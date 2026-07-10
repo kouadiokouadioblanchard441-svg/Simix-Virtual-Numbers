@@ -445,10 +445,13 @@ router.post("/numbers", requireAuth, async (req, res): Promise<void> => {
       const commissionRate = await getReferralCommissionRate();
       const commissionAmount = Math.floor(price * commissionRate / 100);
       if (commissionAmount > 0) {
+        /* Referral bonuses are NOT added to the main wallet balance — they stay
+           isolated in referralBalance/referralEarnings and are only withdrawable
+           via the "Parrainage" withdrawal request flow (admin-validated). */
         await db.update(usersTable)
           .set({
-            balance: sql`${usersTable.balance} + ${commissionAmount}`,
             referralEarnings: sql`${usersTable.referralEarnings} + ${commissionAmount}`,
+            referralBalance: sql`${usersTable.referralBalance} + ${commissionAmount}`,
           })
           .where(eq(usersTable.id, user.referredBy));
 

@@ -395,6 +395,17 @@ export const adminApi = {
     priceFixed: number;
     total: number;
   }>("POST", "/admin/sync/apply-availability-prices"),
+
+  /* ── Referral withdrawals ── */
+  getReferralWithdrawals: (status?: string) =>
+    req<{ withdrawals: ReferralWithdrawal[]; pendingCount: number }>(
+      "GET",
+      `/admin/referral-withdrawals${status ? `?status=${status}` : ""}`,
+    ),
+  approveReferralWithdrawal: (id: string) =>
+    req<{ success: boolean }>("POST", `/admin/referral-withdrawals/${id}/approve`),
+  rejectReferralWithdrawal: (id: string, reason?: string) =>
+    req<{ success: boolean }>("POST", `/admin/referral-withdrawals/${id}/reject`, { reason }),
 };
 
 /* ── Pricing Matrix ── */
@@ -984,3 +995,26 @@ export interface DiagnosticsResult {
   ok:     boolean;
   checks: DiagnosticCheck[];
 }
+
+/* ── Referral withdrawals ───────────────────────────────────────── */
+export interface ReferralWithdrawal {
+  id: string;
+  userId: string;
+  amount: number;
+  countryCode: string;
+  operatorSlug: string;
+  phone: string;
+  status: "pending" | "paid" | "rejected";
+  adminNote: string | null;
+  processedBy: string | null;
+  processedAt: string | null;
+  createdAt: string;
+  userName: string | null;
+  userPhone: string | null;
+  userEmail: string | null;
+  countryName: string | null;
+  countryFlag: string | null;
+  operatorName: string | null;
+  operatorColor: string | null;
+}
+

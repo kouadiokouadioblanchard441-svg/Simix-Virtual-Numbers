@@ -32,6 +32,7 @@ import {
   GitMerge,
   Activity,
   RotateCcw,
+  Gift,
 } from "lucide-react";
 import { SimixLogo } from "@/components/simix-logo";
 import { cn } from "@/lib/utils";
@@ -60,6 +61,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/admin/orders",       label: "Commandes",         icon: ShoppingBag },
   { href: "/admin/transactions", label: "Transactions",      icon: CreditCard },
   { href: "/admin/refunds",      label: "Remboursements",    icon: RotateCcw },
+  { href: "/admin/referral-withdrawals", label: "Retraits parrainage", icon: Gift },
 
   /* ── Paiements ── */
   {

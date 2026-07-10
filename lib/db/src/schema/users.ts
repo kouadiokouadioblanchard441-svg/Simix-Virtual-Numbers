@@ -33,6 +33,10 @@ export const usersTable = pgTable("users", {
   referralCode: text("referral_code").unique(),
   referredBy: uuid("referred_by"),
   referralEarnings: integer("referral_earnings").notNull().default(0),
+  /** Withdrawable referral bonus balance — separate from the main wallet `balance`.
+   *  Increased by commissions, decreased when a withdrawal is requested (reserved),
+   *  refunded if the withdrawal is rejected by an admin. */
+  referralBalance: integer("referral_balance").notNull().default(0),
   apiKey: text("api_key").unique(),
   webhookUrl: text("webhook_url"),
   createdAt: timestamp("created_at", { withTimezone: true })

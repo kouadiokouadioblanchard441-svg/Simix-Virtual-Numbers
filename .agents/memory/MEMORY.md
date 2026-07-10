@@ -9,3 +9,5 @@
 - [SIMIA multilingual support chat](simia-multilingual-chat.md) — language detection lives in the system prompt, not hard-coded branches; models narrate language switches unless explicitly forbidden; Groq has 12k TPM shared limit.
 - [Drizzle ORM error wrapping](drizzle-error-wrapping.md) — Drizzle 0.45+ wraps pg errors in DrizzleQueryError; raw pg err (code, detail) is at err.cause, not err directly.
 - [SEO router publicDir resolution](seo-router-publicdir.md) — seo.ts routes reading files from dist must use two-step publicDir fallback (currentDir/public → currentDir/../public), same as app.ts; direct path.join(currentDir,"public") fails at runtime.
+- [Referral balance isolation & withdrawal reservation](referral-balance-isolation.md) — referral bonuses stay isolated from wallet; withdrawal reserves balance on request, admin reject refunds, guard status transitions with row locks.
+- [Migration source of truth](migration-source-of-truth.md) — lib/db/drizzle/ (+meta/_journal.json) is the real migration source, not the root migrations/ copy; build.mjs copies from lib/db/drizzle to dist; keep both in sync when hand-writing new SQL files.

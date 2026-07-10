@@ -3,12 +3,14 @@ import { useLocation } from "wouter";
 import { AppLayout } from "@/components/layout/app-layout";
 import { AuthGuard } from "@/components/auth-guard";
 import { useGetMe } from "@workspace/api-client-react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { formatFCFA } from "@/lib/format";
 import {
   ChevronLeft, Gift, Copy, CheckCheck, Users, TrendingUp,
-  Share2, Sparkles, ExternalLink,
+  Share2, Sparkles, ExternalLink, Wallet, X, ChevronDown,
+  Loader2, CheckCircle2, Clock, Smartphone,
 } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
@@ -21,12 +23,36 @@ interface Commission {
   refereePhone: string | null;
 }
 
+interface PendingWithdrawal {
+  id: string;
+  amount: number;
+  status: "pending" | "paid" | "rejected";
+  createdAt: string;
+}
+
 interface ReferralData {
   referralCode: string | null;
   totalEarnings: number;
+  referralBalance: number;
   commissionRate: number;
   referredCount: number;
+  pendingWithdrawal: PendingWithdrawal | null;
   commissions: Commission[];
+}
+
+interface WithdrawCountry {
+  code: string;
+  name: string;
+  flag: string;
+  dialCode: string;
+  popular: boolean;
+}
+
+interface WithdrawOperator {
+  slug: string;
+  name: string;
+  color: string;
+  logoUrl: string | null;
 }
 
 export default function ProfileParrainage() {
@@ -46,14 +72,17 @@ function ParrainageContent() {
   const [loading, setLoading] = useState(true);
   const [copiedCode, setCopiedCode] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
+  const [withdrawOpen, setWithdrawOpen] = useState(false);
 
-  useEffect(() => {
+  const loadData = () => {
     fetch(`${BASE}/api/referral/me`, { credentials: "include" })
       .then(r => r.ok ? r.json() : Promise.reject())
       .then(setData)
       .catch(() => setData(null))
       .finally(() => setLoading(false));
-  }, []);
+  };
+
+  useEffect(() => { loadData(); }, []);
 
   const referralLink = data?.referralCode
     ? `${window.location.origin}${BASE}/register?ref=${data.referralCode}`
@@ -154,6 +183,29 @@ function ParrainageContent() {
                   {loading ? "—" : formatFCFA(data?.totalEarnings ?? 0)}
                 </p>
               </div>
+            </div>
+
+            {/* Solde retirable + bouton retrait */}
+            <div className="mt-3 flex items-center gap-3 bg-black/25 rounded-xl p-3">
+              <div className="flex-1 min-w-0">
+                <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider mb-0.5">Solde retirable</p>
+                <p className="text-lg font-black text-foreground">
+                  {loading ? "—" : formatFCFA(data?.referralBalance ?? 0)}
+                </p>
+                {data?.pendingWithdrawal && (
+                  <p className="text-[11px] text-amber-400 flex items-center gap-1 mt-0.5">
+                    <Clock className="w-3 h-3" /> Retrait de {formatFCFA(data.pendingWithdrawal.amount)} en attente
+                  </p>
+                )}
+              </div>
+              <button
+                onClick={() => setWithdrawOpen(true)}
+                disabled={loading || !data?.referralBalance || !!data?.pendingWithdrawal}
+                className="flex items-center gap-2 px-4 h-11 rounded-xl bg-amber-500 hover:bg-amber-600 disabled:bg-secondary disabled:text-muted-foreground text-black text-sm font-bold transition-colors disabled:opacity-60 flex-shrink-0"
+              >
+                <Wallet className="w-4 h-4" />
+                Retrait
+              </button>
             </div>
           </motion.div>
 
@@ -287,6 +339,204 @@ function ParrainageContent() {
           </motion.div>
         </div>
       </div>
+
+      <WithdrawModal
+        open={withdrawOpen}
+        onClose={() => setWithdrawOpen(false)}
+        balance={data?.referralBalance ?? 0}
+        onSuccess={() => { setWithdrawOpen(false); loadData(); }}
+      />
     </div>
+  );
+}
+
+/* ─── Withdraw modal ──────────────────────────────────────────── */
+function WithdrawModal({
+  open, onClose, balance, onSuccess,
+}: { open: boolean; onClose: () => void; balance: number; onSuccess: () => void }) {
+  const { toast } = useToast();
+  const [countries, setCountries] = useState<WithdrawCountry[]>([]);
+  const [operators, setOperators] = useState<WithdrawOperator[]>([]);
+  const [countryOpen, setCountryOpen] = useState(false);
+  const [country, setCountry] = useState<WithdrawCountry | null>(null);
+  const [operator, setOperator] = useState<WithdrawOperator | null>(null);
+  const [phone, setPhone] = useState("");
+  const [loadingOperators, setLoadingOperators] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    /* Reset on open */
+    setCountry(null);
+    setOperator(null);
+    setOperators([]);
+    setPhone("");
+    setError(null);
+    fetch(`${BASE}/api/referral/withdraw-countries`, { credentials: "include" })
+      .then(r => r.ok ? r.json() : [])
+      .then(setCountries)
+      .catch(() => setCountries([]));
+  }, [open]);
+
+  useEffect(() => {
+    if (!country) { setOperators([]); return; }
+    setLoadingOperators(true);
+    setOperator(null);
+    fetch(`${BASE}/api/referral/withdraw-operators?countryCode=${country.code}`, { credentials: "include" })
+      .then(r => r.ok ? r.json() : [])
+      .then(setOperators)
+      .catch(() => setOperators([]))
+      .finally(() => setLoadingOperators(false));
+  }, [country]);
+
+  const canSubmit = !!country && !!operator && phone.replace(/\D/g, "").length >= 6 && !submitting;
+
+  const submit = async () => {
+    if (!canSubmit || !country || !operator) return;
+    setSubmitting(true);
+    setError(null);
+    try {
+      const res = await fetch(`${BASE}/api/referral/withdraw`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ countryCode: country.code, operatorSlug: operator.slug, phone }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.error || "Erreur lors de la demande");
+      toast({ title: "Demande envoyée", description: "Votre retrait sera validé par un administrateur." });
+      onSuccess();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <AnimatePresence>
+      {open && (
+        <>
+          <motion.div
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            onClick={onClose}
+            className="fixed inset-0 bg-black/60 z-40"
+          />
+          <motion.div
+            initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 40 }}
+            className="fixed inset-x-0 bottom-0 sm:bottom-auto sm:top-1/2 sm:left-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 z-50 sm:max-w-sm sm:w-full"
+          >
+            <div className="bg-card border border-card-border rounded-t-3xl sm:rounded-3xl p-5 max-h-[85vh] overflow-y-auto">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <div className="w-9 h-9 rounded-xl bg-amber-500/15 flex items-center justify-center">
+                    <Wallet className="w-4 h-4 text-amber-400" />
+                  </div>
+                  <div>
+                    <h2 className="text-base font-extrabold text-foreground">Retrait de parrainage</h2>
+                    <p className="text-xs text-muted-foreground">Solde disponible : {formatFCFA(balance)}</p>
+                  </div>
+                </div>
+                <button onClick={onClose} className="w-8 h-8 rounded-lg bg-secondary flex items-center justify-center text-foreground">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Country picker */}
+              <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1.5">Pays</p>
+              <div className="relative mb-3">
+                <button
+                  type="button"
+                  onClick={() => setCountryOpen(o => !o)}
+                  className="w-full flex items-center justify-between gap-2 bg-secondary/60 rounded-xl px-3.5 py-3 text-sm"
+                >
+                  {country ? (
+                    <span className="flex items-center gap-2">
+                      <span className="text-lg leading-none">{country.flag}</span>
+                      <span className="font-medium text-foreground">{country.name}</span>
+                      <span className="text-muted-foreground text-xs font-mono">{country.dialCode}</span>
+                    </span>
+                  ) : (
+                    <span className="text-muted-foreground">Sélectionnez votre pays</span>
+                  )}
+                  <ChevronDown className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                </button>
+                {countryOpen && (
+                  <div className="absolute z-10 mt-1 w-full max-h-56 overflow-y-auto bg-card border border-card-border rounded-xl shadow-lg p-1.5">
+                    {countries.length === 0 ? (
+                      <div className="text-xs text-muted-foreground text-center py-4">Chargement…</div>
+                    ) : countries.map(c => (
+                      <button
+                        key={c.code}
+                        type="button"
+                        onClick={() => { setCountry(c); setCountryOpen(false); }}
+                        className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-secondary/60 text-sm text-left"
+                      >
+                        <span className="text-base leading-none">{c.flag}</span>
+                        <span className="flex-1 font-medium text-foreground truncate">{c.name}</span>
+                        <span className="text-muted-foreground text-xs font-mono">{c.dialCode}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Phone number */}
+              <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1.5">Numéro de retrait</p>
+              <div className="flex items-center gap-2 bg-secondary/60 rounded-xl px-3.5 py-3 mb-3">
+                <Smartphone className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                {country && <span className="text-xs text-muted-foreground font-mono flex-shrink-0">{country.dialCode}</span>}
+                <input
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value.replace(/[^\d\s]/g, ""))}
+                  placeholder="Ex: 07 00 00 00 00"
+                  className="flex-1 bg-transparent outline-none text-sm text-foreground placeholder:text-muted-foreground"
+                />
+              </div>
+
+              {/* Operator picker */}
+              <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1.5">Opérateur mobile money</p>
+              {!country ? (
+                <p className="text-xs text-muted-foreground mb-3">Sélectionnez d'abord un pays</p>
+              ) : loadingOperators ? (
+                <div className="flex items-center justify-center py-4"><Loader2 className="w-4 h-4 animate-spin text-muted-foreground" /></div>
+              ) : operators.length === 0 ? (
+                <p className="text-xs text-muted-foreground mb-3">Aucun opérateur disponible pour ce pays</p>
+              ) : (
+                <div className="grid grid-cols-2 gap-2 mb-3">
+                  {operators.map(op => (
+                    <button
+                      key={op.slug}
+                      type="button"
+                      onClick={() => setOperator(op)}
+                      className="flex items-center gap-2 px-3 py-2.5 rounded-xl border-2 transition-all text-left"
+                      style={operator?.slug === op.slug ? {
+                        backgroundColor: `${op.color}15`, borderColor: `${op.color}80`,
+                      } : { borderColor: "transparent" }}
+                    >
+                      <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: op.color }} />
+                      <span className="text-sm font-semibold text-foreground truncate">{op.name}</span>
+                      {operator?.slug === op.slug && <CheckCircle2 className="w-3.5 h-3.5 ml-auto flex-shrink-0" style={{ color: op.color }} />}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {error && <p className="text-xs text-red-400 mb-3">{error}</p>}
+
+              <button
+                onClick={submit}
+                disabled={!canSubmit}
+                className="w-full flex items-center justify-center gap-2 h-12 rounded-xl bg-amber-500 hover:bg-amber-600 disabled:opacity-40 text-black text-sm font-bold transition-colors"
+              >
+                {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wallet className="w-4 h-4" />}
+                Demander le retrait de {formatFCFA(balance)}
+              </button>
+            </div>
+          </motion.div>
+        </>
+      )}
+    </AnimatePresence>
   );
 }
