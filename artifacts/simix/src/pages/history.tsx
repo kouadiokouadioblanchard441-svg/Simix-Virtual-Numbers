@@ -14,7 +14,7 @@ import { useState, useMemo, useRef } from "react";
 import { cn } from "@/lib/utils";
 import {
   ArrowUpCircle, ShoppingBag, Search, X, CheckCircle2, XCircle, Clock,
-  Copy, ChevronRight, Shield, Globe, Bitcoin,
+  Copy, ChevronRight, Shield, Globe, Bitcoin, ArrowDownLeft, Users,
 } from "lucide-react";
 import { useLocation } from "wouter";
 
@@ -31,6 +31,18 @@ interface TxItem {
   createdAt: string;
 }
 
+interface WithdrawalItem {
+  id: string;
+  amount: number;
+  countryCode: string;
+  operatorSlug: string;
+  phone: string;
+  status: "pending" | "paid" | "rejected";
+  adminNote?: string | null;
+  createdAt: string;
+  processedAt?: string | null;
+}
+
 interface NumberItem {
   id: string;
   phoneNumber: string;
@@ -44,8 +56,9 @@ interface NumberItem {
 }
 
 type UnifiedItem =
-  | { kind: "tx"; data: TxItem; createdAt: Date }
-  | { kind: "num"; data: NumberItem; createdAt: Date };
+  | { kind: "tx";  data: TxItem;         createdAt: Date }
+  | { kind: "num"; data: NumberItem;      createdAt: Date }
+  | { kind: "wd";  data: WithdrawalItem;  createdAt: Date };
 
 /* ─── Helpers ─── */
 function methodColor(name?: string): string {
@@ -98,6 +111,18 @@ function copyToClipboard(text: string, label: string, setCopied: (v: string) => 
     setCopied(label);
     setTimeout(() => setCopied(""), 2000);
   });
+}
+
+/* ─── Withdrawal status helper ─── */
+function withdrawalStatusConfig(status: string) {
+  switch (status) {
+    case "paid":
+      return { color: "#10B981", bg: "bg-emerald-500/10", text: "text-emerald-400", label: "Payé", icon: CheckCircle2 };
+    case "rejected":
+      return { color: "#EF4444", bg: "bg-rose-500/10", text: "text-rose-400", label: "Rejeté", icon: XCircle };
+    default: // pending
+      return { color: "#F59E0B", bg: "bg-amber-500/10", text: "text-amber-400", label: "En attente", icon: Clock };
+  }
 }
 
 /* ─── Flag image ─── */
@@ -191,6 +216,56 @@ function OperatorLogo({ name, size = 40 }: { name?: string; size?: number }) {
       style={{ width: size, height: size, borderRadius: Math.round(size * 0.28), background: color, fontSize: size * 0.32 }}
     >
       {initials}
+    </div>
+  );
+}
+
+/* ─── Withdrawal Card (retrait parrainage) ─── */
+function WithdrawalCard({ wd }: { wd: WithdrawalItem }) {
+  const st = withdrawalStatusConfig(wd.status);
+  const Icon = st.icon;
+  const timeAgo = formatDistanceToNow(new Date(wd.createdAt), { locale: fr, addSuffix: true });
+
+  return (
+    <div className="w-full flex items-center gap-3 px-4 py-3.5 bg-card border border-card-border rounded-2xl text-left">
+      {/* Colored left accent */}
+      <div className="w-0.5 h-10 rounded-full flex-shrink-0" style={{ backgroundColor: "#F59E0B" }} />
+
+      {/* Icon avatar */}
+      <div className="flex items-center justify-center flex-shrink-0 shadow-sm font-black text-amber-500 rounded-[11px]"
+           style={{ width: 40, height: 40, background: "#F59E0B22" }}>
+        <ArrowDownLeft className="w-5 h-5" />
+      </div>
+
+      <div className="flex-1 min-w-0">
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0">
+            <p className="text-sm font-bold text-foreground truncate flex items-center gap-1">
+              <Users className="w-3.5 h-3.5 text-amber-400 flex-shrink-0" />
+              Retrait parrainage
+            </p>
+            <p className="text-xs text-muted-foreground font-mono truncate mt-0.5">{wd.phone}</p>
+          </div>
+          <div className="text-right flex-shrink-0">
+            <p className="text-sm font-black text-amber-400">-{formatFCFA(wd.amount)}</p>
+            <p className="text-[10px] text-muted-foreground mt-0.5">{timeAgo}</p>
+          </div>
+        </div>
+        <div className="flex items-center justify-between mt-1.5">
+          <span className={cn("inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full", st.bg, st.text)}>
+            <Icon className="w-2.5 h-2.5" />
+            {st.label}
+          </span>
+          {wd.adminNote && wd.status === "rejected" && (
+            <span className="text-[10px] text-rose-400/70 truncate max-w-[120px]">{wd.adminNote}</span>
+          )}
+          {wd.status === "paid" && wd.processedAt && (
+            <span className="text-[10px] text-muted-foreground/40">
+              payé {formatDistanceToNow(new Date(wd.processedAt), { locale: fr, addSuffix: true })}
+            </span>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
@@ -612,7 +687,7 @@ function HistoryContent() {
   const [selectedNum, setSelectedNum] = useState<NumberItem | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
 
-  /* ── Fetch both data sources ── */
+  /* ── Fetch all data sources ── */
   const { data: rawTransactions = [], isLoading: loadingTx } = useQuery({
     queryKey: getListTransactionsQueryKey(),
     queryFn: listTransactions,
@@ -622,35 +697,48 @@ function HistoryContent() {
     query: { queryKey: getListNumberHistoryQueryKey() },
   });
 
+  const { data: rawWithdrawals = [], isLoading: loadingWd } = useQuery<WithdrawalItem[]>({
+    queryKey: ["referral-withdrawals"],
+    queryFn: async () => {
+      const res = await fetch("/api/referral/withdrawals", { credentials: "include" });
+      if (!res.ok) return [];
+      return res.json();
+    },
+  });
+
   const transactions = rawTransactions as unknown as TxItem[];
   const numberHistory = numbers as unknown as NumberItem[];
-  const isLoading = loadingTx || loadingNums;
+  const withdrawals = rawWithdrawals as WithdrawalItem[];
+  const isLoading = loadingTx || loadingNums || loadingWd;
 
   /* ── Build unified list ── */
   const unified = useMemo<UnifiedItem[]>(() => {
     const txItems: UnifiedItem[] = transactions
       .filter(t => t.type === "recharge")
-      .map(t => ({ kind: "tx", data: t, createdAt: new Date(t.createdAt) }));
+      .map(t => ({ kind: "tx" as const, data: t, createdAt: new Date(t.createdAt) }));
 
     const numItems: UnifiedItem[] = numberHistory
-      .map(n => ({ kind: "num", data: n, createdAt: new Date(n.createdAt) }));
+      .map(n => ({ kind: "num" as const, data: n, createdAt: new Date(n.createdAt) }));
 
-    return [...txItems, ...numItems].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
-  }, [transactions, numberHistory]);
+    const wdItems: UnifiedItem[] = withdrawals
+      .map(w => ({ kind: "wd" as const, data: w, createdAt: new Date(w.createdAt) }));
+
+    return [...txItems, ...numItems, ...wdItems].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+  }, [transactions, numberHistory, withdrawals]);
 
   /* ── Filtered items based on tab + status + search ── */
   const filtered = useMemo<UnifiedItem[]>(() => {
     let items = unified;
 
     if (tab === "recharges") items = items.filter(i => i.kind === "tx");
-    if (tab === "achats") items = items.filter(i => i.kind === "num");
+    if (tab === "achats")    items = items.filter(i => i.kind === "num" || i.kind === "wd");
 
     if (statusFilter !== "all") {
       items = items.filter(i => {
-        const s = i.kind === "tx" ? i.data.status : i.data.status;
-        if (statusFilter === "completed") return s === "completed" || s === "received";
-        if (statusFilter === "pending") return s === "pending";
-        if (statusFilter === "failed") return s === "failed" || s === "cancelled" || s === "expired";
+        const s = i.data.status;
+        if (statusFilter === "completed") return s === "completed" || s === "received" || s === "paid";
+        if (statusFilter === "pending")   return s === "pending";
+        if (statusFilter === "failed")    return s === "failed" || s === "cancelled" || s === "expired" || s === "rejected";
         return true;
       });
     }
@@ -691,11 +779,12 @@ function HistoryContent() {
 
   const completedDeposits = transactions.filter(t => t.type === "recharge" && t.status === "completed").length;
   const purchaseCount = numberHistory.length;
+  const withdrawalCount = withdrawals.length;
 
   const TABS = [
-    { id: "all" as const, label: "Tout", count: transactions.filter(t => t.type === "recharge").length + purchaseCount },
+    { id: "all" as const,      label: "Tout",    count: transactions.filter(t => t.type === "recharge").length + purchaseCount + withdrawalCount },
     { id: "recharges" as const, label: "Dépôts", count: transactions.filter(t => t.type === "recharge").length },
-    { id: "achats" as const, label: "Achats", count: purchaseCount },
+    { id: "achats" as const,    label: "Achats",  count: purchaseCount + withdrawalCount },
   ];
 
   const STATUS_FILTERS = [
@@ -844,6 +933,8 @@ function HistoryContent() {
                       >
                         {item.kind === "tx" ? (
                           <DepositCard tx={item.data} onClick={() => setSelectedTx(item.data)} />
+                        ) : item.kind === "wd" ? (
+                          <WithdrawalCard wd={item.data} />
                         ) : (
                           <PurchaseCard num={item.data} onClick={() => setSelectedNum(item.data)} />
                         )}

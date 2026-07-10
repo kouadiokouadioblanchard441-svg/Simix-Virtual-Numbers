@@ -6,7 +6,7 @@
  *   POST /admin/referral-withdrawals/:id/reject  — reject + refund the reserved balance
  */
 import { Router, type IRouter, type Request, type Response } from "express";
-import { desc, eq, sql } from "drizzle-orm";
+import { desc, eq, sql, and } from "drizzle-orm";
 import {
   db,
   usersTable,
