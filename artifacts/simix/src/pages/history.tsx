@@ -751,6 +751,11 @@ function HistoryContent() {
             (i.data.description ?? "").toLowerCase().includes(q) ||
             (i.data.phoneNumber ?? "").includes(q) ||
             (i.data.externalDepositId ?? "").toLowerCase().includes(q);
+        } else if (i.kind === "wd") {
+          return i.data.phone.includes(q) ||
+            i.data.operatorSlug.toLowerCase().includes(q) ||
+            i.data.countryCode.toLowerCase().includes(q) ||
+            "retrait parrainage".includes(q);
         } else {
           return i.data.service.name.toLowerCase().includes(q) ||
             i.data.phoneNumber.includes(q) ||
