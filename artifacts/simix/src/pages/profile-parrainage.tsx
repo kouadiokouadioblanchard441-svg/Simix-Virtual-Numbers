@@ -431,8 +431,10 @@ function WithdrawModal({
             initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 40 }}
             className="fixed inset-x-0 bottom-0 sm:bottom-auto sm:top-1/2 sm:left-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 z-50 sm:max-w-sm sm:w-full"
           >
-            <div className="bg-card border border-card-border rounded-t-3xl sm:rounded-3xl p-5 max-h-[85vh] overflow-y-auto">
-              <div className="flex items-center justify-between mb-4">
+            <div className="bg-card border border-card-border rounded-t-3xl sm:rounded-3xl flex flex-col max-h-[85dvh] sm:max-h-[90vh]">
+
+              {/* ── Header (fixe, ne scroll pas) ── */}
+              <div className="flex items-center justify-between px-5 pt-5 pb-4 flex-shrink-0">
                 <div className="flex items-center gap-2">
                   <div className="w-9 h-9 rounded-xl bg-amber-500/15 flex items-center justify-center">
                     <Wallet className="w-4 h-4 text-amber-400" />
@@ -447,123 +449,129 @@ function WithdrawModal({
                 </button>
               </div>
 
-              {/* Country picker */}
-              <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1.5">Pays</p>
-              <div className="relative mb-3">
-                <button
-                  type="button"
-                  onClick={() => setCountryOpen(o => !o)}
-                  className="w-full flex items-center justify-between gap-2 bg-secondary/60 rounded-xl px-3.5 py-3 text-sm"
-                >
-                  {country ? (
-                    <span className="flex items-center gap-2">
-                      <span className="text-lg leading-none">{country.flag}</span>
-                      <span className="font-medium text-foreground">{country.name}</span>
-                      <span className="text-muted-foreground text-xs font-mono">{country.dialCode}</span>
-                    </span>
-                  ) : (
-                    <span className="text-muted-foreground">Sélectionnez votre pays</span>
+              {/* ── Contenu scrollable ── */}
+              <div className="flex-1 overflow-y-auto px-5 pb-2">
+
+                {/* Country picker */}
+                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1.5">Pays</p>
+                <div className="relative mb-3">
+                  <button
+                    type="button"
+                    onClick={() => setCountryOpen(o => !o)}
+                    className="w-full flex items-center justify-between gap-2 bg-secondary/60 rounded-xl px-3.5 py-3 text-sm"
+                  >
+                    {country ? (
+                      <span className="flex items-center gap-2">
+                        <span className="text-lg leading-none">{country.flag}</span>
+                        <span className="font-medium text-foreground">{country.name}</span>
+                        <span className="text-muted-foreground text-xs font-mono">{country.dialCode}</span>
+                      </span>
+                    ) : (
+                      <span className="text-muted-foreground">Sélectionnez votre pays</span>
+                    )}
+                    <ChevronDown className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                  </button>
+                  {countryOpen && (
+                    <div className="absolute z-10 mt-1 w-full max-h-48 overflow-y-auto bg-card border border-card-border rounded-xl shadow-lg p-1.5">
+                      {countries.length === 0 ? (
+                        <div className="text-xs text-muted-foreground text-center py-4">Chargement…</div>
+                      ) : countries.map(c => (
+                        <button
+                          key={c.code}
+                          type="button"
+                          onClick={() => { setCountry(c); setCountryOpen(false); }}
+                          className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-secondary/60 text-sm text-left"
+                        >
+                          <span className="text-base leading-none">{c.flag}</span>
+                          <span className="flex-1 font-medium text-foreground truncate">{c.name}</span>
+                          <span className="text-muted-foreground text-xs font-mono">{c.dialCode}</span>
+                        </button>
+                      ))}
+                    </div>
                   )}
-                  <ChevronDown className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-                </button>
-                {countryOpen && (
-                  <div className="absolute z-10 mt-1 w-full max-h-56 overflow-y-auto bg-card border border-card-border rounded-xl shadow-lg p-1.5">
-                    {countries.length === 0 ? (
-                      <div className="text-xs text-muted-foreground text-center py-4">Chargement…</div>
-                    ) : countries.map(c => (
+                </div>
+
+                {/* Phone number */}
+                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1.5">Numéro de retrait</p>
+                <div className="flex items-center gap-2 bg-secondary/60 rounded-xl px-3.5 py-3 mb-3">
+                  <Smartphone className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                  {country && <span className="text-xs text-muted-foreground font-mono flex-shrink-0">{country.dialCode}</span>}
+                  <input
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value.replace(/[^\d\s]/g, ""))}
+                    placeholder="Ex: 07 00 00 00 00"
+                    className="flex-1 bg-transparent outline-none text-sm text-foreground placeholder:text-muted-foreground"
+                  />
+                </div>
+
+                {/* Operator picker */}
+                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1.5">Opérateur mobile money</p>
+                {!country ? (
+                  <p className="text-xs text-muted-foreground mb-3">Sélectionnez d'abord un pays</p>
+                ) : loadingOperators ? (
+                  <div className="flex items-center justify-center py-4"><Loader2 className="w-4 h-4 animate-spin text-muted-foreground" /></div>
+                ) : operators.length === 0 ? (
+                  <p className="text-xs text-muted-foreground mb-3">Aucun opérateur disponible pour ce pays</p>
+                ) : (
+                  <div className="grid grid-cols-2 gap-2 mb-3">
+                    {operators.map(op => (
                       <button
-                        key={c.code}
+                        key={op.slug}
                         type="button"
-                        onClick={() => { setCountry(c); setCountryOpen(false); }}
-                        className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-secondary/60 text-sm text-left"
+                        onClick={() => setOperator(op)}
+                        className="flex items-center gap-2 px-3 py-2.5 rounded-xl border-2 transition-all text-left"
+                        style={operator?.slug === op.slug ? {
+                          backgroundColor: `${op.color}15`, borderColor: `${op.color}80`,
+                        } : { borderColor: "transparent" }}
                       >
-                        <span className="text-base leading-none">{c.flag}</span>
-                        <span className="flex-1 font-medium text-foreground truncate">{c.name}</span>
-                        <span className="text-muted-foreground text-xs font-mono">{c.dialCode}</span>
+                        <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: op.color }} />
+                        <span className="text-sm font-semibold text-foreground truncate">{op.name}</span>
+                        {operator?.slug === op.slug && <CheckCircle2 className="w-3.5 h-3.5 ml-auto flex-shrink-0" style={{ color: op.color }} />}
                       </button>
                     ))}
                   </div>
                 )}
-              </div>
 
-              {/* Phone number */}
-              <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1.5">Numéro de retrait</p>
-              <div className="flex items-center gap-2 bg-secondary/60 rounded-xl px-3.5 py-3 mb-3">
-                <Smartphone className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-                {country && <span className="text-xs text-muted-foreground font-mono flex-shrink-0">{country.dialCode}</span>}
-                <input
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value.replace(/[^\d\s]/g, ""))}
-                  placeholder="Ex: 07 00 00 00 00"
-                  className="flex-1 bg-transparent outline-none text-sm text-foreground placeholder:text-muted-foreground"
-                />
-              </div>
-
-              {/* Operator picker */}
-              <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1.5">Opérateur mobile money</p>
-              {!country ? (
-                <p className="text-xs text-muted-foreground mb-3">Sélectionnez d'abord un pays</p>
-              ) : loadingOperators ? (
-                <div className="flex items-center justify-center py-4"><Loader2 className="w-4 h-4 animate-spin text-muted-foreground" /></div>
-              ) : operators.length === 0 ? (
-                <p className="text-xs text-muted-foreground mb-3">Aucun opérateur disponible pour ce pays</p>
-              ) : (
-                <div className="grid grid-cols-2 gap-2 mb-3">
-                  {operators.map(op => (
-                    <button
-                      key={op.slug}
-                      type="button"
-                      onClick={() => setOperator(op)}
-                      className="flex items-center gap-2 px-3 py-2.5 rounded-xl border-2 transition-all text-left"
-                      style={operator?.slug === op.slug ? {
-                        backgroundColor: `${op.color}15`, borderColor: `${op.color}80`,
-                      } : { borderColor: "transparent" }}
-                    >
-                      <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: op.color }} />
-                      <span className="text-sm font-semibold text-foreground truncate">{op.name}</span>
-                      {operator?.slug === op.slug && <CheckCircle2 className="w-3.5 h-3.5 ml-auto flex-shrink-0" style={{ color: op.color }} />}
-                    </button>
-                  ))}
+                {/* Amount */}
+                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1.5">Montant à retirer</p>
+                <div className="flex items-center gap-2 bg-secondary/60 rounded-xl px-3.5 py-3 mb-1">
+                  <Wallet className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                  <input
+                    value={amount}
+                    onChange={(e) => setAmount(e.target.value.replace(/[^\d.,\s]/g, ""))}
+                    placeholder={`Max ${formatFCFA(balance)}`}
+                    inputMode="numeric"
+                    className="flex-1 bg-transparent outline-none text-sm text-foreground placeholder:text-muted-foreground"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setAmount(String(balance))}
+                    className="text-[10px] font-bold text-amber-400 hover:text-amber-300 uppercase tracking-wider flex-shrink-0 px-1"
+                  >
+                    Tout
+                  </button>
                 </div>
-              )}
+                {amount !== "" && !amountValid && (
+                  <p className="text-xs text-red-400 mt-1">
+                    {parsedAmount > balance ? `Maximum disponible : ${formatFCFA(balance)}` : "Montant invalide"}
+                  </p>
+                )}
 
-              {/* Amount */}
-              <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1.5">Montant à retirer</p>
-              <div className="flex items-center gap-2 bg-secondary/60 rounded-xl px-3.5 py-3 mb-1">
-                <Wallet className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-                <input
-                  value={amount}
-                  onChange={(e) => setAmount(e.target.value.replace(/[^\d.,\s]/g, ""))}
-                  placeholder={`Max ${formatFCFA(balance)}`}
-                  inputMode="numeric"
-                  className="flex-1 bg-transparent outline-none text-sm text-foreground placeholder:text-muted-foreground"
-                />
+              </div>
+
+              {/* ── Bouton fixé en bas, toujours visible ── */}
+              <div className="flex-shrink-0 px-5 pt-3 pb-5 border-t border-card-border/40">
+                {error && <p className="text-xs text-red-400 mb-2">{error}</p>}
                 <button
-                  type="button"
-                  onClick={() => setAmount(String(balance))}
-                  className="text-[10px] font-bold text-amber-400 hover:text-amber-300 uppercase tracking-wider flex-shrink-0 px-1"
+                  onClick={submit}
+                  disabled={!canSubmit}
+                  className="w-full flex items-center justify-center gap-2 h-12 rounded-xl bg-amber-500 hover:bg-amber-600 disabled:opacity-40 text-black text-sm font-bold transition-colors"
                 >
-                  Tout
+                  {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wallet className="w-4 h-4" />}
+                  {amountValid ? `Demander le retrait de ${formatFCFA(parsedAmount)}` : "Demander le retrait"}
                 </button>
               </div>
-              {amount !== "" && !amountValid && (
-                <p className="text-xs text-red-400 mb-2">
-                  {parsedAmount > balance ? `Maximum disponible : ${formatFCFA(balance)}` : "Montant invalide"}
-                </p>
-              )}
-              {amount === "" && <div className="mb-3" />}
-              {amount !== "" && amountValid && <div className="mb-3" />}
 
-              {error && <p className="text-xs text-red-400 mb-3">{error}</p>}
-
-              <button
-                onClick={submit}
-                disabled={!canSubmit}
-                className="w-full flex items-center justify-center gap-2 h-12 rounded-xl bg-amber-500 hover:bg-amber-600 disabled:opacity-40 text-black text-sm font-bold transition-colors"
-              >
-                {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wallet className="w-4 h-4" />}
-                {amountValid ? `Demander le retrait de ${formatFCFA(parsedAmount)}` : "Demander le retrait"}
-              </button>
             </div>
           </motion.div>
         </>
