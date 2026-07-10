@@ -128,7 +128,7 @@ router.get("/referral/withdrawals", requireAuth, async (req, res): Promise<void>
    request awaits admin validation in /admin/referral-withdrawals. */
 router.post("/referral/withdraw", requireAuth, async (req, res): Promise<void> => {
   const user = req.user!;
-  const { countryCode, operatorSlug, phone } = req.body ?? {};
+  const { countryCode, operatorSlug, phone, amount: rawAmount } = req.body ?? {};
 
   if (!countryCode || typeof countryCode !== "string") {
     res.status(400).json({ error: "Pays requis" });
@@ -140,6 +140,11 @@ router.post("/referral/withdraw", requireAuth, async (req, res): Promise<void> =
   }
   if (!phone || typeof phone !== "string" || phone.replace(/\D/g, "").length < 6) {
     res.status(400).json({ error: "Numéro de retrait invalide" });
+    return;
+  }
+  const requestedAmount = rawAmount !== undefined ? Number(rawAmount) : null;
+  if (requestedAmount !== null && (isNaN(requestedAmount) || requestedAmount <= 0)) {
+    res.status(400).json({ error: "Montant invalide" });
     return;
   }
 
@@ -176,11 +181,16 @@ router.post("/referral/withdraw", requireAuth, async (req, res): Promise<void> =
         .limit(1);
       if (!operator) throw new Error("INVALID_OPERATOR");
 
-      const amount = freshUser.referralBalance;
+      /* Use requested amount or fall back to full balance */
+      const amount = requestedAmount !== null
+        ? Math.min(requestedAmount, freshUser.referralBalance)
+        : freshUser.referralBalance;
+
+      if (amount <= 0) throw new Error("NO_BALANCE");
 
       /* Reserve the funds immediately */
       await tx.update(usersTable)
-        .set({ referralBalance: 0 })
+        .set({ referralBalance: freshUser.referralBalance - amount })
         .where(eq(usersTable.id, user.id));
 
       const [withdrawal] = await tx.insert(referralWithdrawalsTable).values({

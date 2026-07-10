@@ -361,6 +361,7 @@ function WithdrawModal({
   const [country, setCountry] = useState<WithdrawCountry | null>(null);
   const [operator, setOperator] = useState<WithdrawOperator | null>(null);
   const [phone, setPhone] = useState("");
+  const [amount, setAmount] = useState("");
   const [loadingOperators, setLoadingOperators] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -372,6 +373,7 @@ function WithdrawModal({
     setOperator(null);
     setOperators([]);
     setPhone("");
+    setAmount("");
     setError(null);
     fetch(`${BASE}/api/referral/withdraw-countries`, { credentials: "include" })
       .then(r => r.ok ? r.json() : [])
@@ -390,7 +392,9 @@ function WithdrawModal({
       .finally(() => setLoadingOperators(false));
   }, [country]);
 
-  const canSubmit = !!country && !!operator && phone.replace(/\D/g, "").length >= 6 && !submitting;
+  const parsedAmount = parseFloat(amount.replace(/\s/g, "").replace(",", "."));
+  const amountValid = !isNaN(parsedAmount) && parsedAmount > 0 && parsedAmount <= balance;
+  const canSubmit = !!country && !!operator && phone.replace(/\D/g, "").length >= 6 && amountValid && !submitting;
 
   const submit = async () => {
     if (!canSubmit || !country || !operator) return;
@@ -401,7 +405,7 @@ function WithdrawModal({
         method: "POST",
         credentials: "include",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ countryCode: country.code, operatorSlug: operator.slug, phone }),
+        body: JSON.stringify({ countryCode: country.code, operatorSlug: operator.slug, phone, amount: parsedAmount }),
       });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(body.error || "Erreur lors de la demande");
@@ -523,6 +527,33 @@ function WithdrawModal({
                 </div>
               )}
 
+              {/* Amount */}
+              <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1.5">Montant à retirer</p>
+              <div className="flex items-center gap-2 bg-secondary/60 rounded-xl px-3.5 py-3 mb-1">
+                <Wallet className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                <input
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value.replace(/[^\d.,\s]/g, ""))}
+                  placeholder={`Max ${formatFCFA(balance)}`}
+                  inputMode="numeric"
+                  className="flex-1 bg-transparent outline-none text-sm text-foreground placeholder:text-muted-foreground"
+                />
+                <button
+                  type="button"
+                  onClick={() => setAmount(String(balance))}
+                  className="text-[10px] font-bold text-amber-400 hover:text-amber-300 uppercase tracking-wider flex-shrink-0 px-1"
+                >
+                  Tout
+                </button>
+              </div>
+              {amount !== "" && !amountValid && (
+                <p className="text-xs text-red-400 mb-2">
+                  {parsedAmount > balance ? `Maximum disponible : ${formatFCFA(balance)}` : "Montant invalide"}
+                </p>
+              )}
+              {amount === "" && <div className="mb-3" />}
+              {amount !== "" && amountValid && <div className="mb-3" />}
+
               {error && <p className="text-xs text-red-400 mb-3">{error}</p>}
 
               <button
@@ -531,7 +562,7 @@ function WithdrawModal({
                 className="w-full flex items-center justify-center gap-2 h-12 rounded-xl bg-amber-500 hover:bg-amber-600 disabled:opacity-40 text-black text-sm font-bold transition-colors"
               >
                 {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wallet className="w-4 h-4" />}
-                Demander le retrait de {formatFCFA(balance)}
+                {amountValid ? `Demander le retrait de ${formatFCFA(parsedAmount)}` : "Demander le retrait"}
               </button>
             </div>
           </motion.div>
