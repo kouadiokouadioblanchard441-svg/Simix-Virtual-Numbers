@@ -418,18 +418,30 @@ function WithdrawModal({
     }
   };
 
+  /* Masquer le chatbot quand le modal est ouvert */
+  useEffect(() => {
+    if (open) {
+      document.body.setAttribute("data-modal-open", "true");
+    } else {
+      document.body.removeAttribute("data-modal-open");
+    }
+    return () => { document.body.removeAttribute("data-modal-open"); };
+  }, [open]);
+
   return (
     <AnimatePresence>
       {open && (
         <>
+          {/* Backdrop — z-[58] pour passer au-dessus de la bottom nav (z-50) */}
           <motion.div
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             onClick={onClose}
-            className="fixed inset-0 bg-black/60 z-40"
+            className="fixed inset-0 bg-black/60 z-[58]"
           />
+          {/* Panel — z-[59] */}
           <motion.div
             initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 40 }}
-            className="fixed inset-x-0 bottom-0 sm:bottom-auto sm:top-1/2 sm:left-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 z-50 sm:max-w-sm sm:w-full"
+            className="fixed inset-x-0 bottom-0 sm:bottom-auto sm:top-1/2 sm:left-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 z-[59] sm:max-w-sm sm:w-full"
           >
             <div className="bg-card border border-card-border rounded-t-3xl sm:rounded-3xl flex flex-col max-h-[85dvh] sm:max-h-[90vh]">
 
@@ -560,15 +572,20 @@ function WithdrawModal({
               </div>
 
               {/* ── Bouton fixé en bas, toujours visible ── */}
-              <div className="flex-shrink-0 px-5 pt-3 pb-5 border-t border-card-border/40">
+              <div
+                className="flex-shrink-0 px-5 pt-3 border-t border-card-border/40"
+                style={{ paddingBottom: "max(20px, env(safe-area-inset-bottom))" }}
+              >
                 {error && <p className="text-xs text-red-400 mb-2">{error}</p>}
                 <button
                   onClick={submit}
                   disabled={!canSubmit}
-                  className="w-full flex items-center justify-center gap-2 h-12 rounded-xl bg-amber-500 hover:bg-amber-600 disabled:opacity-40 text-black text-sm font-bold transition-colors"
+                  className="w-full flex items-center justify-center gap-2 h-12 rounded-xl bg-amber-500 hover:bg-amber-600 disabled:opacity-40 disabled:cursor-not-allowed text-black text-sm font-bold transition-colors active:scale-[0.98]"
                 >
-                  {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wallet className="w-4 h-4" />}
-                  {amountValid ? `Demander le retrait de ${formatFCFA(parsedAmount)}` : "Demander le retrait"}
+                  {submitting
+                    ? <><Loader2 className="w-4 h-4 animate-spin" /> Traitement en cours…</>
+                    : <><Wallet className="w-4 h-4" />{amountValid ? `Retirer ${formatFCFA(parsedAmount)}` : "Retirer maintenant"}</>
+                  }
                 </button>
               </div>
 

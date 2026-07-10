@@ -210,6 +210,16 @@ export default function SupportChat() {
   /* Detect if a drag occurred to suppress click on button */
   const btnDragging = useRef(false);
 
+  /* Masquer la bulle quand un modal applicatif est ouvert */
+  const [hiddenByModal, setHiddenByModal] = useState(false);
+  useEffect(() => {
+    const check = () => setHiddenByModal(document.body.hasAttribute("data-modal-open"));
+    check();
+    const observer = new MutationObserver(check);
+    observer.observe(document.body, { attributes: true, attributeFilter: ["data-modal-open"] });
+    return () => observer.disconnect();
+  }, []);
+
   /* Load config on mount */
   useEffect(() => {
     (async () => {
@@ -420,7 +430,7 @@ export default function SupportChat() {
     <>
       {/* ── Floating button (draggable) ── */}
       <AnimatePresence>
-        {!isOpen && (
+        {!isOpen && !hiddenByModal && (
           <motion.div
             drag
             dragMomentum={false}
