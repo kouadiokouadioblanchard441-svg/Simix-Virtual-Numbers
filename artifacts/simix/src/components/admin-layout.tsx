@@ -85,9 +85,10 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/admin/providers",      label: "Fournisseurs API",  icon: Activity },
 
   /* ── Communication ── */
-  { href: "/admin/support",       label: "Support IA",        icon: MessageSquare, section: "Communication" },
-  { href: "/admin/notifications", label: "Notifications",     icon: Bell },
-  { href: "/admin/emails",        label: "Campagnes Email",   icon: Mail },
+  { href: "/admin/support",            label: "Support IA",             icon: MessageSquare, section: "Communication" },
+  { href: "/admin/notifications",      label: "Notifications",          icon: Bell },
+  { href: "/admin/emails",             label: "Campagnes Email",        icon: Mail },
+  { href: "/admin/email-providers",    label: "Fournisseurs Email",     icon: Mail, highlight: true },
 
   /* ── Contenu ── */
   { href: "/admin/banners", label: "Bannières",      icon: Image,   section: "Contenu" },

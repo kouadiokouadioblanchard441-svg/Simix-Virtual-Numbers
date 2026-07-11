@@ -1,41 +1,7 @@
-import { Resend } from "resend";
-import { db, systemSettingsTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
 import { getAppUrl } from "./app-url";
 import { logger } from "./logger";
-
-async function getResend(): Promise<Resend | null> {
-  let key = process.env.RESEND_API_KEY ?? null;
-  if (!key) {
-    try {
-      const rows = await db.select().from(systemSettingsTable)
-        .where(eq(systemSettingsTable.key, "resend_api_key")).limit(1);
-      key = rows[0]?.value?.trim() || null;
-    } catch (dbErr) {
-      logger.error({ err: dbErr }, "[email] Impossible de lire resend_api_key depuis la DB");
-    }
-  }
-  if (!key) {
-    logger.warn("[email] RESEND_API_KEY introuvable — emails désactivés");
-    return null;
-  }
-  return new Resend(key);
-}
-
-async function getFromEmail(): Promise<string> {
-  if (process.env.EMAIL_FROM) return process.env.EMAIL_FROM;
-  try {
-    const rows = await db.select().from(systemSettingsTable)
-      .where(eq(systemSettingsTable.key, "email_from")).limit(1);
-    const val = rows[0]?.value?.trim();
-    if (val) return val;
-  } catch {
-    /* DB not available — skip */
-  }
-  const appUrl = getAppUrl();
-  const domain = appUrl.replace(/^https?:\/\//, "").replace(/\/.*$/, "");
-  return `Simix <noreply@${domain}>`;
-}
+import { getEmailManager } from "./email-router";
+import { getFromEmail } from "./email-from";
 
 /* ─────────────────────────────────────────────────────────────────
    OTP EMAIL  (inscription + inactivité)
@@ -411,21 +377,18 @@ function getDepositConfirmationHtml(data: DepositEmailData): string {
 
 
 export async function sendDepositConfirmationEmail(data: DepositEmailData): Promise<void> {
-  const resend = await getResend();
-  if (!resend) {
-    console.warn("[email] RESEND_API_KEY not set — skipping deposit confirmation email");
-    return;
-  }
-  const from = await getFromEmail();
-  const { error } = await resend.emails.send({
+  const from    = await getFromEmail();
+  const manager = getEmailManager();
+  const result  = await manager.send({
+    to:      data.userEmail,
     from,
-    to: data.userEmail,
     subject: `✅ Rechargement de ${data.amount.toLocaleString("fr-FR")} FCFA confirmé — Simix`,
-    html: getDepositConfirmationHtml(data),
+    html:    getDepositConfirmationHtml(data),
+    idempotencyKey: `deposit-${data.transactionId}`,
+    metadata: { type: "deposit_confirmation", transactionId: data.transactionId },
   });
-
-  if (error) {
-    throw new Error(`Échec envoi email dépôt: ${error.message}`);
+  if (!result.success && !result.cached) {
+    logger.warn({ err: result.error, to: data.userEmail }, "[email] Dépôt confirmation en file d'attente");
   }
 }
 
@@ -434,20 +397,17 @@ export async function sendPasswordResetEmail(
   code: string,
   fullName: string,
 ): Promise<void> {
-  const resend = await getResend();
-  if (!resend) {
-    console.warn("[email] RESEND_API_KEY not set — skipping password reset email");
-    return;
-  }
-  const from = await getFromEmail();
-  const { error } = await resend.emails.send({
-    from,
+  const from    = await getFromEmail();
+  const manager = getEmailManager();
+  const result  = await manager.send({
     to,
+    from,
     subject: "Réinitialisation de votre mot de passe Simix",
-    html: getPasswordResetEmailHtml(code, fullName),
+    html:    getPasswordResetEmailHtml(code, fullName),
+    metadata: { type: "password_reset" },
   });
-  if (error) {
-    throw new Error(`Échec envoi email reset: ${error.message}`);
+  if (!result.success && !result.cached) {
+    throw new Error(`Échec envoi email reset: ${result.error}`);
   }
 }
 
@@ -457,23 +417,19 @@ export async function sendOtpEmail(
   purpose: "register" | "inactivity",
   fullName = "Utilisateur",
 ): Promise<void> {
-  const resend = await getResend();
-  if (!resend) {
-    console.warn("[email] RESEND_API_KEY not set — skipping OTP email");
-    return;
-  }
-  const from = await getFromEmail();
+  const from    = await getFromEmail();
   const subject = purpose === "inactivity"
     ? "🔐 Vérification de sécurité — Simix"
     : "✉️ Confirmez votre adresse email — Simix";
-
-  const { error } = await resend.emails.send({
-    from,
+  const manager = getEmailManager();
+  const result  = await manager.send({
     to,
+    from,
     subject,
     html: getOtpEmailHtml(code, purpose, fullName),
+    metadata: { type: "otp", purpose },
   });
-  if (error) {
-    throw new Error(`Échec envoi email OTP: ${JSON.stringify(error)}`);
+  if (!result.success && !result.cached) {
+    throw new Error(`Échec envoi email OTP: ${result.error}`);
   }
 }

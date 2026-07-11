@@ -100,6 +100,7 @@ import AdminRefunds from "@/pages/admin/refunds";
 import AdminPricing from "@/pages/admin/pricing";
 import AdminPaymentStats from "@/pages/admin/payment-stats";
 import AdminReferralWithdrawals from "@/pages/admin/referral-withdrawals";
+import AdminEmailProviders from "@/pages/admin/email-providers";
 
 // Toast demo
 import ToastDemo from "@/pages/toast-demo";
@@ -187,6 +188,7 @@ function AdminRoutes() {
         <Route path="/admin/pricing" component={AdminPricing} />
         <Route path="/admin/payment-stats" component={AdminPaymentStats} />
         <Route path="/admin/referral-withdrawals" component={AdminReferralWithdrawals} />
+        <Route path="/admin/email-providers" component={AdminEmailProviders} />
       </Switch>
     </AdminSecureGuard>
   );
