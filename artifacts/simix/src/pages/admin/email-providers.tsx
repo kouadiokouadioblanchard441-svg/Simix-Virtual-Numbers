@@ -190,7 +190,7 @@ export default function AdminEmailProviders() {
   const suggestSlug = (name: string) => name.toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 30);
 
   return (
-    <AdminLayout title="Fournisseurs Email">
+    <AdminLayout>
       <div className="min-h-screen bg-[#0a0a0f] text-white px-4 py-6 space-y-6">
 
         {/* ── Header ── */}
