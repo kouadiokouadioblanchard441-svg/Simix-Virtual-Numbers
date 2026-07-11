@@ -13,3 +13,4 @@
 - [Migration source of truth](migration-source-of-truth.md) — lib/db/drizzle/ (+meta/_journal.json) is the real migration source, not the root migrations/ copy; build.mjs copies from lib/db/drizzle to dist; keep both in sync when hand-writing new SQL files.
 - [Email Router Infrastructure](email-router-infra.md) — multi-provider failover system; workers must start at boot; emailProvidersRouter must mount BEFORE adminRouter; SESSION_SECRET is the AES key.
 - [Plesk deployment architecture](plesk-deployment.md) — project self-builds via startup.js on Plesk; static frontend serves from root public/ not dist/public; object storage degrades gracefully without Replit sidecar.
+- [Email provider table empty despite valid key](email-provider-empty-table.md) — Resend auto-seed can silently never fire; check email_providers directly and seed manually if empty; resending old queued emails is useless since OTP codes expire in 10min, use resend-otps.ts for fresh codes.
