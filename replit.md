@@ -36,6 +36,10 @@ Monorepo (pnpm workspaces) with the following workspace pieces:
 
 `artifacts/api-server/src/lib/sms-simulator.ts` schedules a synthetic verification SMS to be inserted 8–20s after a number is requested. In production this is the seam where a real provider (PawaPay / SMS-Activate / etc.) would plug in.
 
+## Database
+
+The app connects to the user's own Supabase Postgres via the `SUPABASE_DATABASE_URL` secret (checked before the Replit-managed `DATABASE_URL` in `lib/db/src/index.ts`, `lib/db/drizzle.config.ts`, and `scripts/src/seed.ts`). This is the only database used by the project — the Replit-provisioned Postgres remains bound but is not read by the app.
+
 ## Development
 
 ```bash
