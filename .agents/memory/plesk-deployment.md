@@ -1,0 +1,19 @@
+---
+name: Plesk deployment architecture
+description: How this project (Simix) deploys to Plesk hosting outside Replit — entry points, static serving, and graceful degradation of Replit-only features.
+---
+
+## Entry point
+- `package.json` "start" script runs `node startup.js`, NOT directly `node dist/index.cjs`.
+- `startup.js` self-builds on demand: checks required env vars (DATABASE_URL/SUPABASE_DATABASE_URL, SESSION_SECRET, ADMIN_JWT_SECRET), compares source dirs' mtimes against `dist/index.cjs`, and runs `pnpm install` + `node artifacts/api-server/build.mjs` + `vite build` automatically if stale. Falls back to a diagnostic HTML page on port PORT if config/build fails, instead of crashing silently.
+- `server.js` (`require('./dist/index.cjs')`) and `ecosystem.config.js` (pm2) are alternate/legacy entry points — `startup.js` is the one wired to `npm start`.
+
+**Why:** Two deployment docs exist (DEPLOIEMENT.md/DEPLOY.md) describing an older "prebuild dist/ then git push, Plesk just runs node dist/index.cjs, no build on server" workflow. startup.js supersedes that with self-building — both are compatible since it skips rebuilding when the bundle is already fresh, but don't assume Plesk needs a manual prebuild step; it doesn't.
+
+## Static frontend serving
+- Vite outDir is configured to the **root-level `public/`** directory (not `dist/public`). `DEPLOY.md`'s "Document Root: dist/public" is stale/incorrect — the actual runtime (`app.ts`) resolves `publicDir` with a dual fallback (`currentDir/public` → `currentDir/../public`) and finds root `public/` correctly regardless of cwd.
+
+## Replit-only features degrade gracefully
+- `lib/objectStorage.ts` depends on the Replit sidecar (`127.0.0.1:1106`) for GCS-backed uploads — this will fail outside Replit. `routes/storage.ts` already has a working fallback: `POST /storage/uploads/request-url` returns 503 with `fallback: "/api/storage/uploads/direct"`, and the frontend (`image-upload-button.tsx`) already calls that direct-upload endpoint. So file uploads keep working on Plesk via local disk (`UPLOAD_DIR` env var), just without GCS.
+- `REPLIT_DEV_DOMAIN` / `REPLIT_DOMAINS` appear in `google-auth.ts`, `crypto-wallet.ts`, `admin.ts`, `app.ts` CORS/CSP — all are dev-only fallbacks behind an explicit-env-var-wins check (`GOOGLE_REDIRECT_URI`, `APP_URL`, `nowpayments_webhook_url` setting). Not a blocker in production as long as those are set.
+- Database, sessions, and the multi-provider email router (see email-router-infra.md) have zero Replit-specific dependencies — fully portable as-is.

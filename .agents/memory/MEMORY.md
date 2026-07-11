@@ -12,3 +12,4 @@
 - [Referral balance isolation & withdrawal reservation](referral-balance-isolation.md) — referral bonuses stay isolated from wallet; withdrawal reserves balance on request, admin reject refunds, guard status transitions with row locks.
 - [Migration source of truth](migration-source-of-truth.md) — lib/db/drizzle/ (+meta/_journal.json) is the real migration source, not the root migrations/ copy; build.mjs copies from lib/db/drizzle to dist; keep both in sync when hand-writing new SQL files.
 - [Email Router Infrastructure](email-router-infra.md) — multi-provider failover system; workers must start at boot; emailProvidersRouter must mount BEFORE adminRouter; SESSION_SECRET is the AES key.
+- [Plesk deployment architecture](plesk-deployment.md) — project self-builds via startup.js on Plesk; static frontend serves from root public/ not dist/public; object storage degrades gracefully without Replit sidecar.
