@@ -199,7 +199,14 @@ class EmailProviderManager {
     }
 
     for (const provider of providers) {
-      if (provider.healthStatus === "down") continue; // skip hard-down providers
+      // Ne saute un fournisseur "down" que s'il existe une alternative moins dégradée —
+      // sinon (cas mono-fournisseur), on retente quand même : rester bloqué "down" pour
+      // toujours (aucun succès n'est possible pour se réhabiliter) créait une panne totale
+      // et silencieuse tant que le health check périodique n'avait pas corrigé le statut.
+      const hasBetterAlternative = providers.some(
+        p => p.id !== provider.id && p.healthStatus !== "down",
+      );
+      if (provider.healthStatus === "down" && hasBetterAlternative) continue;
       const adapter = ADAPTERS[provider.slug];
       if (!adapter) continue;
 
@@ -234,7 +241,10 @@ class EmailProviderManager {
           db.update(emailProvidersTable).set({
             totalSent:        sql`${emailProvidersTable.totalSent} + 1`,
             consecutiveErrors: 0,
-            healthStatus:     provider.healthStatus === "degraded" ? "healthy" : provider.healthStatus,
+            // Un envoi réussi prouve que le fournisseur fonctionne à nouveau —
+            // le réhabiliter systématiquement (y compris depuis "down") évite
+            // qu'il reste bloqué indéfiniment après une panne transitoire.
+            healthStatus:     "healthy",
           }).where(eq(emailProvidersTable.id, provider.id)),
         ]);
         this.invalidateCache();

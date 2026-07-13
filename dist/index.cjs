@@ -155082,7 +155082,10 @@ var EmailProviderManager = class {
       return { success: false, error: "Aucun fournisseur email actif" };
     }
     for (const provider of providers) {
-      if (provider.healthStatus === "down") continue;
+      const hasBetterAlternative = providers.some(
+        (p) => p.id !== provider.id && p.healthStatus !== "down"
+      );
+      if (provider.healthStatus === "down" && hasBetterAlternative) continue;
       const adapter = ADAPTERS[provider.slug];
       if (!adapter) continue;
       const start2 = Date.now();
@@ -155118,7 +155121,10 @@ var EmailProviderManager = class {
           db.update(emailProvidersTable).set({
             totalSent: sql`${emailProvidersTable.totalSent} + 1`,
             consecutiveErrors: 0,
-            healthStatus: provider.healthStatus === "degraded" ? "healthy" : provider.healthStatus
+            // Un envoi réussi prouve que le fournisseur fonctionne à nouveau —
+            // le réhabiliter systématiquement (y compris depuis "down") évite
+            // qu'il reste bloqué indéfiniment après une panne transitoire.
+            healthStatus: "healthy"
           }).where(eq(emailProvidersTable.id, provider.id))
         ]);
         this.invalidateCache();
