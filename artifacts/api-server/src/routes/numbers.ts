@@ -11,7 +11,6 @@ import {
   virtualNumbersTable,
   apiProvidersTable,
   servicePricesTable,
-  referralCommissionsTable,
 } from "@workspace/db";
 import {
   GetNumberQuoteQueryParams,
@@ -37,7 +36,6 @@ import {
   getExtendMinutes,
   getExtendFee,
   getMaxOrdersPerMinute,
-  getReferralCommissionRate,
 } from "../lib/settings";
 
 const router: IRouter = Router();
@@ -439,42 +437,9 @@ router.post("/numbers", requireAuth, async (req, res): Promise<void> => {
     return;
   }
 
-  /* ── Referral commission — credit parrain if buyer was referred ── */
-  if (user.referredBy) {
-    try {
-      const commissionRate = await getReferralCommissionRate();
-      const commissionAmount = Math.floor(price * commissionRate / 100);
-      if (commissionAmount > 0) {
-        /* Referral bonuses are NOT added to the main wallet balance — they stay
-           isolated in referralBalance/referralEarnings and are only withdrawable
-           via the "Parrainage" withdrawal request flow (admin-validated). */
-        await db.update(usersTable)
-          .set({
-            referralEarnings: sql`${usersTable.referralEarnings} + ${commissionAmount}`,
-            referralBalance: sql`${usersTable.referralBalance} + ${commissionAmount}`,
-          })
-          .where(eq(usersTable.id, user.referredBy));
-
-        await db.insert(referralCommissionsTable).values({
-          referrerId: user.referredBy,
-          refereeId: user.id,
-          purchaseAmount: price,
-          commissionAmount,
-        });
-
-        await db.insert(transactionsTable).values({
-          userId: user.referredBy,
-          type: "referral_commission",
-          amount: commissionAmount,
-          status: "completed",
-          method: "referral",
-          description: `Commission parrainage ${commissionRate}% — ${service.name} (${country.name})`,
-        });
-      }
-    } catch (refErr) {
-      logger.warn({ err: (refErr as Error).message }, "[referral] Commission credit failed (non-critical)");
-    }
-  }
+  /* NOTE: Referral commissions are credited on DEPOSIT (recharge), not on
+   * purchase — see lib/referral-commission.ts, wired into wallet.ts and
+   * pawapay-reconciliation.ts. Purchases no longer generate a referral bonus. */
 
   /* ── Push real-time purchase notification ── */
   try {

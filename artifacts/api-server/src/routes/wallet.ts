@@ -45,6 +45,7 @@ import { broadcastNotification } from "./notifications";
 import { notificationsTable } from "@workspace/db";
 import { sendDepositConfirmationEmail } from "../lib/email";
 import { auditLog } from "../lib/audit";
+import { creditReferralDepositCommission } from "../lib/referral-commission";
 
 const router: IRouter = Router();
 
@@ -602,6 +603,14 @@ router.post(
       }).catch((e: Error) => logger.warn({ error: e.message }, "[email] Deposit confirmation (manual) non-critical error"));
     }
 
+    /* ── Referral commission — credit parrain on this deposit ── */
+    void creditReferralDepositCommission({
+      depositorId: user.id,
+      referredBy: user.referredBy,
+      depositAmount: amountXof,
+      sourceLabel: method?.name ?? methodSlug,
+    });
+
     res.json(toTransaction(tx!));
   },
 );
@@ -747,14 +756,16 @@ async function processDepositCallback(payload: PawaPayDepositCallback): Promise<
       if (notif) broadcastNotification(notif);
     } catch { /* non-critical */ }
 
+    /* ── Fetch depositor (email + referral) once, used below ── */
+    const [userRow] = await db.select({
+      email: usersTable.email,
+      fullName: usersTable.fullName,
+      balance: usersTable.balance,
+      referredBy: usersTable.referredBy,
+    }).from(usersTable).where(eq(usersTable.id, tx.userId)).limit(1);
+
     /* ── Send deposit confirmation email ── */
     try {
-      const [userRow] = await db.select({
-        email: usersTable.email,
-        fullName: usersTable.fullName,
-        balance: usersTable.balance,
-      }).from(usersTable).where(eq(usersTable.id, tx.userId)).limit(1);
-
       if (userRow?.email) {
         const phoneMatch = tx.description?.match(/[\+\d]{8,}/);
         await sendDepositConfirmationEmail({
@@ -773,6 +784,14 @@ async function processDepositCallback(payload: PawaPayDepositCallback): Promise<
     } catch (e) {
       logger.warn({ error: (e as Error).message, depositId }, "[email] Failed to send deposit confirmation email (non-critical)");
     }
+
+    /* ── Referral commission — credit parrain on this deposit ── */
+    void creditReferralDepositCommission({
+      depositorId: tx.userId,
+      referredBy: userRow?.referredBy,
+      depositAmount: creditAmount,
+      sourceLabel: tx.method ?? "Mobile Money",
+    });
 
   } else if (status === "FAILED") {
     const updated = await db.update(transactionsTable)
@@ -931,12 +950,14 @@ router.post("/wallet/clapay/webhook", async (req: Request, res: Response): Promi
         if (notif) broadcastNotification(notif);
       } catch { /* non-critical */ }
 
+      /* ── Fetch depositor (email + referral) once, used below ── */
+      const [userRow] = await db.select({
+        email: usersTable.email, fullName: usersTable.fullName, balance: usersTable.balance,
+        referredBy: usersTable.referredBy,
+      }).from(usersTable).where(eq(usersTable.id, tx.userId)).limit(1);
+
       /* Send deposit confirmation email */
       try {
-        const [userRow] = await db.select({
-          email: usersTable.email, fullName: usersTable.fullName, balance: usersTable.balance,
-        }).from(usersTable).where(eq(usersTable.id, tx.userId)).limit(1);
-
         if (userRow?.email) {
           const phoneMatch = tx.description?.match(/[\+\d]{8,}/);
           await sendDepositConfirmationEmail({
@@ -955,6 +976,14 @@ router.post("/wallet/clapay/webhook", async (req: Request, res: Response): Promi
       } catch (e) {
         logger.warn({ error: (e as Error).message, transaction_id }, "[Clapay Webhook] Email failed (non-critical)");
       }
+
+      /* ── Referral commission — credit parrain on this deposit ── */
+      void creditReferralDepositCommission({
+        depositorId: tx.userId,
+        referredBy: userRow?.referredBy,
+        depositAmount: creditAmount,
+        sourceLabel: tx.method ?? "Mobile Money",
+      });
 
     } else if (CLAPAY_TERMINAL_FAILURE.has(normalizedStatus)) {
       /* Handles: FAILED, CANCELLED, REJECTED, TIMEOUT, EXPIRED */
@@ -1038,6 +1067,14 @@ router.get("/wallet/deposit/:depositId/status", requireAuth, async (req, res): P
                 .set({ balance: sql`${usersTable.balance} + ${creditAmount}` })
                 .where(eq(usersTable.id, user.id));
               logger.info({ depositId, userId: user.id, creditAmount }, "[PawaPay Poll] Deposit COMPLETED via polling — balance credited ✓");
+
+              /* ── Referral commission — credit parrain on this deposit ── */
+              void creditReferralDepositCommission({
+                depositorId: user.id,
+                referredBy: user.referredBy,
+                depositAmount: creditAmount,
+                sourceLabel: tx.method ?? "Mobile Money",
+              });
             } else {
               /* Webhook already processed it — nothing to do */
               logger.info({ depositId }, "[PawaPay Poll] Already processed by webhook — skipping double-credit");

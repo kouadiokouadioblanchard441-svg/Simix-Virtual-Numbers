@@ -21,6 +21,7 @@ import { PawaPayClient } from "./pawapay";
 import { resolvePawaPayCredentials } from "./gateway-credentials";
 import { broadcastNotification } from "../routes/notifications";
 import { sendDepositConfirmationEmail } from "./email";
+import { creditReferralDepositCommission } from "./referral-commission";
 
 const RECONCILE_INTERVAL_MS = 30 * 1000;      // poll every 30 seconds
 const MIN_AGE_MS             = 30 * 1000;      // skip deposits < 30s old (may still be processing)
@@ -124,14 +125,16 @@ async function reconcilePendingPawaPayTransactions(): Promise<void> {
           if (notif) broadcastNotification(notif);
         } catch { /* non-critical */ }
 
+        /* ── Fetch depositor (email + referral) once, used below ── */
+        const [userRow] = await db.select({
+          email: usersTable.email,
+          fullName: usersTable.fullName,
+          balance: usersTable.balance,
+          referredBy: usersTable.referredBy,
+        }).from(usersTable).where(eq(usersTable.id, tx.userId)).limit(1);
+
         /* Send confirmation email */
         try {
-          const [userRow] = await db.select({
-            email: usersTable.email,
-            fullName: usersTable.fullName,
-            balance: usersTable.balance,
-          }).from(usersTable).where(eq(usersTable.id, tx.userId)).limit(1);
-
           if (userRow?.email) {
             const phoneMatch = tx.description?.match(/[\+\d]{8,}/);
             await sendDepositConfirmationEmail({
@@ -147,6 +150,14 @@ async function reconcilePendingPawaPayTransactions(): Promise<void> {
             });
           }
         } catch { /* non-critical */ }
+
+        /* ── Referral commission — credit parrain on this deposit ── */
+        void creditReferralDepositCommission({
+          depositorId: tx.userId,
+          referredBy: userRow?.referredBy,
+          depositAmount: creditAmount,
+          sourceLabel: tx.method ?? "Mobile Money",
+        });
 
       } else if (depositStatus === "FAILED" || depositStatus === "IN_RECONCILIATION") {
         if (depositStatus === "FAILED") {
