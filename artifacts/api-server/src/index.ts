@@ -81,35 +81,55 @@ async function start(): Promise<void> {
   void seedCountryPaymentConfigs();
   void seedRoutingData();
 
-  void seedProvidersFromEnv().then(() => {
-    /* ── Élection de leader ──────────────────────────────────────
-     * Plusieurs processus (aperçu Replit, artifact api-server, prod)
-     * tournent contre la même base. Seul le leader élu démarre les
-     * workers périodiques — évite les doubles envois/remboursements. */
-    electLeaderAndRun(() => {
-      startFiveSimPoller();
-      startFiveSimSyncScheduler();
-      startClapayReconciliation();
-      startPawaPayReconciliation();
-      getEmailManager().startBackgroundWorkers();
+  /* ── Ce process tourne-t-il dans l'espace de développement Replit ? ──
+   * Simix est hébergé uniquement sur Plesk (production) — Replit n'est
+   * qu'un environnement de développement/preview qui peut, en cours de
+   * travail, pointer sur la MÊME base Supabase que la production (pour
+   * tester avec des vraies données). Sans ce garde-fou, ce process
+   * concourrait pour le leader-lock (voir lib/leader-lock.ts) et pourrait
+   * se mettre à exécuter les workers de fond de production (envoi de
+   * vrais emails, vrais achats 5sim, vraie réconciliation de paiements)
+   * à la place — ou en concurrence avec — le vrai serveur Plesk.
+   * REPL_ID / REPLIT_DEV_DOMAIN ne sont définis que sur Replit ; le
+   * serveur Plesk de production ne les a jamais. */
+  const isReplitDevEnvironment = Boolean(process.env["REPL_ID"] || process.env["REPLIT_DEV_DOMAIN"]);
 
-      void (async () => {
-        try {
-          const result = await syncFiveSimCountries();
-          logger.info({ added: result.added, updated: result.updated, total: result.total }, "[startup] 5sim countries synced");
-        } catch (e) {
-          logger.warn({ err: (e as Error).message }, "[startup] 5sim countries sync skipped");
-        }
+  if (isReplitDevEnvironment) {
+    logger.warn(
+      "[startup] Environnement Replit détecté — workers de fond (5sim, emails, réconciliation) désactivés pour éviter tout conflit avec le serveur de production Plesk"
+    );
+  } else {
+    void seedProvidersFromEnv().then(() => {
+      /* ── Élection de leader ──────────────────────────────────────
+       * Plusieurs processus de production (ex: redémarrage pm2 qui
+       * chevauche l'ancien processus) peuvent tourner brièvement contre
+       * la même base. Seul le leader élu démarre les workers périodiques
+       * — évite les doubles envois/remboursements. */
+      electLeaderAndRun(() => {
+        startFiveSimPoller();
+        startFiveSimSyncScheduler();
+        startClapayReconciliation();
+        startPawaPayReconciliation();
+        getEmailManager().startBackgroundWorkers();
 
-        try {
-          const result = await syncFiveSimProducts();
-          logger.info({ added: result.added, updated: result.updated, total: result.total }, "[startup] 5sim products synced");
-        } catch (e) {
-          logger.warn({ err: (e as Error).message }, "[startup] 5sim products sync skipped");
-        }
-      })();
+        void (async () => {
+          try {
+            const result = await syncFiveSimCountries();
+            logger.info({ added: result.added, updated: result.updated, total: result.total }, "[startup] 5sim countries synced");
+          } catch (e) {
+            logger.warn({ err: (e as Error).message }, "[startup] 5sim countries sync skipped");
+          }
+
+          try {
+            const result = await syncFiveSimProducts();
+            logger.info({ added: result.added, updated: result.updated, total: result.total }, "[startup] 5sim products synced");
+          } catch (e) {
+            logger.warn({ err: (e as Error).message }, "[startup] 5sim products sync skipped");
+          }
+        })();
+      });
     });
-  });
+  }
 
   /* ── Start HTTP server ─────────────────────────────────────────── */
   app.listen(port, (err) => {
