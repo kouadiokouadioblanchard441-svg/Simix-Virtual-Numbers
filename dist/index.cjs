@@ -157283,34 +157283,6 @@ router8.post("/numbers", requireAuth, async (req, res) => {
     res.status(500).json({ error: "Erreur lors de la cr\xE9ation du num\xE9ro. Votre solde a \xE9t\xE9 rembours\xE9." });
     return;
   }
-  if (user.referredBy) {
-    try {
-      const commissionRate = await getReferralCommissionRate();
-      const commissionAmount = Math.floor(price * commissionRate / 100);
-      if (commissionAmount > 0) {
-        await db.update(usersTable).set({
-          referralEarnings: sql`${usersTable.referralEarnings} + ${commissionAmount}`,
-          referralBalance: sql`${usersTable.referralBalance} + ${commissionAmount}`
-        }).where(eq(usersTable.id, user.referredBy));
-        await db.insert(referralCommissionsTable).values({
-          referrerId: user.referredBy,
-          refereeId: user.id,
-          purchaseAmount: price,
-          commissionAmount
-        });
-        await db.insert(transactionsTable).values({
-          userId: user.referredBy,
-          type: "referral_commission",
-          amount: commissionAmount,
-          status: "completed",
-          method: "referral",
-          description: `Commission parrainage ${commissionRate}% \u2014 ${service.name} (${country.name})`
-        });
-      }
-    } catch (refErr) {
-      logger.warn({ err: refErr.message }, "[referral] Commission credit failed (non-critical)");
-    }
-  }
   try {
     const [notif] = await db.insert(notificationsTable).values({
       userId: user.id,
@@ -158565,6 +158537,47 @@ async function resolveGateway(countryCode, methodSlug, _amount) {
 init_gateway_credentials();
 init_settings();
 init_src();
+
+// src/lib/referral-commission.ts
+init_drizzle_orm();
+init_src();
+init_settings();
+init_logger2();
+async function creditReferralDepositCommission(params) {
+  const { depositorId, referredBy, depositAmount, sourceLabel } = params;
+  if (!referredBy) return;
+  try {
+    const commissionRate = await getReferralCommissionRate();
+    const commissionAmount = Math.floor(depositAmount * commissionRate / 100);
+    if (commissionAmount <= 0) return;
+    await db.update(usersTable).set({
+      referralEarnings: sql`${usersTable.referralEarnings} + ${commissionAmount}`,
+      referralBalance: sql`${usersTable.referralBalance} + ${commissionAmount}`
+    }).where(eq(usersTable.id, referredBy));
+    await db.insert(referralCommissionsTable).values({
+      referrerId: referredBy,
+      refereeId: depositorId,
+      purchaseAmount: depositAmount,
+      commissionAmount
+    });
+    await db.insert(transactionsTable).values({
+      userId: referredBy,
+      type: "referral_commission",
+      amount: commissionAmount,
+      status: "completed",
+      method: "referral",
+      description: `Commission parrainage ${commissionRate}% \u2014 d\xE9p\xF4t ${sourceLabel}`
+    });
+    logger.info(
+      { referrerId: referredBy, depositorId, depositAmount, commissionAmount },
+      "[referral] Deposit commission credited"
+    );
+  } catch (err) {
+    logger.warn({ err: err.message }, "[referral] Deposit commission credit failed (non-critical)");
+  }
+}
+
+// src/routes/wallet.ts
 var router10 = (0, import_express11.Router)();
 async function getPawaPayClient() {
   const creds = await resolvePawaPayCredentials();
@@ -158995,6 +159008,12 @@ router10.post(
         newBalance: newBalanceAfter
       }).catch((e3) => logger.warn({ error: e3.message }, "[email] Deposit confirmation (manual) non-critical error"));
     }
+    void creditReferralDepositCommission({
+      depositorId: user.id,
+      referredBy: user.referredBy,
+      depositAmount: amountXof,
+      sourceLabel: method?.name ?? methodSlug
+    });
     res.json(toTransaction(tx));
   }
 );
@@ -159085,12 +159104,13 @@ async function processDepositCallback(payload) {
       if (notif) broadcastNotification(notif);
     } catch {
     }
+    const [userRow] = await db.select({
+      email: usersTable.email,
+      fullName: usersTable.fullName,
+      balance: usersTable.balance,
+      referredBy: usersTable.referredBy
+    }).from(usersTable).where(eq(usersTable.id, tx.userId)).limit(1);
     try {
-      const [userRow] = await db.select({
-        email: usersTable.email,
-        fullName: usersTable.fullName,
-        balance: usersTable.balance
-      }).from(usersTable).where(eq(usersTable.id, tx.userId)).limit(1);
       if (userRow?.email) {
         const phoneMatch = tx.description?.match(/[\+\d]{8,}/);
         await sendDepositConfirmationEmail({
@@ -159109,6 +159129,12 @@ async function processDepositCallback(payload) {
     } catch (e3) {
       logger.warn({ error: e3.message, depositId }, "[email] Failed to send deposit confirmation email (non-critical)");
     }
+    void creditReferralDepositCommission({
+      depositorId: tx.userId,
+      referredBy: userRow?.referredBy,
+      depositAmount: creditAmount,
+      sourceLabel: tx.method ?? "Mobile Money"
+    });
   } else if (status === "FAILED") {
     const updated = await db.update(transactionsTable).set({ status: "failed" }).where(and(
       eq(transactionsTable.externalDepositId, depositId),
@@ -159210,12 +159236,13 @@ router10.post("/wallet/clapay/webhook", async (req, res) => {
         if (notif) broadcastNotification(notif);
       } catch {
       }
+      const [userRow] = await db.select({
+        email: usersTable.email,
+        fullName: usersTable.fullName,
+        balance: usersTable.balance,
+        referredBy: usersTable.referredBy
+      }).from(usersTable).where(eq(usersTable.id, tx.userId)).limit(1);
       try {
-        const [userRow] = await db.select({
-          email: usersTable.email,
-          fullName: usersTable.fullName,
-          balance: usersTable.balance
-        }).from(usersTable).where(eq(usersTable.id, tx.userId)).limit(1);
         if (userRow?.email) {
           const phoneMatch = tx.description?.match(/[\+\d]{8,}/);
           await sendDepositConfirmationEmail({
@@ -159234,6 +159261,12 @@ router10.post("/wallet/clapay/webhook", async (req, res) => {
       } catch (e3) {
         logger.warn({ error: e3.message, transaction_id }, "[Clapay Webhook] Email failed (non-critical)");
       }
+      void creditReferralDepositCommission({
+        depositorId: tx.userId,
+        referredBy: userRow?.referredBy,
+        depositAmount: creditAmount,
+        sourceLabel: tx.method ?? "Mobile Money"
+      });
     } else if (CLAPAY_TERMINAL_FAILURE.has(normalizedStatus)) {
       const updated = await db.update(transactionsTable).set({ status: "failed" }).where(and(
         eq(transactionsTable.externalDepositId, externalDepositId),
@@ -159282,6 +159315,12 @@ router10.get("/wallet/deposit/:depositId/status", requireAuth, async (req, res) 
             if (justCompleted) {
               await db.update(usersTable).set({ balance: sql`${usersTable.balance} + ${creditAmount}` }).where(eq(usersTable.id, user.id));
               logger.info({ depositId, userId: user.id, creditAmount }, "[PawaPay Poll] Deposit COMPLETED via polling \u2014 balance credited \u2713");
+              void creditReferralDepositCommission({
+                depositorId: user.id,
+                referredBy: user.referredBy,
+                depositAmount: creditAmount,
+                sourceLabel: tx.method ?? "Mobile Money"
+              });
             } else {
               logger.info({ depositId }, "[PawaPay Poll] Already processed by webhook \u2014 skipping double-credit");
             }
@@ -168735,12 +168774,13 @@ async function reconcilePendingPawaPayTransactions() {
           if (notif) broadcastNotification(notif);
         } catch {
         }
+        const [userRow] = await db.select({
+          email: usersTable.email,
+          fullName: usersTable.fullName,
+          balance: usersTable.balance,
+          referredBy: usersTable.referredBy
+        }).from(usersTable).where(eq(usersTable.id, tx.userId)).limit(1);
         try {
-          const [userRow] = await db.select({
-            email: usersTable.email,
-            fullName: usersTable.fullName,
-            balance: usersTable.balance
-          }).from(usersTable).where(eq(usersTable.id, tx.userId)).limit(1);
           if (userRow?.email) {
             const phoneMatch = tx.description?.match(/[\+\d]{8,}/);
             await sendDepositConfirmationEmail({
@@ -168757,6 +168797,12 @@ async function reconcilePendingPawaPayTransactions() {
           }
         } catch {
         }
+        void creditReferralDepositCommission({
+          depositorId: tx.userId,
+          referredBy: userRow?.referredBy,
+          depositAmount: creditAmount,
+          sourceLabel: tx.method ?? "Mobile Money"
+        });
       } else if (depositStatus === "FAILED" || depositStatus === "IN_RECONCILIATION") {
         if (depositStatus === "FAILED") {
           const [updated] = await db.update(transactionsTable).set({ status: "failed" }).where(and(
