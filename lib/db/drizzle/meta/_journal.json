@@ -127,6 +127,13 @@
       "when": 1783697001000,
       "tag": "0017_email_providers",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1783800000000,
+      "tag": "0018_worker_leader_lock",
+      "breakpoints": true
     }
   ]
 }

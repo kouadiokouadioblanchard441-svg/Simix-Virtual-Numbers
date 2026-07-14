@@ -13,6 +13,7 @@ import { seedProvidersFromEnv } from "./lib/seed-providers";
 import { seedRoutingData } from "./lib/seed-routing";
 import { seedCountryPaymentConfigs } from "./lib/seed-country-payment-configs";
 import { setAppUrl, getAppUrl } from "./lib/app-url";
+import { electLeaderAndRun } from "./lib/leader-lock";
 import { eq } from "drizzle-orm";
 
 const rawPort = process.env["PORT"] ?? "3000";
@@ -80,26 +81,34 @@ async function start(): Promise<void> {
   void seedCountryPaymentConfigs();
   void seedRoutingData();
 
-  void seedProvidersFromEnv().then(async () => {
-    startFiveSimPoller();
-    startFiveSimSyncScheduler();
-    startClapayReconciliation();
-    startPawaPayReconciliation();
-    getEmailManager().startBackgroundWorkers();
+  void seedProvidersFromEnv().then(() => {
+    /* ── Élection de leader ──────────────────────────────────────
+     * Plusieurs processus (aperçu Replit, artifact api-server, prod)
+     * tournent contre la même base. Seul le leader élu démarre les
+     * workers périodiques — évite les doubles envois/remboursements. */
+    electLeaderAndRun(() => {
+      startFiveSimPoller();
+      startFiveSimSyncScheduler();
+      startClapayReconciliation();
+      startPawaPayReconciliation();
+      getEmailManager().startBackgroundWorkers();
 
-    try {
-      const result = await syncFiveSimCountries();
-      logger.info({ added: result.added, updated: result.updated, total: result.total }, "[startup] 5sim countries synced");
-    } catch (e) {
-      logger.warn({ err: (e as Error).message }, "[startup] 5sim countries sync skipped");
-    }
+      void (async () => {
+        try {
+          const result = await syncFiveSimCountries();
+          logger.info({ added: result.added, updated: result.updated, total: result.total }, "[startup] 5sim countries synced");
+        } catch (e) {
+          logger.warn({ err: (e as Error).message }, "[startup] 5sim countries sync skipped");
+        }
 
-    try {
-      const result = await syncFiveSimProducts();
-      logger.info({ added: result.added, updated: result.updated, total: result.total }, "[startup] 5sim products synced");
-    } catch (e) {
-      logger.warn({ err: (e as Error).message }, "[startup] 5sim products sync skipped");
-    }
+        try {
+          const result = await syncFiveSimProducts();
+          logger.info({ added: result.added, updated: result.updated, total: result.total }, "[startup] 5sim products synced");
+        } catch (e) {
+          logger.warn({ err: (e as Error).message }, "[startup] 5sim products sync skipped");
+        }
+      })();
+    });
   });
 
   /* ── Start HTTP server ─────────────────────────────────────────── */

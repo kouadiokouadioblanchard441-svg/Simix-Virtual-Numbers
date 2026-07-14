@@ -31079,7 +31079,7 @@ var require_utils_webcrypto = __commonJS({
     var nodeCrypto2 = require("crypto");
     module2.exports = {
       postgresMd5PasswordHash,
-      randomBytes: randomBytes5,
+      randomBytes: randomBytes6,
       deriveKey,
       sha256,
       hashByName,
@@ -31089,7 +31089,7 @@ var require_utils_webcrypto = __commonJS({
     var webCrypto = nodeCrypto2.webcrypto || globalThis.crypto;
     var subtleCrypto = webCrypto.subtle;
     var textEncoder2 = new TextEncoder();
-    function randomBytes5(length) {
+    function randomBytes6(length) {
       return webCrypto.getRandomValues(Buffer.alloc(length));
     }
     async function md52(string) {
@@ -44066,6 +44066,21 @@ var init_banners = __esm({
   }
 });
 
+// ../../lib/db/src/schema/worker_leader_lock.ts
+var workerLeaderLockTable;
+var init_worker_leader_lock = __esm({
+  "../../lib/db/src/schema/worker_leader_lock.ts"() {
+    "use strict";
+    init_pg_core();
+    workerLeaderLockTable = pgTable("worker_leader_lock", {
+      id: smallint("id").primaryKey(),
+      holderId: text("holder_id").notNull().default(""),
+      leaseUntil: timestamp("lease_until", { withTimezone: true }).notNull(),
+      updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => /* @__PURE__ */ new Date())
+    });
+  }
+});
+
 // ../../lib/db/src/schema/email_otp.ts
 var emailOtpTable;
 var init_email_otp = __esm({
@@ -44492,7 +44507,8 @@ __export(schema_exports, {
   systemSettingsTable: () => systemSettingsTable,
   transactionsTable: () => transactionsTable,
   usersTable: () => usersTable,
-  virtualNumbersTable: () => virtualNumbersTable
+  virtualNumbersTable: () => virtualNumbersTable,
+  workerLeaderLockTable: () => workerLeaderLockTable
 });
 var init_schema2 = __esm({
   "../../lib/db/src/schema/index.ts"() {
@@ -44517,6 +44533,7 @@ var init_schema2 = __esm({
     init_notifications();
     init_email_campaigns();
     init_banners();
+    init_worker_leader_lock();
     init_email_otp();
     init_login_history();
     init_ip_blacklist();
@@ -44579,7 +44596,8 @@ __export(src_exports, {
   systemSettingsTable: () => systemSettingsTable,
   transactionsTable: () => transactionsTable,
   usersTable: () => usersTable,
-  virtualNumbersTable: () => virtualNumbersTable
+  virtualNumbersTable: () => virtualNumbersTable,
+  workerLeaderLockTable: () => workerLeaderLockTable
 });
 function parseDbUrl(url2) {
   try {
@@ -169386,6 +169404,67 @@ async function seedCountryPaymentConfigs() {
   }
 }
 
+// src/lib/leader-lock.ts
+var import_crypto12 = require("crypto");
+init_drizzle_orm();
+init_src();
+init_logger2();
+var LOCK_ROW_ID = 1;
+var LEASE_MS = 3e4;
+var RENEW_INTERVAL_MS = 1e4;
+var HOLDER_ID = `${process.env["HOSTNAME"] ?? "host"}-${process.pid}-${(0, import_crypto12.randomBytes)(4).toString("hex")}`;
+var isLeader = false;
+var renewTimer = null;
+async function ensureRowExists() {
+  await db.execute(sql`
+    INSERT INTO worker_leader_lock (id, holder_id, lease_until)
+    VALUES (${LOCK_ROW_ID}, '', 'epoch'::timestamptz)
+    ON CONFLICT (id) DO NOTHING
+  `);
+}
+async function tryAcquireOrRenew() {
+  const now = /* @__PURE__ */ new Date();
+  const newLease = new Date(now.getTime() + LEASE_MS);
+  const result = await db.execute(sql`
+    UPDATE worker_leader_lock
+    SET holder_id = ${HOLDER_ID}, lease_until = ${newLease}
+    WHERE id = ${LOCK_ROW_ID}
+      AND (holder_id = ${HOLDER_ID} OR lease_until < ${now})
+    RETURNING id
+  `);
+  return result.rows.length > 0;
+}
+function electLeaderAndRun(onBecomeLeader) {
+  void (async () => {
+    try {
+      await ensureRowExists();
+    } catch (err) {
+      logger.warn({ err }, "[leader-lock] \xC9chec de seed de la ligne \u2014 nouvelle tentative via le cycle de renouvellement");
+    }
+    const cycle = async () => {
+      try {
+        const acquired = await tryAcquireOrRenew();
+        if (acquired && !isLeader) {
+          isLeader = true;
+          logger.info({ holder: HOLDER_ID }, "[leader-lock] Ce processus devient leader \u2014 d\xE9marrage des workers background");
+          onBecomeLeader();
+        } else if (!acquired && isLeader) {
+          logger.warn("[leader-lock] Bail perdu \u2014 un autre processus a pu prendre le relais");
+          isLeader = false;
+        } else if (!acquired) {
+          logger.debug("[leader-lock] Un autre processus est d\xE9j\xE0 leader \u2014 en attente");
+        }
+      } catch (err) {
+        logger.warn({ err }, "[leader-lock] Erreur pendant l'\xE9lection de leader");
+      }
+    };
+    await cycle();
+    renewTimer = setInterval(() => {
+      void cycle();
+    }, RENEW_INTERVAL_MS);
+  })();
+}
+
 // src/index.ts
 init_drizzle_orm();
 var rawPort = process.env["PORT"] ?? "3000";
@@ -169426,24 +169505,28 @@ async function start() {
   void seedPaymentMethods();
   void seedCountryPaymentConfigs();
   void seedRoutingData();
-  void seedProvidersFromEnv().then(async () => {
-    startFiveSimPoller();
-    startFiveSimSyncScheduler();
-    startClapayReconciliation();
-    startPawaPayReconciliation();
-    getEmailManager().startBackgroundWorkers();
-    try {
-      const result = await syncFiveSimCountries();
-      logger.info({ added: result.added, updated: result.updated, total: result.total }, "[startup] 5sim countries synced");
-    } catch (e3) {
-      logger.warn({ err: e3.message }, "[startup] 5sim countries sync skipped");
-    }
-    try {
-      const result = await syncFiveSimProducts();
-      logger.info({ added: result.added, updated: result.updated, total: result.total }, "[startup] 5sim products synced");
-    } catch (e3) {
-      logger.warn({ err: e3.message }, "[startup] 5sim products sync skipped");
-    }
+  void seedProvidersFromEnv().then(() => {
+    electLeaderAndRun(() => {
+      startFiveSimPoller();
+      startFiveSimSyncScheduler();
+      startClapayReconciliation();
+      startPawaPayReconciliation();
+      getEmailManager().startBackgroundWorkers();
+      void (async () => {
+        try {
+          const result = await syncFiveSimCountries();
+          logger.info({ added: result.added, updated: result.updated, total: result.total }, "[startup] 5sim countries synced");
+        } catch (e3) {
+          logger.warn({ err: e3.message }, "[startup] 5sim countries sync skipped");
+        }
+        try {
+          const result = await syncFiveSimProducts();
+          logger.info({ added: result.added, updated: result.updated, total: result.total }, "[startup] 5sim products synced");
+        } catch (e3) {
+          logger.warn({ err: e3.message }, "[startup] 5sim products sync skipped");
+        }
+      })();
+    });
   });
   app_default.listen(port, (err) => {
     if (err) {
