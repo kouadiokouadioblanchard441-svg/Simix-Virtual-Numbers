@@ -146,6 +146,30 @@ export interface ClapayPaymentLimit {
   country: string;
 }
 
+export interface ClapayCashoutRequest {
+  transaction_id: string;
+  additional_infos: {
+    customer_phone?: string;
+    customer_firstname?: string;
+    customer_lastname?: string;
+    customer_email?: string;
+  };
+  amount: number;              // Integer amount in local currency
+  callback_url: string;
+  return_url: string;
+  country_code: string;        // ISO alpha-2 (CI, CM, SN…)
+  operators_code: string[];    // code.CASHOUT values from GET /operators/data
+  method: "CASHOUT";
+}
+
+export interface ClapayCashoutResponse {
+  signature: string;
+  currency: string;
+  country: string;
+  status?: string;
+  message?: string;
+}
+
 /* ─────────────────────────────────────────────────────────────────
  * Operator slug → Clapay operator code mapping (fallback)
  * Used when dynamic resolution from /opérateurs/données fails.
@@ -525,6 +549,18 @@ export class ClapayClient {
       "/nowallet/api/limitation/paiement", "GET", undefined, { country },
     );
     return Array.isArray(result) ? result : [result];
+  }
+
+  /**
+   * Initiate a cashout (merchant → mobile money recipient).
+   * Uses the same init endpoint as payments but with method: "CASHOUT"
+   * and the operator's code.CASHOUT value.
+   *
+   * @param params ClapayCashoutRequest
+   */
+  async initiateCashout(params: ClapayCashoutRequest): Promise<ClapayCashoutResponse> {
+    const safeParams = { ...params, amount: Math.floor(params.amount) };
+    return this.request<ClapayCashoutResponse>("/nowallet/api/init/cashout", "POST", safeParams);
   }
 }
 

@@ -406,6 +406,81 @@ export const adminApi = {
     req<{ success: boolean }>("POST", `/admin/referral-withdrawals/${id}/approve`),
   rejectReferralWithdrawal: (id: string, reason?: string) =>
     req<{ success: boolean }>("POST", `/admin/referral-withdrawals/${id}/reject`, { reason }),
+
+  /* ── Payouts (merchant withdrawals) ── */
+  getPayoutsPayapayConfig: () =>
+    req<{
+      env: string;
+      countries: Array<{
+        countryIso3: string;
+        countryIso2: string;
+        currency: string;
+        providers: Array<{
+          provider: string;
+          name: string;
+          currency: string;
+          minAmount?: string;
+          maxAmount?: string;
+        }>;
+      }>;
+    }>("GET", "/admin/payouts/pawapay/config"),
+
+  initiatePawapayPayout: (data: {
+    phoneNumber: string;
+    dialCode?: string;
+    provider: string;
+    currency: string;
+    amount: number;
+  }) =>
+    req<{
+      payoutId: string;
+      status: string;
+      created?: string;
+      failureReason?: { failureCode: string; failureMessage: string };
+    }>("POST", "/admin/payouts/pawapay", data),
+
+  getPawapayPayoutStatus: (payoutId: string) =>
+    req<{
+      status: "FOUND" | "NOT_FOUND";
+      data?: {
+        payoutId: string;
+        status: string;
+        amount: string;
+        currency: string;
+        country: string;
+        failureReason?: { failureCode: string; failureMessage: string };
+      };
+    }>("GET", `/admin/payouts/pawapay/status/${payoutId}`),
+
+  getClapayPayoutCountries: () =>
+    req<{
+      countries: Array<{ code: string; name: string; indicatif: string; currency: string }>;
+    }>("GET", "/admin/payouts/clapay/countries"),
+
+  getClapayPayoutOperators: (country: string) =>
+    req<{
+      operators: Array<{
+        name: string;
+        codeoperator: string;
+        cashoutCode: string;
+        logo: string;
+        requiresOtp: boolean;
+      }>;
+    }>("GET", `/admin/payouts/clapay/operators/${country}`),
+
+  initiateClapayPayout: (data: {
+    phoneNumber: string;
+    dialCode?: string;
+    countryCode: string;
+    cashoutCode: string;
+    amount: number;
+  }) =>
+    req<{
+      transactionId: string;
+      signature: string;
+      currency: string;
+      status?: string;
+    }>("POST", "/admin/payouts/clapay", data),
 };
 
 /* ── Pricing Matrix ── */

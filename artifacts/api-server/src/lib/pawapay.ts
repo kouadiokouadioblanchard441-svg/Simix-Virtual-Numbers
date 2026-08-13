@@ -28,6 +28,54 @@ import { createHash } from "node:crypto";
 
 export type PawaPayEnv = "sandbox" | "production";
 
+/* ── v2 Payout Types ── */
+
+export interface PawaPayPayoutRequest {
+  payoutId: string;           // UUID v4 — generated before storing in DB
+  amount: string;             // String, no leading zeros
+  currency: string;           // ISO 4217 (XOF, GHS…)
+  recipient: {
+    type: "MMO";
+    accountDetails: {
+      phoneNumber: string;    // E.164 without +, no leading zero
+      provider: string;       // e.g. ORANGE_CIV, MTN_MOMO_ZMB
+    };
+  };
+  customerMessage?: string;   // 4–22 chars, ^[a-zA-Z0-9 ]+$
+  metadata?: Record<string, string>[];
+}
+
+export interface PawaPayPayoutInitResponse {
+  payoutId: string;
+  status: "ACCEPTED" | "REJECTED" | "DUPLICATE_IGNORED";
+  created?: string;
+  failureReason?: {
+    failureCode: string;
+    failureMessage: string;
+  };
+}
+
+export interface PawaPayPayoutData {
+  payoutId: string;
+  status: "ACCEPTED" | "PROCESSING" | "COMPLETED" | "FAILED" | "IN_RECONCILIATION" | "DUPLICATE_IGNORED";
+  amount: string;
+  currency: string;
+  country: string;
+  recipient: {
+    type: "MMO";
+    accountDetails: {
+      phoneNumber: string;
+      provider: string;
+    };
+  };
+  created: string;
+  providerTransactionId?: string;
+  failureReason?: {
+    failureCode: string;
+    failureMessage: string;
+  };
+}
+
 /* ── v2 Request Types ── */
 
 export interface PawaPayDepositRequest {
@@ -294,6 +342,23 @@ export class PawaPayClient {
    */
   async getPublicKeys(): Promise<Array<{ keyId: string; key: string; algorithm: string }>> {
     return this.request<Array<{ keyId: string; key: string; algorithm: string }>>("/v2/public-keys");
+  }
+
+  /**
+   * Initiate a payout (merchant → mobile money recipient).
+   * POST /v2/payouts
+   * IMPORTANT: Store the payoutId in your DB BEFORE calling this.
+   */
+  async initiatePayout(params: PawaPayPayoutRequest): Promise<PawaPayPayoutInitResponse> {
+    return this.request<PawaPayPayoutInitResponse>("/v2/payouts", "POST", params);
+  }
+
+  /**
+   * Check the current status of a payout.
+   * GET /v2/payouts/:payoutId
+   */
+  async getPayoutStatus(payoutId: string): Promise<{ status: "FOUND" | "NOT_FOUND"; data?: PawaPayPayoutData }> {
+    return this.request(`/v2/payouts/${payoutId}`);
   }
 }
 

@@ -33,6 +33,7 @@ import {
   Activity,
   RotateCcw,
   Gift,
+  Wallet,
 } from "lucide-react";
 import { SimixLogo } from "@/components/simix-logo";
 import { cn } from "@/lib/utils";
@@ -73,6 +74,7 @@ const NAV_ITEMS: NavItem[] = [
   },
   { href: "/admin/payment-stats",  label: "Stats Passerelles",    icon: Activity, highlight: true },
   { href: "/admin/payment-config", label: "Disponibilité / Pays", icon: MapPin },
+  { href: "/admin/payouts",        label: "Retraits marchands",   icon: Wallet, highlight: true },
   { href: "/admin/currencies",     label: "Devises & Taux FX",   icon: DollarSign },
   { href: "/admin/fx-profits",     label: "Profits FX",           icon: TrendingUp },
 

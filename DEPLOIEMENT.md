@@ -108,6 +108,38 @@ Dans **Plesk → Domaine → Git** :
 
 Configurer un proxy dans Plesk depuis votre domaine → `localhost:3000`.
 
+### 5. En-têtes de sécurité nginx (obligatoire pour le score A)
+
+> **Pourquoi ?** Plesk/nginx sert le fichier `index.html` statique directement, sans passer par l'app Node.js. Les en-têtes helmet configurés dans Express ne s'appliquent donc pas à cette réponse. Il faut les ajouter au niveau nginx.
+
+Dans **Plesk → Domains → simix.site → Apache & nginx Settings → Additional nginx directives**, coller :
+
+```nginx
+# HSTS — force HTTPS 1 an
+add_header Strict-Transport-Security "max-age=31536000; includeSubDomains; preload" always;
+
+# Anti-clickjacking
+add_header X-Frame-Options "SAMEORIGIN" always;
+
+# Anti-MIME-sniffing
+add_header X-Content-Type-Options "nosniff" always;
+
+# Politique de référent
+add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+
+# Content Security Policy
+add_header Content-Security-Policy "default-src 'self'; script-src 'self' https://challenges.cloudflare.com; script-src-elem 'self' https://challenges.cloudflare.com; script-src-attr 'none'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: blob: https:; connect-src 'self' wss: ws: https:; font-src 'self' data: https://fonts.gstatic.com; media-src 'self' blob:; worker-src 'self' blob:; manifest-src 'self'; child-src 'self' blob: https://challenges.cloudflare.com; frame-src 'self' https://challenges.cloudflare.com; frame-ancestors 'self'; object-src 'none'; base-uri 'self'; form-action 'self'" always;
+
+# Permissions Policy
+add_header Permissions-Policy "accelerometer=(), ambient-light-sensor=(), autoplay=(), battery=(), camera=(), display-capture=(), document-domain=(), encrypted-media=(), fullscreen=(), geolocation=(), gyroscope=(), interest-cohort=(), magnetometer=(), microphone=(), midi=(), payment=(), picture-in-picture=(), publickey-credentials-get=(), screen-wake-lock=(), sync-xhr=(), usb=(), web-share=(), xr-spatial-tracking=()" always;
+
+# Masquer la version nginx
+server_tokens off;
+```
+
+> Le même bloc se trouve dans `nginx-security-headers.conf` à la racine du dépôt.
+> Après avoir collé ces directives, cliquer sur **OK** puis redémarrer nginx dans Plesk.
+
 ---
 
 ## Workflow de mise à jour (depuis Replit)

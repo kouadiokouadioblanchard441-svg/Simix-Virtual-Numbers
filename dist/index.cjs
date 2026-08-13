@@ -20573,27 +20573,27 @@ var require_router = __commonJS({
     var slice = Array.prototype.slice;
     var flatten2 = Array.prototype.flat;
     var methods = METHODS.map((method) => method.toLowerCase());
-    module2.exports = Router33;
+    module2.exports = Router34;
     module2.exports.Route = Route;
-    function Router33(options) {
-      if (!(this instanceof Router33)) {
-        return new Router33(options);
+    function Router34(options) {
+      if (!(this instanceof Router34)) {
+        return new Router34(options);
       }
       const opts = options || {};
-      function router33(req, res, next) {
-        router33.handle(req, res, next);
+      function router34(req, res, next) {
+        router34.handle(req, res, next);
       }
-      Object.setPrototypeOf(router33, this);
-      router33.caseSensitive = opts.caseSensitive;
-      router33.mergeParams = opts.mergeParams;
-      router33.params = {};
-      router33.strict = opts.strict;
-      router33.stack = [];
-      return router33;
+      Object.setPrototypeOf(router34, this);
+      router34.caseSensitive = opts.caseSensitive;
+      router34.mergeParams = opts.mergeParams;
+      router34.params = {};
+      router34.strict = opts.strict;
+      router34.stack = [];
+      return router34;
     }
-    Router33.prototype = function() {
+    Router34.prototype = function() {
     };
-    Router33.prototype.param = function param2(name3, fn2) {
+    Router34.prototype.param = function param2(name3, fn2) {
       if (!name3) {
         throw new TypeError("argument name is required");
       }
@@ -20613,7 +20613,7 @@ var require_router = __commonJS({
       params.push(fn2);
       return this;
     };
-    Router33.prototype.handle = function handle(req, res, callback) {
+    Router34.prototype.handle = function handle(req, res, callback) {
       if (!callback) {
         throw new TypeError("argument callback is required");
       }
@@ -20740,7 +20740,7 @@ var require_router = __commonJS({
         }
       }
     };
-    Router33.prototype.use = function use(handler) {
+    Router34.prototype.use = function use(handler) {
       let offset = 0;
       let path6 = "/";
       if (typeof handler !== "function") {
@@ -20773,7 +20773,7 @@ var require_router = __commonJS({
       }
       return this;
     };
-    Router33.prototype.route = function route(path6) {
+    Router34.prototype.route = function route(path6) {
       const route2 = new Route(path6);
       const layer = new Layer(path6, {
         sensitive: this.caseSensitive,
@@ -20788,7 +20788,7 @@ var require_router = __commonJS({
       return route2;
     };
     methods.concat("all").forEach(function(method) {
-      Router33.prototype[method] = function(path6) {
+      Router34.prototype[method] = function(path6) {
         const route = this.route(path6);
         route[method].apply(route, slice.call(arguments, 1));
         return this;
@@ -20971,13 +20971,13 @@ var require_application = __commonJS({
     var compileTrust = require_utils3().compileTrust;
     var resolve = require("node:path").resolve;
     var once = require_once();
-    var Router33 = require_router();
+    var Router34 = require_router();
     var slice = Array.prototype.slice;
     var flatten2 = Array.prototype.flat;
     var app2 = exports2 = module2.exports = {};
     var trustProxyDefaultSymbol = "@@symbol:trust_proxy_default";
     app2.init = function init() {
-      var router33 = null;
+      var router34 = null;
       this.cache = /* @__PURE__ */ Object.create(null);
       this.engines = /* @__PURE__ */ Object.create(null);
       this.settings = /* @__PURE__ */ Object.create(null);
@@ -20986,13 +20986,13 @@ var require_application = __commonJS({
         configurable: true,
         enumerable: true,
         get: function getrouter() {
-          if (router33 === null) {
-            router33 = new Router33({
+          if (router34 === null) {
+            router34 = new Router34({
               caseSensitive: this.enabled("case sensitive routing"),
               strict: this.enabled("strict routing")
             });
           }
-          return router33;
+          return router34;
         }
       });
     };
@@ -21063,15 +21063,15 @@ var require_application = __commonJS({
       if (fns.length === 0) {
         throw new TypeError("app.use() requires a middleware function");
       }
-      var router33 = this.router;
+      var router34 = this.router;
       fns.forEach(function(fn3) {
         if (!fn3 || !fn3.handle || !fn3.set) {
-          return router33.use(path6, fn3);
+          return router34.use(path6, fn3);
         }
         debug(".use app under %s", path6);
         fn3.mountpath = path6;
         fn3.parent = this;
-        router33.use(path6, function mounted_app(req, res, next) {
+        router34.use(path6, function mounted_app(req, res, next) {
           var orig = req.app;
           fn3.handle(req, res, function(err) {
             Object.setPrototypeOf(req, orig.request);
@@ -23598,7 +23598,7 @@ var require_express = __commonJS({
     var EventEmitter3 = require("node:events").EventEmitter;
     var mixin = require_merge_descriptors();
     var proto = require_application();
-    var Router33 = require_router();
+    var Router34 = require_router();
     var req = require_request();
     var res = require_response();
     exports2 = module2.exports = createApplication;
@@ -23620,8 +23620,8 @@ var require_express = __commonJS({
     exports2.application = proto;
     exports2.request = req;
     exports2.response = res;
-    exports2.Route = Router33.Route;
-    exports2.Router = Router33;
+    exports2.Route = Router34.Route;
+    exports2.Router = Router34;
     exports2.json = bodyParser.json;
     exports2.raw = bodyParser.raw;
     exports2.static = require_serve_static();
@@ -134188,6 +134188,21 @@ var init_pawapay = __esm({
       async getPublicKeys() {
         return this.request("/v2/public-keys");
       }
+      /**
+       * Initiate a payout (merchant → mobile money recipient).
+       * POST /v2/payouts
+       * IMPORTANT: Store the payoutId in your DB BEFORE calling this.
+       */
+      async initiatePayout(params) {
+        return this.request("/v2/payouts", "POST", params);
+      }
+      /**
+       * Check the current status of a payout.
+       * GET /v2/payouts/:payoutId
+       */
+      async getPayoutStatus(payoutId) {
+        return this.request(`/v2/payouts/${payoutId}`);
+      }
     };
   }
 });
@@ -134490,6 +134505,17 @@ var init_clapay = __esm({
           { country }
         );
         return Array.isArray(result) ? result : [result];
+      }
+      /**
+       * Initiate a cashout (merchant → mobile money recipient).
+       * Uses the same init endpoint as payments but with method: "CASHOUT"
+       * and the operator's code.CASHOUT value.
+       *
+       * @param params ClapayCashoutRequest
+       */
+      async initiateCashout(params) {
+        const safeParams = { ...params, amount: Math.floor(params.amount) };
+        return this.request("/nowallet/api/init/cashout", "POST", safeParams);
       }
     };
     CLAPAY_PREFIX = "clapay:";
@@ -135827,7 +135853,7 @@ async function migrate(db2, config) {
 }
 
 // src/app.ts
-var import_express34 = __toESM(require_express2(), 1);
+var import_express35 = __toESM(require_express2(), 1);
 var import_compression = __toESM(require_compression(), 1);
 var import_cors = __toESM(require_lib3(), 1);
 var import_cookie_parser = __toESM(require_cookie_parser(), 1);
@@ -136380,7 +136406,7 @@ var import_path3 = __toESM(require("path"), 1);
 var import_fs4 = require("fs");
 
 // src/routes/index.ts
-var import_express32 = __toESM(require_express2(), 1);
+var import_express33 = __toESM(require_express2(), 1);
 
 // src/routes/health.ts
 var import_express = __toESM(require_express2(), 1);
@@ -165210,11 +165236,202 @@ function buildTestEmailHtml(providerName, email) {
 }
 var admin_email_providers_default = router20;
 
-// src/routes/config.ts
+// src/routes/admin-payouts.ts
 var import_express22 = __toESM(require_express2(), 1);
-init_settings();
+init_pawapay();
+init_clapay();
+init_gateway_credentials();
+init_logger2();
 var router21 = (0, import_express22.Router)();
-router21.get("/config", async (_req, res) => {
+router21.use(requireAdminJwt);
+function requireAdmin7(req, res, next) {
+  if (req.adminPayload) {
+    next();
+    return;
+  }
+  if (!req.user?.isAdmin) {
+    res.status(403).json({ error: "Acc\xE8s r\xE9serv\xE9 aux administrateurs" });
+    return;
+  }
+  next();
+}
+var ISO3_TO_ISO2 = Object.fromEntries(
+  Object.entries(ISO2_TO_ISO3).map(([iso2, iso3]) => [iso3, iso2])
+);
+router21.get("/admin/payouts/pawapay/config", requireAdmin7, async (req, res) => {
+  try {
+    const creds = await resolvePawaPayCredentials();
+    if (!creds) {
+      res.status(503).json({ error: "PawaPay non configur\xE9 \u2014 ajoutez un token PawaPay dans les param\xE8tres" });
+      return;
+    }
+    const client = new PawaPayClient(creds.token, creds.env);
+    const config = await client.getActiveConfiguration();
+    const countries = config.countries.map((c2) => {
+      const iso2 = ISO3_TO_ISO2[c2.country] ?? c2.country;
+      const currency = COUNTRY_CURRENCY[iso2] ?? "XOF";
+      const providers = c2.providers.filter(
+        (p) => p.currencies.some((cur) => cur.operationTypes?.PAYOUT)
+      ).map((p) => {
+        const cur = p.currencies.find((cu2) => cu2.operationTypes?.PAYOUT);
+        return {
+          provider: p.provider,
+          name: p.nameDisplayedToCustomer,
+          currency: cur?.currency ?? currency,
+          minAmount: cur?.operationTypes?.PAYOUT?.minAmount,
+          maxAmount: cur?.operationTypes?.PAYOUT?.maxAmount
+        };
+      });
+      return { countryIso3: c2.country, countryIso2: iso2, currency, providers };
+    }).filter((c2) => c2.providers.length > 0);
+    res.json({ countries, env: creds.env });
+  } catch (err) {
+    logger.error({ err }, "[admin-payouts] PawaPay config fetch failed");
+    res.status(500).json({ error: err.message });
+  }
+});
+router21.post("/admin/payouts/pawapay", requireAdmin7, async (req, res) => {
+  const { phoneNumber, dialCode, provider, currency, amount } = req.body;
+  if (!phoneNumber || !provider || !currency || !amount) {
+    res.status(400).json({ error: "Champs requis : phoneNumber, provider, currency, amount" });
+    return;
+  }
+  const amountNum = Number(amount);
+  if (!Number.isFinite(amountNum) || amountNum <= 0) {
+    res.status(400).json({ error: "Montant invalide" });
+    return;
+  }
+  try {
+    const creds = await resolvePawaPayCredentials();
+    if (!creds) {
+      res.status(503).json({ error: "PawaPay non configur\xE9" });
+      return;
+    }
+    const client = new PawaPayClient(creds.token, creds.env);
+    const msisdn = buildMSISDN(phoneNumber, dialCode);
+    const payoutId = crypto.randomUUID();
+    logger.info({ payoutId, msisdn, provider, currency, amount: String(amountNum) }, "[admin-payouts] Initiating PawaPay payout");
+    const result = await client.initiatePayout({
+      payoutId,
+      amount: String(Math.floor(amountNum)),
+      currency,
+      recipient: {
+        type: "MMO",
+        accountDetails: {
+          phoneNumber: msisdn,
+          provider
+        }
+      },
+      customerMessage: "Simix retrait",
+      metadata: [{ type: "admin_payout" }]
+    });
+    logger.info({ payoutId, status: result.status }, "[admin-payouts] PawaPay payout initiated");
+    res.json({ payoutId, status: result.status, created: result.created, failureReason: result.failureReason });
+  } catch (err) {
+    logger.error({ err }, "[admin-payouts] PawaPay payout failed");
+    res.status(500).json({ error: err.message });
+  }
+});
+router21.get("/admin/payouts/pawapay/status/:payoutId", requireAdmin7, async (req, res) => {
+  const { payoutId } = req.params;
+  try {
+    const creds = await resolvePawaPayCredentials();
+    if (!creds) {
+      res.status(503).json({ error: "PawaPay non configur\xE9" });
+      return;
+    }
+    const client = new PawaPayClient(creds.token, creds.env);
+    const result = await client.getPayoutStatus(payoutId);
+    res.json(result);
+  } catch (err) {
+    logger.error({ err, payoutId }, "[admin-payouts] PawaPay status check failed");
+    res.status(500).json({ error: err.message });
+  }
+});
+router21.get("/admin/payouts/clapay/countries", requireAdmin7, async (req, res) => {
+  try {
+    const creds = await resolveClapayCredentials();
+    if (!creds) {
+      res.status(503).json({ error: "Clapay non configur\xE9 \u2014 ajoutez un token Clapay dans les param\xE8tres" });
+      return;
+    }
+    const client = new ClapayClient(creds.token, creds.baseUrl);
+    const countries = await client.getCountries();
+    res.json({ countries });
+  } catch (err) {
+    logger.error({ err }, "[admin-payouts] Clapay countries fetch failed");
+    res.status(500).json({ error: err.message });
+  }
+});
+router21.get("/admin/payouts/clapay/operators/:country", requireAdmin7, async (req, res) => {
+  const { country } = req.params;
+  try {
+    const creds = await resolveClapayCredentials();
+    if (!creds) {
+      res.status(503).json({ error: "Clapay non configur\xE9" });
+      return;
+    }
+    const client = new ClapayClient(creds.token, creds.baseUrl);
+    const all2 = await client.getOperators(country);
+    const cashoutOps = all2.filter((op) => op.active && op.code?.CASHOUT && op.code.CASHOUT !== "none").map((op) => ({
+      name: op.name,
+      codeoperator: op.codeoperator,
+      cashoutCode: op.code.CASHOUT,
+      logo: op.logo,
+      requiresOtp: op.otpstarter?.CASHOUT ?? false
+    }));
+    res.json({ operators: cashoutOps });
+  } catch (err) {
+    logger.error({ err, country }, "[admin-payouts] Clapay operators fetch failed");
+    res.status(500).json({ error: err.message });
+  }
+});
+router21.post("/admin/payouts/clapay", requireAdmin7, async (req, res) => {
+  const { phoneNumber, dialCode, countryCode, cashoutCode, amount } = req.body;
+  if (!phoneNumber || !countryCode || !cashoutCode || !amount) {
+    res.status(400).json({ error: "Champs requis : phoneNumber, countryCode, cashoutCode, amount" });
+    return;
+  }
+  const amountNum = Number(amount);
+  if (!Number.isFinite(amountNum) || amountNum <= 0) {
+    res.status(400).json({ error: "Montant invalide" });
+    return;
+  }
+  try {
+    const creds = await resolveClapayCredentials();
+    if (!creds) {
+      res.status(503).json({ error: "Clapay non configur\xE9" });
+      return;
+    }
+    const client = new ClapayClient(creds.token, creds.baseUrl);
+    const formattedPhone = formatClapayPhone(phoneNumber, dialCode, countryCode);
+    const transactionId = crypto.randomUUID();
+    logger.info({ transactionId, formattedPhone, countryCode, cashoutCode, amount: amountNum }, "[admin-payouts] Initiating Clapay cashout");
+    const appUrl = process.env.APP_URL?.replace(/\/$/, "") ?? "https://simix.site";
+    const result = await client.initiateCashout({
+      transaction_id: transactionId,
+      additional_infos: { customer_phone: formattedPhone },
+      amount: amountNum,
+      callback_url: `${appUrl}/api/wallet/clapay/webhook`,
+      return_url: `${appUrl}/admin/payouts`,
+      country_code: countryCode.toUpperCase(),
+      operators_code: [cashoutCode],
+      method: "CASHOUT"
+    });
+    logger.info({ transactionId, signature: result.signature }, "[admin-payouts] Clapay cashout initiated");
+    res.json({ transactionId, signature: result.signature, currency: result.currency, status: result.status });
+  } catch (err) {
+    logger.error({ err }, "[admin-payouts] Clapay cashout failed");
+    res.status(500).json({ error: err.message });
+  }
+});
+var admin_payouts_default = router21;
+
+// src/routes/config.ts
+var import_express23 = __toESM(require_express2(), 1);
+init_settings();
+var router22 = (0, import_express23.Router)();
+router22.get("/config", async (_req, res) => {
   const [
     platformName,
     supportEmail,
@@ -165282,15 +165499,15 @@ router21.get("/config", async (_req, res) => {
     }
   });
 });
-var config_default = router21;
+var config_default = router22;
 
 // src/routes/currencies.ts
-var import_express23 = __toESM(require_express2(), 1);
+var import_express24 = __toESM(require_express2(), 1);
 init_drizzle_orm();
 init_src();
 init_logger2();
-var router22 = (0, import_express23.Router)();
-router22.get("/currencies", async (_req, res) => {
+var router23 = (0, import_express24.Router)();
+router23.get("/currencies", async (_req, res) => {
   const rows = await db.select().from(currenciesTable).where(eq(currenciesTable.active, true)).orderBy(currenciesTable.countryCode);
   res.json(rows.map((r3) => ({
     id: r3.id,
@@ -165300,7 +165517,7 @@ router22.get("/currencies", async (_req, res) => {
     clientRate: Number(r3.clientRate)
   })));
 });
-router22.get("/currencies/country/:cc", async (req, res) => {
+router23.get("/currencies/country/:cc", async (req, res) => {
   const cc = req.params.cc?.toUpperCase();
   if (!cc) {
     res.status(400).json({ error: "Code pays requis" });
@@ -165327,7 +165544,7 @@ router22.get("/currencies/country/:cc", async (req, res) => {
     isXof: row.currencyCode === "XOF" || row.currencyCode === "XAF"
   });
 });
-router22.post("/payment/preview", async (req, res) => {
+router23.post("/payment/preview", async (req, res) => {
   const { country, currency: currencyCode, amount } = req.body;
   if (!country || !amount || isNaN(Number(amount)) || Number(amount) <= 0) {
     res.status(400).json({ error: "country et amount requis" });
@@ -165363,7 +165580,7 @@ router22.post("/payment/preview", async (req, res) => {
     }
   });
 });
-router22.get("/admin/currencies", requireAdminJwt, async (_req, res) => {
+router23.get("/admin/currencies", requireAdminJwt, async (_req, res) => {
   const rows = await db.select().from(currenciesTable).orderBy(currenciesTable.countryCode);
   res.json(rows.map((r3) => ({
     ...r3,
@@ -165371,7 +165588,7 @@ router22.get("/admin/currencies", requireAdminJwt, async (_req, res) => {
     clientRate: Number(r3.clientRate)
   })));
 });
-router22.post("/admin/currencies", requireAdminJwt, async (req, res) => {
+router23.post("/admin/currencies", requireAdminJwt, async (req, res) => {
   const { countryCode, currencyCode, currencyName, realRate, clientRate, active } = req.body;
   if (!countryCode || !currencyCode || !currencyName || realRate == null || clientRate == null) {
     res.status(400).json({ error: "Tous les champs sont requis" });
@@ -165388,7 +165605,7 @@ router22.post("/admin/currencies", requireAdminJwt, async (req, res) => {
   logger.info({ countryCode, currencyCode }, "[Admin] Currency created");
   res.status(201).json({ ...created, realRate: Number(created.realRate), clientRate: Number(created.clientRate) });
 });
-router22.put("/admin/currencies/:id", requireAdminJwt, async (req, res) => {
+router23.put("/admin/currencies/:id", requireAdminJwt, async (req, res) => {
   const id = Number(req.params.id);
   const { countryCode, currencyCode, currencyName, realRate, clientRate, active } = req.body;
   const updates = {};
@@ -165406,13 +165623,13 @@ router22.put("/admin/currencies/:id", requireAdminJwt, async (req, res) => {
   logger.info({ id }, "[Admin] Currency updated");
   res.json({ ...updated, realRate: Number(updated.realRate), clientRate: Number(updated.clientRate) });
 });
-router22.delete("/admin/currencies/:id", requireAdminJwt, async (req, res) => {
+router23.delete("/admin/currencies/:id", requireAdminJwt, async (req, res) => {
   const id = Number(req.params.id);
   await db.delete(currenciesTable).where(eq(currenciesTable.id, id));
   logger.info({ id }, "[Admin] Currency deleted");
   res.json({ success: true });
 });
-router22.get("/admin/fx-profits", requireAdminJwt, async (req, res) => {
+router23.get("/admin/fx-profits", requireAdminJwt, async (req, res) => {
   const limit = Math.min(Number(req.query.limit) || 50, 200);
   const offset = Number(req.query.offset) || 0;
   const rows = await db.select().from(fxProfitsTable).orderBy(desc(fxProfitsTable.createdAt)).limit(limit).offset(offset);
@@ -165429,7 +165646,7 @@ router22.get("/admin/fx-profits", requireAdminJwt, async (req, res) => {
     total
   });
 });
-router22.get("/admin/fx-profits/summary", requireAdminJwt, async (_req, res) => {
+router23.get("/admin/fx-profits/summary", requireAdminJwt, async (_req, res) => {
   const byCurrency = await db.select({
     currency: fxProfitsTable.currency,
     totalProfit: sum(fxProfitsTable.profitXof),
@@ -165457,14 +165674,14 @@ router22.get("/admin/fx-profits/summary", requireAdminJwt, async (_req, res) => 
     }))
   });
 });
-var currencies_default = router22;
+var currencies_default = router23;
 
 // src/routes/footer.ts
-var import_express24 = __toESM(require_express2(), 1);
+var import_express25 = __toESM(require_express2(), 1);
 init_drizzle_orm();
 init_src();
-var router23 = (0, import_express24.Router)();
-function requireAdmin7(req, res, next) {
+var router24 = (0, import_express25.Router)();
+function requireAdmin8(req, res, next) {
   if (req.adminPayload) {
     next();
     return;
@@ -165479,18 +165696,18 @@ function requireAdmin7(req, res, next) {
   }
   next();
 }
-router23.get("/footer", async (_req, res) => {
+router24.get("/footer", async (_req, res) => {
   const [socialLinks, operators] = await Promise.all([
     db.select().from(socialLinksTable).where(eq(socialLinksTable.isActive, true)).orderBy(asc(socialLinksTable.sortOrder)),
     db.select().from(paymentOperatorsTable).where(eq(paymentOperatorsTable.isActive, true)).orderBy(asc(paymentOperatorsTable.sortOrder))
   ]);
   res.json({ socialLinks, operators });
 });
-router23.get("/admin/social-links", requireAdminJwt, requireAdmin7, async (_req, res) => {
+router24.get("/admin/social-links", requireAdminJwt, requireAdmin8, async (_req, res) => {
   const links = await db.select().from(socialLinksTable).orderBy(asc(socialLinksTable.sortOrder));
   res.json({ links });
 });
-router23.post("/admin/social-links", requireAdminJwt, requireAdmin7, async (req, res) => {
+router24.post("/admin/social-links", requireAdminJwt, requireAdmin8, async (req, res) => {
   const { platform, name: name3, url: url2, color, isActive, sortOrder } = req.body;
   if (!platform || !name3 || !url2) {
     res.status(400).json({ error: "platform, name, url required" });
@@ -165506,7 +165723,7 @@ router23.post("/admin/social-links", requireAdminJwt, requireAdmin7, async (req,
   }).returning();
   res.json({ link });
 });
-router23.put("/admin/social-links/:id", requireAdminJwt, requireAdmin7, async (req, res) => {
+router24.put("/admin/social-links/:id", requireAdminJwt, requireAdmin8, async (req, res) => {
   const { id } = req.params;
   const data = req.body;
   const [link] = await db.update(socialLinksTable).set(data).where(eq(socialLinksTable.id, id)).returning();
@@ -165516,16 +165733,16 @@ router23.put("/admin/social-links/:id", requireAdminJwt, requireAdmin7, async (r
   }
   res.json({ link });
 });
-router23.delete("/admin/social-links/:id", requireAdminJwt, requireAdmin7, async (req, res) => {
+router24.delete("/admin/social-links/:id", requireAdminJwt, requireAdmin8, async (req, res) => {
   const { id } = req.params;
   await db.delete(socialLinksTable).where(eq(socialLinksTable.id, id));
   res.json({ success: true });
 });
-router23.get("/admin/payment-operators", requireAdminJwt, requireAdmin7, async (_req, res) => {
+router24.get("/admin/payment-operators", requireAdminJwt, requireAdmin8, async (_req, res) => {
   const operators = await db.select().from(paymentOperatorsTable).orderBy(asc(paymentOperatorsTable.sortOrder));
   res.json({ operators });
 });
-router23.post("/admin/payment-operators", requireAdminJwt, requireAdmin7, async (req, res) => {
+router24.post("/admin/payment-operators", requireAdminJwt, requireAdmin8, async (req, res) => {
   const { name: name3, logoUrl, logoData, websiteUrl, countries, bgColor, isActive, sortOrder } = req.body;
   if (!name3) {
     res.status(400).json({ error: "name required" });
@@ -165543,7 +165760,7 @@ router23.post("/admin/payment-operators", requireAdminJwt, requireAdmin7, async 
   }).returning();
   res.json({ operator: op });
 });
-router23.put("/admin/payment-operators/:id", requireAdminJwt, requireAdmin7, async (req, res) => {
+router24.put("/admin/payment-operators/:id", requireAdminJwt, requireAdmin8, async (req, res) => {
   const { id } = req.params;
   const data = req.body;
   const [op] = await db.update(paymentOperatorsTable).set(data).where(eq(paymentOperatorsTable.id, id)).returning();
@@ -165553,15 +165770,15 @@ router23.put("/admin/payment-operators/:id", requireAdminJwt, requireAdmin7, asy
   }
   res.json({ operator: op });
 });
-router23.delete("/admin/payment-operators/:id", requireAdminJwt, requireAdmin7, async (req, res) => {
+router24.delete("/admin/payment-operators/:id", requireAdminJwt, requireAdmin8, async (req, res) => {
   const { id } = req.params;
   await db.delete(paymentOperatorsTable).where(eq(paymentOperatorsTable.id, id));
   res.json({ success: true });
 });
-var footer_default = router23;
+var footer_default = router24;
 
 // src/routes/support.ts
-var import_express25 = __toESM(require_express2(), 1);
+var import_express26 = __toESM(require_express2(), 1);
 init_drizzle_orm();
 init_src();
 
@@ -166575,7 +166792,7 @@ var GoogleGenerativeAI = class {
 // src/routes/support.ts
 init_logger2();
 init_settings();
-var router24 = (0, import_express25.Router)();
+var router25 = (0, import_express26.Router)();
 var LANG_STOPWORDS = {
   fr: ["le", "la", "les", "de", "des", "un", "une", "est", "je", "tu", "il", "elle", "nous", "vous", "ils", "elles", "bonjour", "salut", "merci", "pas", "avec", "pour", "dans", "mon", "ma", "mes", "suis", "avez", "comment", "pourquoi", "numero", "num\xE9ro", "solde", "quoi", "cette", "tres", "tr\xE8s", "bien", "oui", "non", "svp", "merci"],
   en: ["the", "is", "are", "you", "i'm", "we", "they", "hello", "hi", "thanks", "thank", "please", "with", "for", "in", "my", "have", "how", "why", "number", "balance", "what", "can", "does", "not", "yes", "help", "need"],
@@ -166827,7 +167044,7 @@ ${knowledgeSection ? `
 INFOS SUPPLEMENTAIRES DE LA BASE DE CONNAISSANCES:
 ${knowledgeSection}` : ""}`;
 }
-router24.get("/support/history/:sessionId", async (req, res) => {
+router25.get("/support/history/:sessionId", async (req, res) => {
   const { sessionId } = req.params;
   if (!sessionId || sessionId.length < 8) {
     res.status(400).json({ error: "Session ID invalide" });
@@ -166841,7 +167058,7 @@ router24.get("/support/history/:sessionId", async (req, res) => {
   const msgs = await db.select().from(supportMessagesTable).where(eq(supportMessagesTable.conversationId, conv.id)).orderBy(asc(supportMessagesTable.createdAt)).limit(50);
   res.json({ conversationId: conv.id, messages: msgs });
 });
-router24.get("/support/config", async (req, res) => {
+router25.get("/support/config", async (req, res) => {
   const entries = await db.select().from(aiSupportConfigTable);
   const cfg = Object.fromEntries(entries.map((e3) => [e3.key, e3.value]));
   let greetingFr = cfg["ai_greeting_fr"] ?? "Bonjour ! Je suis Simia, votre conseill\xE8re Simix. Comment puis-je vous aider aujourd'hui ?";
@@ -166865,7 +167082,7 @@ router24.get("/support/config", async (req, res) => {
     enabled: cfg["ai_enabled"] !== "false"
   });
 });
-router24.post("/support/chat", async (req, res) => {
+router25.post("/support/chat", async (req, res) => {
   const { sessionId, message, imageData, language } = req.body;
   if (!sessionId || sessionId.length < 8) {
     res.status(400).json({ error: "Session ID requis" });
@@ -167328,7 +167545,7 @@ router24.post("/support/chat", async (req, res) => {
     res.end();
   }
 });
-router24.delete("/support/history/:sessionId", async (req, res) => {
+router25.delete("/support/history/:sessionId", async (req, res) => {
   const { sessionId } = req.params;
   const [conv] = await db.select().from(supportConversationsTable).where(eq(supportConversationsTable.sessionId, sessionId)).limit(1);
   if (conv) {
@@ -167336,30 +167553,30 @@ router24.delete("/support/history/:sessionId", async (req, res) => {
   }
   res.json({ success: true });
 });
-var support_default = router24;
+var support_default = router25;
 
 // src/routes/banners.ts
-var import_express26 = __toESM(require_express2(), 1);
+var import_express27 = __toESM(require_express2(), 1);
 init_drizzle_orm();
 init_src();
 init_logger2();
-var router25 = (0, import_express26.Router)();
-router25.get("/banners", async (_req, res) => {
+var router26 = (0, import_express27.Router)();
+router26.get("/banners", async (_req, res) => {
   const rows = await db.select().from(bannersTable).where(eq(bannersTable.isActive, true)).orderBy(asc(bannersTable.sortOrder));
   res.json(rows);
 });
-router25.get("/site-content", async (_req, res) => {
+router26.get("/site-content", async (_req, res) => {
   const rows = await db.select().from(systemSettingsTable).where(like(systemSettingsTable.key, "content_%"));
   const content = {};
   for (const r3 of rows) content[r3.key] = r3.value;
   res.json(content);
 });
-router25.use("/admin/banners", requireAdminJwt);
-router25.get("/admin/banners", async (_req, res) => {
+router26.use("/admin/banners", requireAdminJwt);
+router26.get("/admin/banners", async (_req, res) => {
   const rows = await db.select().from(bannersTable).orderBy(asc(bannersTable.sortOrder));
   res.json(rows);
 });
-router25.post("/admin/banners", async (req, res) => {
+router26.post("/admin/banners", async (req, res) => {
   const { title, subtitle, imageData, imageUrl, linkUrl, linkLabel, bgFrom, bgTo, textColor, isActive, sortOrder } = req.body;
   if (!title?.trim()) {
     res.status(400).json({ error: "Le titre est requis" });
@@ -167381,7 +167598,7 @@ router25.post("/admin/banners", async (req, res) => {
   logger.info({ bannerId: banner.id }, "[Banners] Created");
   res.status(201).json(banner);
 });
-router25.put("/admin/banners/:id", async (req, res) => {
+router26.put("/admin/banners/:id", async (req, res) => {
   const { id } = req.params;
   const { title, subtitle, imageData, imageUrl, linkUrl, linkLabel, bgFrom, bgTo, textColor, isActive, sortOrder } = req.body;
   if (!title?.trim()) {
@@ -167407,7 +167624,7 @@ router25.put("/admin/banners/:id", async (req, res) => {
   }
   res.json(banner);
 });
-router25.patch("/admin/banners/:id/toggle", async (req, res) => {
+router26.patch("/admin/banners/:id/toggle", async (req, res) => {
   const { id } = req.params;
   const [current] = await db.select().from(bannersTable).where(eq(bannersTable.id, id)).limit(1);
   if (!current) {
@@ -167417,7 +167634,7 @@ router25.patch("/admin/banners/:id/toggle", async (req, res) => {
   const [updated] = await db.update(bannersTable).set({ isActive: !current.isActive }).where(eq(bannersTable.id, id)).returning();
   res.json(updated);
 });
-router25.patch("/admin/banners/reorder", async (req, res) => {
+router26.patch("/admin/banners/reorder", async (req, res) => {
   const { order } = req.body;
   if (!Array.isArray(order)) {
     res.status(400).json({ error: "order doit \xEAtre un tableau" });
@@ -167428,20 +167645,20 @@ router25.patch("/admin/banners/reorder", async (req, res) => {
   }
   res.json({ success: true });
 });
-router25.delete("/admin/banners/:id", async (req, res) => {
+router26.delete("/admin/banners/:id", async (req, res) => {
   const { id } = req.params;
   await db.delete(bannersTable).where(eq(bannersTable.id, id));
   res.json({ success: true });
 });
-var banners_default = router25;
+var banners_default = router26;
 
 // src/routes/otp.ts
-var import_express27 = __toESM(require_express2(), 1);
+var import_express28 = __toESM(require_express2(), 1);
 init_drizzle_orm();
 init_src();
 init_logger2();
-var router26 = (0, import_express27.Router)();
-router26.post("/auth/otp/send", requireAuth, async (req, res) => {
+var router27 = (0, import_express28.Router)();
+router27.post("/auth/otp/send", requireAuth, async (req, res) => {
   const user = req.user;
   const ip = req.ip ?? "unknown";
   if (isRateLimited(`otp_send:${user.id}`, 5, 60 * 6e4)) {
@@ -167462,7 +167679,7 @@ router26.post("/auth/otp/send", requireAuth, async (req, res) => {
     res.status(500).json({ error: "Impossible d'envoyer l'email. V\xE9rifiez votre adresse email." });
   }
 });
-router26.post("/auth/otp/verify", requireAuth, async (req, res) => {
+router27.post("/auth/otp/verify", requireAuth, async (req, res) => {
   const user = req.user;
   const ip = req.ip ?? "unknown";
   const { code } = req.body;
@@ -167487,7 +167704,7 @@ router26.post("/auth/otp/verify", requireAuth, async (req, res) => {
   }).where(eq(usersTable.id, user.id));
   res.json({ success: true, message: "Email v\xE9rifi\xE9 avec succ\xE8s." });
 });
-router26.post("/auth/otp/resend", requireAuth, async (req, res) => {
+router27.post("/auth/otp/resend", requireAuth, async (req, res) => {
   const user = req.user;
   if (isRateLimited(`otp_resend:${user.id}`, 3, 60 * 6e4)) {
     res.status(429).json({ error: "Limite de renvoi atteinte. R\xE9essayez dans une heure." });
@@ -167507,7 +167724,7 @@ router26.post("/auth/otp/resend", requireAuth, async (req, res) => {
     res.status(500).json({ error: "Impossible d'envoyer l'email." });
   }
 });
-router26.get("/auth/otp/status", requireAuth, async (req, res) => {
+router27.get("/auth/otp/status", requireAuth, async (req, res) => {
   const user = req.user;
   const needsEmailVerification = !user.emailVerified;
   const needsInactivityCheck = user.emailVerified && isUserInactive(user.lastLoginAt ?? null);
@@ -167518,15 +167735,15 @@ router26.get("/auth/otp/status", requireAuth, async (req, res) => {
     email: user.email
   });
 });
-var otp_default = router26;
+var otp_default = router27;
 
 // src/routes/forgot-password.ts
-var import_express28 = __toESM(require_express2(), 1);
+var import_express29 = __toESM(require_express2(), 1);
 init_drizzle_orm();
 init_src();
 init_logger2();
-var router27 = (0, import_express28.Router)();
-router27.post("/auth/forgot-password", requireTurnstile, async (req, res) => {
+var router28 = (0, import_express29.Router)();
+router28.post("/auth/forgot-password", requireTurnstile, async (req, res) => {
   const ip = req.ip ?? "unknown";
   if (isRateLimited(`forgot_pwd:${ip}`, 5, 60 * 6e4)) {
     res.status(429).json({ error: "Trop de tentatives. R\xE9essayez dans une heure." });
@@ -167561,7 +167778,7 @@ router27.post("/auth/forgot-password", requireTurnstile, async (req, res) => {
   }
   res.json({ success: true, message: "Si un compte correspond, un email a \xE9t\xE9 envoy\xE9." });
 });
-router27.post("/auth/forgot-password/verify", async (req, res) => {
+router28.post("/auth/forgot-password/verify", async (req, res) => {
   const ip = req.ip ?? "unknown";
   if (isRateLimited(`reset_verify:${ip}`, 10, 15 * 6e4)) {
     res.status(429).json({ error: "Trop de tentatives. R\xE9essayez dans 15 minutes." });
@@ -167579,7 +167796,7 @@ router27.post("/auth/forgot-password/verify", async (req, res) => {
   }
   res.json({ success: true, resetToken: `${userId}:${code}` });
 });
-router27.post("/auth/reset-password", async (req, res) => {
+router28.post("/auth/reset-password", async (req, res) => {
   const ip = req.ip ?? "unknown";
   if (isRateLimited(`reset_pwd:${ip}`, 5, 60 * 6e4)) {
     res.status(429).json({ error: "Trop de tentatives. R\xE9essayez dans une heure." });
@@ -167603,7 +167820,7 @@ router27.post("/auth/reset-password", async (req, res) => {
   await db.update(usersTable).set({ passwordHash, lastLoginAt: /* @__PURE__ */ new Date() }).where(eq(usersTable.id, userId));
   res.json({ success: true, message: "Mot de passe r\xE9initialis\xE9 avec succ\xE8s." });
 });
-router27.post("/auth/forgot-password/resend", async (req, res) => {
+router28.post("/auth/forgot-password/resend", async (req, res) => {
   const ip = req.ip ?? "unknown";
   if (isRateLimited(`reset_resend:${ip}`, 3, 60 * 6e4)) {
     res.status(429).json({ error: "Limite atteinte. R\xE9essayez dans une heure." });
@@ -167632,16 +167849,16 @@ router27.post("/auth/forgot-password/resend", async (req, res) => {
     res.status(500).json({ error: "Impossible d'envoyer l'email." });
   }
 });
-var forgot_password_default = router27;
+var forgot_password_default = router28;
 
 // src/routes/referral.ts
-var import_express29 = __toESM(require_express2(), 1);
+var import_express30 = __toESM(require_express2(), 1);
 init_drizzle_orm();
 init_src();
 init_settings();
 init_logger2();
-var router28 = (0, import_express29.Router)();
-router28.get("/referral/withdraw-countries", requireAuth, async (_req, res) => {
+var router29 = (0, import_express30.Router)();
+router29.get("/referral/withdraw-countries", requireAuth, async (_req, res) => {
   const rows = await db.selectDistinctOn([countriesTable.code], {
     code: countriesTable.code,
     name: countriesTable.name,
@@ -167655,7 +167872,7 @@ router28.get("/referral/withdraw-countries", requireAuth, async (_req, res) => {
   ).where(eq(countriesTable.enabled, true)).orderBy(countriesTable.code, asc(countriesTable.sortOrder));
   res.json(rows.sort((a, b3) => Number(b3.popular) - Number(a.popular) || a.sortOrder - b3.sortOrder));
 });
-router28.get("/referral/withdraw-operators", requireAuth, async (req, res) => {
+router29.get("/referral/withdraw-operators", requireAuth, async (req, res) => {
   const countryCode = typeof req.query.countryCode === "string" ? req.query.countryCode.toUpperCase() : void 0;
   if (!countryCode) {
     res.status(400).json({ error: "countryCode requis" });
@@ -167667,7 +167884,7 @@ router28.get("/referral/withdraw-operators", requireAuth, async (req, res) => {
   )).orderBy(asc(mobileOperatorsTable.sortOrder));
   res.json(rows.map((o2) => ({ slug: o2.slug, name: o2.name, color: o2.color, logoUrl: o2.logoUrl })));
 });
-router28.get("/referral/me", requireAuth, async (req, res) => {
+router29.get("/referral/me", requireAuth, async (req, res) => {
   const user = req.user;
   const commissionRate = await getReferralCommissionRate();
   const commissions = await db.select({
@@ -167698,12 +167915,12 @@ router28.get("/referral/me", requireAuth, async (req, res) => {
     }))
   });
 });
-router28.get("/referral/withdrawals", requireAuth, async (req, res) => {
+router29.get("/referral/withdrawals", requireAuth, async (req, res) => {
   const user = req.user;
   const rows = await db.select().from(referralWithdrawalsTable).where(eq(referralWithdrawalsTable.userId, user.id)).orderBy(desc(referralWithdrawalsTable.createdAt)).limit(50);
   res.json(rows);
 });
-router28.post("/referral/withdraw", requireAuth, async (req, res) => {
+router29.post("/referral/withdraw", requireAuth, async (req, res) => {
   const user = req.user;
   const { countryCode, operatorSlug, phone, amount: rawAmount } = req.body ?? {};
   if (!countryCode || typeof countryCode !== "string") {
@@ -167774,15 +167991,15 @@ router28.post("/referral/withdraw", requireAuth, async (req, res) => {
     res.status(500).json({ error: "Erreur lors de la demande de retrait" });
   }
 });
-var referral_default = router28;
+var referral_default = router29;
 
 // src/routes/push-subscriptions.ts
-var import_express30 = __toESM(require_express2(), 1);
+var import_express31 = __toESM(require_express2(), 1);
 init_drizzle_orm();
 init_src();
 init_logger2();
-var router29 = (0, import_express30.Router)();
-router29.get("/push/vapid-public-key", async (_req, res) => {
+var router30 = (0, import_express31.Router)();
+router30.get("/push/vapid-public-key", async (_req, res) => {
   const key = await getVapidPublicKey();
   if (!key) {
     res.status(503).json({ error: "Push notifications not configured." });
@@ -167790,7 +168007,7 @@ router29.get("/push/vapid-public-key", async (_req, res) => {
   }
   res.json({ publicKey: key });
 });
-router29.post("/push/subscribe", requireAuth, async (req, res) => {
+router30.post("/push/subscribe", requireAuth, async (req, res) => {
   const user = req.user;
   const { endpoint, keys } = req.body;
   if (!endpoint || !keys?.p256dh || !keys?.auth) {
@@ -167805,7 +168022,7 @@ router29.post("/push/subscribe", requireAuth, async (req, res) => {
   logger.info({ userId: user.id }, "[push] Subscription saved");
   res.json({ success: true });
 });
-router29.delete("/push/unsubscribe", requireAuth, async (req, res) => {
+router30.delete("/push/unsubscribe", requireAuth, async (req, res) => {
   const user = req.user;
   const { endpoint } = req.body;
   if (!endpoint) {
@@ -167821,13 +168038,13 @@ router29.delete("/push/unsubscribe", requireAuth, async (req, res) => {
   logger.info({ userId: user.id }, "[push] Subscription removed");
   res.json({ success: true });
 });
-var push_subscriptions_default = router29;
+var push_subscriptions_default = router30;
 
 // src/routes/maintenance.ts
-var import_express31 = __toESM(require_express2(), 1);
+var import_express32 = __toESM(require_express2(), 1);
 init_settings();
-var router30 = (0, import_express31.Router)();
-router30.get("/maintenance/status", async (_req, res) => {
+var router31 = (0, import_express32.Router)();
+router31.get("/maintenance/status", async (_req, res) => {
   const [mode, title, subtitle, estimatedTime, contactEmail, buttonText] = await Promise.all([
     getSetting("maintenance_mode", "false"),
     getSetting("maintenance_title", "Le site est actuellement en maintenance."),
@@ -167839,48 +168056,49 @@ router30.get("/maintenance/status", async (_req, res) => {
   const active = mode === "true" || mode === "1";
   res.json({ active, title, subtitle, estimatedTime, contactEmail, buttonText });
 });
-var maintenance_default = router30;
+var maintenance_default = router31;
 
 // src/routes/index.ts
-var router31 = (0, import_express32.Router)();
-router31.use(maintenance_default);
-router31.use(health_default);
-router31.use(storage_default);
-router31.use(config_default);
-router31.use(auth_default);
-router31.use(google_auth_default);
-router31.use(services_default);
-router31.use(countries_default);
-router31.use(numbers_default);
-router31.use(wallet_default);
-router31.use(crypto_wallet_default);
-router31.use(dashboard_default);
-router31.use(currencies_default);
-router31.use(admin_auth_default);
-router31.use(footer_default);
-router31.use(support_default);
-router31.use(notifications_default);
-router31.use(banners_default);
-router31.use(otp_default);
-router31.use(forgot_password_default);
-router31.use(referral_default);
-router31.use(push_subscriptions_default);
-router31.use(admin_email_providers_default);
-router31.use(admin_default);
-router31.use(admin_support_default);
-router31.use(admin_notifications_default);
-router31.use(admin_emails_default);
-router31.use(admin_payment_routing_default);
-router31.use(admin_fivesim_default);
-router31.use(admin_referral_withdrawals_default);
-var routes_default = router31;
+var router32 = (0, import_express33.Router)();
+router32.use(maintenance_default);
+router32.use(health_default);
+router32.use(storage_default);
+router32.use(config_default);
+router32.use(auth_default);
+router32.use(google_auth_default);
+router32.use(services_default);
+router32.use(countries_default);
+router32.use(numbers_default);
+router32.use(wallet_default);
+router32.use(crypto_wallet_default);
+router32.use(dashboard_default);
+router32.use(currencies_default);
+router32.use(admin_auth_default);
+router32.use(footer_default);
+router32.use(support_default);
+router32.use(notifications_default);
+router32.use(banners_default);
+router32.use(otp_default);
+router32.use(forgot_password_default);
+router32.use(referral_default);
+router32.use(push_subscriptions_default);
+router32.use(admin_email_providers_default);
+router32.use(admin_default);
+router32.use(admin_support_default);
+router32.use(admin_notifications_default);
+router32.use(admin_emails_default);
+router32.use(admin_payment_routing_default);
+router32.use(admin_fivesim_default);
+router32.use(admin_referral_withdrawals_default);
+router32.use(admin_payouts_default);
+var routes_default = router32;
 
 // src/routes/seo.ts
-var import_express33 = __toESM(require_express2(), 1);
+var import_express34 = __toESM(require_express2(), 1);
 var import_fs3 = require("fs");
 var import_path2 = __toESM(require("path"), 1);
-var router32 = (0, import_express33.Router)();
-router32.get("/manifest.webmanifest", (req, res) => {
+var router33 = (0, import_express34.Router)();
+router33.get("/manifest.webmanifest", (req, res) => {
   const currentDir = globalThis.__dirname ?? __dirname;
   const publicDir = (0, import_fs3.existsSync)(import_path2.default.join(currentDir, "public")) ? import_path2.default.join(currentDir, "public") : import_path2.default.join(currentDir, "..", "public");
   const manifestPath = import_path2.default.join(publicDir, "manifest.webmanifest");
@@ -167932,14 +168150,14 @@ function buildSitemap(baseUrl2) {
     "</urlset>"
   ].join("\n");
 }
-router32.get("/sitemap.xml", (_req, res) => {
+router33.get("/sitemap.xml", (_req, res) => {
   const baseUrl2 = getAppUrl();
   const xml = buildSitemap(baseUrl2);
   res.setHeader("Content-Type", "application/xml; charset=utf-8");
   res.setHeader("Cache-Control", "public, max-age=3600, stale-while-revalidate=86400");
   res.status(200).send(xml);
 });
-router32.get("/robots.txt", (_req, res) => {
+router33.get("/robots.txt", (_req, res) => {
   const baseUrl2 = getAppUrl();
   const content = [
     "User-agent: *",
@@ -167983,7 +168201,7 @@ router32.get("/robots.txt", (_req, res) => {
   res.setHeader("Cache-Control", "public, max-age=86400");
   res.status(200).send(content);
 });
-var seo_default = router32;
+var seo_default = router33;
 
 // src/app.ts
 init_logger2();
@@ -168180,7 +168398,7 @@ function checkUserBlocked(req, res, next) {
 
 // src/app.ts
 init_settings();
-var app = (0, import_express34.default)();
+var app = (0, import_express35.default)();
 app.disable("x-powered-by");
 app.use((_req, res, next) => {
   res.removeHeader("Server");
@@ -168419,26 +168637,26 @@ var LARGE_JSON_PATH_PREFIXES = [
 var isLargeJsonPath = (path6) => LARGE_JSON_PATH_PREFIXES.some((prefix) => path6.startsWith(prefix));
 app.use((req, res, next) => {
   if (WEBHOOK_PATHS_SET.has(req.path)) {
-    import_express34.default.json({ limit: "1mb", verify: rawBodyCapture })(req, res, next);
+    import_express35.default.json({ limit: "1mb", verify: rawBodyCapture })(req, res, next);
   } else {
     next();
   }
 });
 app.use((req, res, next) => {
   if (!WEBHOOK_PATHS_SET.has(req.path) && isLargeJsonPath(req.path)) {
-    import_express34.default.json({ limit: "10mb", verify: rawBodyCapture })(req, res, next);
+    import_express35.default.json({ limit: "10mb", verify: rawBodyCapture })(req, res, next);
   } else {
     next();
   }
 });
 app.use((req, res, next) => {
   if (!WEBHOOK_PATHS_SET.has(req.path) && !isLargeJsonPath(req.path)) {
-    import_express34.default.json({ limit: "256kb", verify: rawBodyCapture })(req, res, next);
+    import_express35.default.json({ limit: "256kb", verify: rawBodyCapture })(req, res, next);
   } else {
     next();
   }
 });
-app.use(import_express34.default.urlencoded({ extended: true, limit: "64kb" }));
+app.use(import_express35.default.urlencoded({ extended: true, limit: "64kb" }));
 app.use((0, import_cookie_parser.default)());
 app.use(seo_default);
 app.use(globalRateLimit);
@@ -168605,7 +168823,7 @@ if (process.env.NODE_ENV !== "development") {
   if (currentDir) {
     const publicDir = (0, import_fs4.existsSync)(import_path3.default.join(currentDir, "public")) ? import_path3.default.join(currentDir, "public") : import_path3.default.join(currentDir, "..", "public");
     if ((0, import_fs4.existsSync)(publicDir)) {
-      app.use(import_express34.default.static(publicDir));
+      app.use(import_express35.default.static(publicDir));
       app.use(async (req, res) => {
         const isAdminRoute = req.path.startsWith("/admin") || req.path === "/admin-login" || req.path === "/console";
         if (!isAdminRoute && await isMaintenanceMode()) {
