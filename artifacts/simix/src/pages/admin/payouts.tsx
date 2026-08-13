@@ -109,50 +109,45 @@ function ResultBanner({
 }
 
 /* ═══════════════════════════════════════════════════════════════
- * PawaPay payout form
+ * PawaPay payout form — uses local mobile_operators as primary source
  * ═══════════════════════════════════════════════════════════════ */
 function PawaPayForm() {
   const { toast } = useToast();
-
-  /* Config-driven fields */
-  const [countryIso3, setCountryIso3] = useState("");
-  const [provider, setProvider] = useState("");
-
-  /* Manual-mode fields (used when config fetch fails) */
-  const [manualProvider, setManualProvider] = useState("");
-  const [manualCurrency, setManualCurrency] = useState("");
-
-  /* Common fields */
-  const [phoneNumber, setPhoneNumber] = useState("");
-  const [dialCode, setDialCode] = useState("");
-  const [amount, setAmount] = useState("");
+  const [countryIso2, setCountryIso2]   = useState("");
+  const [providerSlug, setProviderSlug] = useState("");
+  const [phoneNumber, setPhoneNumber]   = useState("");
+  const [dialCode, setDialCode]         = useState("");
+  const [amount, setAmount]             = useState("");
   const [result, setResult] = useState<{ ok: boolean; message: string; detail?: string } | null>(null);
 
-  const { data: configData, isLoading: configLoading, error: configError } = useQuery({
-    queryKey: ["admin-payouts-pawapay-config"],
-    queryFn: () => adminApi.getPayoutsPayapayConfig(),
+  /* Primary source: local mobile_operators table */
+  const { data: localData, isLoading: localLoading } = useQuery({
+    queryKey: ["admin-payouts-pawapay-local"],
+    queryFn: () => adminApi.getPayoutsPawapayLocalOperators(),
     retry: 1,
   });
 
-  /* Manual mode = config unavailable */
-  const manualMode = !configLoading && (!!configError || !configData || configData.countries.length === 0);
+  /* Optional: PawaPay live config (for env badge + limits) */
+  const { data: liveConfig } = useQuery({
+    queryKey: ["admin-payouts-pawapay-config"],
+    queryFn: () => adminApi.getPayoutsPayapayConfig(),
+    retry: 0,
+  });
 
-  const selectedCountry = configData?.countries.find((c) => c.countryIso3 === countryIso3);
-  const autoProvider = provider;
-  const autoCurrency = selectedCountry?.providers.find((p) => p.provider === provider)?.currency
-    ?? selectedCountry?.currency
-    ?? "";
+  const selectedCountry  = localData?.countries.find((c) => c.countryIso2 === countryIso2);
+  const selectedOperator = selectedCountry?.operators.find((o) => o.slug === providerSlug);
+  const currency         = selectedCountry?.currency ?? "";
 
-  const effectiveProvider  = manualMode ? manualProvider  : autoProvider;
-  const effectiveCurrency  = manualMode ? manualCurrency  : autoCurrency;
+  /* PawaPay provider code from selected operator */
+  const pawapayCode = selectedOperator?.pawapayCode ?? "";
 
   const payout = useMutation({
     mutationFn: () =>
       adminApi.initiatePawapayPayout({
         phoneNumber,
         dialCode: dialCode || undefined,
-        provider: effectiveProvider,
-        currency: effectiveCurrency,
+        provider: pawapayCode,
+        currency,
         amount: Number(amount),
       }),
     onSuccess: (data) => {
@@ -178,107 +173,73 @@ function PawaPayForm() {
     },
   });
 
-  const canSubmit = manualMode
-    ? manualProvider && manualCurrency && phoneNumber && amount && Number(amount) > 0 && !payout.isPending
-    : countryIso3 && provider && phoneNumber && amount && Number(amount) > 0 && !payout.isPending;
+  const canSubmit =
+    countryIso2 && providerSlug && phoneNumber && amount && Number(amount) > 0 && !payout.isPending;
 
-  if (configLoading) {
+  if (localLoading) {
     return (
       <div className="flex items-center justify-center py-16 gap-3 text-zinc-500">
-        <Loader2 className="w-5 h-5 animate-spin" /> Chargement de la configuration PawaPay…
+        <Loader2 className="w-5 h-5 animate-spin" /> Chargement des opérateurs…
+      </div>
+    );
+  }
+
+  if (!localData || localData.countries.length === 0) {
+    return (
+      <div className="flex items-center gap-3 p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 text-sm">
+        <AlertTriangle className="w-5 h-5 shrink-0" />
+        Aucun opérateur configuré. Allez dans <strong>Routage des paiements → Opérateurs</strong> pour en ajouter.
       </div>
     );
   }
 
   return (
     <div className="space-y-5">
-      {/* Config unavailable warning — non-blocking */}
-      {manualMode && (
-        <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-4 text-sm text-amber-300/90 flex items-start gap-3">
-          <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5 text-amber-400" />
-          <div>
-            <p className="font-semibold">Configuration PawaPay indisponible</p>
-            <p className="text-amber-300/70 mt-0.5">
-              {configError
-                ? `Détail : ${(configError as Error).message}`
-                : "Aucun pays configuré pour les retraits PAYOUT."}
-            </p>
-            <p className="text-amber-300/70 mt-1">
-              Cela peut indiquer que votre compte PawaPay n'a pas les retraits activés, ou que le token ne donne pas accès à l'endpoint <code className="text-amber-400">/v2/active-configuration</code>.
-              Vous pouvez quand même tenter un retrait en saisissant manuellement le code opérateur et la devise.
-            </p>
-          </div>
-        </div>
-      )}
-
-      {/* Env badge — only when config loaded */}
-      {!manualMode && configData && (
-        <div className="text-xs text-zinc-500 bg-zinc-900/60 rounded-xl p-3 border border-zinc-800">
-          <span className="font-semibold text-zinc-400">Environnement :</span>{" "}
-          <span className={configData.env === "production" ? "text-emerald-400" : "text-amber-400"}>
-            {configData.env === "production" ? "🟢 Production" : "🟡 Sandbox"}
+      {/* Env badge from live config when available */}
+      <div className="text-xs text-zinc-500 bg-zinc-900/60 rounded-xl p-3 border border-zinc-800">
+        <span className="font-semibold text-zinc-400">Environnement :</span>{" "}
+        {liveConfig ? (
+          <span className={liveConfig.env === "production" ? "text-emerald-400" : "text-amber-400"}>
+            {liveConfig.env === "production" ? "🟢 Production" : "🟡 Sandbox"}
           </span>
-          {" — "}
-          L'argent sera envoyé directement sur le numéro sélectionné.
-        </div>
-      )}
+        ) : (
+          <span className="text-zinc-500">non déterminé</span>
+        )}
+        {" — "}
+        Opérateurs chargés depuis la configuration locale ({localData.countries.length} pays).
+      </div>
 
       {result && <ResultBanner result={result} onDismiss={() => setResult(null)} />}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {manualMode ? (
-          /* Manual mode — free text provider + currency */
-          <>
-            <Field label="Code opérateur PawaPay">
-              <Input
-                value={manualProvider}
-                onChange={setManualProvider}
-                placeholder="ex: ORANGE_CIV, MTN_MOMO_CMR"
-              />
-            </Field>
-            <Field label="Devise (ISO 4217)">
-              <Input
-                value={manualCurrency}
-                onChange={setManualCurrency}
-                placeholder="ex: XOF, XAF, GHS"
-              />
-            </Field>
-          </>
-        ) : (
-          /* Auto mode — dropdowns from config */
-          <>
-            <Field label="Pays">
-              <Select
-                value={countryIso3}
-                onChange={(v) => { setCountryIso3(v); setProvider(""); }}
-                placeholder="— Sélectionner un pays —"
-              >
-                {configData?.countries.map((c) => (
-                  <option key={c.countryIso3} value={c.countryIso3}>
-                    {c.countryIso2} — {c.currency}
-                  </option>
-                ))}
-              </Select>
-            </Field>
-            <Field label="Opérateur">
-              <Select
-                value={provider}
-                onChange={setProvider}
-                disabled={!selectedCountry}
-                placeholder="— Sélectionner un opérateur —"
-              >
-                {selectedCountry?.providers.map((p) => (
-                  <option key={p.provider} value={p.provider}>
-                    {p.name || p.provider}
-                    {p.minAmount && p.maxAmount
-                      ? ` (${p.minAmount}–${p.maxAmount} ${p.currency})`
-                      : ""}
-                  </option>
-                ))}
-              </Select>
-            </Field>
-          </>
-        )}
+        <Field label="Pays">
+          <Select
+            value={countryIso2}
+            onChange={(v) => { setCountryIso2(v); setProviderSlug(""); }}
+            placeholder="— Sélectionner un pays —"
+          >
+            {localData.countries.map((c) => (
+              <option key={c.countryIso2} value={c.countryIso2}>
+                {c.countryIso2} — {c.currency}
+              </option>
+            ))}
+          </Select>
+        </Field>
+
+        <Field label="Opérateur">
+          <Select
+            value={providerSlug}
+            onChange={setProviderSlug}
+            disabled={!selectedCountry}
+            placeholder={selectedCountry ? "— Sélectionner un opérateur —" : "— Sélectionnez d'abord un pays —"}
+          >
+            {selectedCountry?.operators.map((op) => (
+              <option key={op.slug} value={op.slug}>
+                {op.name} ({op.pawapayCode})
+              </option>
+            ))}
+          </Select>
+        </Field>
 
         <Field label="Numéro de téléphone">
           <Input
@@ -296,7 +257,7 @@ function PawaPayForm() {
           />
         </Field>
 
-        <Field label={`Montant${effectiveCurrency ? ` (${effectiveCurrency})` : ""}`}>
+        <Field label={`Montant${currency ? ` (${currency})` : ""}`}>
           <Input
             type="number"
             value={amount}
@@ -304,6 +265,15 @@ function PawaPayForm() {
             placeholder="ex: 50000"
           />
         </Field>
+
+        {/* Show the derived PawaPay code for transparency */}
+        {pawapayCode && (
+          <Field label="Code PawaPay (dérivé)">
+            <div className="px-3 py-2.5 bg-zinc-900/60 border border-zinc-800 rounded-xl text-sm text-zinc-400 font-mono">
+              {pawapayCode}
+            </div>
+          </Field>
+        )}
       </div>
 
       <button
@@ -345,7 +315,9 @@ function ClapayForm() {
     enabled: !!countryCode,
   });
 
-  const selectedCountry = countriesData?.countries.find((c) => c.code === countryCode);
+  const selectedCountry  = countriesData?.countries.find((c) => c.code === countryCode);
+  const selectedOperator = operatorsData?.operators.find((o) => o.codeoperator === cashoutCode);
+  const operatorSupportsCashout = selectedOperator?.supportsCashout ?? true;
 
   const cashout = useMutation({
     mutationFn: () =>
@@ -353,7 +325,7 @@ function ClapayForm() {
         phoneNumber,
         dialCode: dialCode || undefined,
         countryCode,
-        cashoutCode,
+        cashoutCode: selectedOperator?.cashoutCode ?? cashoutCode,
         amount: Number(amount),
       }),
     onSuccess: (data) => {
@@ -370,7 +342,7 @@ function ClapayForm() {
   });
 
   const canSubmit =
-    countryCode && cashoutCode && phoneNumber && amount && Number(amount) > 0 && !cashout.isPending;
+    countryCode && cashoutCode && operatorSupportsCashout && phoneNumber && amount && Number(amount) > 0 && !cashout.isPending;
 
   if (countriesLoading) {
     return (
@@ -423,25 +395,34 @@ function ClapayForm() {
               <Loader2 className="w-4 h-4 animate-spin" /> Chargement…
             </div>
           ) : (
-            <Select
-              value={cashoutCode}
-              onChange={setCashoutCode}
-              disabled={!countryCode || !operatorsData?.operators.length}
-              placeholder={
-                !countryCode
-                  ? "— Sélectionnez d'abord un pays —"
-                  : operatorsData?.operators.length === 0
-                    ? "Aucun opérateur cashout disponible"
-                    : "— Sélectionner un opérateur —"
-              }
-            >
-              {operatorsData?.operators.map((op) => (
-                <option key={op.cashoutCode} value={op.cashoutCode}>
-                  {op.name} ({op.codeoperator})
-                  {op.requiresOtp ? " — OTP requis" : ""}
-                </option>
-              ))}
-            </Select>
+            <>
+              <Select
+                value={cashoutCode}
+                onChange={setCashoutCode}
+                disabled={!countryCode || !operatorsData?.operators.length}
+                placeholder={
+                  !countryCode
+                    ? "— Sélectionnez d'abord un pays —"
+                    : operatorsData?.operators.length === 0
+                      ? "Aucun opérateur disponible"
+                      : "— Sélectionner un opérateur —"
+                }
+              >
+                {operatorsData?.operators.map((op) => (
+                  <option key={op.codeoperator} value={op.codeoperator}>
+                    {op.name} ({op.codeoperator})
+                    {!op.supportsCashout ? " ⚠ cashout non configuré" : ""}
+                    {op.requiresOtp ? " — OTP requis" : ""}
+                  </option>
+                ))}
+              </Select>
+              {cashoutCode && !operatorSupportsCashout && (
+                <p className="text-xs text-amber-400 mt-1 flex items-center gap-1">
+                  <AlertTriangle className="w-3 h-3" />
+                  Cet opérateur n'a pas de code cashout configuré chez Clapay.
+                </p>
+              )}
+            </>
           )}
         </Field>
 

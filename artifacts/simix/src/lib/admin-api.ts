@@ -457,14 +457,31 @@ export const adminApi = {
       countries: Array<{ code: string; name: string; indicatif: string; currency: string }>;
     }>("GET", "/admin/payouts/clapay/countries"),
 
+  getPayoutsPawapayLocalOperators: () =>
+    req<{
+      source: "local";
+      countries: Array<{
+        countryIso2: string;
+        currency: string;
+        operators: Array<{
+          name: string;
+          slug: string;
+          pawapayCode: string;
+          logo: string | null;
+        }>;
+      }>;
+    }>("GET", "/admin/payouts/pawapay/local-operators"),
+
   getClapayPayoutOperators: (country: string) =>
     req<{
       operators: Array<{
         name: string;
         codeoperator: string;
-        cashoutCode: string;
+        cashoutCode: string | null;
+        merchantCode: string | null;
         logo: string;
         requiresOtp: boolean;
+        supportsCashout: boolean;
       }>;
     }>("GET", `/admin/payouts/clapay/operators/${country}`),
 

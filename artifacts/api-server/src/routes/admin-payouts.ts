@@ -10,6 +10,7 @@
  */
 
 import { Router, type IRouter, type Request, type Response } from "express";
+import { eq, asc } from "drizzle-orm";
 import { requireAdminJwt } from "../lib/admin-jwt-middleware";
 import {
   PawaPayClient,
@@ -26,6 +27,7 @@ import {
   resolveClapayCredentials,
 } from "../lib/gateway-credentials";
 import { logger } from "../lib/logger";
+import { db, mobileOperatorsTable } from "@workspace/db";
 
 const router: IRouter = Router();
 router.use(requireAdminJwt);
@@ -49,8 +51,61 @@ const ISO3_TO_ISO2: Record<string, string> = Object.fromEntries(
  * ═══════════════════════════════════════════════════════════════ */
 
 /**
+ * GET /admin/payouts/pawapay/local-operators
+ * Returns operators from local mobile_operators table, grouped by country.
+ * Used as primary source for PawaPay payout form (avoids relying on /v2/active-configuration).
+ * PawaPay provider code is derived from operator slug: "orange-civ" → "ORANGE_CIV".
+ */
+router.get("/admin/payouts/pawapay/local-operators", requireAdmin, async (_req, res): Promise<void> => {
+  try {
+    const rows = await db
+      .select()
+      .from(mobileOperatorsTable)
+      .where(eq(mobileOperatorsTable.active, true))
+      .orderBy(asc(mobileOperatorsTable.sortOrder));
+
+    /* Group by country */
+    const byCountry = new Map<string, {
+      countryIso2: string;
+      currency: string;
+      operators: { name: string; slug: string; pawapayCode: string; logo: string | null }[];
+    }>();
+
+    for (const op of rows) {
+      const codes = (op.countryCodes as string[]) ?? [];
+      for (const iso2 of codes) {
+        if (!byCountry.has(iso2)) {
+          byCountry.set(iso2, {
+            countryIso2: iso2,
+            currency: COUNTRY_CURRENCY[iso2] ?? "XOF",
+            operators: [],
+          });
+        }
+        /* Derive PawaPay provider code from slug: orange-civ → ORANGE_CIV */
+        const pawapayCode = op.slug.toUpperCase().replace(/-/g, "_");
+        byCountry.get(iso2)!.operators.push({
+          name: op.name,
+          slug: op.slug,
+          pawapayCode,
+          logo: op.logoUrl,
+        });
+      }
+    }
+
+    const countries = [...byCountry.values()].sort((a, b) =>
+      a.countryIso2.localeCompare(b.countryIso2),
+    );
+
+    res.json({ countries, source: "local" });
+  } catch (err) {
+    logger.error({ err }, "[admin-payouts] local operators fetch failed");
+    res.status(500).json({ error: (err as Error).message });
+  }
+});
+
+/**
  * GET /admin/payouts/pawapay/config
- * Returns countries and providers that support PAYOUT operations.
+ * Returns countries and providers that support PAYOUT operations (from PawaPay live API).
  */
 router.get("/admin/payouts/pawapay/config", requireAdmin, async (req, res): Promise<void> => {
   try {
@@ -217,14 +272,17 @@ router.get("/admin/payouts/clapay/operators/:country", requireAdmin, async (req,
     const client = new ClapayClient(creds.token, creds.baseUrl);
     const all = await client.getOperators(country);
     // Return operators that are active and have a CASHOUT code
+    /* Show all active operators; cashoutCode may be "none" when not supported */
     const cashoutOps = all
-      .filter((op) => op.active && op.code?.CASHOUT && op.code.CASHOUT !== "none")
+      .filter((op) => op.active)
       .map((op) => ({
         name: op.name,
         codeoperator: op.codeoperator,
-        cashoutCode: op.code.CASHOUT,
+        cashoutCode: (op.code?.CASHOUT && op.code.CASHOUT !== "none") ? op.code.CASHOUT : null,
+        merchantCode: (op.code?.MERCHANT && op.code.MERCHANT !== "none") ? op.code.MERCHANT : null,
         logo: op.logo,
         requiresOtp: op.otpstarter?.CASHOUT ?? false,
+        supportsCashout: !!(op.code?.CASHOUT && op.code.CASHOUT !== "none"),
       }));
     res.json({ operators: cashoutOps });
   } catch (err) {
