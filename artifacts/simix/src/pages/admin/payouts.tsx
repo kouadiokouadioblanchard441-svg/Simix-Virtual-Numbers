@@ -113,8 +113,16 @@ function ResultBanner({
  * ═══════════════════════════════════════════════════════════════ */
 function PawaPayForm() {
   const { toast } = useToast();
+
+  /* Config-driven fields */
   const [countryIso3, setCountryIso3] = useState("");
   const [provider, setProvider] = useState("");
+
+  /* Manual-mode fields (used when config fetch fails) */
+  const [manualProvider, setManualProvider] = useState("");
+  const [manualCurrency, setManualCurrency] = useState("");
+
+  /* Common fields */
   const [phoneNumber, setPhoneNumber] = useState("");
   const [dialCode, setDialCode] = useState("");
   const [amount, setAmount] = useState("");
@@ -126,18 +134,25 @@ function PawaPayForm() {
     retry: 1,
   });
 
+  /* Manual mode = config unavailable */
+  const manualMode = !configLoading && (!!configError || !configData || configData.countries.length === 0);
+
   const selectedCountry = configData?.countries.find((c) => c.countryIso3 === countryIso3);
-  const currency = selectedCountry?.providers.find((p) => p.provider === provider)?.currency
+  const autoProvider = provider;
+  const autoCurrency = selectedCountry?.providers.find((p) => p.provider === provider)?.currency
     ?? selectedCountry?.currency
     ?? "";
+
+  const effectiveProvider  = manualMode ? manualProvider  : autoProvider;
+  const effectiveCurrency  = manualMode ? manualCurrency  : autoCurrency;
 
   const payout = useMutation({
     mutationFn: () =>
       adminApi.initiatePawapayPayout({
         phoneNumber,
         dialCode: dialCode || undefined,
-        provider,
-        currency,
+        provider: effectiveProvider,
+        currency: effectiveCurrency,
         amount: Number(amount),
       }),
     onSuccess: (data) => {
@@ -163,8 +178,9 @@ function PawaPayForm() {
     },
   });
 
-  const canSubmit =
-    countryIso3 && provider && phoneNumber && amount && Number(amount) > 0 && !payout.isPending;
+  const canSubmit = manualMode
+    ? manualProvider && manualCurrency && phoneNumber && amount && Number(amount) > 0 && !payout.isPending
+    : countryIso3 && provider && phoneNumber && amount && Number(amount) > 0 && !payout.isPending;
 
   if (configLoading) {
     return (
@@ -174,72 +190,95 @@ function PawaPayForm() {
     );
   }
 
-  if (configError || !configData) {
-    return (
-      <div className="flex items-center gap-3 p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
-        <AlertTriangle className="w-5 h-5 shrink-0" />
-        <span>
-          {(configError as Error)?.message ?? "Impossible de charger la configuration PawaPay"}.
-          Vérifiez que le token PawaPay est configuré dans les Paramètres.
-        </span>
-      </div>
-    );
-  }
-
-  if (configData.countries.length === 0) {
-    return (
-      <div className="flex items-center gap-3 p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 text-sm">
-        <AlertTriangle className="w-5 h-5 shrink-0" />
-        Aucun pays PawaPay ne supporte les retraits (PAYOUT) pour ce compte marchand.
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-5">
-      <div className="text-xs text-zinc-500 bg-zinc-900/60 rounded-xl p-3 border border-zinc-800">
-        <span className="font-semibold text-zinc-400">Environnement :</span>{" "}
-        <span className={configData.env === "production" ? "text-emerald-400" : "text-amber-400"}>
-          {configData.env === "production" ? "🟢 Production" : "🟡 Sandbox"}
-        </span>
-        {" — "}
-        L'argent sera envoyé directement sur le numéro sélectionné.
-      </div>
+      {/* Config unavailable warning — non-blocking */}
+      {manualMode && (
+        <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-4 text-sm text-amber-300/90 flex items-start gap-3">
+          <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5 text-amber-400" />
+          <div>
+            <p className="font-semibold">Configuration PawaPay indisponible</p>
+            <p className="text-amber-300/70 mt-0.5">
+              {configError
+                ? `Détail : ${(configError as Error).message}`
+                : "Aucun pays configuré pour les retraits PAYOUT."}
+            </p>
+            <p className="text-amber-300/70 mt-1">
+              Cela peut indiquer que votre compte PawaPay n'a pas les retraits activés, ou que le token ne donne pas accès à l'endpoint <code className="text-amber-400">/v2/active-configuration</code>.
+              Vous pouvez quand même tenter un retrait en saisissant manuellement le code opérateur et la devise.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Env badge — only when config loaded */}
+      {!manualMode && configData && (
+        <div className="text-xs text-zinc-500 bg-zinc-900/60 rounded-xl p-3 border border-zinc-800">
+          <span className="font-semibold text-zinc-400">Environnement :</span>{" "}
+          <span className={configData.env === "production" ? "text-emerald-400" : "text-amber-400"}>
+            {configData.env === "production" ? "🟢 Production" : "🟡 Sandbox"}
+          </span>
+          {" — "}
+          L'argent sera envoyé directement sur le numéro sélectionné.
+        </div>
+      )}
 
       {result && <ResultBanner result={result} onDismiss={() => setResult(null)} />}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <Field label="Pays">
-          <Select
-            value={countryIso3}
-            onChange={(v) => { setCountryIso3(v); setProvider(""); }}
-            placeholder="— Sélectionner un pays —"
-          >
-            {configData.countries.map((c) => (
-              <option key={c.countryIso3} value={c.countryIso3}>
-                {c.countryIso2} — {c.currency}
-              </option>
-            ))}
-          </Select>
-        </Field>
-
-        <Field label="Opérateur">
-          <Select
-            value={provider}
-            onChange={setProvider}
-            disabled={!selectedCountry}
-            placeholder="— Sélectionner un opérateur —"
-          >
-            {selectedCountry?.providers.map((p) => (
-              <option key={p.provider} value={p.provider}>
-                {p.name || p.provider}
-                {p.minAmount && p.maxAmount
-                  ? ` (${p.minAmount}–${p.maxAmount} ${p.currency})`
-                  : ""}
-              </option>
-            ))}
-          </Select>
-        </Field>
+        {manualMode ? (
+          /* Manual mode — free text provider + currency */
+          <>
+            <Field label="Code opérateur PawaPay">
+              <Input
+                value={manualProvider}
+                onChange={setManualProvider}
+                placeholder="ex: ORANGE_CIV, MTN_MOMO_CMR"
+              />
+            </Field>
+            <Field label="Devise (ISO 4217)">
+              <Input
+                value={manualCurrency}
+                onChange={setManualCurrency}
+                placeholder="ex: XOF, XAF, GHS"
+              />
+            </Field>
+          </>
+        ) : (
+          /* Auto mode — dropdowns from config */
+          <>
+            <Field label="Pays">
+              <Select
+                value={countryIso3}
+                onChange={(v) => { setCountryIso3(v); setProvider(""); }}
+                placeholder="— Sélectionner un pays —"
+              >
+                {configData?.countries.map((c) => (
+                  <option key={c.countryIso3} value={c.countryIso3}>
+                    {c.countryIso2} — {c.currency}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+            <Field label="Opérateur">
+              <Select
+                value={provider}
+                onChange={setProvider}
+                disabled={!selectedCountry}
+                placeholder="— Sélectionner un opérateur —"
+              >
+                {selectedCountry?.providers.map((p) => (
+                  <option key={p.provider} value={p.provider}>
+                    {p.name || p.provider}
+                    {p.minAmount && p.maxAmount
+                      ? ` (${p.minAmount}–${p.maxAmount} ${p.currency})`
+                      : ""}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+          </>
+        )}
 
         <Field label="Numéro de téléphone">
           <Input
@@ -257,7 +296,7 @@ function PawaPayForm() {
           />
         </Field>
 
-        <Field label={`Montant ${currency ? `(${currency})` : ""}`}>
+        <Field label={`Montant${effectiveCurrency ? ` (${effectiveCurrency})` : ""}`}>
           <Input
             type="number"
             value={amount}
