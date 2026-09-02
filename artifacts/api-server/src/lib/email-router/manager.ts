@@ -527,7 +527,8 @@ class EmailProviderManager {
   startBackgroundWorkers(): void {
     if (this.retryTimer || this.healthTimer) return;
 
-    // Retry toutes les 2 minutes
+    // Premier traitement immédiat, puis retry toutes les 2 minutes
+    void this.processRetryQueue();
     this.retryTimer = setInterval(() => { void this.processRetryQueue(); }, 2 * 60_000);
 
     // Health check toutes les 5 minutes (premier check dans 30s)

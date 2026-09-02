@@ -6,9 +6,10 @@
  *   FIVESIM_API_KEY  — activates the 5sim provider automatically
  */
 
-import { db, apiProvidersTable } from "@workspace/db";
+import { db, apiProvidersTable, emailProvidersTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { logger } from "./logger";
+import { decrypt, encrypt } from "./email-router/crypto";
 
 export async function seedProvidersFromEnv(): Promise<void> {
   const fivesimKey = process.env.FIVESIM_API_KEY;
@@ -49,5 +50,59 @@ export async function seedProvidersFromEnv(): Promise<void> {
     }
   } catch (err) {
     logger.error({ err }, "[seed-providers] Failed to seed 5sim provider — continuing startup");
+  }
+}
+
+/**
+ * Bootstrap the transactional email provider from Plesk environment variables.
+ *
+ * Plesk owns the runtime secret, while the email router reads encrypted
+ * provider credentials from the shared database. Only a missing or
+ * undecryptable DB key is repaired here; a valid admin-configured key and
+ * active/priority settings are never overwritten on restart.
+ */
+export async function seedEmailProvidersFromEnv(): Promise<void> {
+  const resendKey = process.env.RESEND_API_KEY?.trim();
+
+  if (!resendKey) {
+    logger.debug("[seed-email-providers] RESEND_API_KEY not set — skipping email provider bootstrap");
+    return;
+  }
+
+  try {
+    const [existing] = await db
+      .select({
+        id: emailProvidersTable.id,
+        apiKeyEnc: emailProvidersTable.apiKeyEnc,
+      })
+      .from(emailProvidersTable)
+      .where(eq(emailProvidersTable.slug, "resend"))
+      .limit(1);
+
+    if (existing) {
+      const existingKey = existing.apiKeyEnc ? decrypt(existing.apiKeyEnc) : "";
+      if (existingKey) {
+        logger.info("[seed-email-providers] Resend provider already has a usable key — nothing to do");
+        return;
+      }
+
+      await db
+        .update(emailProvidersTable)
+        .set({ apiKeyEnc: encrypt(resendKey) })
+        .where(eq(emailProvidersTable.id, existing.id));
+      logger.info("[seed-email-providers] Missing Resend key restored from RESEND_API_KEY");
+      return;
+    }
+
+    await db.insert(emailProvidersTable).values({
+      name: "Resend",
+      slug: "resend",
+      priority: 1,
+      active: true,
+      apiKeyEnc: encrypt(resendKey),
+    });
+    logger.info("[seed-email-providers] Resend provider created from RESEND_API_KEY");
+  } catch (err) {
+    logger.error({ err }, "[seed-email-providers] Failed to bootstrap Resend — continuing startup");
   }
 }

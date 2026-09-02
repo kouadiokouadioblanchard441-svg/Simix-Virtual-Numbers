@@ -22,3 +22,11 @@ description: How this project (Simix) deploys to Plesk hosting outside Replit �
 - `lib/objectStorage.ts` depends on the Replit sidecar (`127.0.0.1:1106`) for GCS-backed uploads — this will fail outside Replit. `routes/storage.ts` already has a working fallback: `POST /storage/uploads/request-url` returns 503 with `fallback: "/api/storage/uploads/direct"`, and the frontend (`image-upload-button.tsx`) already calls that direct-upload endpoint. So file uploads keep working on Plesk via local disk (`UPLOAD_DIR` env var), just without GCS.
 - `REPLIT_DEV_DOMAIN` / `REPLIT_DOMAINS` appear in `google-auth.ts`, `crypto-wallet.ts`, `admin.ts`, `app.ts` CORS/CSP — all are dev-only fallbacks behind an explicit-env-var-wins check (`GOOGLE_REDIRECT_URI`, `APP_URL`, `nowpayments_webhook_url` setting). Not a blocker in production as long as those are set.
 - Database, sessions, and the multi-provider email router (see email-router-infra.md) have zero Replit-specific dependencies — fully portable as-is.
+
+## Email credentials and workers
+- Production email credentials may live only in Plesk environment variables. The Plesk process must bootstrap a missing or undecryptable Resend database credential from `RESEND_API_KEY` before electing the worker leader.
+- Replit deliberately does not start email workers when `REPL_ID` or `REPLIT_DEV_DOMAIN` is present, even when it shares the production Supabase database.
+
+**Why:** A provider row can remain active while its encrypted key is absent; campaigns then enter the persistent queue but every attempt fails locally with `apiKey manquante`. Running Replit workers would risk duplicate real emails alongside Plesk.
+
+**How to apply:** After deploying email bootstrap or worker changes, restart the Plesk Node.js application. Confirm the bootstrap log, then let the elected Plesk worker process eligible pending campaign messages; do not enable Replit workers as a workaround.

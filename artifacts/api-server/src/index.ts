@@ -9,7 +9,7 @@ import { startFiveSimSyncScheduler, syncFiveSimCountries, syncFiveSimProducts } 
 import { startClapayReconciliation } from "./lib/clapay-reconciliation";
 import { startPawaPayReconciliation } from "./lib/pawapay-reconciliation";
 import { seedPaymentMethods } from "./lib/seed-payment-methods";
-import { seedProvidersFromEnv } from "./lib/seed-providers";
+import { seedEmailProvidersFromEnv, seedProvidersFromEnv } from "./lib/seed-providers";
 import { seedRoutingData } from "./lib/seed-routing";
 import { seedCountryPaymentConfigs } from "./lib/seed-country-payment-configs";
 import { setAppUrl, getAppUrl } from "./lib/app-url";
@@ -99,7 +99,7 @@ async function start(): Promise<void> {
       "[startup] Environnement Replit détecté — workers de fond (5sim, emails, réconciliation) désactivés pour éviter tout conflit avec le serveur de production Plesk"
     );
   } else {
-    void seedProvidersFromEnv().then(() => {
+    void seedProvidersFromEnv().then(() => seedEmailProvidersFromEnv()).then(() => {
       /* ── Élection de leader ──────────────────────────────────────
        * Plusieurs processus de production (ex: redémarrage pm2 qui
        * chevauche l'ancien processus) peuvent tourner brièvement contre

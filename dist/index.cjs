@@ -155704,6 +155704,7 @@ var EmailProviderManager = class {
   // ── Démarrage des workers background ─────────────────────────
   startBackgroundWorkers() {
     if (this.retryTimer || this.healthTimer) return;
+    void this.processRetryQueue();
     this.retryTimer = setInterval(() => {
       void this.processRetryQueue();
     }, 2 * 6e4);
@@ -169854,6 +169855,7 @@ async function seedPaymentMethods() {
 init_src();
 init_drizzle_orm();
 init_logger2();
+init_crypto();
 async function seedProvidersFromEnv() {
   const fivesimKey = process.env.FIVESIM_API_KEY;
   if (!fivesimKey) {
@@ -169883,6 +169885,39 @@ async function seedProvidersFromEnv() {
     }
   } catch (err) {
     logger.error({ err }, "[seed-providers] Failed to seed 5sim provider \u2014 continuing startup");
+  }
+}
+async function seedEmailProvidersFromEnv() {
+  const resendKey = process.env.RESEND_API_KEY?.trim();
+  if (!resendKey) {
+    logger.debug("[seed-email-providers] RESEND_API_KEY not set \u2014 skipping email provider bootstrap");
+    return;
+  }
+  try {
+    const [existing] = await db.select({
+      id: emailProvidersTable.id,
+      apiKeyEnc: emailProvidersTable.apiKeyEnc
+    }).from(emailProvidersTable).where(eq(emailProvidersTable.slug, "resend")).limit(1);
+    if (existing) {
+      const existingKey = existing.apiKeyEnc ? decrypt(existing.apiKeyEnc) : "";
+      if (existingKey) {
+        logger.info("[seed-email-providers] Resend provider already has a usable key \u2014 nothing to do");
+        return;
+      }
+      await db.update(emailProvidersTable).set({ apiKeyEnc: encrypt(resendKey) }).where(eq(emailProvidersTable.id, existing.id));
+      logger.info("[seed-email-providers] Missing Resend key restored from RESEND_API_KEY");
+      return;
+    }
+    await db.insert(emailProvidersTable).values({
+      name: "Resend",
+      slug: "resend",
+      priority: 1,
+      active: true,
+      apiKeyEnc: encrypt(resendKey)
+    });
+    logger.info("[seed-email-providers] Resend provider created from RESEND_API_KEY");
+  } catch (err) {
+    logger.error({ err }, "[seed-email-providers] Failed to bootstrap Resend \u2014 continuing startup");
   }
 }
 
@@ -170420,14 +170455,14 @@ async function seedCountryPaymentConfigs() {
 }
 
 // src/lib/leader-lock.ts
-var import_crypto14 = require("crypto");
+var import_crypto15 = require("crypto");
 init_drizzle_orm();
 init_src();
 init_logger2();
 var LOCK_ROW_ID = 1;
 var LEASE_MS = 3e4;
 var RENEW_INTERVAL_MS = 1e4;
-var HOLDER_ID = `${process.env["HOSTNAME"] ?? "host"}-${process.pid}-${(0, import_crypto14.randomBytes)(4).toString("hex")}`;
+var HOLDER_ID = `${process.env["HOSTNAME"] ?? "host"}-${process.pid}-${(0, import_crypto15.randomBytes)(4).toString("hex")}`;
 var isLeader = false;
 var renewTimer = null;
 async function ensureRowExists() {
@@ -170526,7 +170561,7 @@ async function start() {
       "[startup] Environnement Replit d\xE9tect\xE9 \u2014 workers de fond (5sim, emails, r\xE9conciliation) d\xE9sactiv\xE9s pour \xE9viter tout conflit avec le serveur de production Plesk"
     );
   } else {
-    void seedProvidersFromEnv().then(() => {
+    void seedProvidersFromEnv().then(() => seedEmailProvidersFromEnv()).then(() => {
       electLeaderAndRun(() => {
         startFiveSimPoller();
         startFiveSimSyncScheduler();
