@@ -228,6 +228,14 @@ export const adminApi = {
   getRealtimeData: () => req<RealtimeData>("GET", "/admin/realtime"),
   updateAiConfig: (data: Record<string, string>) => req("PUT", "/admin/support/config", data),
 
+  /* ── Provider Tokens ── */
+  getAiProviderTokens: () => req<AiProviderToken[]>("GET", "/admin/support/provider-tokens"),
+  createAiProviderToken: (data: Partial<AiProviderToken> & { apiKey?: string }) => req<AiProviderToken>("POST", "/admin/support/provider-tokens", data),
+  updateAiProviderToken: (id: string, data: Partial<AiProviderToken> & { apiKey?: string }) => req<AiProviderToken>("PUT", `/admin/support/provider-tokens/${id}`, data),
+  deleteAiProviderToken: (id: string) => req("DELETE", `/admin/support/provider-tokens/${id}`),
+  checkAiProviderToken: (id: string) => req<AiProviderToken>("POST", `/admin/support/provider-tokens/${id}/check`),
+  checkAllAiProviderTokens: () => req<AiProviderToken[]>("POST", "/admin/support/provider-tokens/check-all"),
+
   /* ── Notifications ── */
   sendNotification: (data: {
     title: string;
@@ -845,6 +853,24 @@ export interface AiConfigEntry {
   value: string;
   label: string;
   group: string;
+}
+
+export interface AiProviderToken {
+  id: string;
+  provider: "openai" | "anthropic";
+  label: string;
+  keyMasked: string;
+  model: string;
+  priority: number;
+  isActive: boolean;
+  status: "healthy" | "invalid" | "unknown" | "rate_limited" | "exhausted" | "error";
+  credit: { amount: number | null; currency: string; display: string };
+  rateLimit: { requestsRemaining: number | null; tokensRemaining: number | null; reset: string | null };
+  lastCheckedAt: string | null;
+  lastUsedAt: string | null;
+  lastError: string | null;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface RealtimeSms {

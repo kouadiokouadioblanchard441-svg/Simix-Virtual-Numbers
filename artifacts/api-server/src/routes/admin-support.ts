@@ -10,10 +10,12 @@ import {
   supportMessagesTable,
   aiKnowledgeBaseTable,
   aiSupportConfigTable,
+  aiProviderTokensTable,
   usersTable,
 } from "@workspace/db";
 import { logger } from "../lib/logger";
 import { requireAdminJwt } from "../lib/admin-jwt-middleware";
+import { decrypt, encrypt, maskApiKey } from "../lib/email-router/crypto";
 
 const router: IRouter = Router();
 
@@ -31,7 +33,7 @@ function requireAdmin(req: Request, res: Response, next: NextFunction): void {
 
 /* ─── DEFAULT AI CONFIG SEED ─────────────────────────────── */
 const DEFAULT_AI_CONFIG: Array<{ key: string; value: string; label: string; group: string }> = [
-  { key: "ai_provider", value: "gemini", label: "Fournisseur IA (gemini / groq / openrouter / openai)", group: "api" },
+  { key: "ai_provider", value: "gemini", label: "Fournisseur IA (auto / gemini / groq / openrouter / openai)", group: "api" },
   { key: "gemini_api_key", value: process.env["GEMINI_API_KEY"] ?? "", label: "Clé API Gemini", group: "api" },
   { key: "gemini_model", value: "gemini-2.0-flash", label: "Modèle Gemini (gemini-2.0-flash / gemini-1.5-pro / gemini-1.5-flash)", group: "api" },
   { key: "groq_api_key", value: "", label: "Clé API Groq (gratuit — console.groq.com)", group: "api" },
@@ -40,6 +42,7 @@ const DEFAULT_AI_CONFIG: Array<{ key: string; value: string; label: string; grou
   { key: "openrouter_model", value: "meta-llama/llama-3.1-8b-instruct:free", label: "Modèle OpenRouter (meta-llama/llama-3.1-8b-instruct:free / google/gemma-3-12b-it:free / mistralai/mistral-7b-instruct:free)", group: "api" },
   { key: "openai_api_key", value: process.env["OPENAI_API_KEY_DIRECT"] ?? process.env["OPENAI_API_KEY"] ?? "", label: "Clé API OpenAI", group: "api" },
   { key: "openai_model", value: "gpt-4o-mini", label: "Modèle OpenAI", group: "api" },
+  { key: "anthropic_model", value: "claude-3-5-haiku-latest", label: "Modèle Claude par défaut", group: "api" },
   { key: "ai_name", value: "Simia", label: "Nom de l'assistante IA", group: "identite" },
   { key: "ai_display_title", value: "Support Simix", label: "Titre affiché dans le chat (ex: Support Simix)", group: "identite" },
   { key: "ai_avatar_url", value: "/support-avatar.png", label: "URL de l'avatar (image de profil du service client)", group: "identite" },
@@ -297,6 +300,143 @@ router.put("/admin/support/config", requireAdmin, async (req, res): Promise<void
   }
 
   res.json({ success: true });
+});
+
+/* ─── ENCRYPTED AI PROVIDER TOKEN POOL ─────────────────────── */
+type Provider = "openai" | "anthropic";
+type ProviderToken = typeof aiProviderTokensTable.$inferSelect;
+
+function tokenResponse(token: ProviderToken) {
+  const amount = token.creditAmount === null ? null : Number(token.creditAmount);
+  const currency = token.creditCurrency ?? "";
+  return {
+    id: token.id, provider: token.provider, label: token.label, keyMasked: token.maskedKey,
+    model: token.model, priority: token.priority, isActive: token.isActive, status: token.status,
+    // OpenAI and Anthropic do not expose a reliable monetary balance from their inference APIs.
+    credit: { amount: Number.isFinite(amount) ? amount : null, currency, display: amount === null ? "Balance unavailable from provider API" : `${amount} ${currency}`.trim() },
+    rateLimit: {
+      requestsRemaining: token.rateLimitRequestsRemaining,
+      tokensRemaining: token.rateLimitTokensRemaining,
+      reset: token.rateLimitReset?.toISOString() ?? null,
+    },
+    lastCheckedAt: token.lastCheckedAt?.toISOString() ?? null, lastUsedAt: token.lastUsedAt?.toISOString() ?? null,
+    lastError: token.lastError, createdAt: token.createdAt.toISOString(), updatedAt: token.updatedAt.toISOString(),
+  };
+}
+
+function headerNumber(headers: Headers, ...names: string[]): number | null {
+  for (const name of names) {
+    const value = headers.get(name);
+    if (value !== null && /^\d+$/.test(value)) return Number(value);
+  }
+  return null;
+}
+
+function resetDate(headers: Headers): Date | null {
+  const value = headers.get("x-ratelimit-reset-requests") ?? headers.get("anthropic-ratelimit-requests-reset") ?? headers.get("retry-after");
+  if (!value) return null;
+  if (/^\d+$/.test(value)) return new Date(Date.now() + Number(value) * 1000);
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+async function checkToken(token: ProviderToken): Promise<ProviderToken> {
+  const key = decrypt(token.encryptedKey);
+  if (!key) throw new Error("Stored token cannot be decrypted");
+  let response: globalThis.Response;
+  try {
+    response = token.provider === "openai"
+      ? await fetch("https://api.openai.com/v1/chat/completions", { method: "POST", headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" }, body: JSON.stringify({ model: token.model, messages: [{ role: "user", content: "ping" }], max_tokens: 1 }) })
+      : await fetch("https://api.anthropic.com/v1/messages", { method: "POST", headers: { "x-api-key": key, "anthropic-version": "2023-06-01", "Content-Type": "application/json" }, body: JSON.stringify({ model: token.model, max_tokens: 1, messages: [{ role: "user", content: "ping" }] }) });
+  } catch {
+    response = undefined as never;
+  }
+  let providerError = "";
+  if (response && !response.ok) {
+    const payload = await response.clone().json().catch(() => null) as {
+      error?: { code?: string; type?: string; message?: string };
+    } | null;
+    providerError = [
+      payload?.error?.code,
+      payload?.error?.type,
+      payload?.error?.message,
+    ].filter(Boolean).join(" ").toLowerCase();
+  }
+  const quotaExhausted = response?.status === 402
+    || /insufficient_quota|credit_balance_exhausted|credit balance|billing_error|quota exhausted/.test(providerError);
+  const status = !response
+    ? "error"
+    : response.ok
+      ? "healthy"
+      : response.status === 401 || response.status === 403
+        ? "invalid"
+        : quotaExhausted
+          ? "exhausted"
+          : response.status === 429
+            ? "rate_limited"
+            : "error";
+  const updates = {
+    status,
+    lastCheckedAt: new Date(),
+    lastError: response?.ok
+      ? null
+      : status === "invalid"
+        ? "Clé refusée par le fournisseur"
+        : status === "rate_limited"
+          ? "Limite temporaire atteinte"
+          : status === "exhausted"
+            ? "Crédit ou quota épuisé"
+            : "Échec de la vérification fournisseur",
+    rateLimitRequestsRemaining: response ? headerNumber(response.headers, "x-ratelimit-remaining-requests", "anthropic-ratelimit-requests-remaining") : null,
+    rateLimitTokensRemaining: response ? headerNumber(response.headers, "x-ratelimit-remaining-tokens", "anthropic-ratelimit-tokens-remaining") : null,
+    rateLimitReset: response ? resetDate(response.headers) : null, updatedAt: new Date(),
+  };
+  const [saved] = await db.update(aiProviderTokensTable).set(updates).where(eq(aiProviderTokensTable.id, token.id)).returning();
+  return saved!;
+}
+
+router.get("/admin/support/provider-tokens", requireAdmin, async (_req, res): Promise<void> => {
+  const tokens = await db.select().from(aiProviderTokensTable).orderBy(asc(aiProviderTokensTable.priority), asc(aiProviderTokensTable.createdAt));
+  res.json(tokens.map(tokenResponse));
+});
+
+router.post("/admin/support/provider-tokens", requireAdmin, async (req, res): Promise<void> => {
+  const body = req.body as { provider?: Provider; label?: string; apiKey?: string; model?: string; priority?: number; isActive?: boolean };
+  if (!body.apiKey?.trim() || !body.label?.trim() || (body.provider !== "openai" && body.provider !== "anthropic")) { res.status(400).json({ error: "Le fournisseur, le nom et la clé API sont requis" }); return; }
+  const model = body.model?.trim() || (body.provider === "anthropic" ? "claude-3-5-haiku-latest" : "gpt-4o-mini");
+  const apiKey = body.apiKey.trim();
+  const [token] = await db.insert(aiProviderTokensTable).values({ provider: body.provider, label: body.label.trim(), encryptedKey: encrypt(apiKey), maskedKey: maskApiKey(apiKey), model, priority: Number.isFinite(body.priority) ? Math.trunc(body.priority!) : 0, isActive: body.isActive !== false }).returning();
+  res.status(201).json(tokenResponse(token!));
+});
+
+router.put("/admin/support/provider-tokens/:id", requireAdmin, async (req, res): Promise<void> => {
+  const body = req.body as { label?: string; apiKey?: string; model?: string; priority?: number; isActive?: boolean };
+  const updates: Record<string, unknown> = { updatedAt: new Date() };
+  if (body.label !== undefined) updates.label = body.label.trim();
+  if (body.model !== undefined) updates.model = body.model.trim();
+  if (body.priority !== undefined && Number.isFinite(body.priority)) updates.priority = Math.trunc(body.priority);
+  if (body.isActive !== undefined) updates.isActive = body.isActive;
+  if (body.apiKey?.trim()) { updates.encryptedKey = encrypt(body.apiKey.trim()); updates.maskedKey = maskApiKey(body.apiKey.trim()); updates.status = "unknown"; updates.lastError = null; }
+  const [token] = await db.update(aiProviderTokensTable).set(updates).where(eq(aiProviderTokensTable.id, req.params.id)).returning();
+  if (!token) { res.status(404).json({ error: "Token not found" }); return; }
+  res.json(tokenResponse(token));
+});
+
+router.delete("/admin/support/provider-tokens/:id", requireAdmin, async (req, res): Promise<void> => {
+  await db.delete(aiProviderTokensTable).where(eq(aiProviderTokensTable.id, req.params.id));
+  res.json({ success: true });
+});
+
+router.post("/admin/support/provider-tokens/:id/check", requireAdmin, async (req, res): Promise<void> => {
+  const [token] = await db.select().from(aiProviderTokensTable).where(eq(aiProviderTokensTable.id, req.params.id)).limit(1);
+  if (!token) { res.status(404).json({ error: "Token not found" }); return; }
+  try { res.json(tokenResponse(await checkToken(token))); } catch { res.status(422).json({ error: "Stored token cannot be checked" }); }
+});
+
+router.post("/admin/support/provider-tokens/check-all", requireAdmin, async (_req, res): Promise<void> => {
+  const tokens = await db.select().from(aiProviderTokensTable).orderBy(asc(aiProviderTokensTable.priority));
+  const checked = await Promise.all(tokens.map(async token => { try { return tokenResponse(await checkToken(token)); } catch { return tokenResponse(token); } }));
+  res.json(checked);
 });
 
 export default router;

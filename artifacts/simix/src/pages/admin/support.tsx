@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { adminApi, type SupportConversation, type SupportMessage, type KnowledgeEntry, type AiConfigEntry } from "@/lib/admin-api";
+import { adminApi, type SupportConversation, type SupportMessage, type KnowledgeEntry, type AiConfigEntry, type AiProviderToken } from "@/lib/admin-api";
 import { AdminGuard } from "@/components/admin-guard";
 import { AdminLayout } from "@/components/admin-layout";
 import { useToast } from "@/hooks/use-toast";
@@ -685,6 +685,353 @@ function KnowledgeTab() {
 }
 
 /* ── AI CONFIG TAB ───────────────────────────────────────── */
+function TokenPoolManager() {
+  const qc = useQueryClient();
+  const { toast } = useToast();
+  const [showAdd, setShowAdd] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+
+  const [form, setForm] = useState<Partial<AiProviderToken> & { apiKey?: string }>({
+    provider: "openai",
+    label: "",
+    apiKey: "",
+    model: "gpt-4o-mini",
+    priority: 1,
+    isActive: true,
+  });
+
+  const { data: tokens = [], isLoading } = useQuery({
+    queryKey: ["ai-provider-tokens"],
+    queryFn: () => adminApi.getAiProviderTokens(),
+  });
+
+  const createMutation = useMutation({
+    mutationFn: () => adminApi.createAiProviderToken(form),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["ai-provider-tokens"] });
+      setShowAdd(false);
+      setForm({ provider: "openai", label: "", apiKey: "", model: "gpt-4o-mini", priority: 1, isActive: true });
+      toast({ title: "Token ajoute" });
+    },
+    onError: (e: Error) => toast({ title: "Erreur", description: e.message, variant: "destructive" }),
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: Partial<AiProviderToken> & { apiKey?: string } }) => adminApi.updateAiProviderToken(id, data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["ai-provider-tokens"] });
+      setEditingId(null);
+      toast({ title: "Token mis a jour" });
+    },
+    onError: (e: Error) => toast({ title: "Erreur", description: e.message, variant: "destructive" }),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => adminApi.deleteAiProviderToken(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["ai-provider-tokens"] });
+      toast({ title: "Token supprime" });
+    },
+  });
+
+  const checkMutation = useMutation({
+    mutationFn: (id: string) => adminApi.checkAiProviderToken(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["ai-provider-tokens"] }),
+    onError: (e: Error) => toast({ title: "Erreur de verification", description: e.message, variant: "destructive" }),
+  });
+
+  const checkAllMutation = useMutation({
+    mutationFn: () => adminApi.checkAllAiProviderTokens(),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["ai-provider-tokens"] });
+      toast({ title: "Tous les tokens verifies" });
+    },
+    onError: (e: Error) => toast({ title: "Erreur globale", description: e.message, variant: "destructive" }),
+  });
+
+  const tokensSorted = [...tokens].sort((a, b) => a.priority - b.priority || new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+
+  const handleEdit = (t: AiProviderToken) => {
+    setEditingId(t.id);
+    setForm({ provider: t.provider, label: t.label, apiKey: "", model: t.model, priority: t.priority, isActive: t.isActive });
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, height: 0 }}
+      animate={{ opacity: 1, height: "auto" }}
+      exit={{ opacity: 0, height: 0 }}
+      className="space-y-4 overflow-hidden"
+    >
+      <div className="flex items-start gap-2.5 bg-teal-500/10 border border-teal-500/20 rounded-xl p-4">
+        <Activity className="w-5 h-5 text-teal-400 mt-0.5 flex-shrink-0" />
+        <div className="flex-1">
+          <div className="flex items-center justify-between mb-1">
+            <h4 className="text-teal-300 font-semibold text-sm">Pool de Rotation Automatique</h4>
+            <button
+              onClick={() => checkAllMutation.mutate()}
+              disabled={checkAllMutation.isPending || tokens.length === 0}
+              className="text-xs px-3 py-1.5 bg-teal-500/20 hover:bg-teal-500/30 text-teal-300 border border-teal-500/30 rounded-lg transition-colors flex items-center gap-1.5"
+            >
+              {checkAllMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
+              Verifier Tous
+            </button>
+          </div>
+          <p className="text-xs text-zinc-400 leading-relaxed mb-4">
+            Ajoutez plusieurs tokens OpenAI ou Anthropic. Simia utilisera automatiquement les tokens selon leur priorite. Si un token est epuise ou en erreur, le suivant sera utilise sans interruption de service.
+          </p>
+
+          {/* List */}
+          <div className="space-y-3">
+            {isLoading && <div className="py-4 flex justify-center"><Loader2 className="w-5 h-5 animate-spin text-teal-400" /></div>}
+
+            {tokensSorted.map(t => (
+              <div key={t.id} className={cn("rounded-xl border p-3 transition-colors", t.isActive ? "bg-zinc-900/60 border-zinc-700/50" : "bg-zinc-900/30 border-zinc-800 opacity-70")}>
+                {editingId === t.id ? (
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                      <div>
+                        <label className="text-[10px] text-zinc-500 block mb-1">Fournisseur</label>
+                        <select
+                          value={form.provider}
+                          disabled
+                          className="w-full bg-zinc-800 text-white text-xs rounded-lg px-2 py-1.5 outline-none border border-zinc-700 focus:border-teal-500"
+                        >
+                          <option value="openai">OpenAI</option>
+                          <option value="anthropic">Anthropic (Claude)</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="text-[10px] text-zinc-500 block mb-1">Label</label>
+                        <input
+                          value={form.label}
+                          onChange={e => setForm(v => ({ ...v, label: e.target.value }))}
+                          placeholder="Compte Principal"
+                          className="w-full bg-zinc-800 text-white text-xs rounded-lg px-2 py-1.5 outline-none border border-zinc-700 focus:border-teal-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] text-zinc-500 block mb-1">Modele</label>
+                        <input
+                          value={form.model}
+                          onChange={e => setForm(v => ({ ...v, model: e.target.value }))}
+                          placeholder="gpt-4o-mini"
+                          className="w-full bg-zinc-800 text-white text-xs rounded-lg px-2 py-1.5 outline-none border border-zinc-700 focus:border-teal-500 font-mono"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] text-zinc-500 block mb-1">Priorite (1=Haute)</label>
+                        <input
+                          type="number"
+                          value={form.priority}
+                          onChange={e => setForm(v => ({ ...v, priority: parseInt(e.target.value) || 0 }))}
+                          className="w-full bg-zinc-800 text-white text-xs rounded-lg px-2 py-1.5 outline-none border border-zinc-700 focus:border-teal-500"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-[10px] text-zinc-500 block mb-1">Remplacer Clé API (Laisser vide pour ne pas modifier)</label>
+                      <input
+                        type="password"
+                        value={form.apiKey}
+                        onChange={e => setForm(v => ({ ...v, apiKey: e.target.value.trim() }))}
+                        placeholder="Nouvelle clé..."
+                        className="w-full bg-zinc-800 text-white text-xs rounded-lg px-2 py-1.5 outline-none border border-zinc-700 focus:border-teal-500 font-mono"
+                      />
+                    </div>
+                    <div className="flex items-center gap-3 pt-1">
+                      <label className="flex items-center gap-1.5 text-xs text-zinc-300">
+                        <input type="checkbox" checked={form.isActive} onChange={e => setForm(v => ({ ...v, isActive: e.target.checked }))} className="rounded accent-teal-500" />
+                        Actif
+                      </label>
+                      <div className="flex-1" />
+                      <button onClick={() => setEditingId(null)} className="px-3 py-1.5 text-xs text-zinc-400 hover:text-white transition-colors">Annuler</button>
+                      <button
+                        onClick={() => updateMutation.mutate({ id: t.id, data: { ...form, apiKey: form.apiKey || undefined } })}
+                        disabled={updateMutation.isPending}
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-teal-600 hover:bg-teal-500 text-white text-xs font-medium rounded-lg transition-colors"
+                      >
+                        {updateMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                        Enregistrer
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1.5">
+                        <span className={cn(
+                          "text-[9px] px-1.5 py-0.5 rounded-md font-bold uppercase",
+                          t.status === "healthy" ? "bg-green-500/20 text-green-400 border border-green-500/30" :
+                          t.status === "invalid" ? "bg-red-500/20 text-red-400 border border-red-500/30" :
+                          t.status === "rate_limited" ? "bg-orange-500/20 text-orange-400 border border-orange-500/30" :
+                          t.status === "exhausted" ? "bg-amber-500/20 text-amber-400 border border-amber-500/30" :
+                          t.status === "error" ? "bg-red-500/20 text-red-300 border border-red-500/30" :
+                          "bg-zinc-700 text-zinc-300 border border-zinc-600"
+                        )}>
+                          {t.status === "healthy" ? "DISPONIBLE" : t.status === "rate_limited" ? "LIMITE" : t.status === "exhausted" ? "ÉPUISÉ" : t.status === "unknown" ? "NON TESTÉ" : t.status}
+                        </span>
+                        <span className="text-white font-semibold text-sm truncate">{t.label}</span>
+                        {!t.isActive && <span className="text-[10px] text-zinc-500 bg-zinc-800 px-1.5 py-0.5 rounded">Inactif</span>}
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2">
+                        <div className="flex flex-col">
+                          <span className="text-[9px] text-zinc-500 uppercase tracking-wider">Modele</span>
+                          <span className="text-xs text-zinc-300 font-mono flex items-center gap-1">
+                            {t.provider === "openai" ? <Bot className="w-3 h-3 text-violet-400" /> : <Cpu className="w-3 h-3 text-orange-400" />}
+                            {t.model}
+                          </span>
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="text-[9px] text-zinc-500 uppercase tracking-wider">Clé API</span>
+                          <span className="text-xs text-zinc-300 font-mono bg-zinc-950 px-1.5 rounded">{t.keyMasked}</span>
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="text-[9px] text-zinc-500 uppercase tracking-wider">Priorite</span>
+                          <span className="text-xs text-zinc-300">{t.priority}</span>
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="text-[9px] text-zinc-500 uppercase tracking-wider">Credit</span>
+                          <span className="text-xs text-green-400 font-mono">
+                            {t.credit?.amount !== null && t.credit?.amount !== undefined ? `${t.credit.amount.toFixed(2)}${t.credit.currency}` : t.credit?.display || "N/A"}
+                          </span>
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="text-[9px] text-zinc-500 uppercase tracking-wider">Limites</span>
+                          <span className="text-xs text-zinc-300">
+                            {t.rateLimit?.requestsRemaining !== null && t.rateLimit?.requestsRemaining !== undefined ? `${t.rateLimit.requestsRemaining} req` : "N/A"}
+                            {t.rateLimit?.reset && <span className="text-zinc-500 ml-1">(reset {t.rateLimit.reset})</span>}
+                          </span>
+                        </div>
+                      </div>
+
+                      {t.lastError && (
+                        <div className="mt-2 text-[10px] text-red-400 bg-red-500/10 border border-red-500/20 px-2 py-1 rounded">
+                          Erreur: {t.lastError}
+                        </div>
+                      )}
+
+                      <div className="text-[9px] text-zinc-500 mt-2 flex items-center gap-3">
+                        <span>Verifie: {t.lastCheckedAt ? new Date(t.lastCheckedAt).toLocaleString("fr-FR") : "Jamais"}</span>
+                        <span>Utilise: {t.lastUsedAt ? new Date(t.lastUsedAt).toLocaleString("fr-FR") : "Jamais"}</span>
+                      </div>
+                    </div>
+
+                    <div className="flex sm:flex-col items-center gap-1.5 flex-shrink-0">
+                      <button onClick={() => checkMutation.mutate(t.id)} disabled={checkMutation.isPending} className="p-1.5 rounded-lg text-teal-400 hover:bg-teal-500/10 transition-colors" title="Verifier maintenant">
+                        <RefreshCw className={cn("w-4 h-4", checkMutation.isPending && "animate-spin")} />
+                      </button>
+                      <button onClick={() => handleEdit(t)} className="p-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors" title="Modifier">
+                        <Edit3 className="w-4 h-4" />
+                      </button>
+                      <button onClick={() => { if (confirm("Supprimer ce token ?")) deleteMutation.mutate(t.id); }} className="p-1.5 rounded-lg text-zinc-500 hover:text-red-400 hover:bg-red-500/10 transition-colors" title="Supprimer">
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+
+          {!showAdd && (
+            <button
+              onClick={() => {
+                setForm({ provider: "openai", label: "", apiKey: "", model: "gpt-4o-mini", priority: 1, isActive: true });
+                setShowAdd(true);
+              }}
+              className="mt-3 flex items-center gap-2 px-3 py-1.5 rounded-lg bg-teal-600/20 hover:bg-teal-600/30 text-teal-300 text-xs font-medium border border-teal-500/30 transition-colors"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              Ajouter un token
+            </button>
+          )}
+
+          {/* Add form */}
+          {showAdd && (
+            <div className="mt-4 bg-zinc-900/80 border border-teal-500/30 rounded-xl p-4 space-y-3">
+              <h5 className="text-xs font-bold text-white uppercase tracking-wider mb-2">Nouveau Token</h5>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-[10px] text-zinc-500 block mb-1">Fournisseur</label>
+                  <select
+                    value={form.provider}
+                    onChange={e => {
+                      const provider = e.target.value as "openai" | "anthropic";
+                      setForm(v => ({
+                        ...v,
+                        provider,
+                        model: provider === "anthropic" ? "claude-3-5-haiku-latest" : "gpt-4o-mini",
+                      }));
+                    }}
+                    className="w-full bg-zinc-800 text-white text-xs rounded-lg px-2 py-1.5 outline-none border border-zinc-700 focus:border-teal-500"
+                  >
+                    <option value="openai">OpenAI</option>
+                    <option value="anthropic">Anthropic (Claude)</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-[10px] text-zinc-500 block mb-1">Label (Nom d'affichage)</label>
+                  <input
+                    value={form.label}
+                    onChange={e => setForm(v => ({ ...v, label: e.target.value }))}
+                    placeholder="Compte Principal"
+                    className="w-full bg-zinc-800 text-white text-xs rounded-lg px-2 py-1.5 outline-none border border-zinc-700 focus:border-teal-500"
+                  />
+                </div>
+                <div className="sm:col-span-2">
+                  <label className="text-[10px] text-zinc-500 block mb-1">Clé API</label>
+                  <input
+                    type="password"
+                    value={form.apiKey}
+                    onChange={e => setForm(v => ({ ...v, apiKey: e.target.value.trim() }))}
+                    placeholder="sk-..."
+                    className="w-full bg-zinc-800 text-white text-xs rounded-lg px-2 py-1.5 outline-none border border-zinc-700 focus:border-teal-500 font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] text-zinc-500 block mb-1">Modele cible</label>
+                  <input
+                    value={form.model}
+                    onChange={e => setForm(v => ({ ...v, model: e.target.value }))}
+                    placeholder="gpt-4o-mini"
+                    className="w-full bg-zinc-800 text-white text-xs rounded-lg px-2 py-1.5 outline-none border border-zinc-700 focus:border-teal-500 font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] text-zinc-500 block mb-1">Priorite (plus petit = plus important)</label>
+                  <input
+                    type="number"
+                    value={form.priority}
+                    onChange={e => setForm(v => ({ ...v, priority: parseInt(e.target.value) || 0 }))}
+                    className="w-full bg-zinc-800 text-white text-xs rounded-lg px-2 py-1.5 outline-none border border-zinc-700 focus:border-teal-500"
+                  />
+                </div>
+              </div>
+              <div className="flex items-center gap-3 pt-2">
+                <label className="flex items-center gap-1.5 text-xs text-zinc-300">
+                  <input type="checkbox" checked={form.isActive} onChange={e => setForm(v => ({ ...v, isActive: e.target.checked }))} className="rounded accent-teal-500" />
+                  Actif
+                </label>
+                <div className="flex-1" />
+                <button onClick={() => setShowAdd(false)} className="px-3 py-1.5 text-xs text-zinc-400 hover:text-white transition-colors">Annuler</button>
+                <button
+                  onClick={() => createMutation.mutate()}
+                  disabled={createMutation.isPending || !form.apiKey || !form.label}
+                  className="flex items-center gap-1.5 px-4 py-1.5 bg-teal-600 hover:bg-teal-500 text-white text-xs font-medium rounded-lg transition-colors disabled:opacity-50"
+                >
+                  {createMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                  Ajouter
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </motion.div>
+  );
+}
 function ConfigTab() {
   const qc = useQueryClient();
   const { toast } = useToast();
@@ -786,6 +1133,7 @@ function ConfigTab() {
           <label className="text-xs text-zinc-400 mb-2 block font-medium">Fournisseur IA actif</label>
           <div className="grid grid-cols-2 gap-2.5">
             {[
+              { value: "auto", label: "Rotation Automatique", badge: "Tokens Pool", icon: <RefreshCw className="w-4 h-4" />, activeClass: "bg-teal-600/20 border-teal-500/50 text-teal-300 shadow-teal-500/10" },
               { value: "gemini", label: "Google Gemini", badge: "Gratuit", icon: "🌟", activeClass: "bg-blue-600/20 border-blue-500/50 text-blue-300 shadow-blue-500/10" },
               { value: "groq", label: "Groq", badge: "Gratuit + Rapide", icon: "⚡", activeClass: "bg-orange-600/20 border-orange-500/50 text-orange-300 shadow-orange-500/10" },
               { value: "openrouter", label: "OpenRouter", badge: "Gratuit", icon: "🔀", activeClass: "bg-emerald-600/20 border-emerald-500/50 text-emerald-300 shadow-emerald-500/10" },
@@ -811,6 +1159,13 @@ function ConfigTab() {
             ))}
           </div>
         </div>
+
+        {/* ── Auto Rotation Pool ── */}
+        <AnimatePresence>
+          {currentProvider === "auto" && (
+            <TokenPoolManager />
+          )}
+        </AnimatePresence>
 
         {/* ── Gemini config ── */}
         <AnimatePresence>

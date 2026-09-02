@@ -6,6 +6,7 @@ import {
   supportMessagesTable,
   aiKnowledgeBaseTable,
   aiSupportConfigTable,
+  aiProviderTokensTable,
   usersTable,
   virtualNumbersTable,
   transactionsTable,
@@ -15,8 +16,102 @@ import {
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { logger } from "../lib/logger";
 import { getSetting } from "../lib/settings";
+import { decrypt } from "../lib/email-router/crypto";
 
 const router: IRouter = Router();
+
+function remainingHeader(headers: Headers, ...names: string[]): number | null {
+  for (const name of names) {
+    const raw = headers.get(name);
+    if (raw !== null && /^\d+$/.test(raw)) return Number(raw);
+  }
+  return null;
+}
+
+function providerReset(headers: Headers): Date | null {
+  const raw = headers.get("x-ratelimit-reset-requests") ?? headers.get("anthropic-ratelimit-requests-reset") ?? headers.get("retry-after");
+  if (!raw) return null;
+  if (/^\d+$/.test(raw)) return new Date(Date.now() + Number(raw) * 1000);
+  const date = new Date(raw);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+/** Runs a token-pool request without exposing credentials or provider error bodies. */
+async function requestFromTokenPool(
+  messages: Array<{ role: "system" | "user" | "assistant"; content: string | unknown[] }>,
+  maxTokens: number,
+): Promise<string> {
+  const tokens = await db.select().from(aiProviderTokensTable)
+    .where(eq(aiProviderTokensTable.isActive, true))
+    .orderBy(asc(aiProviderTokensTable.priority), asc(aiProviderTokensTable.createdAt));
+  if (!tokens.length) throw new Error("No active AI provider tokens");
+  const flat = messages.map(message => ({ role: message.role, content: typeof message.content === "string" ? message.content : (message.content as Array<{ type: string; text?: string }>).find(part => part.type === "text")?.text ?? "" }));
+
+  for (const token of tokens) {
+    if (token.status === "invalid" || token.status === "exhausted") continue;
+    if (token.status === "rate_limited" && token.rateLimitReset && token.rateLimitReset > new Date()) continue;
+
+    let key: string;
+    try {
+      key = decrypt(token.encryptedKey);
+    } catch {
+      await db.update(aiProviderTokensTable).set({ status: "invalid", lastError: "Stored token cannot be decrypted", updatedAt: new Date() }).where(eq(aiProviderTokensTable.id, token.id));
+      continue;
+    }
+    try {
+      const response = token.provider === "openai"
+        ? await fetch("https://api.openai.com/v1/chat/completions", { method: "POST", headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" }, body: JSON.stringify({ model: token.model, messages: flat, max_tokens: maxTokens, stream: false }) })
+        : await fetch("https://api.anthropic.com/v1/messages", { method: "POST", headers: { "x-api-key": key, "anthropic-version": "2023-06-01", "Content-Type": "application/json" }, body: JSON.stringify({ model: token.model, system: flat.find(message => message.role === "system")?.content ?? "", messages: flat.filter(message => message.role !== "system").map(message => ({ role: message.role === "assistant" ? "assistant" : "user", content: message.content })), max_tokens: maxTokens }) });
+      let providerError = "";
+      if (!response.ok) {
+        const payload = await response.clone().json().catch(() => null) as {
+          error?: { code?: string; type?: string; message?: string };
+        } | null;
+        providerError = [
+          payload?.error?.code,
+          payload?.error?.type,
+          payload?.error?.message,
+        ].filter(Boolean).join(" ").toLowerCase();
+      }
+      const quotaExhausted = response.status === 402
+        || /insufficient_quota|credit_balance_exhausted|credit balance|billing_error|quota exhausted/.test(providerError);
+      const status = response.ok
+        ? "healthy"
+        : response.status === 401 || response.status === 403
+          ? "invalid"
+          : quotaExhausted
+            ? "exhausted"
+            : response.status === 429
+              ? "rate_limited"
+              : "error";
+      const updates = {
+        status,
+        lastUsedAt: new Date(),
+        lastError: response.ok
+          ? null
+          : status === "rate_limited"
+            ? "Rate limited by provider"
+            : status === "invalid"
+              ? "Authentication rejected by provider"
+              : status === "exhausted"
+                ? "Provider credit or quota exhausted"
+                : "Provider request failed",
+        rateLimitRequestsRemaining: remainingHeader(response.headers, "x-ratelimit-remaining-requests", "anthropic-ratelimit-requests-remaining"),
+        rateLimitTokensRemaining: remainingHeader(response.headers, "x-ratelimit-remaining-tokens", "anthropic-ratelimit-tokens-remaining"),
+        rateLimitReset: providerReset(response.headers), updatedAt: new Date(),
+      };
+      await db.update(aiProviderTokensTable).set(updates).where(eq(aiProviderTokensTable.id, token.id));
+      if (!response.ok) continue;
+      const json = await response.json() as { choices?: Array<{ message?: { content?: string } }>; content?: Array<{ type?: string; text?: string }> };
+      const text = token.provider === "openai" ? json.choices?.[0]?.message?.content : json.content?.find(part => part.type === "text")?.text;
+      if (text) return text;
+      await db.update(aiProviderTokensTable).set({ status: "error", lastError: "Provider returned no text", updatedAt: new Date() }).where(eq(aiProviderTokensTable.id, token.id));
+    } catch {
+      await db.update(aiProviderTokensTable).set({ status: "error", lastUsedAt: new Date(), lastError: "Provider request failed", updatedAt: new Date() }).where(eq(aiProviderTokensTable.id, token.id));
+    }
+  }
+  throw new Error("All AI provider tokens failed");
+}
 
 /* ── Lightweight language auto-detection ─────────────────────
  * Used as a hint for the system prompt and to persist the
@@ -585,7 +680,13 @@ router.post("/support/chat", async (req, res): Promise<void> => {
     const aiProvider = cfgMap["ai_provider"] ?? "scripted";
     const maxTokens = parseInt(cfgMap["ai_max_tokens"] ?? "1200", 10);
 
-    if (aiProvider === "gemini") {
+    if (aiProvider === "auto") {
+      /* Token-pool requests are deliberately non-streaming; their completed
+       * response is emitted over the existing SSE protocol. This lets a failed
+       * provider/token be retried before any partial answer reaches the user. */
+      fullResponse = await requestFromTokenPool(chatMessages, isNaN(maxTokens) ? 1200 : maxTokens);
+      res.write(`data: ${JSON.stringify({ content: fullResponse })}\n\n`);
+    } else if (aiProvider === "gemini") {
       /* ── Gemini streaming ── */
       const geminiApiKey = cfgMap["gemini_api_key"] ?? "";
       const geminiModel = cfgMap["gemini_model"] ?? "gemini-2.0-flash";

@@ -1,0 +1,22 @@
+CREATE TABLE IF NOT EXISTS "ai_provider_tokens" (
+  "id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+  "provider" text NOT NULL,
+  "label" text NOT NULL,
+  "encrypted_key" text NOT NULL,
+  "masked_key" text NOT NULL,
+  "model" text NOT NULL,
+  "priority" integer DEFAULT 0 NOT NULL,
+  "is_active" boolean DEFAULT true NOT NULL,
+  "status" text DEFAULT 'unknown' NOT NULL,
+  "credit_amount" numeric(14,4),
+  "credit_currency" text,
+  "rate_limit_requests_remaining" integer,
+  "rate_limit_tokens_remaining" integer,
+  "rate_limit_reset" timestamptz,
+  "last_checked_at" timestamptz,
+  "last_used_at" timestamptz,
+  "last_error" text,
+  "created_at" timestamptz DEFAULT now() NOT NULL,
+  "updated_at" timestamptz DEFAULT now() NOT NULL,
+  CONSTRAINT "ai_provider_tokens_provider_check" CHECK ("provider" IN ('openai', 'anthropic'))
+);
