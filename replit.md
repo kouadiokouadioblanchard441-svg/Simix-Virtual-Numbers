@@ -43,6 +43,12 @@ The app connects to the user's own Supabase Postgres via the `SUPABASE_DATABASE_
 ## Development
 
 ```bash
+# Install all workspace dependencies
+pnpm install --frozen-lockfile
+
+# Start the Replit preview server on port 5000
+bash start-replit.sh
+
 # Push schema changes
 pnpm --filter @workspace/db run push
 
@@ -54,3 +60,16 @@ pnpm --filter @workspace/api-spec run codegen
 ```
 
 Workflows are managed by Replit and serve the artifacts on a single shared proxy.
+
+## Replit setup
+
+The `Start application` workflow runs `bash start-replit.sh` and serves the combined
+API and frontend preview on port 5000. Configure these values in Replit Secrets:
+
+- `SUPABASE_DATABASE_URL` — the PostgreSQL connection URL for the Supabase database.
+- `SESSION_SECRET` — the server session signing secret.
+- `ADMIN_JWT_SECRET` — the admin session signing secret.
+
+The Supabase database is migrated automatically when the server starts. Optional
+providers such as 5sim, mobile money, transactional email, and Google OAuth can be
+configured later without changing the Replit startup workflow.
