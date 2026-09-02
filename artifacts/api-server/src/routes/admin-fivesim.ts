@@ -309,6 +309,7 @@ router.post("/admin/fivesim/manual-refund/:numberId", requireAdminJwt, async (re
     }
 
     /* Guard: check if a refund was already issued (same time-window heuristic) */
+    const refundWindowEnd = new Date(vn.createdAt.getTime() + 2 * 60 * 60 * 1000);
     const [{ alreadyRefunded }] = await db
       .select({
         alreadyRefunded: sql<boolean>`EXISTS (
@@ -321,7 +322,7 @@ router.post("/admin/fivesim/manual-refund/:numberId", requireAdminJwt, async (re
                 AND t.user_id = ${vn.userId}
                 AND t.amount = ${vn.price}
                 AND t.created_at > ${vn.createdAt}
-                AND t.created_at < ${vn.createdAt} + interval '2 hours'
+                AND t.created_at < ${refundWindowEnd}
               )
             )
         )`,

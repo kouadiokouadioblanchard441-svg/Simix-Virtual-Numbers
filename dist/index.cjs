@@ -165072,6 +165072,7 @@ router18.post("/admin/fivesim/manual-refund/:numberId", requireAdminJwt, async (
       res.status(400).json({ error: "Ce num\xE9ro a re\xE7u des SMS \u2014 remboursement non \xE9ligible" });
       return;
     }
+    const refundWindowEnd = new Date(vn3.createdAt.getTime() + 2 * 60 * 60 * 1e3);
     const [{ alreadyRefunded }] = await db.select({
       alreadyRefunded: sql`EXISTS (
           SELECT 1 FROM transactions t
@@ -165083,7 +165084,7 @@ router18.post("/admin/fivesim/manual-refund/:numberId", requireAdminJwt, async (
                 AND t.user_id = ${vn3.userId}
                 AND t.amount = ${vn3.price}
                 AND t.created_at > ${vn3.createdAt}
-                AND t.created_at < ${vn3.createdAt} + interval '2 hours'
+                AND t.created_at < ${refundWindowEnd}
               )
             )
         )`
