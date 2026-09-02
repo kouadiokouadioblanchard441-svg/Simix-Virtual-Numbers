@@ -120,8 +120,12 @@ router.get("/auth/google", (req, res): void => {
 
   /* Persist incoming referral code across the OAuth redirect so we can
    * attribute the new Google user to the correct referrer on callback.  */
-  const refCode = typeof req.query.ref === "string" ? req.query.ref.trim().toUpperCase() : null;
+  const rawRefCode = typeof req.query.ref === "string" ? req.query.ref.trim().toUpperCase() : "";
+  const refCode = /^SX[A-Z2-9]{8}$/.test(rawRefCode) ? rawRefCode : null;
   if (refCode) {
+    /* This is a short-lived referral attribution cookie, not an auth/session
+     * identifier. Its value is restricted to Simix's referral-code format. */
+    // nosemgrep: javascript.express.session-fixation.session-fixation
     res.cookie("oauth_ref", refCode, oauthStateCookieOptions(isSecureRequest(req)));
   }
 
@@ -147,7 +151,7 @@ router.get("/auth/google/callback", async (req, res): Promise<void> => {
   /* ── User denied consent ── */
   if (error) {
     logger.warn({ error, ip }, "[google-auth] OAuth denied by user");
-    res.redirect(`/?error=google_denied&reason=${encodeURIComponent(String(error))}`);
+    res.redirect("/?error=google_denied");
     return;
   }
 

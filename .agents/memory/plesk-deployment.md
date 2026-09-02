@@ -12,6 +12,11 @@ description: How this project (Simix) deploys to Plesk hosting outside Replit �
 
 ## Static frontend serving
 - Vite outDir is configured to the **root-level `public/`** directory (not `dist/public`). `DEPLOY.md`'s "Document Root: dist/public" is stale/incorrect — the actual runtime (`app.ts`) resolves `publicDir` with a dual fallback (`currentDir/public` → `currentDir/../public`) and finds root `public/` correctly regardless of cwd.
+- Plesk/nginx can serve the public HTML before the Node/Express middleware. After changing HTTP security headers, verify the actual `https://www.simix.site/` response; if Express headers are absent, deploy the new bundle and configure equivalent `add_header ... always` directives in Plesk nginx.
+
+**Why:** Local Express responses can be fully protected while the public Plesk response still exposes only nginx/Plesk headers, so code-level validation alone is insufficient.
+
+**How to apply:** Check the final response after redirects on both apex and `www`. Confirm HSTS, CSP, X-Frame-Options, nosniff, Referrer-Policy, and Permissions-Policy at the public edge.
 
 ## Replit-only features degrade gracefully
 - `lib/objectStorage.ts` depends on the Replit sidecar (`127.0.0.1:1106`) for GCS-backed uploads — this will fail outside Replit. `routes/storage.ts` already has a working fallback: `POST /storage/uploads/request-url` returns 503 with `fallback: "/api/storage/uploads/direct"`, and the frontend (`image-upload-button.tsx`) already calls that direct-upload endpoint. So file uploads keep working on Plesk via local disk (`UPLOAD_DIR` env var), just without GCS.

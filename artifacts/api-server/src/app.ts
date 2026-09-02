@@ -179,9 +179,12 @@ app.use(
       },
     },
 
-    /* Clickjacking: frameguard disabled — Replit preview iframes need to
-     * embed the app. Protection is provided by CSP frame-ancestors above. */
-    frameguard: false,
+    /* Clickjacking: keep the legacy header as well as CSP frame-ancestors.
+     * SAMEORIGIN protects the public site while remaining compatible with
+     * same-origin embeds. Replit preview embeds are governed by CSP in
+     * development; browsers that support X-Frame-Options will still honor
+     * this stricter legacy fallback. */
+    frameguard: { action: "sameorigin" },
 
     /* HSTS: force HTTPS for 1 year, include subdomains, allow preload list */
     hsts: {
@@ -210,12 +213,9 @@ app.use((_req, res, next) => {
     "Permissions-Policy",
     [
       "accelerometer=()",
-      "ambient-light-sensor=()",
       "autoplay=()",
-      "battery=()",
       "camera=()",
       "display-capture=()",
-      "document-domain=()",
       "encrypted-media=()",
       "fullscreen=()",
       "geolocation=()",
@@ -230,7 +230,6 @@ app.use((_req, res, next) => {
       "screen-wake-lock=()",
       "sync-xhr=()",
       "usb=()",
-      "web-share=()",
       "xr-spatial-tracking=()",
     ].join(", "),
   );

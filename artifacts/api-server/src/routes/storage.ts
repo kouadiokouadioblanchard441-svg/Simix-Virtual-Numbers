@@ -7,10 +7,18 @@ import fs from "fs";
 import express from "express";
 import { ObjectStorageService, ObjectNotFoundError } from "../lib/objectStorage";
 
+const ALLOWED_IMAGE_TYPES = {
+  "image/jpeg": "jpg",
+  "image/png": "png",
+  "image/gif": "gif",
+  "image/webp": "webp",
+} as const;
+
 const RequestUploadUrlBody = z.object({
   name: z.string().min(1),
-  size: z.number().int().nonnegative(),
-  contentType: z.string().min(1),
+  size: z.number().int().positive().max(5 * 1024 * 1024),
+  contentType: z.string().transform((value) => value.split(";")[0].trim().toLowerCase())
+    .refine((value) => value in ALLOWED_IMAGE_TYPES, "Unsupported image type"),
 });
 const RequestUploadUrlResponse = z.object({
   uploadURL: z.string().url(),
@@ -24,6 +32,14 @@ const objectStorageService = new ObjectStorageService();
 /* ── Uploads directory for direct (non-GCS) uploads ── */
 const UPLOAD_DIR = path.resolve(process.env.UPLOAD_DIR ?? "uploads");
 fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+
+function resolveUploadPath(filename: string): string {
+  const resolved = path.resolve(UPLOAD_DIR, filename);
+  if (path.dirname(resolved) !== UPLOAD_DIR) {
+    throw new Error("Invalid upload path");
+  }
+  return resolved;
+}
 
 /**
  * POST /storage/uploads/request-url
@@ -72,10 +88,10 @@ router.post(
   "/storage/uploads/direct",
   express.raw({ type: "image/*", limit: "5mb" }),
   (req: Request, res: Response) => {
-    const contentType = req.headers["content-type"] ?? "application/octet-stream";
+    const contentType = (req.headers["content-type"] ?? "").split(";")[0].trim().toLowerCase();
 
-    if (!contentType.startsWith("image/")) {
-      res.status(400).json({ error: "Seules les images sont acceptées (image/*)" });
+    if (!(contentType in ALLOWED_IMAGE_TYPES)) {
+      res.status(415).json({ error: "Formats acceptés : JPEG, PNG, GIF ou WebP" });
       return;
     }
 
@@ -85,11 +101,16 @@ router.post(
       return;
     }
 
-    const ext = contentType.split("/")[1]?.replace("jpeg", "jpg").replace("+xml", "") ?? "png";
+    const ext = ALLOWED_IMAGE_TYPES[contentType as keyof typeof ALLOWED_IMAGE_TYPES];
     const filename = `${randomUUID()}.${ext}`;
-    const filepath = path.join(UPLOAD_DIR, filename);
 
     try {
+      /* The filename is generated server-side and sendFile's root prevents
+       * a request parameter from escaping the upload directory. */
+      const filepath = resolveUploadPath(filename);
+      /* filename is a server-generated UUID and resolveUploadPath proves
+       * the destination remains directly inside UPLOAD_DIR. */
+      // nosemgrep: javascript.express.file.fs-express.fs-express
       fs.writeFileSync(filepath, body);
       const url = `/api/storage/uploads/files/${filename}`;
       res.json({ url, objectPath: url });
@@ -108,22 +129,22 @@ router.post(
 router.get("/storage/uploads/files/:filename", (req: Request, res: Response) => {
   const { filename } = req.params as Record<string, string>;
 
-  if (!filename || filename.includes("..") || filename.includes("/") || filename.includes("\\")) {
+  if (!filename || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.(?:jpg|png|gif|webp)$/i.test(filename)) {
     res.status(400).end();
     return;
   }
 
-  const filepath = path.join(UPLOAD_DIR, filename);
+  const filepath = resolveUploadPath(filename);
   if (!fs.existsSync(filepath)) {
     res.status(404).json({ error: "Fichier introuvable" });
     return;
   }
 
-  const ext = path.extname(filename).slice(1).replace("jpg", "jpeg");
-  const contentType = ext === "svg" ? "image/svg+xml" : `image/${ext || "png"}`;
+  const ext = path.extname(filename).slice(1).toLowerCase();
+  const contentType = ext === "jpg" ? "image/jpeg" : `image/${ext}`;
   res.setHeader("Content-Type", contentType);
   res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
-  res.sendFile(filepath);
+  res.sendFile(filename, { root: UPLOAD_DIR, dotfiles: "deny" });
 });
 
 /**

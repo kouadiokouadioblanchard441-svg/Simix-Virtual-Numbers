@@ -20,7 +20,7 @@ const PORT = Number(process.env.PORT || 3000);
 
 /* ── Variables d'environnement requises ────────────────────────── */
 const REQUIRED_ENV = [
-  { key: "DATABASE_URL",     label: "URL de la base de données PostgreSQL",  example: "postgres://user:password@host:5432/dbname" },
+  { key: "DATABASE_URL",     label: "URL de la base de données PostgreSQL",  example: "postgresql://<host>:5432/<database>" },
   { key: "SESSION_SECRET",   label: "Clé secrète pour les sessions",          example: "une-longue-chaine-aleatoire-de-32-caracteres" },
   { key: "ADMIN_JWT_SECRET", label: "Clé secrète JWT pour l'admin",           example: "une-autre-longue-chaine-aleatoire" },
 ];
@@ -130,7 +130,17 @@ function startDiagnosticServer(missing, buildError) {
 </html>`;
 
   const server = http.createServer((_req, res) => {
-    res.writeHead(503, { "Content-Type": "text/html; charset=utf-8" });
+    /* This diagnostic server runs before the Express/Helmet bundle when
+     * Plesk is misconfigured. It must not become a security-header gap. */
+    res.writeHead(503, {
+      "Content-Type": "text/html; charset=utf-8",
+      "Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'; frame-ancestors 'none'; base-uri 'none'",
+      "Strict-Transport-Security": "max-age=31536000; includeSubDomains; preload",
+      "X-Frame-Options": "DENY",
+      "X-Content-Type-Options": "nosniff",
+      "Referrer-Policy": "no-referrer",
+      "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+    });
     res.end(html);
   });
 
