@@ -129515,7 +129515,7 @@ var require_bn = __commonJS({
         assert((this.negative | num.negative) === 0);
         return this.iuand(num);
       };
-      BN.prototype.and = function and4(num) {
+      BN.prototype.and = function and3(num) {
         if (this.length > num.length) return this.clone().iand(num);
         return num.clone().iand(this);
       };
@@ -165474,6 +165474,10 @@ router20.post("/admin/email-providers", async (req, res) => {
     res.status(400).json({ error: "name et slug sont requis" });
     return;
   }
+  if (active && !apiKey?.trim()) {
+    res.status(400).json({ error: "Une cl\xE9 API est requise pour activer ce fournisseur" });
+    return;
+  }
   const [row] = await db.insert(emailProvidersTable).values({
     name: name3,
     slug,
@@ -165493,6 +165497,20 @@ router20.put("/admin/email-providers/:id", async (req, res) => {
   const { id } = req.params;
   const { name: name3, slug, priority, active, apiKey, apiSecret, domain, region, config } = req.body;
   const updates = {};
+  const [current] = await db.select({
+    active: emailProvidersTable.active,
+    apiKeyEnc: emailProvidersTable.apiKeyEnc
+  }).from(emailProvidersTable).where(eq(emailProvidersTable.id, id)).limit(1);
+  if (!current) {
+    res.status(404).json({ error: "Fournisseur introuvable" });
+    return;
+  }
+  const resultingHasApiKey = apiKey === void 0 ? !!current.apiKeyEnc : !!apiKey.trim();
+  const resultingActive = active === void 0 ? current.active : active;
+  if (resultingActive && !resultingHasApiKey) {
+    res.status(400).json({ error: "Une cl\xE9 API est requise pour activer ce fournisseur" });
+    return;
+  }
   if (name3 !== void 0) updates.name = name3;
   if (slug !== void 0) updates.slug = slug;
   if (priority !== void 0) updates.priority = priority;
@@ -165520,9 +165538,16 @@ router20.delete("/admin/email-providers/:id", async (req, res) => {
 });
 router20.post("/admin/email-providers/:id/toggle", async (req, res) => {
   const { id } = req.params;
-  const [current] = await db.select({ active: emailProvidersTable.active }).from(emailProvidersTable).where(eq(emailProvidersTable.id, id)).limit(1);
+  const [current] = await db.select({
+    active: emailProvidersTable.active,
+    apiKeyEnc: emailProvidersTable.apiKeyEnc
+  }).from(emailProvidersTable).where(eq(emailProvidersTable.id, id)).limit(1);
   if (!current) {
     res.status(404).json({ error: "Fournisseur introuvable" });
+    return;
+  }
+  if (!current.active && !current.apiKeyEnc) {
+    res.status(400).json({ error: "Ajoutez une cl\xE9 API avant d'activer ce fournisseur" });
     return;
   }
   const [row] = await db.update(emailProvidersTable).set({ active: !current.active }).where(eq(emailProvidersTable.id, id)).returning();
@@ -165591,6 +165616,32 @@ router20.post("/admin/email-providers/:id/test", async (req, res) => {
 router20.post("/admin/email-providers/health-check", async (_req, res) => {
   await getEmailManager().runHealthChecks();
   res.json({ success: true, message: "Health check termin\xE9" });
+});
+router20.post("/admin/email-providers/retry-pending", async (_req, res) => {
+  const [configuredProvider] = await db.select({ id: emailProvidersTable.id }).from(emailProvidersTable).where(and(
+    eq(emailProvidersTable.active, true),
+    isNotNull(emailProvidersTable.apiKeyEnc)
+  )).limit(1);
+  if (!configuredProvider) {
+    res.status(409).json({ error: "Aucun fournisseur email actif avec une cl\xE9 API configur\xE9e" });
+    return;
+  }
+  const [{ before }] = await db.select({ before: count() }).from(emailQueueTable).where(and(
+    eq(emailQueueTable.status, "pending"),
+    lte(emailQueueTable.nextRetryAt, /* @__PURE__ */ new Date())
+  ));
+  await getEmailManager().processRetryQueue();
+  const [{ after }] = await db.select({ after: count() }).from(emailQueueTable).where(and(
+    eq(emailQueueTable.status, "pending"),
+    lte(emailQueueTable.nextRetryAt, /* @__PURE__ */ new Date())
+  ));
+  res.json({
+    success: true,
+    processed: Math.max(0, Number(before) - Number(after)),
+    dueBefore: Number(before),
+    dueAfter: Number(after),
+    message: Number(after) > 0 ? "Un lot a \xE9t\xE9 trait\xE9. Relancez l'action pour traiter le lot suivant." : "Tous les emails actuellement \xE9ligibles ont \xE9t\xE9 trait\xE9s."
+  });
 });
 router20.get("/admin/email-providers/stats", async (_req, res) => {
   const [totalSent] = await db.select({ c: count() }).from(emailQueueTable).where(eq(emailQueueTable.status, "sent"));

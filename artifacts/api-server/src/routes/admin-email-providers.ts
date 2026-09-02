@@ -13,7 +13,7 @@
  * GET    /admin/email-providers/logs       — journaux d'envoi
  */
 import { Router, type IRouter, type Request, type Response } from "express";
-import { eq, desc, and, gte, count, asc } from "drizzle-orm";
+import { eq, desc, and, gte, count, asc, lte, isNotNull } from "drizzle-orm";
 import { db } from "@workspace/db";
 import {
   emailProvidersTable,
@@ -70,6 +70,10 @@ router.post("/admin/email-providers", async (req: Request, res: Response): Promi
     config?: Record<string, string>;
   };
   if (!name || !slug) { res.status(400).json({ error: "name et slug sont requis" }); return; }
+  if (active && !apiKey?.trim()) {
+    res.status(400).json({ error: "Une clé API est requise pour activer ce fournisseur" });
+    return;
+  }
 
   const [row] = await db.insert(emailProvidersTable).values({
     name, slug,
@@ -97,6 +101,18 @@ router.put("/admin/email-providers/:id", async (req: Request, res: Response): Pr
   };
 
   const updates: Partial<typeof emailProvidersTable.$inferInsert> = {};
+  const [current] = await db.select({
+    active: emailProvidersTable.active,
+    apiKeyEnc: emailProvidersTable.apiKeyEnc,
+  }).from(emailProvidersTable).where(eq(emailProvidersTable.id, id)).limit(1);
+  if (!current) { res.status(404).json({ error: "Fournisseur introuvable" }); return; }
+
+  const resultingHasApiKey = apiKey === undefined ? !!current.apiKeyEnc : !!apiKey.trim();
+  const resultingActive = active === undefined ? current.active : active;
+  if (resultingActive && !resultingHasApiKey) {
+    res.status(400).json({ error: "Une clé API est requise pour activer ce fournisseur" });
+    return;
+  }
   if (name     !== undefined) updates.name      = name;
   if (slug     !== undefined) updates.slug      = slug;
   if (priority !== undefined) updates.priority  = priority;
@@ -128,9 +144,16 @@ router.delete("/admin/email-providers/:id", async (req: Request, res: Response):
 /* ── POST /admin/email-providers/:id/toggle ─────────────────── */
 router.post("/admin/email-providers/:id/toggle", async (req: Request, res: Response): Promise<void> => {
   const { id } = req.params;
-  const [current] = await db.select({ active: emailProvidersTable.active })
+  const [current] = await db.select({
+    active: emailProvidersTable.active,
+    apiKeyEnc: emailProvidersTable.apiKeyEnc,
+  })
     .from(emailProvidersTable).where(eq(emailProvidersTable.id, id)).limit(1);
   if (!current) { res.status(404).json({ error: "Fournisseur introuvable" }); return; }
+  if (!current.active && !current.apiKeyEnc) {
+    res.status(400).json({ error: "Ajoutez une clé API avant d'activer ce fournisseur" });
+    return;
+  }
 
   const [row] = await db.update(emailProvidersTable)
     .set({ active: !current.active })
@@ -200,6 +223,48 @@ router.post("/admin/email-providers/:id/test", async (req: Request, res: Respons
 router.post("/admin/email-providers/health-check", async (_req: Request, res: Response): Promise<void> => {
   await getEmailManager().runHealthChecks();
   res.json({ success: true, message: "Health check terminé" });
+});
+
+/* ── POST /admin/email-providers/retry-pending ─────────────── */
+router.post("/admin/email-providers/retry-pending", async (_req: Request, res: Response): Promise<void> => {
+  const [configuredProvider] = await db.select({ id: emailProvidersTable.id })
+    .from(emailProvidersTable)
+    .where(and(
+      eq(emailProvidersTable.active, true),
+      isNotNull(emailProvidersTable.apiKeyEnc),
+    ))
+    .limit(1);
+
+  if (!configuredProvider) {
+    res.status(409).json({ error: "Aucun fournisseur email actif avec une clé API configurée" });
+    return;
+  }
+
+  const [{ before }] = await db.select({ before: count() })
+    .from(emailQueueTable)
+    .where(and(
+      eq(emailQueueTable.status, "pending"),
+      lte(emailQueueTable.nextRetryAt, new Date()),
+    ));
+
+  await getEmailManager().processRetryQueue();
+
+  const [{ after }] = await db.select({ after: count() })
+    .from(emailQueueTable)
+    .where(and(
+      eq(emailQueueTable.status, "pending"),
+      lte(emailQueueTable.nextRetryAt, new Date()),
+    ));
+
+  res.json({
+    success: true,
+    processed: Math.max(0, Number(before) - Number(after)),
+    dueBefore: Number(before),
+    dueAfter: Number(after),
+    message: Number(after) > 0
+      ? "Un lot a été traité. Relancez l'action pour traiter le lot suivant."
+      : "Tous les emails actuellement éligibles ont été traités.",
+  });
 });
 
 /* ── GET /admin/email-providers/stats ──────────────────────── */
