@@ -17,6 +17,7 @@ import {
   ISO2_TO_ISO3,
   COUNTRY_CURRENCY,
   buildMSISDN,
+  getPawaPayOperationConfig,
   getProviderForCountry,
   normalizePawaPayProvider,
 } from "../lib/pawapay";
@@ -55,8 +56,8 @@ const ISO3_TO_ISO2: Record<string, string> = Object.fromEntries(
 /**
  * GET /admin/payouts/pawapay/local-operators
  * Returns operators from local mobile_operators table, grouped by country.
- * Used as primary source for PawaPay payout form (avoids relying on /v2/active-configuration).
- * PawaPay provider code is derived from operator slug: "orange-civ" → "ORANGE_CIV".
+ * The local catalogue is intersected with PawaPay /v2/active-conf PAYOUT access.
+ * PawaPay provider code is derived from country + operator.
  */
 router.get("/admin/payouts/pawapay/local-operators", requireAdmin, async (_req, res): Promise<void> => {
   try {
@@ -76,13 +77,16 @@ router.get("/admin/payouts/pawapay/local-operators", requireAdmin, async (_req, 
     const creds = await resolvePawaPayCredentials();
     if (creds) {
       try {
-        const config = await new PawaPayClient(creds.token, creds.env).getActiveConfiguration();
+        const config = await new PawaPayClient(creds.token, creds.env)
+          .getActiveConfiguration({ operationType: "PAYOUT" });
         livePayoutProviders = new Map(
           config.countries.map((country) => {
             const iso2 = ISO3_TO_ISO2[country.country] ?? country.country;
             const providers = new Set(
               country.providers
-                .filter((p) => p.currencies.some((c) => c.operationTypes?.PAYOUT))
+                .filter((p) => p.currencies.some((c) =>
+                  getPawaPayOperationConfig(c.operationTypes, "PAYOUT"),
+                ))
                 .map((p) => p.provider),
             );
             return [iso2, providers];
@@ -153,7 +157,7 @@ router.get("/admin/payouts/pawapay/config", requireAdmin, async (req, res): Prom
     }
 
     const client = new PawaPayClient(creds.token, creds.env);
-    const config = await client.getActiveConfiguration();
+    const config = await client.getActiveConfiguration({ operationType: "PAYOUT" });
 
     const countries = config.countries
       .map((c) => {
@@ -162,17 +166,24 @@ router.get("/admin/payouts/pawapay/config", requireAdmin, async (req, res): Prom
 
         const providers = c.providers
           .filter((p) =>
-            p.currencies.some((cur) => cur.operationTypes?.PAYOUT),
+            p.currencies.some((cur) =>
+              getPawaPayOperationConfig(cur.operationTypes, "PAYOUT"),
+            ),
           )
           .map((p) => {
             // Find the first currency with PAYOUT limits
-            const cur = p.currencies.find((cu) => cu.operationTypes?.PAYOUT);
+            const cur = p.currencies.find((cu) =>
+              getPawaPayOperationConfig(cu.operationTypes, "PAYOUT"),
+            );
+            const payoutConfig = cur
+              ? getPawaPayOperationConfig(cur.operationTypes, "PAYOUT")
+              : undefined;
             return {
               provider: p.provider,
-              name: p.nameDisplayedToCustomer,
+              name: p.displayName ?? p.nameDisplayedToCustomer ?? p.provider,
               currency: cur?.currency ?? currency,
-              minAmount: cur?.operationTypes?.PAYOUT?.minAmount,
-              maxAmount: cur?.operationTypes?.PAYOUT?.maxAmount,
+              minAmount: payoutConfig?.minTransactionLimit ?? payoutConfig?.minAmount,
+              maxAmount: payoutConfig?.maxTransactionLimit ?? payoutConfig?.maxAmount,
             };
           });
 
@@ -203,8 +214,8 @@ router.post("/admin/payouts/pawapay", requireAdmin, async (req, res): Promise<vo
     amount?: string | number;
   };
 
-  if (!phoneNumber || !provider || !currency || !amount) {
-    res.status(400).json({ error: "Champs requis : phoneNumber, provider, currency, amount" });
+  if (!phoneNumber || !countryIso2 || !provider || !currency || !amount) {
+    res.status(400).json({ error: "Champs requis : phoneNumber, countryIso2, provider, currency, amount" });
     return;
   }
 
@@ -224,6 +235,30 @@ router.post("/admin/payouts/pawapay", requireAdmin, async (req, res): Promise<vo
     const client = new PawaPayClient(creds.token, creds.env);
     const msisdn = buildMSISDN(phoneNumber, dialCode);
     const pawapayProvider = normalizePawaPayProvider(countryIso2, provider);
+    const payoutCurrencyCode = currency.trim().toUpperCase();
+    const amountString = String(amount).trim();
+    const iso2 = countryIso2.trim().toUpperCase();
+    const iso3 = ISO2_TO_ISO3[iso2] ?? iso2;
+
+    if (!/^([0]|([1-9][0-9]{0,17}))([.][0-9]{0,3}[1-9])?$/.test(amountString)) {
+      res.status(400).json({ error: "Format du montant invalide pour PawaPay" });
+      return;
+    }
+
+    const predicted = await client.predictProvider(msisdn);
+    if (!predicted?.phoneNumber || !predicted.provider) {
+      res.status(422).json({
+        error: "PawaPay n'a pas pu valider ce numéro. Vérifiez le numéro et l'indicatif du pays.",
+      });
+      return;
+    }
+    if (predicted.provider !== pawapayProvider) {
+      res.status(422).json({
+        error: `Ce numéro est identifié par PawaPay comme ${predicted.provider}, mais l'opérateur sélectionné est ${pawapayProvider}. Sélectionnez l'opérateur correspondant.`,
+      });
+      return;
+    }
+    const payoutPhoneNumber = predicted.phoneNumber;
 
     /*
      * Do not create a payout request for a provider that the merchant account
@@ -231,21 +266,41 @@ router.post("/admin/payouts/pawapay", requireAdmin, async (req, res): Promise<vo
      * message and prevents unnecessary rejected payout IDs.
      */
     try {
-      const config = await client.getActiveConfiguration();
-      const iso2 = countryIso2?.trim().toUpperCase();
-      const iso3 = iso2 ? (ISO2_TO_ISO3[iso2] ?? iso2) : undefined;
+      const config = await client.getActiveConfiguration({
+        country: iso3,
+        operationType: "PAYOUT",
+      });
       const country = config.countries.find((c) =>
         c.country === iso3 || c.country === iso2,
       );
       const providerConfig = country?.providers.find((p) => p.provider === pawapayProvider);
       const payoutCurrency = providerConfig?.currencies.find((c) =>
-        c.currency === currency && c.operationTypes?.PAYOUT,
+        c.currency === payoutCurrencyCode &&
+        getPawaPayOperationConfig(c.operationTypes, "PAYOUT"),
       );
+      const payoutConfig = payoutCurrency
+        ? getPawaPayOperationConfig(payoutCurrency.operationTypes, "PAYOUT")
+        : undefined;
 
-      if (!providerConfig || !payoutCurrency) {
+      if (!providerConfig || !payoutCurrency || !payoutConfig) {
         res.status(422).json({
           error: `Le retrait PawaPay n'est pas activé pour ${pawapayProvider} dans votre compte. Activez ce fournisseur dans la configuration Payouts PawaPay ou choisissez un opérateur autorisé.`,
         });
+        return;
+      }
+
+      const minAmount = Number(payoutConfig.minTransactionLimit ?? payoutConfig.minAmount);
+      const maxAmount = Number(payoutConfig.maxTransactionLimit ?? payoutConfig.maxAmount);
+      if (Number.isFinite(minAmount) && amountNum < minAmount) {
+        res.status(422).json({ error: `Le montant minimum pour ${pawapayProvider} est ${minAmount} ${payoutCurrencyCode}.` });
+        return;
+      }
+      if (Number.isFinite(maxAmount) && amountNum > maxAmount) {
+        res.status(422).json({ error: `Le montant maximum pour ${pawapayProvider} est ${maxAmount} ${payoutCurrencyCode}.` });
+        return;
+      }
+      if (payoutConfig.decimalsInAmount === "NONE" && amountString.includes(".")) {
+        res.status(422).json({ error: `Les décimales ne sont pas autorisées pour ${pawapayProvider}.` });
         return;
       }
     } catch (err) {
@@ -258,17 +313,17 @@ router.post("/admin/payouts/pawapay", requireAdmin, async (req, res): Promise<vo
 
     const payoutId = crypto.randomUUID();
 
-    logger.info({ payoutId, msisdn, countryIso2, provider: pawapayProvider, currency, amount: String(amountNum) }, "[admin-payouts] Initiating PawaPay payout");
+    logger.info({ payoutId, msisdn: payoutPhoneNumber, countryIso2, provider: pawapayProvider, currency: payoutCurrencyCode, amount: amountString }, "[admin-payouts] Initiating PawaPay payout");
 
     const result = await client.initiatePayout({
       payoutId,
-      amount: String(Math.floor(amountNum)),
-      currency,
+      amount: amountString,
+      currency: payoutCurrencyCode,
       recipient: {
         type: "MMO",
         accountDetails: {
-          phoneNumber: msisdn,
-            provider: pawapayProvider,
+          phoneNumber: payoutPhoneNumber,
+          provider: pawapayProvider,
         },
       },
       customerMessage: "Simix retrait",

@@ -20,9 +20,9 @@ git clone https://github.com/VOTRE_REPO/simix.git /var/www/simix
 
 | Paramètre              | Valeur                  |
 |------------------------|-------------------------|
-| Document Root          | `dist/public`           |
+| Document Root          | `/var/www/simix` (l'application sert `public/`) |
 | Application Root       | `/var/www/simix`        |
-| Application Startup File | `dist/index.cjs`     |
+| Application Startup File | `startup.js`          |
 | Application Mode       | `production`            |
 | Node.js version        | `20.x` ou plus récent   |
 
@@ -50,7 +50,8 @@ node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"      # 
 
 ### 4. Premier démarrage
 
-Plesk démarre automatiquement `node dist/index.cjs`.
+Plesk démarre automatiquement `node startup.js`. Ce point d'entrée vérifie la configuration,
+reconstruit le backend et le frontend si nécessaire, puis charge `dist/index.cjs`.
 
 Au premier démarrage, le serveur :
 - Exécute les migrations de la base de données automatiquement
@@ -84,5 +85,5 @@ Depuis l'admin :
 |---------------------------------|--------------------------------------------------|
 | `relation "users" already exists` | Normal — les migrations ignorent les tables existantes |
 | `ECONNREFUSED` au démarrage     | Vérifier `DATABASE_URL`                         |
-| Page blanche                    | Vérifier que `dist/public/index.html` existe    |
+| Page blanche                    | Vérifier que `public/index.html` existe         |
 | API 401 sur `/api/...`          | Cookie de session expiré — se reconnecter      |

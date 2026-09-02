@@ -2,7 +2,7 @@ module.exports = {
   apps: [
     {
       name: 'simix',
-      script: 'index.cjs',
+      script: 'dist/index.cjs',
       node_args: '--enable-source-maps',
       instances: 1,
       autorestart: true,

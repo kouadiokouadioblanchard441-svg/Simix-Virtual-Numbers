@@ -173,20 +173,67 @@ export interface PawaPayPredictResult {
 
 export interface PawaPayActiveConfig {
   companyName: string;
+  signatureConfiguration?: {
+    signedRequestsOnly: boolean;
+    signedCallbacks: boolean;
+  };
   countries: Array<{
     country: string;
+    prefix?: string;
+    flag?: string;
+    displayName?: { en?: string; fr?: string };
     providers: Array<{
       provider: string;
-      nameDisplayedToCustomer: string;
+      displayName?: string;
+      logo?: string;
+      nameDisplayedToCustomer?: string;
       currencies: Array<{
         currency: string;
-        operationTypes: {
-          DEPOSIT?: { minAmount: string; maxAmount: string };
-          PAYOUT?: { minAmount: string; maxAmount: string };
-        };
+        displayName?: string;
+        operationTypes: PawaPayOperationTypes;
       }>;
     }>;
   }>;
+}
+
+export type PawaPayOperationType =
+  | "DEPOSIT"
+  | "PAYOUT"
+  | "REMITTANCE"
+  | "PUSH_DEPOSIT"
+  | "REFUND"
+  | "NAME_LOOKUP";
+
+export interface PawaPayOperationConfig {
+  minTransactionLimit?: string;
+  maxTransactionLimit?: string;
+  decimalsInAmount?: string;
+  status?: string;
+  callbackUrl?: string;
+  authType?: string;
+  /* Compatibility with early v2 responses used by some accounts. */
+  minAmount?: string;
+  maxAmount?: string;
+}
+
+export type PawaPayOperationTypes =
+  | Array<Partial<Record<PawaPayOperationType, PawaPayOperationConfig>>>
+  | Partial<Record<PawaPayOperationType, PawaPayOperationConfig>>;
+
+/** Read an operation from the documented array response (and legacy object shape). */
+export function getPawaPayOperationConfig(
+  operationTypes: PawaPayOperationTypes | undefined,
+  operationType: PawaPayOperationType,
+): PawaPayOperationConfig | undefined {
+  if (!operationTypes) return undefined;
+  if (Array.isArray(operationTypes)) {
+    for (const operation of operationTypes) {
+      const config = operation[operationType];
+      if (config) return config;
+    }
+    return undefined;
+  }
+  return operationTypes[operationType];
 }
 
 /* ─────────────────────────────────────────────────────────────────
@@ -332,8 +379,15 @@ export class PawaPayClient {
    * Get active configuration for this merchant account (v2).
    * Contains all configured providers, currencies, limits.
    */
-  async getActiveConfiguration(): Promise<PawaPayActiveConfig> {
-    return this.request<PawaPayActiveConfig>("/v2/active-configuration");
+  async getActiveConfiguration(filters?: {
+    country?: string;
+    operationType?: PawaPayOperationType;
+  }): Promise<PawaPayActiveConfig> {
+    const query = new URLSearchParams();
+    if (filters?.country) query.set("country", filters.country);
+    if (filters?.operationType) query.set("operationType", filters.operationType);
+    const suffix = query.size > 0 ? `?${query.toString()}` : "";
+    return this.request<PawaPayActiveConfig>(`/v2/active-conf${suffix}`);
   }
 
   /**

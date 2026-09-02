@@ -6,7 +6,8 @@
 Replit → ./deploy.sh "message"  →  GitHub  →  Plesk : Deploy Now  →  ✅ Live
 ```
 
-**Aucun build, aucun npm install dans Plesk.** Tout est pré-buildé et commité dans `dist/`.
+Le dépôt contient les fichiers compilés pour un démarrage immédiat. `startup.js` peut aussi
+reconstruire automatiquement le backend et le frontend après une mise à jour des sources.
 
 ---
 
@@ -17,11 +18,12 @@ Replit → ./deploy.sh "message"  →  GitHub  →  Plesk : Deploy Now  →  ✅
 | Paramètre | Valeur |
 |---|---|
 | **Application root** | `/` (racine du repo) |
-| **Application startup file** | `dist/index.cjs` |
+| **Application startup file** | `startup.js` |
 | **Node.js version** | `20.x` ou supérieur |
 | **Application mode** | `production` |
 
-> ⚠️ **Ne pas activer "Run npm install" ou "Build"** dans Plesk — tout est déjà buildé dans `dist/`.
+> ⚠️ **Le démarrage standard est `startup.js`.** Une étape de build Plesk séparée
+> n'est pas nécessaire : le point d'entrée vérifie lui-même si le bundle doit être reconstruit.
 
 ---
 
@@ -102,7 +104,7 @@ node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"
 Dans **Plesk → Domaine → Git** :
 1. Coller l'URL du dépôt GitHub
 2. Sélectionner la branche `main`
-3. **Actions de déploiement** — laisser vide (Plesk utilise `npm start` → `node dist/index.cjs`)
+3. **Actions de déploiement** — laisser vide (Plesk utilise `npm start` → `node startup.js`)
 
 ### 4. Reverse Proxy
 
@@ -196,18 +198,16 @@ dist/
 │   ├── 0008_referral_columns.sql      ← Système de parrainage
 │   ├── 0009_transactions_gateway_meta.sql ← Métadonnées des transactions
 │   └── meta/                          ← Métadonnées Drizzle (ne pas modifier)
-└── public/                            ← Frontend React buildé
-    ├── index.html
-    ├── assets/                        ← JS, CSS, images compilées (hachés)
-    ├── icons/                         ← Icônes PWA
-    └── logos/                         ← Logos des services
 ```
+
+Le frontend React est généré séparément dans `public/` à la racine du projet.
 
 ---
 
 ## Ce qui se passe au démarrage du serveur
 
-Au lancement de `node dist/index.cjs`, automatiquement et dans cet ordre :
+Au lancement de `node startup.js`, le bundle est vérifié/reconstruit si nécessaire,
+puis `dist/index.cjs` démarre automatiquement les services dans cet ordre :
 
 1. Connexion à la base de données via `DATABASE_URL`
 2. Migrations SQL appliquées (nouvelles tables uniquement, idempotent)
@@ -218,7 +218,7 @@ Au lancement de `node dist/index.cjs`, automatiquement et dans cet ordre :
 7. Démarrage du poller SMS 5sim (intervalle : 15s)
 8. Démarrage de la réconciliation PawaPay (intervalle : 30s)
 9. Démarrage de la réconciliation Clapay (intervalle : 5min)
-10. Frontend React servi depuis `dist/public/`
+10. Frontend React servi depuis `public/`
 
 **Aucune étape manuelle nécessaire.**
 
@@ -249,7 +249,7 @@ L'accès admin requiert **deux étapes** de sécurité :
 | `pnpm --filter @workspace/scripts run seed` | Remettre les données de démonstration |
 | `pnpm --filter @workspace/api-spec run codegen` | Regénérer les hooks API après modification de openapi.yaml |
 | `node dist/index.cjs` | Démarrer le serveur (production) |
-| `npm start` | Identique à `node dist/index.cjs` |
+| `npm start` | Lance `startup.js`, qui charge `dist/index.cjs` |
 
 ---
 
@@ -257,7 +257,7 @@ L'accès admin requiert **deux étapes** de sécurité :
 
 | Symptôme | Cause probable | Solution |
 |---|---|---|
-| Page blanche | `NODE_ENV` non défini ou frontend non buildé | Vérifier `NODE_ENV=production` + que `dist/public/index.html` existe |
+| Page blanche | `NODE_ENV` non défini ou frontend non buildé | Vérifier `NODE_ENV=production` + que `public/index.html` existe |
 | Erreur base de données | `DATABASE_URL` incorrect | Vérifier la chaîne de connexion PostgreSQL |
 | Port déjà utilisé | Un autre processus utilise le port | Changer `PORT=3001` et mettre à jour le reverse proxy |
 | `Admin JWT signing failed` | `ADMIN_JWT_SECRET` non défini | Ajouter `ADMIN_JWT_SECRET` dans les variables Plesk |

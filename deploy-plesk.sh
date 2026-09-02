@@ -42,4 +42,4 @@ echo "✔ Frontend compilé → public/"
 echo ""
 echo "🚀 Démarrage du serveur..."
 echo "========================================"
-NODE_ENV=production node --enable-source-maps index.cjs
+NODE_ENV=production node --enable-source-maps dist/index.cjs

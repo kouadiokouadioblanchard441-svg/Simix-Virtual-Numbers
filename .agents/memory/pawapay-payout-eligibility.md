@@ -7,4 +7,6 @@ PawaPay provider identifiers must be country-qualified, but a syntactically vali
 
 **Why:** PawaPay accepts the provider format but rejects the payout with `PAYOUTS_NOT_ALLOWED` when that provider has not been enabled for the merchant account.
 
-**How to apply:** Use the live active-configuration response as the eligibility source of truth, retain static country/operator mapping only for identifier normalization, and validate eligibility server-side before creating a payout.
+PawaPay v2 exposes this data at `/v2/active-conf`. Each currency's `operationTypes` is an array of keyed objects (for example `[{ "PAYOUT": { ... } }]`), not one object with a direct `PAYOUT` property.
+
+**How to apply:** Query active configuration with `operationType=PAYOUT`, search the `operationTypes` array, retain static country/operator mapping only for identifier normalization, and validate eligibility server-side before creating a payout. Validate and sanitize the MSISDN with `predict-provider`.
