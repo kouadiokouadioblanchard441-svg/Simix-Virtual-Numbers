@@ -133958,6 +133958,7 @@ __export(pawapay_exports, {
   buildMSISDN: () => buildMSISDN,
   generateDepositId: () => generateDepositId,
   getProviderForCountry: () => getProviderForCountry,
+  normalizePawaPayProvider: () => normalizePawaPayProvider,
   verifyContentDigest: () => verifyContentDigest
 });
 function generateDepositId() {
@@ -133975,7 +133976,7 @@ function buildMSISDN(phoneNumber, dialCode) {
 function getProviderForCountry(countryCode, methodSlug) {
   const providers = COUNTRY_TO_PAWAPAY_PROVIDER[countryCode.toUpperCase()] ?? [];
   if (providers.length === 0) return null;
-  const slug = methodSlug.toLowerCase();
+  const slug = methodSlug.toLowerCase().replace(/[-\s]+/g, "_");
   if (slug.includes("orange")) return providers.find((p) => p.startsWith("ORANGE_")) ?? providers[0];
   if (slug.includes("mtn")) return providers.find((p) => p.startsWith("MTN_")) ?? providers[0];
   if (slug.includes("wave")) return providers.find((p) => p.startsWith("WAVE_")) ?? providers[0];
@@ -133988,6 +133989,16 @@ function getProviderForCountry(countryCode, methodSlug) {
   if (slug.includes("flooz")) return providers.find((p) => p.startsWith("FLOOZ_")) ?? providers[0];
   if (slug.includes("expresso")) return providers.find((p) => p.startsWith("EXPRESSO_")) ?? providers[0];
   return providers[0];
+}
+function normalizePawaPayProvider(countryCode, provider) {
+  const normalized = provider.trim().toUpperCase().replace(/[-\s]+/g, "_");
+  if (!countryCode) return normalized;
+  const country = countryCode.trim().toUpperCase();
+  const providers = COUNTRY_TO_PAWAPAY_PROVIDER[country] ?? [];
+  const iso3 = ISO2_TO_ISO3[country] ?? country;
+  if (providers.includes(normalized)) return normalized;
+  if (normalized.endsWith(`_${iso3}`)) return normalized;
+  return getProviderForCountry(country, normalized) ?? normalized;
 }
 function verifyContentDigest(rawBody, contentDigestHeader) {
   if (!contentDigestHeader) return true;
@@ -165276,7 +165287,7 @@ router21.get("/admin/payouts/pawapay/local-operators", requireAdmin7, async (_re
             operators: []
           });
         }
-        const pawapayCode = op.slug.toUpperCase().replace(/-/g, "_");
+        const pawapayCode = getProviderForCountry(iso2, op.slug) ?? op.slug.toUpperCase().replace(/-/g, "_");
         byCountry.get(iso2).operators.push({
           name: op.name,
           slug: op.slug,
@@ -165327,7 +165338,7 @@ router21.get("/admin/payouts/pawapay/config", requireAdmin7, async (req, res) =>
   }
 });
 router21.post("/admin/payouts/pawapay", requireAdmin7, async (req, res) => {
-  const { phoneNumber, dialCode, provider, currency, amount } = req.body;
+  const { phoneNumber, dialCode, countryIso2, provider, currency, amount } = req.body;
   if (!phoneNumber || !provider || !currency || !amount) {
     res.status(400).json({ error: "Champs requis : phoneNumber, provider, currency, amount" });
     return;
@@ -165345,8 +165356,9 @@ router21.post("/admin/payouts/pawapay", requireAdmin7, async (req, res) => {
     }
     const client = new PawaPayClient(creds.token, creds.env);
     const msisdn = buildMSISDN(phoneNumber, dialCode);
+    const pawapayProvider = normalizePawaPayProvider(countryIso2, provider);
     const payoutId = crypto.randomUUID();
-    logger.info({ payoutId, msisdn, provider, currency, amount: String(amountNum) }, "[admin-payouts] Initiating PawaPay payout");
+    logger.info({ payoutId, msisdn, countryIso2, provider: pawapayProvider, currency, amount: String(amountNum) }, "[admin-payouts] Initiating PawaPay payout");
     const result = await client.initiatePayout({
       payoutId,
       amount: String(Math.floor(amountNum)),
@@ -165355,7 +165367,7 @@ router21.post("/admin/payouts/pawapay", requireAdmin7, async (req, res) => {
         type: "MMO",
         accountDetails: {
           phoneNumber: msisdn,
-          provider
+          provider: pawapayProvider
         }
       },
       customerMessage: "Simix retrait",

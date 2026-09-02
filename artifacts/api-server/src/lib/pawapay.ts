@@ -410,7 +410,7 @@ export function getProviderForCountry(countryCode: string, methodSlug: string): 
   const providers = COUNTRY_TO_PAWAPAY_PROVIDER[countryCode.toUpperCase()] ?? [];
   if (providers.length === 0) return null;
 
-  const slug = methodSlug.toLowerCase();
+  const slug = methodSlug.toLowerCase().replace(/[-\s]+/g, "_");
   if (slug.includes("orange"))   return providers.find(p => p.startsWith("ORANGE_"))   ?? providers[0];
   if (slug.includes("mtn"))      return providers.find(p => p.startsWith("MTN_"))       ?? providers[0];
   if (slug.includes("wave"))     return providers.find(p => p.startsWith("WAVE_"))      ?? providers[0];
@@ -424,6 +424,32 @@ export function getProviderForCountry(countryCode: string, methodSlug: string): 
   if (slug.includes("expresso")) return providers.find(p => p.startsWith("EXPRESSO_")) ?? providers[0];
 
   return providers[0];
+}
+
+/**
+ * Normalize a provider received from an admin/client form.
+ *
+ * Local operator slugs are intentionally short ("orange", "mtn", "airtel"),
+ * while PawaPay requires the country-qualified provider identifier
+ * ("ORANGE_CIV", "MTN_MOMO_CIV", "AIRTEL_KEN", ...).
+ * Already-qualified PawaPay codes are preserved when they are valid for the
+ * selected country; legacy short values are mapped to the right code.
+ */
+export function normalizePawaPayProvider(
+  countryCode: string | undefined,
+  provider: string,
+): string {
+  const normalized = provider.trim().toUpperCase().replace(/[-\s]+/g, "_");
+  if (!countryCode) return normalized;
+
+  const country = countryCode.trim().toUpperCase();
+  const providers = COUNTRY_TO_PAWAPAY_PROVIDER[country] ?? [];
+  const iso3 = ISO2_TO_ISO3[country] ?? country;
+
+  if (providers.includes(normalized)) return normalized;
+  if (normalized.endsWith(`_${iso3}`)) return normalized;
+
+  return getProviderForCountry(country, normalized) ?? normalized;
 }
 
 /**

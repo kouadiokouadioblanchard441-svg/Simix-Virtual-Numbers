@@ -17,6 +17,8 @@ import {
   ISO2_TO_ISO3,
   COUNTRY_CURRENCY,
   buildMSISDN,
+  getProviderForCountry,
+  normalizePawaPayProvider,
 } from "../lib/pawapay";
 import {
   ClapayClient,
@@ -81,8 +83,9 @@ router.get("/admin/payouts/pawapay/local-operators", requireAdmin, async (_req, 
             operators: [],
           });
         }
-        /* Derive PawaPay provider code from slug: orange-civ → ORANGE_CIV */
-        const pawapayCode = op.slug.toUpperCase().replace(/-/g, "_");
+        /* PawaPay uses country-qualified codes, not local slugs:
+         * orange + CI → ORANGE_CIV, mtn + CI → MTN_MOMO_CIV. */
+        const pawapayCode = getProviderForCountry(iso2, op.slug) ?? op.slug.toUpperCase().replace(/-/g, "_");
         byCountry.get(iso2)!.operators.push({
           name: op.name,
           slug: op.slug,
@@ -154,12 +157,13 @@ router.get("/admin/payouts/pawapay/config", requireAdmin, async (req, res): Prom
  * POST /admin/payouts/pawapay
  * Initiate a PawaPay payout (merchant → recipient mobile money).
  *
- * Body: { phoneNumber, dialCode, provider, currency, amount }
+   * Body: { phoneNumber, dialCode, countryIso2, provider, currency, amount }
  */
 router.post("/admin/payouts/pawapay", requireAdmin, async (req, res): Promise<void> => {
-  const { phoneNumber, dialCode, provider, currency, amount } = req.body as {
+  const { phoneNumber, dialCode, countryIso2, provider, currency, amount } = req.body as {
     phoneNumber?: string;
     dialCode?: string;
+    countryIso2?: string;
     provider?: string;
     currency?: string;
     amount?: string | number;
@@ -185,9 +189,10 @@ router.post("/admin/payouts/pawapay", requireAdmin, async (req, res): Promise<vo
 
     const client = new PawaPayClient(creds.token, creds.env);
     const msisdn = buildMSISDN(phoneNumber, dialCode);
+    const pawapayProvider = normalizePawaPayProvider(countryIso2, provider);
     const payoutId = crypto.randomUUID();
 
-    logger.info({ payoutId, msisdn, provider, currency, amount: String(amountNum) }, "[admin-payouts] Initiating PawaPay payout");
+    logger.info({ payoutId, msisdn, countryIso2, provider: pawapayProvider, currency, amount: String(amountNum) }, "[admin-payouts] Initiating PawaPay payout");
 
     const result = await client.initiatePayout({
       payoutId,
@@ -197,7 +202,7 @@ router.post("/admin/payouts/pawapay", requireAdmin, async (req, res): Promise<vo
         type: "MMO",
         accountDetails: {
           phoneNumber: msisdn,
-          provider,
+            provider: pawapayProvider,
         },
       },
       customerMessage: "Simix retrait",

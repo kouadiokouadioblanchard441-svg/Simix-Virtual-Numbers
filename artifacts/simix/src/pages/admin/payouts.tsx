@@ -146,6 +146,7 @@ function PawaPayForm() {
       adminApi.initiatePawapayPayout({
         phoneNumber,
         dialCode: dialCode || undefined,
+        countryIso2,
         provider: pawapayCode,
         currency,
         amount: Number(amount),
