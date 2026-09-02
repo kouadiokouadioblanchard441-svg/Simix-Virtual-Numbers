@@ -73,3 +73,10 @@ API and frontend preview on port 5000. Configure these values in Replit Secrets:
 The Supabase database is migrated automatically when the server starts. Optional
 providers such as 5sim, mobile money, transactional email, and Google OAuth can be
 configured later without changing the Replit startup workflow.
+
+## AI provider and secret management
+
+- API keys must never be hardcoded in source code, frontend bundles, migration files, seed data, logs, or documentation.
+- AI provider keys, models, active/inactive state, priority, and fallback configuration must be editable from the administrator panel.
+- Store provider credentials encrypted at rest and expose only masked values in the admin UI.
+- Environment secrets may be used only as protected bootstrap fallbacks; never display or commit their values, and never make them the only way to configure a provider.
