@@ -210,6 +210,128 @@ function getPasswordResetEmailHtml(code: string, fullName: string): string {
 </html>`;
 }
 
+/* ─────────────────────────────────────────────────────────────────
+   SHARED AUTHENTICATION EMAIL STYLE
+
+   This is intentionally built with tables and inline styles so it
+   renders consistently in Gmail, Outlook and mobile mail clients.
+   The system font stack mirrors the clean Android/Gmail appearance
+   from the reference email without relying on a remote webfont.
+───────────────────────────────────────────────────────────────── */
+function escapeEmailHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+function getProfessionalAuthEmailHtml(data: {
+  title: string;
+  eyebrow: string;
+  subtitle: string;
+  body: string;
+  code: string;
+  codeLabel: string;
+  firstName: string;
+  footerText: string;
+}): string {
+  const appUrl = getAppUrl();
+  const firstName = escapeEmailHtml(data.firstName);
+  const title = escapeEmailHtml(data.title);
+  const eyebrow = escapeEmailHtml(data.eyebrow);
+  const subtitle = escapeEmailHtml(data.subtitle);
+  const body = escapeEmailHtml(data.body);
+  const code = escapeEmailHtml(data.code);
+  const codeLabel = escapeEmailHtml(data.codeLabel);
+  const footerText = escapeEmailHtml(data.footerText);
+
+  return `<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="light">
+  <title>${title} — Simix</title>
+</head>
+<body style="margin:0;padding:0;background:#f1f1f3;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#1d1d1f;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f1f1f3;">
+    <tr>
+      <td align="center" style="padding:32px 16px 40px;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;">
+
+          <!-- Brand header -->
+          <tr>
+            <td align="center" style="padding:0 0 24px;">
+              <a href="${appUrl}" style="text-decoration:none;">
+                <img src="${appUrl}/logo.svg" alt="Simix" width="118" style="display:block;width:118px;height:auto;border:0;margin:0 auto;">
+              </a>
+            </td>
+          </tr>
+
+          <!-- Main card -->
+          <tr>
+            <td style="background:#ffffff;border:1px solid #e5e5e7;border-radius:18px;overflow:hidden;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                  <td style="height:4px;background:#2563eb;font-size:0;line-height:0;">&nbsp;</td>
+                </tr>
+              </table>
+
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                  <td style="padding:38px 42px 34px;">
+                    <p style="margin:0 0 10px;font-size:12px;line-height:1.4;font-weight:700;letter-spacing:1.6px;text-transform:uppercase;color:#2563eb;">${eyebrow}</p>
+                    <h1 style="margin:0 0 12px;font-size:28px;line-height:1.2;font-weight:700;letter-spacing:-0.5px;color:#111827;">${title}</h1>
+                    <p style="margin:0 0 26px;font-size:15px;line-height:1.6;color:#6b7280;">${subtitle}</p>
+                    <p style="margin:0 0 22px;font-size:16px;line-height:1.65;color:#1f2937;">Bonjour <strong style="color:#111827;">${firstName}</strong>,<br>${body}</p>
+
+                    <!-- Verification code -->
+                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f3f7ff;border:1px solid #dbe7ff;border-radius:14px;">
+                      <tr>
+                        <td align="center" style="padding:24px 18px 22px;">
+                          <p style="margin:0 0 10px;font-size:11px;line-height:1.4;font-weight:700;letter-spacing:1.8px;text-transform:uppercase;color:#2563eb;">${codeLabel}</p>
+                          <p style="margin:0;font-size:42px;line-height:1.1;font-weight:700;letter-spacing:10px;color:#111827;font-family:'Courier New',Courier,monospace;">${code}</p>
+                          <p style="margin:12px 0 0;font-size:12px;line-height:1.5;color:#6b7280;">Valable pendant 10 minutes · Utilisation unique</p>
+                        </td>
+                      </tr>
+                    </table>
+
+                    <p style="margin:24px 0 0;font-size:13px;line-height:1.6;color:#6b7280;">${footerText}</p>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Security note -->
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                  <td style="padding:15px 42px;background:#fafafa;border-top:1px solid #f0f0f2;">
+                    <p style="margin:0;font-size:12px;line-height:1.6;color:#6b7280;">
+                      <strong style="color:#1f2937;">Conseil de sécurité :</strong> Simix ne vous demandera jamais ce code par téléphone, email ou chat.
+                    </p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td align="center" style="padding:22px 12px 0;">
+              <p style="margin:0 0 5px;font-size:12px;line-height:1.5;color:#8b8b93;">© ${new Date().getFullYear()} Simix · <a href="mailto:simixsupport@gmail.com" style="color:#2563eb;text-decoration:none;">Support</a></p>
+              <p style="margin:0;font-size:11px;line-height:1.5;color:#a1a1aa;">Cet email a été envoyé automatiquement, merci de ne pas y répondre.</p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+}
+
 /* ─────────────── DEPOSIT CONFIRMATION EMAIL ─────────────── */
 
 export interface DepositEmailData {
@@ -403,7 +525,16 @@ export async function sendPasswordResetEmail(
     to,
     from,
     subject: "Réinitialisation de votre mot de passe Simix",
-    html:    getPasswordResetEmailHtml(code, fullName),
+    html:    getProfessionalAuthEmailHtml({
+      title: "Réinitialiser votre mot de passe",
+      eyebrow: "Sécurité du compte",
+      subtitle: "Une demande de réinitialisation a été effectuée pour votre compte Simix.",
+      body: "Utilisez le code ci-dessous dans l'application pour choisir un nouveau mot de passe.",
+      code,
+      codeLabel: "Code de réinitialisation",
+      firstName: fullName.split(" ")[0] ?? fullName,
+      footerText: "Si vous n'êtes pas à l'origine de cette demande, ignorez cet email. Votre mot de passe actuel reste inchangé.",
+    }),
     metadata: { type: "password_reset" },
   });
   if (!result.success && !result.cached) {
@@ -426,7 +557,22 @@ export async function sendOtpEmail(
     to,
     from,
     subject,
-    html: getOtpEmailHtml(code, purpose, fullName),
+    html: getProfessionalAuthEmailHtml({
+      title: purpose === "inactivity" ? "Vérification de sécurité" : "Confirmez votre inscription",
+      eyebrow: purpose === "inactivity" ? "Protection du compte" : "Bienvenue sur Simix",
+      subtitle: purpose === "inactivity"
+        ? "Une vérification supplémentaire est nécessaire pour sécuriser votre connexion."
+        : "Une dernière étape pour activer votre compte Simix.",
+      body: purpose === "inactivity"
+        ? "Entrez le code ci-dessous dans l'application pour confirmer votre identité."
+        : "Entrez le code ci-dessous dans l'application pour confirmer votre adresse email.",
+      code,
+      codeLabel: purpose === "inactivity" ? "Code de sécurité" : "Code de confirmation",
+      firstName: fullName.split(" ")[0] ?? fullName,
+      footerText: purpose === "inactivity"
+        ? "Si vous n'êtes pas à l'origine de cette connexion, contactez immédiatement le support Simix."
+        : "Si vous n'avez pas créé de compte Simix, vous pouvez ignorer cet email.",
+    }),
     metadata: { type: "otp", purpose },
   });
   if (!result.success && !result.cached) {

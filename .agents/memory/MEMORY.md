@@ -16,3 +16,4 @@
 - [Email provider table empty despite valid key](email-provider-empty-table.md) — Resend auto-seed can silently never fire; check email_providers directly and seed manually if empty; resending old queued emails is useless since OTP codes expire in 10min, use resend-otps.ts for fresh codes.
 - [PawaPay payout eligibility](pawapay-payout-eligibility.md) — show the full country/operator catalogue with live status, but submit only providers enabled for PAYOUT.
 - [AI token balance visibility](ai-token-balance-visibility.md) — OpenAI/Anthropic inference APIs may not expose cash balance; show verified health, exhaustion and rate-limit data instead.
+- [Transactional email visual style](transactional-email-style.md) — auth emails use one inline-styled, Gmail/mobile-safe template with clean sans-serif typography and blue verification accents.

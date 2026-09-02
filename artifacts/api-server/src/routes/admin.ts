@@ -1064,6 +1064,7 @@ router.post("/admin/orders/:orderId/cancel", requireAdmin, async (req, res): Pro
           amount:      order.price,
           status:      "completed",
           method:      "wallet",
+          virtualNumberId: orderId,
           description: `Remboursement commande ${order.phoneNumber ?? orderId} (annulée par admin)`,
         });
       } else {

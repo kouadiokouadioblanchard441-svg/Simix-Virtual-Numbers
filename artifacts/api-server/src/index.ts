@@ -138,7 +138,6 @@ async function start(): Promise<void> {
       process.exit(1);
     }
     logger.info({ port }, "Server listening");
-    logger.info("[startup] 5sim poller + sync scheduler started ✓");
   });
 }
 

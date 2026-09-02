@@ -9,7 +9,7 @@
  * Intervalle : 15s normal, 60s après erreur réseau/DB.
  */
 
-import { and, eq, gt, isNotNull, lt, lte, sql } from "drizzle-orm";
+import { and, eq, gt, isNotNull, lt, lte, or, sql } from "drizzle-orm";
 import {
   db,
   virtualNumbersTable,
@@ -26,7 +26,7 @@ import { broadcastNotification } from "../routes/notifications";
 const POLL_INTERVAL_MS     = 15_000;
 const ERROR_BACKOFF_MS     = 60_000;
 const MAX_CONCURRENT_POLLS = 10;
-/* Auto-refund: remboursement automatique si aucun SMS reçu après 30 min */
+/* Auto-refund: échéance réelle + garde-fou 30 min pour les activations */
 const REFUND_TIMEOUT_MS    = 30 * 60 * 1_000;
 const SWEEP_INTERVAL_MS    = 5 * 60 * 1_000; /* vérifie toutes les 5 minutes */
 
@@ -354,6 +354,7 @@ async function handleExpiredOrder(vn: typeof virtualNumbersTable.$inferSelect): 
           amount: vn.price,
           status: "completed",
           method: "wallet",
+          virtualNumberId: vn.id,
           description: "Remboursement automatique (numéro expiré sans SMS reçu)",
         });
 
@@ -435,6 +436,7 @@ async function handleCancelledOrder(vn: typeof virtualNumbersTable.$inferSelect)
           amount: vn.price,
           status: "completed",
           method: "wallet",
+          virtualNumberId: vn.id,
           description: "Remboursement automatique (5sim annulé)",
         });
 
@@ -463,11 +465,12 @@ async function handleCancelledOrder(vn: typeof virtualNumbersTable.$inferSelect)
   }
 }
 
-/* ─── Auto-refund sweep (30 min timeout) ─────────────────────── */
+/* ─── Auto-refund sweep (expiry + activation fallback) ───────── */
 
 /**
  * Vérifie toutes les 5 min les numéros "waiting" qui :
- *   1. ont plus de 30 min d'ancienneté OU sont passés après expiresAt
+ *   1. ont dépassé expiresAt ; ou
+ *   2. sont des activations âgées de plus de 30 min (garde-fou)
  *   2. n'ont reçu aucun SMS
  * → annule l'ordre sur 5sim (best-effort) → rembourse le solde.
  *
@@ -477,15 +480,23 @@ export async function triggerAutoRefundSweep(): Promise<{ processed: number; ref
   const cutoff = new Date(Date.now() - REFUND_TIMEOUT_MS);
   const now    = new Date();
 
-  /* Numéros bloqués : en attente depuis >30 min OU expirés localement */
+  /* Activations: expiration réelle, avec garde-fou à 30 min si la date reçue
+     du fournisseur est incohérente. Hosting: uniquement à leur vraie échéance
+     (3 h/24 h), jamais après seulement 30 minutes. */
   const stuckNumbers = await db
     .select()
     .from(virtualNumbersTable)
     .where(
       and(
         eq(virtualNumbersTable.status, "waiting"),
-        lt(virtualNumbersTable.createdAt, cutoff),
         isNotNull(virtualNumbersTable.externalOrderId),
+        or(
+          lte(virtualNumbersTable.expiresAt, now),
+          and(
+            eq(virtualNumbersTable.numberType, "activation"),
+            lt(virtualNumbersTable.createdAt, cutoff),
+          ),
+        ),
       ),
     );
 
@@ -550,7 +561,8 @@ export async function triggerAutoRefundSweep(): Promise<{ processed: number; ref
           amount: vn.price,
           status: "completed",
           method: "wallet",
-          description: `Remboursement automatique (30 min sans SMS reçu)`,
+          virtualNumberId: vn.id,
+          description: "Remboursement automatique (expiration sans SMS reçu)",
         });
 
         refundCommitted = true;
@@ -567,11 +579,11 @@ export async function triggerAutoRefundSweep(): Promise<{ processed: number; ref
         const [notif] = await db.insert(notificationsTable).values({
           userId: vn.userId,
           title: "💸 Remboursement automatique",
-          body: `${vn.price} FCFA remboursés — aucun SMS reçu en 30 minutes.`,
+          body: `${vn.price} FCFA remboursés — numéro arrivé à expiration sans SMS reçu.`,
           type: "refund",
           icon: "wallet",
           link: `/wallet`,
-          metadata: { amount: vn.price, numberId: vn.id, reason: "timeout_30min" },
+          metadata: { amount: vn.price, numberId: vn.id, reason: "expired_without_sms" },
         }).returning();
         if (notif) broadcastNotification(notif);
       } catch { /* non-critical */ }

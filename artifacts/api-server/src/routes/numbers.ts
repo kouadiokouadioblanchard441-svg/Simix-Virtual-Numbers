@@ -669,6 +669,7 @@ router.post("/numbers/:numberId/poll", requireAuth, async (req, res): Promise<vo
                 amount:      row.n.price,
                 status:      "completed",
                 method:      "wallet",
+                virtualNumberId: numberId,
                 description: "Remboursement automatique (numéro expiré sans SMS reçu)",
               });
             }
@@ -848,6 +849,7 @@ router.post("/numbers/:numberId/cancel", requireAuth, async (req, res): Promise<
           amount:      row.n.price,
           status:      "completed",
           method:      "wallet",
+          virtualNumberId: numberId,
           description: `Remboursement – ${row.s.name} (${row.c.name})`,
         });
       }

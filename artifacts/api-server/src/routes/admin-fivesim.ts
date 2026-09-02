@@ -12,7 +12,7 @@
  */
 
 import { Router, type IRouter, type Request, type Response } from "express";
-import { and, eq, lt, isNotNull, sql, desc, or } from "drizzle-orm";
+import { and, eq, lt, lte, isNotNull, sql, desc, or } from "drizzle-orm";
 import {
   db,
   apiProvidersTable, virtualNumbersTable, smsMessagesTable, usersTable,
@@ -197,8 +197,14 @@ router.get("/admin/fivesim/pending-refunds", requireAdminJwt, async (_req, res):
       .where(
         and(
           eq(virtualNumbersTable.status, "waiting"),
-          lt(virtualNumbersTable.createdAt, cutoff30),
           isNotNull(virtualNumbersTable.externalOrderId),
+          or(
+            lte(virtualNumbersTable.expiresAt, new Date()),
+            and(
+              eq(virtualNumbersTable.numberType, "activation"),
+              lt(virtualNumbersTable.createdAt, cutoff30),
+            ),
+          ),
         ),
       )
       .orderBy(virtualNumbersTable.createdAt);
@@ -235,11 +241,17 @@ router.get("/admin/fivesim/missing-refunds", requireAdminJwt, async (_req, res):
         smsCount:        sql<number>`(SELECT count(*)::int FROM sms_messages sm WHERE sm.number_id = ${virtualNumbersTable.id})`,
         refundExists:    sql<boolean>`EXISTS (
           SELECT 1 FROM transactions t
-          WHERE t.user_id = ${virtualNumbersTable.userId}
-            AND t.type = 'refund'
-            AND t.amount = ${virtualNumbersTable.price}
-            AND t.created_at > ${virtualNumbersTable.createdAt}
-            AND t.created_at < ${virtualNumbersTable.createdAt} + interval '2 hours'
+          WHERE t.type = 'refund'
+            AND (
+              t.virtual_number_id = ${virtualNumbersTable.id}
+              OR (
+                t.virtual_number_id IS NULL
+                AND t.user_id = ${virtualNumbersTable.userId}
+                AND t.amount = ${virtualNumbersTable.price}
+                AND t.created_at > ${virtualNumbersTable.createdAt}
+                AND t.created_at < ${virtualNumbersTable.createdAt} + interval '2 hours'
+              )
+            )
         )`,
       })
       .from(virtualNumbersTable)
@@ -301,11 +313,17 @@ router.post("/admin/fivesim/manual-refund/:numberId", requireAdminJwt, async (re
       .select({
         alreadyRefunded: sql<boolean>`EXISTS (
           SELECT 1 FROM transactions t
-          WHERE t.user_id = ${vn.userId}
-            AND t.type = 'refund'
-            AND t.amount = ${vn.price}
-            AND t.created_at > ${vn.createdAt}
-            AND t.created_at < ${vn.createdAt} + interval '2 hours'
+          WHERE t.type = 'refund'
+            AND (
+              t.virtual_number_id = ${vn.id}
+              OR (
+                t.virtual_number_id IS NULL
+                AND t.user_id = ${vn.userId}
+                AND t.amount = ${vn.price}
+                AND t.created_at > ${vn.createdAt}
+                AND t.created_at < ${vn.createdAt} + interval '2 hours'
+              )
+            )
         )`,
       })
       .from(virtualNumbersTable)
@@ -330,6 +348,7 @@ router.post("/admin/fivesim/manual-refund/:numberId", requireAdminJwt, async (re
         amount:      vn.price,
         status:      "completed",
         method:      "wallet",
+        virtualNumberId: vn.id,
         description: `Remboursement manuel admin — numéro ${vn.phoneNumber ?? numberId}`,
       });
     });

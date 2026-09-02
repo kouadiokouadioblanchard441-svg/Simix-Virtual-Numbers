@@ -60,8 +60,8 @@ async function requestFromTokenPool(
     }
     try {
       const response = token.provider === "openai"
-        ? await fetch("https://api.openai.com/v1/chat/completions", { method: "POST", headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" }, body: JSON.stringify({ model: token.model, messages: flat, max_tokens: maxTokens, stream: false }) })
-        : await fetch("https://api.anthropic.com/v1/messages", { method: "POST", headers: { "x-api-key": key, "anthropic-version": "2023-06-01", "Content-Type": "application/json" }, body: JSON.stringify({ model: token.model, system: flat.find(message => message.role === "system")?.content ?? "", messages: flat.filter(message => message.role !== "system").map(message => ({ role: message.role === "assistant" ? "assistant" : "user", content: message.content })), max_tokens: maxTokens }) });
+        ? await fetch("https://api.openai.com/v1/chat/completions", { method: "POST", headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" }, body: JSON.stringify({ model: token.model, messages: flat, max_tokens: maxTokens, stream: false }), signal: AbortSignal.timeout(45_000) })
+        : await fetch("https://api.anthropic.com/v1/messages", { method: "POST", headers: { "x-api-key": key, "anthropic-version": "2023-06-01", "Content-Type": "application/json" }, body: JSON.stringify({ model: token.model, system: flat.find(message => message.role === "system")?.content ?? "", messages: flat.filter(message => message.role !== "system").map(message => ({ role: message.role === "assistant" ? "assistant" : "user", content: message.content })), max_tokens: maxTokens }), signal: AbortSignal.timeout(45_000) });
       let providerError = "";
       if (!response.ok) {
         const payload = await response.clone().json().catch(() => null) as {
@@ -763,6 +763,7 @@ router.post("/support/chat", async (req, res): Promise<void> => {
 
       const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
         method: "POST",
+        signal: AbortSignal.timeout(45_000),
         headers: {
           "Authorization": `Bearer ${groqApiKey}`,
           "Content-Type": "application/json",
@@ -809,7 +810,7 @@ router.post("/support/chat", async (req, res): Promise<void> => {
     } else if (aiProvider === "openrouter") {
       /* ── OpenRouter streaming (free models available) ── */
       const openrouterApiKey = cfgMap["openrouter_api_key"] ?? "";
-      const openrouterModel = cfgMap["openrouter_model"] ?? "meta-llama/llama-3.1-8b-instruct:free";
+      const openrouterModel = cfgMap["openrouter_model"] ?? "meta-llama/llama-3.3-70b-instruct";
 
       if (!openrouterApiKey) {
         res.write(`data: ${JSON.stringify({ error: "Clé API OpenRouter non configurée. Veuillez la configurer dans le panneau administrateur." })}\n\n`);
@@ -826,6 +827,7 @@ router.post("/support/chat", async (req, res): Promise<void> => {
 
       const orRes = await fetch("https://openrouter.ai/api/v1/chat/completions", {
         method: "POST",
+        signal: AbortSignal.timeout(45_000),
         headers: {
           "Authorization": `Bearer ${openrouterApiKey}`,
           "Content-Type": "application/json",
@@ -902,7 +904,7 @@ router.post("/support/chat", async (req, res): Promise<void> => {
         {
           test: m => /rembours|refund/.test(m),
           responses: [
-            "Les remboursements sont automatiques : si aucun SMS n'est reçu dans les 20 minutes, le montant est recrédité sur votre solde Simix. Vérifiez votre historique de transactions pour confirmer.",
+            "Les remboursements sont automatiques : si aucun SMS n'est reçu avant l'expiration du numéro, le montant est recrédité sur votre solde Simix. Vérifiez votre historique de transactions pour confirmer.",
           ],
         },
         /* SMS / code */
@@ -993,10 +995,12 @@ router.post("/support/chat", async (req, res): Promise<void> => {
 
     } else if (aiProvider === "openai") {
       /* ── OpenAI streaming ── */
-      const openaiApiKey = cfgMap["openai_api_key"]
-        ?? process.env.OPENAI_API_KEY_DIRECT
-        ?? process.env.OPENAI_API_KEY
-        ?? "";
+      /* An empty database setting must not shadow the configured Replit
+         secret. The admin seed creates this row even when no DB key exists. */
+      const openaiApiKey = cfgMap["openai_api_key"]?.trim()
+        || process.env.OPENAI_API_KEY_DIRECT?.trim()
+        || process.env.OPENAI_API_KEY?.trim()
+        || "";
       const openaiModel = cfgMap["openai_model"] ?? "gpt-4o-mini";
 
       if (!openaiApiKey) {
@@ -1014,6 +1018,7 @@ router.post("/support/chat", async (req, res): Promise<void> => {
 
       const oaiRes = await fetch("https://api.openai.com/v1/chat/completions", {
         method: "POST",
+        signal: AbortSignal.timeout(45_000),
         headers: {
           "Authorization": `Bearer ${openaiApiKey}`,
           "Content-Type": "application/json",
@@ -1073,9 +1078,17 @@ router.post("/support/chat", async (req, res): Promise<void> => {
     let userMsg = "Désolé, une erreur s'est produite. Veuillez réessayer.";
     if (err && typeof err === "object") {
       const e = err as Record<string, unknown>;
-      if (e["status"] === 429 || (typeof e["message"] === "string" && e["message"].includes("429"))) {
+      const errorText = typeof e["message"] === "string" ? e["message"].toLowerCase() : "";
+      const quotaExhausted = /insufficient_quota|credit_balance_exhausted|no credits remaining|credit balance|billing_error|quota exhausted/.test(errorText);
+      const authenticationFailure = /invalid_api_key|incorrect api key|api key|401|403/.test(errorText);
+      const providerTimeout = /timeout|timed out|aborted/.test(errorText);
+      if (quotaExhausted) {
+        userMsg = "Le crédit ou le quota OpenAI est épuisé. Le support IA sera de nouveau disponible dès que le compte OpenAI sera crédité.";
+      } else if (providerTimeout) {
+        userMsg = "Le service IA met trop de temps à répondre. Veuillez réessayer dans quelques instants.";
+      } else if (e["status"] === 429 || errorText.includes("429")) {
         userMsg = "Le service est temporairement surchargé. Veuillez réessayer dans quelques secondes.";
-      } else if (e["status"] === 400 || (typeof e["message"] === "string" && e["message"].includes("API key"))) {
+      } else if (e["status"] === 400 || authenticationFailure) {
         userMsg = "Configuration IA invalide. Veuillez vérifier la clé API dans le panneau administrateur.";
       }
     }

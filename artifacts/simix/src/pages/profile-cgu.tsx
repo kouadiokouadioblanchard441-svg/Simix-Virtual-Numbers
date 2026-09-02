@@ -111,7 +111,7 @@ function CGUContent() {
         </Section>
 
         <Section title="7. Remboursements">
-          <p>Un remboursement automatique du solde est effectué si aucun SMS n'est reçu dans le délai imparti (généralement 15 minutes). Dans ce cas :</p>
+          <p>Un remboursement automatique du solde est effectué si aucun SMS n'est reçu avant l'heure d'expiration affichée pour le numéro. Dans ce cas :</p>
           <p>• Le montant de l'achat est recrédité sur votre portefeuille Simix</p>
           <p>• Aucun délai de traitement — le remboursement est instantané</p>
           <p>En revanche, les rechargements du portefeuille ne sont pas remboursables en espèces ou sur votre compte Mobile Money d'origine.</p>

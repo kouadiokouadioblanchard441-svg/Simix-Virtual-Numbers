@@ -83,7 +83,7 @@ function PendingRefundsPanel() {
             Remboursements automatiques
           </h2>
           <p className="text-zinc-400 text-sm mt-0.5">
-            Numéros en attente depuis +30 min sans SMS reçu
+            Numéros arrivés à échéance sans SMS, avec garde-fou à 30 min pour les activations
           </p>
         </div>
         <div className="flex items-center gap-2">

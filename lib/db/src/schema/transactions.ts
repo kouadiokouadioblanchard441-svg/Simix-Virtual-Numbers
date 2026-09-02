@@ -5,8 +5,10 @@ import {
   integer,
   timestamp,
   index,
+  uniqueIndex,
 } from "drizzle-orm/pg-core";
 import { usersTable } from "./users";
+import { virtualNumbersTable } from "./numbers";
 
 export const transactionsTable = pgTable(
   "transactions",
@@ -21,6 +23,8 @@ export const transactionsTable = pgTable(
     method: text("method"),
     description: text("description"),
     externalDepositId: text("external_deposit_id"),
+    virtualNumberId: uuid("virtual_number_id")
+      .references(() => virtualNumbersTable.id, { onDelete: "set null" }),
     /**
      * Gateway-specific metadata stored as JSON string.
      * For Clapay: { clapaySignature, clapayCurrency, clapayCountry }
@@ -38,6 +42,9 @@ export const transactionsTable = pgTable(
     index("idx_transactions_status").on(t.status),
     /* Deduplication check — prevent double-crediting same external deposit */
     index("idx_transactions_external_deposit_id").on(t.externalDepositId),
+    /* Exactly one refund may be linked to a virtual number. PostgreSQL allows
+       multiple NULL values, so unrelated transactions are unaffected. */
+    uniqueIndex("idx_transactions_refund_virtual_number_unique").on(t.virtualNumberId),
     /* Support for admin / reconciliation queries ordered by date */
     index("idx_transactions_created_at").on(t.createdAt),
   ],

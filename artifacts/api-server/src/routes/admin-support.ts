@@ -39,7 +39,7 @@ const DEFAULT_AI_CONFIG: Array<{ key: string; value: string; label: string; grou
   { key: "groq_api_key", value: "", label: "Clé API Groq (gratuit — console.groq.com)", group: "api" },
   { key: "groq_model", value: "llama-3.3-70b-versatile", label: "Modèle Groq (llama-3.3-70b-versatile / llama-3.1-8b-instant / mixtral-8x7b-32768)", group: "api" },
   { key: "openrouter_api_key", value: "", label: "Clé API OpenRouter (modèles gratuits — openrouter.ai)", group: "api" },
-  { key: "openrouter_model", value: "meta-llama/llama-3.1-8b-instruct:free", label: "Modèle OpenRouter (meta-llama/llama-3.1-8b-instruct:free / google/gemma-3-12b-it:free / mistralai/mistral-7b-instruct:free)", group: "api" },
+  { key: "openrouter_model", value: "meta-llama/llama-3.3-70b-instruct", label: "Modèle OpenRouter", group: "api" },
   { key: "openai_api_key", value: process.env["OPENAI_API_KEY_DIRECT"] ?? process.env["OPENAI_API_KEY"] ?? "", label: "Clé API OpenAI", group: "api" },
   { key: "openai_model", value: "gpt-4o-mini", label: "Modèle OpenAI", group: "api" },
   { key: "anthropic_model", value: "claude-3-5-haiku-latest", label: "Modèle Claude par défaut", group: "api" },
