@@ -435,8 +435,7 @@ export const adminApi = {
 
   initiatePawapayPayout: (data: {
     phoneNumber: string;
-    dialCode?: string;
-    countryIso2?: string;
+    countryIso2: string;
     provider: string;
     currency: string;
     amount: number;

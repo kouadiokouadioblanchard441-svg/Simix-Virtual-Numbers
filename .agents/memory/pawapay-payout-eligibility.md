@@ -10,3 +10,9 @@ PawaPay provider identifiers must be country-qualified, but a syntactically vali
 PawaPay v2 exposes this data at `/v2/active-conf`. Each currency's `operationTypes` is an array of keyed objects (for example `[{ "PAYOUT": { ... } }]`), not one object with a direct `PAYOUT` property.
 
 **How to apply:** Build the visible list from the country-qualified static payout catalogue, annotate it from active configuration queried with `operationType=PAYOUT`, and validate eligibility server-side before creating a payout. Validate and sanitize the MSISDN with `predict-provider`.
+
+Admin payout phone input must be one complete international number, such as `+237683677872`; do not split it into local number and dial-code fields. Strip formatting before PawaPay and verify the prefix matches the selected country.
+
+**Why:** PawaPay expects an international MSISDN containing digits only, while split inputs caused incomplete request payloads and ambiguous country formatting.
+
+**How to apply:** Send exactly `phoneNumber`, `countryIso2`, `provider`, `currency`, and `amount`; convert the phone to digits-only server-side before `predict-provider`.

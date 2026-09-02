@@ -156,8 +156,7 @@ function PawaPayForm() {
   const payout = useMutation({
     mutationFn: () =>
       adminApi.initiatePawapayPayout({
-        phoneNumber,
-        dialCode: selectedCountry?.dialCode || undefined,
+        phoneNumber: phoneNumber.trim(),
         countryIso2,
         provider: pawapayCode,
         currency,
@@ -261,15 +260,15 @@ function PawaPayForm() {
           </Select>
         </Field>
 
-        <Field label="Numéro de téléphone">
+          <Field label="Numéro de téléphone international">
           <Input
             value={phoneNumber}
             onChange={setPhoneNumber}
-            placeholder="ex: 0701234567"
+             placeholder="ex: +237683677872"
           />
-          {selectedCountry?.dialCode && (
+           {selectedCountry?.dialCode && (
             <p className="text-[11px] text-zinc-500">
-              Indicatif ajouté automatiquement : {selectedCountry.dialCode}
+               Saisissez le numéro complet avec l'indicatif {selectedCountry.dialCode}, par exemple {selectedCountry.dialCode}683677872.
             </p>
           )}
         </Field>

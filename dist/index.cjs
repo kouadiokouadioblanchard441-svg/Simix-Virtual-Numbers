@@ -165832,7 +165832,7 @@ router21.get("/admin/payouts/pawapay/config", requireAdmin7, async (req, res) =>
   }
 });
 router21.post("/admin/payouts/pawapay", requireAdmin7, async (req, res) => {
-  const { phoneNumber, dialCode, countryIso2, provider, currency, amount } = req.body;
+  const { phoneNumber, countryIso2, provider, currency, amount } = req.body;
   if (!phoneNumber || !countryIso2 || !provider || !currency || !amount) {
     res.status(400).json({ error: "Champs requis : phoneNumber, countryIso2, provider, currency, amount" });
     return;
@@ -165843,17 +165843,31 @@ router21.post("/admin/payouts/pawapay", requireAdmin7, async (req, res) => {
     return;
   }
   try {
+    const iso2 = countryIso2.trim().toUpperCase();
+    const [country] = await db.select({ dialCode: countriesTable.dialCode }).from(countriesTable).where(eq(countriesTable.code, iso2)).limit(1);
     const creds = await resolvePawaPayCredentials();
     if (!creds) {
       res.status(503).json({ error: "PawaPay non configur\xE9" });
       return;
     }
     const client = new PawaPayClient(creds.token, creds.env);
-    const msisdn = buildMSISDN(phoneNumber, dialCode);
-    const pawapayProvider = normalizePawaPayProvider(countryIso2, provider);
+    const msisdn = buildMSISDN(phoneNumber);
+    const expectedDialCode = country?.dialCode?.replace(/\D/g, "");
+    if (!expectedDialCode || !msisdn.startsWith(expectedDialCode)) {
+      res.status(422).json({
+        error: `Le num\xE9ro doit \xEAtre saisi au format international complet pour ${iso2}, par exemple ${country?.dialCode ?? "+237"}683677872.`
+      });
+      return;
+    }
+    if (!/^[1-9][0-9]{7,17}$/.test(msisdn)) {
+      res.status(422).json({
+        error: "Num\xE9ro de t\xE9l\xE9phone invalide. Utilisez le format international, par exemple +237683677872."
+      });
+      return;
+    }
+    const pawapayProvider = normalizePawaPayProvider(iso2, provider);
     const payoutCurrencyCode = currency.trim().toUpperCase();
     const amountString = String(amount).trim();
-    const iso2 = countryIso2.trim().toUpperCase();
     const iso3 = ISO2_TO_ISO3[iso2] ?? iso2;
     if (!/^([0]|([1-9][0-9]{0,17}))([.][0-9]{0,3}[1-9])?$/.test(amountString)) {
       res.status(400).json({ error: "Format du montant invalide pour PawaPay" });
@@ -165878,10 +165892,10 @@ router21.post("/admin/payouts/pawapay", requireAdmin7, async (req, res) => {
         country: iso3,
         operationType: "PAYOUT"
       });
-      const country = config.countries.find(
+      const country2 = config.countries.find(
         (c2) => c2.country === iso3 || c2.country === iso2
       );
-      const providerConfig = country?.providers.find((p) => p.provider === pawapayProvider);
+      const providerConfig = country2?.providers.find((p) => p.provider === pawapayProvider);
       const payoutCurrency = providerConfig?.currencies.find(
         (c2) => c2.currency === payoutCurrencyCode && getPawaPayOperationConfig(c2.operationTypes, "PAYOUT")
       );
@@ -165907,7 +165921,7 @@ router21.post("/admin/payouts/pawapay", requireAdmin7, async (req, res) => {
         return;
       }
     } catch (err) {
-      logger.error({ err, provider: pawapayProvider, countryIso2 }, "[admin-payouts] PawaPay payout configuration check failed");
+      logger.error({ err, provider: pawapayProvider, countryIso2: iso2 }, "[admin-payouts] PawaPay payout configuration check failed");
       res.status(503).json({
         error: "Impossible de v\xE9rifier la configuration des retraits PawaPay. Aucun retrait n'a \xE9t\xE9 envoy\xE9, veuillez r\xE9essayer."
       });

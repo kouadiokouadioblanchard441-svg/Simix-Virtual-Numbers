@@ -257,12 +257,11 @@ router.get("/admin/payouts/pawapay/config", requireAdmin, async (req, res): Prom
  * POST /admin/payouts/pawapay
  * Initiate a PawaPay payout (merchant → recipient mobile money).
  *
-   * Body: { phoneNumber, dialCode, countryIso2, provider, currency, amount }
+ * Body: { phoneNumber, countryIso2, provider, currency, amount }
  */
 router.post("/admin/payouts/pawapay", requireAdmin, async (req, res): Promise<void> => {
-  const { phoneNumber, dialCode, countryIso2, provider, currency, amount } = req.body as {
+  const { phoneNumber, countryIso2, provider, currency, amount } = req.body as {
     phoneNumber?: string;
-    dialCode?: string;
     countryIso2?: string;
     provider?: string;
     currency?: string;
@@ -281,6 +280,13 @@ router.post("/admin/payouts/pawapay", requireAdmin, async (req, res): Promise<vo
   }
 
   try {
+    const iso2 = countryIso2.trim().toUpperCase();
+    const [country] = await db
+      .select({ dialCode: countriesTable.dialCode })
+      .from(countriesTable)
+      .where(eq(countriesTable.code, iso2))
+      .limit(1);
+
     const creds = await resolvePawaPayCredentials();
     if (!creds) {
       res.status(503).json({ error: "PawaPay non configuré" });
@@ -288,11 +294,24 @@ router.post("/admin/payouts/pawapay", requireAdmin, async (req, res): Promise<vo
     }
 
     const client = new PawaPayClient(creds.token, creds.env);
-    const msisdn = buildMSISDN(phoneNumber, dialCode);
-    const pawapayProvider = normalizePawaPayProvider(countryIso2, provider);
+    const msisdn = buildMSISDN(phoneNumber);
+    const expectedDialCode = country?.dialCode?.replace(/\D/g, "");
+    if (!expectedDialCode || !msisdn.startsWith(expectedDialCode)) {
+      res.status(422).json({
+        error: `Le numéro doit être saisi au format international complet pour ${iso2}, par exemple ${country?.dialCode ?? "+237"}683677872.`,
+      });
+      return;
+    }
+    if (!/^[1-9][0-9]{7,17}$/.test(msisdn)) {
+      res.status(422).json({
+        error: "Numéro de téléphone invalide. Utilisez le format international, par exemple +237683677872.",
+      });
+      return;
+    }
+
+    const pawapayProvider = normalizePawaPayProvider(iso2, provider);
     const payoutCurrencyCode = currency.trim().toUpperCase();
     const amountString = String(amount).trim();
-    const iso2 = countryIso2.trim().toUpperCase();
     const iso3 = ISO2_TO_ISO3[iso2] ?? iso2;
 
     if (!/^([0]|([1-9][0-9]{0,17}))([.][0-9]{0,3}[1-9])?$/.test(amountString)) {
@@ -359,7 +378,7 @@ router.post("/admin/payouts/pawapay", requireAdmin, async (req, res): Promise<vo
         return;
       }
     } catch (err) {
-      logger.error({ err, provider: pawapayProvider, countryIso2 }, "[admin-payouts] PawaPay payout configuration check failed");
+      logger.error({ err, provider: pawapayProvider, countryIso2: iso2 }, "[admin-payouts] PawaPay payout configuration check failed");
       res.status(503).json({
         error: "Impossible de vérifier la configuration des retraits PawaPay. Aucun retrait n'a été envoyé, veuillez réessayer.",
       });
