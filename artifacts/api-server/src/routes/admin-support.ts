@@ -38,6 +38,8 @@ const DEFAULT_AI_CONFIG: Array<{ key: string; value: string; label: string; grou
   { key: "groq_model", value: "llama-3.3-70b-versatile", label: "Modèle Groq (llama-3.3-70b-versatile / llama-3.1-8b-instant / mixtral-8x7b-32768)", group: "api" },
   { key: "openrouter_api_key", value: "", label: "Clé API OpenRouter (modèles gratuits — openrouter.ai)", group: "api" },
   { key: "openrouter_model", value: "meta-llama/llama-3.1-8b-instruct:free", label: "Modèle OpenRouter (meta-llama/llama-3.1-8b-instruct:free / google/gemma-3-12b-it:free / mistralai/mistral-7b-instruct:free)", group: "api" },
+  { key: "openai_api_key", value: process.env["OPENAI_API_KEY_DIRECT"] ?? process.env["OPENAI_API_KEY"] ?? "", label: "Clé API OpenAI", group: "api" },
+  { key: "openai_model", value: "gpt-4o-mini", label: "Modèle OpenAI", group: "api" },
   { key: "ai_name", value: "Simia", label: "Nom de l'assistante IA", group: "identite" },
   { key: "ai_display_title", value: "Support Simix", label: "Titre affiché dans le chat (ex: Support Simix)", group: "identite" },
   { key: "ai_avatar_url", value: "/support-avatar.png", label: "URL de l'avatar (image de profil du service client)", group: "identite" },

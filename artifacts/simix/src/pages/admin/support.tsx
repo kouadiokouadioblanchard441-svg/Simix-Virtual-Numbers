@@ -739,6 +739,8 @@ function ConfigTab() {
   const groqModel = localConfig["groq_model"] ?? "llama-3.3-70b-versatile";
   const openrouterApiKey = localConfig["openrouter_api_key"] ?? "";
   const openrouterModel = localConfig["openrouter_model"] ?? "meta-llama/llama-3.1-8b-instruct:free";
+  const openaiApiKey = localConfig["openai_api_key"] ?? "";
+  const openaiModel = localConfig["openai_model"] ?? "gpt-4o-mini";
 
   if (isLoading) return <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin text-violet-400" /></div>;
 
@@ -1004,6 +1006,74 @@ function ConfigTab() {
                     </button>
                   ))}
                 </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* ── OpenAI config ── */}
+        <AnimatePresence>
+          {currentProvider === "openai" && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              className="space-y-4 overflow-hidden"
+            >
+              <div className="flex items-start gap-2.5 bg-violet-500/8 border border-violet-500/20 rounded-xl p-3">
+                <Bot className="w-4 h-4 text-violet-400 mt-0.5 flex-shrink-0" />
+                <div>
+                  <p className="text-[11px] text-violet-300 font-medium mb-0.5">OpenAI — Modèles GPT</p>
+                  <p className="text-[11px] text-zinc-400 leading-relaxed">
+                    Ajoutez ou remplacez la clé utilisée par Simia. Les changements sont appliqués dès l'enregistrement.
+                  </p>
+                </div>
+              </div>
+              <div>
+                <label className="text-xs text-zinc-400 mb-1.5 flex items-center gap-1.5 font-medium">
+                  <Key className="w-3 h-3" />
+                  Clé API OpenAI
+                </label>
+                <div className="relative flex items-center">
+                  <input
+                    type={showApiKey ? "text" : "password"}
+                    value={openaiApiKey}
+                    onChange={e => updateLocal("openai_api_key", e.target.value.trim())}
+                    placeholder="sk-..."
+                    autoComplete="new-password"
+                    spellCheck={false}
+                    className="w-full bg-zinc-900/60 text-white text-sm rounded-xl px-3 py-2.5 pr-10 outline-none border border-violet-500/30 focus:border-violet-500/60 font-mono"
+                  />
+                  <button type="button" onClick={() => setShowApiKey(v => !v)} className="absolute right-3 text-zinc-500 hover:text-zinc-300 transition-colors">
+                    {showApiKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+                <div className="mt-1.5">
+                  {openaiApiKey.startsWith("sk-") ? (
+                    <span className="flex items-center gap-1 text-[11px] text-green-400"><Check className="w-3 h-3" /> Clé OpenAI configurée</span>
+                  ) : openaiApiKey.length > 0 ? (
+                    <span className="flex items-center gap-1 text-[11px] text-orange-400"><AlertCircle className="w-3 h-3" /> Format inhabituel (doit commencer par sk-)</span>
+                  ) : (
+                    <span className="flex items-center gap-1 text-[11px] text-zinc-500"><AlertCircle className="w-3 h-3" /> Clé requise</span>
+                  )}
+                </div>
+              </div>
+              <div>
+                <label className="text-xs text-zinc-400 mb-1.5 block font-medium">Modèle OpenAI</label>
+                <input
+                  value={openaiModel}
+                  onChange={e => updateLocal("openai_model", e.target.value.trim())}
+                  placeholder="gpt-4o-mini"
+                  spellCheck={false}
+                  className="w-full bg-zinc-900/60 text-white text-sm rounded-xl px-3 py-2.5 outline-none border border-violet-500/30 focus:border-violet-500/60 font-mono"
+                />
+                <p className="mt-1.5 text-[11px] text-zinc-500">Exemples : gpt-4o-mini, gpt-4o. Le modèle doit être accessible avec votre clé.</p>
+              </div>
+              <div className="flex items-start gap-2.5 bg-violet-500/8 border border-violet-500/15 rounded-xl p-3">
+                <Shield className="w-4 h-4 text-violet-400 mt-0.5 flex-shrink-0" />
+                <p className="text-[11px] text-zinc-400 leading-relaxed">
+                  La clé est enregistrée dans la configuration serveur et utilisée uniquement pour les appels du support IA.
+                </p>
               </div>
             </motion.div>
           )}

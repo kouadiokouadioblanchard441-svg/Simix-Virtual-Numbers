@@ -12,7 +12,6 @@ import {
   servicesTable,
   countriesTable,
 } from "@workspace/db";
-import { openai } from "@workspace/integrations-openai-ai-server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { logger } from "../lib/logger";
 import { getSetting } from "../lib/settings";
@@ -891,10 +890,13 @@ router.post("/support/chat", async (req, res): Promise<void> => {
         await new Promise(r => setTimeout(r, 18));
       }
 
-    } else {
+    } else if (aiProvider === "openai") {
       /* ── OpenAI streaming ── */
-      const openaiApiKey = cfgMap["openai_api_key"] ?? process.env.OPENAI_API_KEY ?? "";
-      const openaiModel = cfgMap["openai_model"] ?? "gpt-4o";
+      const openaiApiKey = cfgMap["openai_api_key"]
+        ?? process.env.OPENAI_API_KEY_DIRECT
+        ?? process.env.OPENAI_API_KEY
+        ?? "";
+      const openaiModel = cfgMap["openai_model"] ?? "gpt-4o-mini";
 
       if (!openaiApiKey) {
         res.write(`data: ${JSON.stringify({ error: "Clé API OpenAI non configurée. Veuillez la configurer dans le panneau administrateur." })}\n\n`);
@@ -953,7 +955,8 @@ router.post("/support/chat", async (req, res): Promise<void> => {
           } catch { /* ignore malformed SSE chunks */ }
         }
       }
-
+    } else {
+      throw new Error(`Fournisseur IA inconnu: ${aiProvider}`);
     }
 
     await db.insert(supportMessagesTable).values({
