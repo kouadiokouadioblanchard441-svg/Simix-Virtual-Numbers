@@ -36,10 +36,11 @@ export const emailQueueTable = pgTable("email_queue", {
   subject:         text("subject").notNull(),
   html:            text("html").notNull(),
   textContent:     text("text_content"),
-  status:          text("status").notNull().default("pending"), // pending|sent|failed|cancelled
+  status:          text("status").notNull().default("pending"), // pending|processing|sent|failed|cancelled
   providerId:      uuid("provider_id").references(() => emailProvidersTable.id, { onDelete: "set null" }),
   attempts:        integer("attempts").notNull().default(0),
   maxAttempts:     integer("max_attempts").notNull().default(5),
+  retryable:       boolean("retryable").notNull().default(false), // quota/rate-limit items wait indefinitely
   nextRetryAt:     timestamp("next_retry_at", { withTimezone: true }),
   sentAt:          timestamp("sent_at", { withTimezone: true }),
   error:           text("error"),

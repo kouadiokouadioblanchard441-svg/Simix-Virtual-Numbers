@@ -93,7 +93,7 @@ export const sesAdapter: ProviderAdapter = {
     });
     const res  = await sesRequest(region, config.apiKey, config.apiSecret, body);
     const json = await res.json() as { MessageId?: string; message?: string };
-    if (!res.ok) throw new Error(`SES: ${json.message ?? res.statusText}`);
+    if (!res.ok) throw new Error(`SES HTTP ${res.status}: ${json.message ?? res.statusText}`);
     return { messageId: json.MessageId ?? "ses-unknown" };
   },
 

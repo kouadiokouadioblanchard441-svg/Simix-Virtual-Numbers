@@ -26,7 +26,7 @@ export const sendgridAdapter: ProviderAdapter = {
     });
     if (!res.ok) {
       const body = await res.json().catch(() => ({})) as { errors?: { message: string }[] };
-      throw new Error(`SendGrid: ${body.errors?.[0]?.message ?? res.statusText}`);
+      throw new Error(`SendGrid HTTP ${res.status}: ${body.errors?.[0]?.message ?? res.statusText}`);
     }
     // SendGrid renvoie 202 sans corps — message-id dans header
     const msgId = res.headers.get("X-Message-Id") ?? "sendgrid-unknown";

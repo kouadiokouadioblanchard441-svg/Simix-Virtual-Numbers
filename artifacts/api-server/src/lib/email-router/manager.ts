@@ -11,8 +11,8 @@
  *  - Auto-seeder Resend depuis system_settings si aucun fournisseur configuré
  */
 import { createHash } from "crypto";
-import { eq, and, lte, lt, asc, sql } from "drizzle-orm";
-import { db, systemSettingsTable } from "@workspace/db";
+import { eq, and, lte, lt, asc, sql, or } from "drizzle-orm";
+import { db, systemSettingsTable, emailCampaignsTable, emailLogsTable } from "@workspace/db";
 import {
   emailProvidersTable,
   emailQueueTable,
@@ -56,6 +56,85 @@ const ADAPTERS: Record<string, ProviderAdapter> = {
   zeptomail:    zeptomailAdapter,
   elasticemail: elasticemailAdapter,
 };
+
+const QUOTA_RETRY_DELAY_MS = 15 * 60_000;
+
+function isQuotaOrRateLimitError(error: unknown): boolean {
+  const message = (error instanceof Error ? error.message : String(error)).toLowerCase();
+  return [
+    "429",
+    "quota",
+    "rate limit",
+    "rate-limit",
+    "too many request",
+    "daily limit",
+    "monthly limit",
+    "sending limit",
+    "limit exceeded",
+    "exceeded your",
+    "insufficient credit",
+    "insufficient balance",
+    "throttl",
+  ].some(marker => message.includes(marker));
+}
+
+function canWaitIndefinitelyForQuota(payload: EmailPayload): boolean {
+  const type = payload.metadata?.["type"];
+  return type !== "otp" && type !== "password_reset";
+}
+
+export async function refreshCampaignProgress(campaignId: string): Promise<void> {
+  const [stats] = await db
+    .select({
+      total: sql<number>`count(*)::int`,
+      sent: sql<number>`count(*) filter (where ${emailLogsTable.status} = 'sent')::int`,
+      pending: sql<number>`count(*) filter (where ${emailLogsTable.status} = 'pending')::int`,
+      failed: sql<number>`count(*) filter (where ${emailLogsTable.status} = 'failed')::int`,
+    })
+    .from(emailLogsTable)
+    .where(eq(emailLogsTable.campaignId, campaignId));
+
+  const total = Number(stats?.total ?? 0);
+  const sent = Number(stats?.sent ?? 0);
+  const pending = Number(stats?.pending ?? 0);
+  const failed = Number(stats?.failed ?? 0);
+  if (total === 0) return;
+
+  await db
+    .update(emailCampaignsTable)
+    .set({
+      status: pending > 0 ? "pending" : sent === 0 && failed > 0 ? "failed" : "sent",
+      sentCount: sent,
+      failedCount: failed,
+      sentAt: pending === 0 ? new Date() : null,
+    })
+    .where(eq(emailCampaignsTable.id, campaignId));
+}
+
+async function updateCampaignRecipient(
+  payload: EmailPayload,
+  status: "sent" | "failed",
+  details?: { messageId?: string; error?: string },
+): Promise<void> {
+  const campaignId = payload.metadata?.["campaignId"];
+  if (payload.metadata?.["type"] !== "admin_campaign" || typeof campaignId !== "string") return;
+
+  await db
+    .update(emailLogsTable)
+    .set({
+      status,
+      messageId: details?.messageId ?? null,
+      error: details?.error?.slice(0, 500) ?? null,
+      sentAt: status === "sent" ? new Date() : null,
+    })
+    .where(and(
+      eq(emailLogsTable.campaignId, campaignId),
+      eq(emailLogsTable.email, payload.to),
+      eq(emailLogsTable.status, "pending"),
+    ));
+
+  await refreshCampaignProgress(campaignId);
+}
 
 export const SUPPORTED_PROVIDERS = [
   { slug: "resend",       name: "Resend",             requiresSecret: false, requiresDomain: false },
@@ -166,6 +245,7 @@ class EmailProviderManager {
       .limit(1);
 
     if (existing[0]?.status === "sent") {
+      await updateCampaignRecipient(payload, "sent");
       return { success: true, cached: true, queueId: existing[0].id, provider: existing[0].providerId ?? undefined };
     }
 
@@ -184,6 +264,7 @@ class EmailProviderManager {
         metadata:   payload.metadata,
         status:     "pending",
         maxAttempts: 5,
+        retryable:  false,
       }).returning({ id: emailQueueTable.id });
       queueId = row.id;
     }
@@ -192,12 +273,30 @@ class EmailProviderManager {
     const providers = await this.loadProviders();
     if (providers.length === 0) {
       logger.warn("[email-router] Aucun fournisseur actif configuré");
+      const retryable = canWaitIndefinitelyForQuota(payload);
+      const attempts = (existing[0]?.attempts ?? 0) + 1;
+      const remainsPending = retryable || attempts < 5;
       await db.update(emailQueueTable)
-        .set({ status: "failed", error: "Aucun fournisseur actif", attempts: 1, nextRetryAt: new Date(Date.now() + retryDelayMs(0)) })
+        .set({
+          status: remainsPending ? "pending" : "failed",
+          retryable,
+          error: "Aucun fournisseur actif",
+          attempts,
+          nextRetryAt: remainsPending ? new Date(Date.now() + QUOTA_RETRY_DELAY_MS) : null,
+        })
         .where(eq(emailQueueTable.id, queueId));
-      return { success: false, error: "Aucun fournisseur email actif" };
+      return {
+        success: false,
+        queued: remainsPending,
+        retryable,
+        queueId,
+        error: remainsPending
+          ? "Aucun fournisseur email actif — email conservé en attente"
+          : "Aucun fournisseur email actif",
+      };
     }
 
+    let quotaOrRateLimitDetected = false;
     for (const provider of providers) {
       // Ne saute un fournisseur "down" que s'il existe une alternative moins dégradée —
       // sinon (cas mono-fournisseur), on retente quand même : rester bloqué "down" pour
@@ -236,7 +335,11 @@ class EmailProviderManager {
           }),
           db.update(emailQueueTable).set({
             status: "sent", sentAt: new Date(),
-            providerId: provider.id, attempts: (existing[0]?.attempts ?? 0) + 1,
+            providerId: provider.id,
+            attempts: (existing[0]?.attempts ?? 0) + 1,
+            retryable: false,
+            nextRetryAt: null,
+            error: null,
           }).where(eq(emailQueueTable.id, queueId)),
           db.update(emailProvidersTable).set({
             totalSent:        sql`${emailProvidersTable.totalSent} + 1`,
@@ -247,18 +350,23 @@ class EmailProviderManager {
             healthStatus:     "healthy",
           }).where(eq(emailProvidersTable.id, provider.id)),
         ]);
+        await updateCampaignRecipient(payload, "sent", { messageId: result.messageId });
         this.invalidateCache();
         return { success: true, provider: provider.slug, messageId: result.messageId, queueId };
 
       } catch (err) {
         const latencyMs = Date.now() - start;
         const errMsg    = err instanceof Error ? err.message : String(err);
+        const quotaOrRateLimit = isQuotaOrRateLimitError(err);
+        quotaOrRateLimitDetected ||= quotaOrRateLimit;
         logger.warn({ provider: provider.slug, to: payload.to, err: errMsg, latencyMs }, "[email-router] Fournisseur échoué — tentative suivante");
 
-        const newConsec = provider.consecutiveErrors + 1;
-        const newHealth = newConsec >= CONSECUTIVE_ERROR_THRESHOLD ? "down"
-          : newConsec >= CONSECUTIVE_ERROR_DEGRADED ? "degraded"
-          : provider.healthStatus;
+        const newConsec = quotaOrRateLimit ? provider.consecutiveErrors : provider.consecutiveErrors + 1;
+        const newHealth = quotaOrRateLimit
+          ? provider.healthStatus
+          : newConsec >= CONSECUTIVE_ERROR_THRESHOLD ? "down"
+            : newConsec >= CONSECUTIVE_ERROR_DEGRADED ? "degraded"
+              : provider.healthStatus;
 
         await Promise.all([
           db.insert(emailSendLogsTable).values({
@@ -280,41 +388,97 @@ class EmailProviderManager {
 
     // ── Tous les fournisseurs ont échoué — planifier retry ────
     const attempts = (existing[0]?.attempts ?? 0) + providers.length;
+    const retryable = quotaOrRateLimitDetected && canWaitIndefinitelyForQuota(payload);
+    const remainsPending = retryable || attempts < 5;
+    const queueError = quotaOrRateLimitDetected
+      ? retryable
+        ? "Quota ou limite d'envoi atteint — nouvelle tentative automatique programmée"
+        : "Quota ou limite d'envoi atteint pour un email à durée de validité limitée"
+      : "Tous les fournisseurs ont échoué";
     await db.update(emailQueueTable).set({
-      status:      attempts >= 5 ? "failed" : "pending",
+      status:      remainsPending ? "pending" : "failed",
       attempts,
-      error:       "Tous les fournisseurs ont échoué",
-      nextRetryAt: attempts >= 5 ? null : new Date(Date.now() + retryDelayMs(attempts)),
+      retryable,
+      error:       queueError,
+      nextRetryAt: remainsPending
+        ? new Date(Date.now() + (quotaOrRateLimitDetected ? QUOTA_RETRY_DELAY_MS : retryDelayMs(attempts)))
+        : null,
     }).where(eq(emailQueueTable.id, queueId));
 
-    return { success: false, error: "Tous les fournisseurs ont échoué — email en file d'attente", queueId };
+    if (!remainsPending) {
+      await updateCampaignRecipient(payload, "failed", { error: queueError });
+    }
+
+    return {
+      success: false,
+      queued: remainsPending,
+      retryable,
+      error: remainsPending
+        ? "Email conservé en file d'attente pour une nouvelle tentative automatique"
+        : queueError,
+      queueId,
+    };
   }
 
   // ── Worker de retry (toutes les 2 min) ───────────────────────
   async processRetryQueue(): Promise<void> {
     try {
+      // Réhabiliter les lignes réservées par un ancien processus interrompu.
+      await db.update(emailQueueTable)
+        .set({ status: "pending", nextRetryAt: new Date() })
+        .where(and(
+          eq(emailQueueTable.status, "processing"),
+          lt(emailQueueTable.updatedAt, new Date(Date.now() - 10 * 60_000)),
+        ));
+
       const pending = await db.select()
         .from(emailQueueTable)
         .where(
           and(
             eq(emailQueueTable.status, "pending"),
             lte(emailQueueTable.nextRetryAt, new Date()),
-            lt(emailQueueTable.attempts, emailQueueTable.maxAttempts),
+            or(
+              eq(emailQueueTable.retryable, true),
+              lt(emailQueueTable.attempts, emailQueueTable.maxAttempts),
+            ),
           )
         )
         .limit(20);
 
       for (const item of pending) {
+        const claimed = await db.update(emailQueueTable)
+          .set({ status: "processing" })
+          .where(and(
+            eq(emailQueueTable.id, item.id),
+            eq(emailQueueTable.status, "pending"),
+          ))
+          .returning({ id: emailQueueTable.id });
+        if (claimed.length === 0) continue;
+
         logger.info({ id: item.id, attempts: item.attempts }, "[email-router] Retry email en file");
-        await this.send({
-          to:              item.toEmail,
-          from:            item.fromEmail,
-          subject:         item.subject,
-          html:            item.html,
-          text:            item.textContent ?? undefined,
-          idempotencyKey:  item.idempotencyKey,
-          metadata:        item.metadata as Record<string, unknown> | undefined,
-        });
+        try {
+          await this.send({
+            to:              item.toEmail,
+            from:            item.fromEmail,
+            subject:         item.subject,
+            html:            item.html,
+            text:            item.textContent ?? undefined,
+            idempotencyKey:  item.idempotencyKey,
+            metadata:        item.metadata as Record<string, unknown> | undefined,
+          });
+        } catch (err) {
+          logger.warn({ err, id: item.id }, "[email-router] Retry interrompu — remise en attente");
+          await db.update(emailQueueTable)
+            .set({
+              status: "pending",
+              error: err instanceof Error ? err.message : String(err),
+              nextRetryAt: new Date(Date.now() + retryDelayMs(item.attempts)),
+            })
+            .where(and(
+              eq(emailQueueTable.id, item.id),
+              eq(emailQueueTable.status, "processing"),
+            ));
+        }
       }
     } catch (err) {
       logger.warn({ err }, "[email-router] Erreur worker retry");

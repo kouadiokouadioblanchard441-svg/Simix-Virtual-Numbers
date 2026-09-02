@@ -23,7 +23,7 @@ export const zeptomailAdapter: ProviderAdapter = {
       }),
     });
     const body = await res.json() as { data?: { message_id: string }[]; message?: string };
-    if (!res.ok) throw new Error(`ZeptoMail: ${body.message ?? res.statusText}`);
+    if (!res.ok) throw new Error(`ZeptoMail HTTP ${res.status}: ${body.message ?? res.statusText}`);
     return { messageId: body.data?.[0]?.message_id ?? "zeptomail-unknown" };
   },
 

@@ -12,6 +12,7 @@ import { requireAdminJwt } from "../lib/admin-jwt-middleware";
 import { logger } from "../lib/logger";
 import { getAppUrl } from "../lib/app-url";
 import { getEmailManager } from "../lib/email-router";
+import { refreshCampaignProgress } from "../lib/email-router/manager";
 import { getFromEmail } from "../lib/email-from";
 
 const router: IRouter = Router();
@@ -198,13 +199,18 @@ router.post("/admin/emails/send", requireAdmin, async (req: Request, res: Respon
     totalRecipients: recipients.length,
   }).returning();
 
+  await db.insert(emailLogsTable).values(recipients.map(recipient => ({
+    campaignId: campaign.id,
+    userId: recipient.id,
+    email: recipient.email,
+    status: "pending",
+  })));
+
   res.status(202).json({ campaignId: campaign.id, totalRecipients: recipients.length, message: "Envoi en cours..." });
 
   /* ── Envoi en arrière-plan par petits lots ─────────────────────────────
    * Chaque email passe par le routeur multi-fournisseurs. Les lots limitent
    * la concurrence et évitent de saturer les quotas gratuits.             */
-  let sentCount = 0;
-  let failedCount = 0;
   const BATCH_SIZE   = 10;
   const BATCH_DELAY  = 1200;
 
@@ -212,7 +218,7 @@ router.post("/admin/emails/send", requireAdmin, async (req: Request, res: Respon
 
   for (let i = 0; i < recipients.length; i += BATCH_SIZE) {
     const batch = recipients.slice(i, i + BATCH_SIZE).filter(r => !!r.email);
-    if (batch.length === 0) { failedCount += BATCH_SIZE; continue; }
+    if (batch.length === 0) continue;
 
     /* Chaque message passe par le gestionnaire central :
        clés du panneau, priorité, failover et file d'attente inclus. */
@@ -228,30 +234,25 @@ router.post("/admin/emails/send", requireAdmin, async (req: Request, res: Respon
           metadata: { type: "admin_campaign", campaignId: campaign.id },
         });
 
-        if (!result.success) {
-          throw new Error(result.error ?? "Échec de tous les fournisseurs email");
+        if (!result.success && !result.queued) {
+          await db.update(emailLogsTable)
+            .set({ status: "failed", error: (result.error ?? "Échec définitif de l'envoi").slice(0, 500) })
+            .where(and(
+              eq(emailLogsTable.campaignId, campaign.id),
+              eq(emailLogsTable.email, recipient.email),
+              eq(emailLogsTable.status, "pending"),
+            ));
         }
-
-        sentCount++;
-        await db.insert(emailLogsTable).values({
-          campaignId: campaign.id,
-          userId: recipient.id,
-          email: recipient.email!,
-          status: "sent",
-          messageId: result.messageId ?? null,
-          sentAt: new Date(),
-        });
       } catch (err) {
-        failedCount++;
         const errMsg = err instanceof Error ? err.message : String(err);
         logger.error({ campaignId: campaign.id, email: recipient.email, err: errMsg }, "[emails] Envoi individuel échoué");
-        await db.insert(emailLogsTable).values({
-          campaignId: campaign.id,
-          userId: recipient.id,
-          email: recipient.email!,
-          status: "failed",
-          error: errMsg.slice(0, 500),
-        });
+        await db.update(emailLogsTable)
+          .set({ status: "failed", error: errMsg.slice(0, 500) })
+          .where(and(
+            eq(emailLogsTable.campaignId, campaign.id),
+            eq(emailLogsTable.email, recipient.email),
+            eq(emailLogsTable.status, "pending"),
+          ));
       }
     }));
 
@@ -261,12 +262,8 @@ router.post("/admin/emails/send", requireAdmin, async (req: Request, res: Respon
     }
   }
 
-  const finalStatus = failedCount === recipients.length ? "failed" : "sent";
-  await db.update(emailCampaignsTable)
-    .set({ status: finalStatus, sentCount, failedCount, sentAt: new Date() })
-    .where(eq(emailCampaignsTable.id, campaign.id));
-
-  logger.info({ campaignId: campaign.id, sentCount, failedCount, totalRecipients: recipients.length }, "[emails] Campaign complete");
+  await refreshCampaignProgress(campaign.id);
+  logger.info({ campaignId: campaign.id, totalRecipients: recipients.length }, "[emails] Campaign initial dispatch complete");
 });
 
 /* ── GET /admin/emails/campaigns ──────────────────────────── */
@@ -301,9 +298,11 @@ router.get("/admin/emails/campaigns/:id/progress", requireAdmin, async (req: Req
   /* Count logs in real-time directly from the DB */
   const [sentRow]   = await db.select({ c: count() }).from(emailLogsTable).where(and(eq(emailLogsTable.campaignId, id), eq(emailLogsTable.status, "sent")));
   const [failedRow] = await db.select({ c: count() }).from(emailLogsTable).where(and(eq(emailLogsTable.campaignId, id), eq(emailLogsTable.status, "failed")));
+  const [pendingRow] = await db.select({ c: count() }).from(emailLogsTable).where(and(eq(emailLogsTable.campaignId, id), eq(emailLogsTable.status, "pending")));
 
   const sentNow   = Number(sentRow?.c  ?? 0);
   const failedNow = Number(failedRow?.c ?? 0);
+  const pendingNow = Number(pendingRow?.c ?? 0);
   const processedNow = sentNow + failedNow;
 
   res.json({
@@ -312,11 +311,12 @@ router.get("/admin/emails/campaigns/:id/progress", requireAdmin, async (req: Req
     totalRecipients: campaign[0].totalRecipients,
     sentCount:       sentNow,
     failedCount:     failedNow,
+    pendingCount:    pendingNow,
     processedCount:  processedNow,
     percentDone:     campaign[0].totalRecipients > 0
       ? Math.round((processedNow / campaign[0].totalRecipients) * 100)
       : 0,
-    isDone: campaign[0].status !== "sending",
+    isDone: pendingNow === 0,
   });
 });
 
@@ -428,6 +428,7 @@ router.get("/admin/emails/stats", requireAdmin, async (_req: Request, res: Respo
   const [total] = await db.select({ count: count() }).from(emailCampaignsTable);
   const [sent] = await db.select({ count: count() }).from(emailLogsTable).where(eq(emailLogsTable.status, "sent"));
   const [failed] = await db.select({ count: count() }).from(emailLogsTable).where(eq(emailLogsTable.status, "failed"));
+  const [pending] = await db.select({ count: count() }).from(emailLogsTable).where(eq(emailLogsTable.status, "pending"));
 
   const [activeProvider] = await db.select({ id: emailProvidersTable.id })
     .from(emailProvidersTable)
@@ -437,6 +438,7 @@ router.get("/admin/emails/stats", requireAdmin, async (_req: Request, res: Respo
     totalCampaigns: Number(total.count),
     totalSent: Number(sent.count),
     totalFailed: Number(failed.count),
+    totalPending: Number(pending.count),
     emailConfigured: !!activeProvider,
   });
 });

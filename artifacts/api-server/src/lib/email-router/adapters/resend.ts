@@ -15,7 +15,10 @@ export const resendAdapter: ProviderAdapter = {
       html:    payload.html,
       text:    payload.text,
     });
-    if (error) throw new Error(`Resend: ${error.message}`);
+    if (error) {
+      const status = (error as { statusCode?: number }).statusCode;
+      throw new Error(`Resend${status ? ` HTTP ${status}` : ""}: ${error.message}`);
+    }
     return { messageId: data?.id ?? "resend-unknown" };
   },
 

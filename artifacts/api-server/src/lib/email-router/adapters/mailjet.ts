@@ -24,7 +24,7 @@ export const mailjetAdapter: ProviderAdapter = {
     });
     const body = await res.json() as { Messages?: { Status: string; To: { MessageID: number }[] }[]; ErrorMessage?: string };
     if (!res.ok || body.Messages?.[0]?.Status !== "success") {
-      throw new Error(`Mailjet: ${body.ErrorMessage ?? res.statusText}`);
+      throw new Error(`Mailjet HTTP ${res.status}: ${body.ErrorMessage ?? res.statusText}`);
     }
     return { messageId: String(body.Messages?.[0]?.To?.[0]?.MessageID ?? "mailjet-unknown") };
   },

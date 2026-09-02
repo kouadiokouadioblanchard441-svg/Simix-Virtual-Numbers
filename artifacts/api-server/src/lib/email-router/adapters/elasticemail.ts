@@ -27,7 +27,7 @@ export const elasticemailAdapter: ProviderAdapter = {
       }),
     });
     const body = await res.json() as { TransactionID?: string; Error?: string };
-    if (!res.ok) throw new Error(`Elastic Email: ${body.Error ?? res.statusText}`);
+    if (!res.ok) throw new Error(`Elastic Email HTTP ${res.status}: ${body.Error ?? res.statusText}`);
     return { messageId: body.TransactionID ?? "elasticemail-unknown" };
   },
 

@@ -18,6 +18,8 @@ export interface SendResult {
   messageId?: string;
   cached?: boolean;        // true si déjà envoyé (idempotence)
   queueId?: string;
+  queued?: boolean;        // true si conservé en attente pour une nouvelle tentative
+  retryable?: boolean;     // true si quota/rate-limit ou fournisseur momentanément indisponible
   error?: string;
 }
 

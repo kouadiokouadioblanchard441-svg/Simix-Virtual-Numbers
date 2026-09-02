@@ -25,7 +25,7 @@ export const postmarkAdapter: ProviderAdapter = {
       }),
     });
     const body = await res.json() as { MessageID?: string; ErrorCode?: number; Message?: string };
-    if (!res.ok || body.ErrorCode) throw new Error(`Postmark: ${body.Message ?? res.statusText}`);
+    if (!res.ok || body.ErrorCode) throw new Error(`Postmark HTTP ${res.status}: ${body.Message ?? res.statusText}`);
     return { messageId: body.MessageID ?? "postmark-unknown" };
   },
 

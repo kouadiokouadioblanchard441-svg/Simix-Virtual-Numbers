@@ -148,6 +148,13 @@
       "when": 1788393600000,
       "tag": "0020_refund_virtual_number_link",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1788397200000,
+      "tag": "0021_email_quota_retry",
+      "breakpoints": true
     }
   ]
 }

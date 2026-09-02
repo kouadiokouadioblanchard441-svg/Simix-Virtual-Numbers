@@ -26,6 +26,12 @@ description: Multi-provider email system with failover, retry queue, health chec
 
 **How to apply:** Resolve the shared sender address, pass a stable idempotency key, and record feature-specific success/failure after the manager returns.
 
+**Quota exhaustion is not a final failure.** Durable emails blocked by quota/rate limits stay in the persistent queue and retry indefinitely; OTP and password-reset emails keep bounded retries because delayed codes expire.
+
+**Why:** Promotions must resume after provider quotas reset without losing recipients, while stale authentication codes must never arrive later and confuse users.
+
+**How to apply:** Preserve HTTP status codes in adapter errors, classify quota/429 failures, atomically claim retry rows, and synchronize campaign recipient/counter status after eventual delivery.
+
 **Auto-seed:** manager auto-seeds Resend from `system_settings.resend_api_key` if `email_providers` is empty — zero downtime migration from the single-provider system.
 
 ## SQL increment pattern

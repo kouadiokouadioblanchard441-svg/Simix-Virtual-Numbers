@@ -25,7 +25,7 @@ export const mailgunAdapter: ProviderAdapter = {
       body: form,
     });
     const body = await res.json() as { id?: string; message?: string };
-    if (!res.ok) throw new Error(`Mailgun: ${body.message ?? res.statusText}`);
+    if (!res.ok) throw new Error(`Mailgun HTTP ${res.status}: ${body.message ?? res.statusText}`);
     return { messageId: body.id ?? "mailgun-unknown" };
   },
 

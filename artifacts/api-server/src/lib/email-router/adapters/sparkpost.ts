@@ -22,7 +22,7 @@ export const sparkpostAdapter: ProviderAdapter = {
       }),
     });
     const body = await res.json() as { results?: { id: string }; errors?: { message: string }[] };
-    if (!res.ok) throw new Error(`SparkPost: ${body.errors?.[0]?.message ?? res.statusText}`);
+    if (!res.ok) throw new Error(`SparkPost HTTP ${res.status}: ${body.errors?.[0]?.message ?? res.statusText}`);
     return { messageId: body.results?.id ?? "sparkpost-unknown" };
   },
 

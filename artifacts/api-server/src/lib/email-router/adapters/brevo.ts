@@ -23,7 +23,7 @@ export const brevoAdapter: ProviderAdapter = {
       }),
     });
     const body = await res.json() as { messageId?: string; message?: string };
-    if (!res.ok) throw new Error(`Brevo: ${body.message ?? res.statusText}`);
+    if (!res.ok) throw new Error(`Brevo HTTP ${res.status}: ${body.message ?? res.statusText}`);
     return { messageId: body.messageId ?? "brevo-unknown" };
   },
 

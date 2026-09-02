@@ -44706,10 +44706,12 @@ var init_email_providers = __esm({
       html: text("html").notNull(),
       textContent: text("text_content"),
       status: text("status").notNull().default("pending"),
-      // pending|sent|failed|cancelled
+      // pending|processing|sent|failed|cancelled
       providerId: uuid("provider_id").references(() => emailProvidersTable.id, { onDelete: "set null" }),
       attempts: integer("attempts").notNull().default(0),
       maxAttempts: integer("max_attempts").notNull().default(5),
+      retryable: boolean("retryable").notNull().default(false),
+      // quota/rate-limit items wait indefinitely
       nextRetryAt: timestamp("next_retry_at", { withTimezone: true }),
       sentAt: timestamp("sent_at", { withTimezone: true }),
       error: text("error"),
@@ -113565,7 +113567,10 @@ var init_resend = __esm({
           html: payload.html,
           text: payload.text
         });
-        if (error) throw new Error(`Resend: ${error.message}`);
+        if (error) {
+          const status = error.statusCode;
+          throw new Error(`Resend${status ? ` HTTP ${status}` : ""}: ${error.message}`);
+        }
         return { messageId: data?.id ?? "resend-unknown" };
       },
       async healthCheck(config) {
@@ -113667,7 +113672,7 @@ var init_ses = __esm({
         });
         const res = await sesRequest(region, config.apiKey, config.apiSecret, body);
         const json2 = await res.json();
-        if (!res.ok) throw new Error(`SES: ${json2.message ?? res.statusText}`);
+        if (!res.ok) throw new Error(`SES HTTP ${res.status}: ${json2.message ?? res.statusText}`);
         return { messageId: json2.MessageId ?? "ses-unknown" };
       },
       async healthCheck(config) {
@@ -113733,7 +113738,7 @@ var init_postmark = __esm({
           })
         });
         const body = await res.json();
-        if (!res.ok || body.ErrorCode) throw new Error(`Postmark: ${body.Message ?? res.statusText}`);
+        if (!res.ok || body.ErrorCode) throw new Error(`Postmark HTTP ${res.status}: ${body.Message ?? res.statusText}`);
         return { messageId: body.MessageID ?? "postmark-unknown" };
       },
       async healthCheck(config) {
@@ -113785,7 +113790,7 @@ var init_mailgun = __esm({
           body: form
         });
         const body = await res.json();
-        if (!res.ok) throw new Error(`Mailgun: ${body.message ?? res.statusText}`);
+        if (!res.ok) throw new Error(`Mailgun HTTP ${res.status}: ${body.message ?? res.statusText}`);
         return { messageId: body.id ?? "mailgun-unknown" };
       },
       async healthCheck(config) {
@@ -113838,7 +113843,7 @@ var init_sendgrid = __esm({
         });
         if (!res.ok) {
           const body = await res.json().catch(() => ({}));
-          throw new Error(`SendGrid: ${body.errors?.[0]?.message ?? res.statusText}`);
+          throw new Error(`SendGrid HTTP ${res.status}: ${body.errors?.[0]?.message ?? res.statusText}`);
         }
         const msgId = res.headers.get("X-Message-Id") ?? "sendgrid-unknown";
         return { messageId: msgId };
@@ -113889,7 +113894,7 @@ var init_brevo = __esm({
           })
         });
         const body = await res.json();
-        if (!res.ok) throw new Error(`Brevo: ${body.message ?? res.statusText}`);
+        if (!res.ok) throw new Error(`Brevo HTTP ${res.status}: ${body.message ?? res.statusText}`);
         return { messageId: body.messageId ?? "brevo-unknown" };
       },
       async healthCheck(config) {
@@ -113939,7 +113944,7 @@ var init_mailjet = __esm({
         });
         const body = await res.json();
         if (!res.ok || body.Messages?.[0]?.Status !== "success") {
-          throw new Error(`Mailjet: ${body.ErrorMessage ?? res.statusText}`);
+          throw new Error(`Mailjet HTTP ${res.status}: ${body.ErrorMessage ?? res.statusText}`);
         }
         return { messageId: String(body.Messages?.[0]?.To?.[0]?.MessageID ?? "mailjet-unknown") };
       },
@@ -113989,7 +113994,7 @@ var init_sparkpost = __esm({
           })
         });
         const body = await res.json();
-        if (!res.ok) throw new Error(`SparkPost: ${body.errors?.[0]?.message ?? res.statusText}`);
+        if (!res.ok) throw new Error(`SparkPost HTTP ${res.status}: ${body.errors?.[0]?.message ?? res.statusText}`);
         return { messageId: body.results?.id ?? "sparkpost-unknown" };
       },
       async healthCheck(config) {
@@ -114038,7 +114043,7 @@ var init_zeptomail = __esm({
           })
         });
         const body = await res.json();
-        if (!res.ok) throw new Error(`ZeptoMail: ${body.message ?? res.statusText}`);
+        if (!res.ok) throw new Error(`ZeptoMail HTTP ${res.status}: ${body.message ?? res.statusText}`);
         return { messageId: body.data?.[0]?.message_id ?? "zeptomail-unknown" };
       },
       async healthCheck(config) {
@@ -114094,7 +114099,7 @@ var init_elasticemail = __esm({
           })
         });
         const body = await res.json();
-        if (!res.ok) throw new Error(`Elastic Email: ${body.Error ?? res.statusText}`);
+        if (!res.ok) throw new Error(`Elastic Email HTTP ${res.status}: ${body.Error ?? res.statusText}`);
         return { messageId: body.TransactionID ?? "elasticemail-unknown" };
       },
       async healthCheck(config) {
@@ -155331,6 +155336,63 @@ var ADAPTERS = {
   zeptomail: zeptomailAdapter,
   elasticemail: elasticemailAdapter
 };
+var QUOTA_RETRY_DELAY_MS = 15 * 6e4;
+function isQuotaOrRateLimitError(error) {
+  const message = (error instanceof Error ? error.message : String(error)).toLowerCase();
+  return [
+    "429",
+    "quota",
+    "rate limit",
+    "rate-limit",
+    "too many request",
+    "daily limit",
+    "monthly limit",
+    "sending limit",
+    "limit exceeded",
+    "exceeded your",
+    "insufficient credit",
+    "insufficient balance",
+    "throttl"
+  ].some((marker) => message.includes(marker));
+}
+function canWaitIndefinitelyForQuota(payload) {
+  const type = payload.metadata?.["type"];
+  return type !== "otp" && type !== "password_reset";
+}
+async function refreshCampaignProgress(campaignId) {
+  const [stats] = await db.select({
+    total: sql`count(*)::int`,
+    sent: sql`count(*) filter (where ${emailLogsTable.status} = 'sent')::int`,
+    pending: sql`count(*) filter (where ${emailLogsTable.status} = 'pending')::int`,
+    failed: sql`count(*) filter (where ${emailLogsTable.status} = 'failed')::int`
+  }).from(emailLogsTable).where(eq(emailLogsTable.campaignId, campaignId));
+  const total = Number(stats?.total ?? 0);
+  const sent = Number(stats?.sent ?? 0);
+  const pending = Number(stats?.pending ?? 0);
+  const failed = Number(stats?.failed ?? 0);
+  if (total === 0) return;
+  await db.update(emailCampaignsTable).set({
+    status: pending > 0 ? "pending" : sent === 0 && failed > 0 ? "failed" : "sent",
+    sentCount: sent,
+    failedCount: failed,
+    sentAt: pending === 0 ? /* @__PURE__ */ new Date() : null
+  }).where(eq(emailCampaignsTable.id, campaignId));
+}
+async function updateCampaignRecipient(payload, status, details) {
+  const campaignId = payload.metadata?.["campaignId"];
+  if (payload.metadata?.["type"] !== "admin_campaign" || typeof campaignId !== "string") return;
+  await db.update(emailLogsTable).set({
+    status,
+    messageId: details?.messageId ?? null,
+    error: details?.error?.slice(0, 500) ?? null,
+    sentAt: status === "sent" ? /* @__PURE__ */ new Date() : null
+  }).where(and(
+    eq(emailLogsTable.campaignId, campaignId),
+    eq(emailLogsTable.email, payload.to),
+    eq(emailLogsTable.status, "pending")
+  ));
+  await refreshCampaignProgress(campaignId);
+}
 var SUPPORTED_PROVIDERS = [
   { slug: "resend", name: "Resend", requiresSecret: false, requiresDomain: false },
   { slug: "ses", name: "Amazon SES", requiresSecret: true, requiresDomain: false },
@@ -155413,6 +155475,7 @@ var EmailProviderManager = class {
     const idempotencyKey = payload.idempotencyKey ?? this.makeIdempotencyKey(payload);
     const existing = await db.select().from(emailQueueTable).where(eq(emailQueueTable.idempotencyKey, idempotencyKey)).limit(1);
     if (existing[0]?.status === "sent") {
+      await updateCampaignRecipient(payload, "sent");
       return { success: true, cached: true, queueId: existing[0].id, provider: existing[0].providerId ?? void 0 };
     }
     let queueId;
@@ -155428,16 +155491,33 @@ var EmailProviderManager = class {
         textContent: payload.text,
         metadata: payload.metadata,
         status: "pending",
-        maxAttempts: 5
+        maxAttempts: 5,
+        retryable: false
       }).returning({ id: emailQueueTable.id });
       queueId = row.id;
     }
     const providers = await this.loadProviders();
     if (providers.length === 0) {
       logger.warn("[email-router] Aucun fournisseur actif configur\xE9");
-      await db.update(emailQueueTable).set({ status: "failed", error: "Aucun fournisseur actif", attempts: 1, nextRetryAt: new Date(Date.now() + retryDelayMs(0)) }).where(eq(emailQueueTable.id, queueId));
-      return { success: false, error: "Aucun fournisseur email actif" };
+      const retryable2 = canWaitIndefinitelyForQuota(payload);
+      const attempts2 = (existing[0]?.attempts ?? 0) + 1;
+      const remainsPending2 = retryable2 || attempts2 < 5;
+      await db.update(emailQueueTable).set({
+        status: remainsPending2 ? "pending" : "failed",
+        retryable: retryable2,
+        error: "Aucun fournisseur actif",
+        attempts: attempts2,
+        nextRetryAt: remainsPending2 ? new Date(Date.now() + QUOTA_RETRY_DELAY_MS) : null
+      }).where(eq(emailQueueTable.id, queueId));
+      return {
+        success: false,
+        queued: remainsPending2,
+        retryable: retryable2,
+        queueId,
+        error: remainsPending2 ? "Aucun fournisseur email actif \u2014 email conserv\xE9 en attente" : "Aucun fournisseur email actif"
+      };
     }
+    let quotaOrRateLimitDetected = false;
     for (const provider of providers) {
       const hasBetterAlternative = providers.some(
         (p) => p.id !== provider.id && p.healthStatus !== "down"
@@ -155473,7 +155553,10 @@ var EmailProviderManager = class {
             status: "sent",
             sentAt: /* @__PURE__ */ new Date(),
             providerId: provider.id,
-            attempts: (existing[0]?.attempts ?? 0) + 1
+            attempts: (existing[0]?.attempts ?? 0) + 1,
+            retryable: false,
+            nextRetryAt: null,
+            error: null
           }).where(eq(emailQueueTable.id, queueId)),
           db.update(emailProvidersTable).set({
             totalSent: sql`${emailProvidersTable.totalSent} + 1`,
@@ -155484,14 +155567,17 @@ var EmailProviderManager = class {
             healthStatus: "healthy"
           }).where(eq(emailProvidersTable.id, provider.id))
         ]);
+        await updateCampaignRecipient(payload, "sent", { messageId: result.messageId });
         this.invalidateCache();
         return { success: true, provider: provider.slug, messageId: result.messageId, queueId };
       } catch (err) {
         const latencyMs = Date.now() - start2;
         const errMsg = err instanceof Error ? err.message : String(err);
+        const quotaOrRateLimit = isQuotaOrRateLimitError(err);
+        quotaOrRateLimitDetected ||= quotaOrRateLimit;
         logger.warn({ provider: provider.slug, to: payload.to, err: errMsg, latencyMs }, "[email-router] Fournisseur \xE9chou\xE9 \u2014 tentative suivante");
-        const newConsec = provider.consecutiveErrors + 1;
-        const newHealth = newConsec >= CONSECUTIVE_ERROR_THRESHOLD ? "down" : newConsec >= CONSECUTIVE_ERROR_DEGRADED ? "degraded" : provider.healthStatus;
+        const newConsec = quotaOrRateLimit ? provider.consecutiveErrors : provider.consecutiveErrors + 1;
+        const newHealth = quotaOrRateLimit ? provider.healthStatus : newConsec >= CONSECUTIVE_ERROR_THRESHOLD ? "down" : newConsec >= CONSECUTIVE_ERROR_DEGRADED ? "degraded" : provider.healthStatus;
         await Promise.all([
           db.insert(emailSendLogsTable).values({
             queueId,
@@ -155512,35 +155598,72 @@ var EmailProviderManager = class {
       }
     }
     const attempts = (existing[0]?.attempts ?? 0) + providers.length;
+    const retryable = quotaOrRateLimitDetected && canWaitIndefinitelyForQuota(payload);
+    const remainsPending = retryable || attempts < 5;
+    const queueError = quotaOrRateLimitDetected ? retryable ? "Quota ou limite d'envoi atteint \u2014 nouvelle tentative automatique programm\xE9e" : "Quota ou limite d'envoi atteint pour un email \xE0 dur\xE9e de validit\xE9 limit\xE9e" : "Tous les fournisseurs ont \xE9chou\xE9";
     await db.update(emailQueueTable).set({
-      status: attempts >= 5 ? "failed" : "pending",
+      status: remainsPending ? "pending" : "failed",
       attempts,
-      error: "Tous les fournisseurs ont \xE9chou\xE9",
-      nextRetryAt: attempts >= 5 ? null : new Date(Date.now() + retryDelayMs(attempts))
+      retryable,
+      error: queueError,
+      nextRetryAt: remainsPending ? new Date(Date.now() + (quotaOrRateLimitDetected ? QUOTA_RETRY_DELAY_MS : retryDelayMs(attempts))) : null
     }).where(eq(emailQueueTable.id, queueId));
-    return { success: false, error: "Tous les fournisseurs ont \xE9chou\xE9 \u2014 email en file d'attente", queueId };
+    if (!remainsPending) {
+      await updateCampaignRecipient(payload, "failed", { error: queueError });
+    }
+    return {
+      success: false,
+      queued: remainsPending,
+      retryable,
+      error: remainsPending ? "Email conserv\xE9 en file d'attente pour une nouvelle tentative automatique" : queueError,
+      queueId
+    };
   }
   // ── Worker de retry (toutes les 2 min) ───────────────────────
   async processRetryQueue() {
     try {
+      await db.update(emailQueueTable).set({ status: "pending", nextRetryAt: /* @__PURE__ */ new Date() }).where(and(
+        eq(emailQueueTable.status, "processing"),
+        lt(emailQueueTable.updatedAt, new Date(Date.now() - 10 * 6e4))
+      ));
       const pending = await db.select().from(emailQueueTable).where(
         and(
           eq(emailQueueTable.status, "pending"),
           lte(emailQueueTable.nextRetryAt, /* @__PURE__ */ new Date()),
-          lt(emailQueueTable.attempts, emailQueueTable.maxAttempts)
+          or(
+            eq(emailQueueTable.retryable, true),
+            lt(emailQueueTable.attempts, emailQueueTable.maxAttempts)
+          )
         )
       ).limit(20);
       for (const item of pending) {
+        const claimed = await db.update(emailQueueTable).set({ status: "processing" }).where(and(
+          eq(emailQueueTable.id, item.id),
+          eq(emailQueueTable.status, "pending")
+        )).returning({ id: emailQueueTable.id });
+        if (claimed.length === 0) continue;
         logger.info({ id: item.id, attempts: item.attempts }, "[email-router] Retry email en file");
-        await this.send({
-          to: item.toEmail,
-          from: item.fromEmail,
-          subject: item.subject,
-          html: item.html,
-          text: item.textContent ?? void 0,
-          idempotencyKey: item.idempotencyKey,
-          metadata: item.metadata
-        });
+        try {
+          await this.send({
+            to: item.toEmail,
+            from: item.fromEmail,
+            subject: item.subject,
+            html: item.html,
+            text: item.textContent ?? void 0,
+            idempotencyKey: item.idempotencyKey,
+            metadata: item.metadata
+          });
+        } catch (err) {
+          logger.warn({ err, id: item.id }, "[email-router] Retry interrompu \u2014 remise en attente");
+          await db.update(emailQueueTable).set({
+            status: "pending",
+            error: err instanceof Error ? err.message : String(err),
+            nextRetryAt: new Date(Date.now() + retryDelayMs(item.attempts))
+          }).where(and(
+            eq(emailQueueTable.id, item.id),
+            eq(emailQueueTable.status, "processing")
+          ));
+        }
       }
     } catch (err) {
       logger.warn({ err }, "[email-router] Erreur worker retry");
@@ -164222,18 +164345,19 @@ router17.post("/admin/emails/send", requireAdmin5, async (req, res) => {
     status: "sending",
     totalRecipients: recipients.length
   }).returning();
+  await db.insert(emailLogsTable).values(recipients.map((recipient) => ({
+    campaignId: campaign.id,
+    userId: recipient.id,
+    email: recipient.email,
+    status: "pending"
+  })));
   res.status(202).json({ campaignId: campaign.id, totalRecipients: recipients.length, message: "Envoi en cours..." });
-  let sentCount = 0;
-  let failedCount = 0;
   const BATCH_SIZE = 10;
   const BATCH_DELAY = 1200;
   const sleep = (ms2) => new Promise((r3) => setTimeout(r3, ms2));
   for (let i2 = 0; i2 < recipients.length; i2 += BATCH_SIZE) {
     const batch = recipients.slice(i2, i2 + BATCH_SIZE).filter((r3) => !!r3.email);
-    if (batch.length === 0) {
-      failedCount += BATCH_SIZE;
-      continue;
-    }
+    if (batch.length === 0) continue;
     await Promise.all(batch.map(async (recipient) => {
       try {
         const result = await emailManager.send({
@@ -164245,38 +164369,29 @@ router17.post("/admin/emails/send", requireAdmin5, async (req, res) => {
           idempotencyKey: `campaign-${campaign.id}-${recipient.id ?? recipient.email}`,
           metadata: { type: "admin_campaign", campaignId: campaign.id }
         });
-        if (!result.success) {
-          throw new Error(result.error ?? "\xC9chec de tous les fournisseurs email");
+        if (!result.success && !result.queued) {
+          await db.update(emailLogsTable).set({ status: "failed", error: (result.error ?? "\xC9chec d\xE9finitif de l'envoi").slice(0, 500) }).where(and(
+            eq(emailLogsTable.campaignId, campaign.id),
+            eq(emailLogsTable.email, recipient.email),
+            eq(emailLogsTable.status, "pending")
+          ));
         }
-        sentCount++;
-        await db.insert(emailLogsTable).values({
-          campaignId: campaign.id,
-          userId: recipient.id,
-          email: recipient.email,
-          status: "sent",
-          messageId: result.messageId ?? null,
-          sentAt: /* @__PURE__ */ new Date()
-        });
       } catch (err) {
-        failedCount++;
         const errMsg = err instanceof Error ? err.message : String(err);
         logger.error({ campaignId: campaign.id, email: recipient.email, err: errMsg }, "[emails] Envoi individuel \xE9chou\xE9");
-        await db.insert(emailLogsTable).values({
-          campaignId: campaign.id,
-          userId: recipient.id,
-          email: recipient.email,
-          status: "failed",
-          error: errMsg.slice(0, 500)
-        });
+        await db.update(emailLogsTable).set({ status: "failed", error: errMsg.slice(0, 500) }).where(and(
+          eq(emailLogsTable.campaignId, campaign.id),
+          eq(emailLogsTable.email, recipient.email),
+          eq(emailLogsTable.status, "pending")
+        ));
       }
     }));
     if (i2 + BATCH_SIZE < recipients.length) {
       await sleep(BATCH_DELAY);
     }
   }
-  const finalStatus = failedCount === recipients.length ? "failed" : "sent";
-  await db.update(emailCampaignsTable).set({ status: finalStatus, sentCount, failedCount, sentAt: /* @__PURE__ */ new Date() }).where(eq(emailCampaignsTable.id, campaign.id));
-  logger.info({ campaignId: campaign.id, sentCount, failedCount, totalRecipients: recipients.length }, "[emails] Campaign complete");
+  await refreshCampaignProgress(campaign.id);
+  logger.info({ campaignId: campaign.id, totalRecipients: recipients.length }, "[emails] Campaign initial dispatch complete");
 });
 router17.get("/admin/emails/campaigns", requireAdmin5, async (req, res) => {
   const limit = Math.min(Number(req.query.limit) || 20, 100);
@@ -164294,8 +164409,10 @@ router17.get("/admin/emails/campaigns/:id/progress", requireAdmin5, async (req, 
   }
   const [sentRow] = await db.select({ c: count() }).from(emailLogsTable).where(and(eq(emailLogsTable.campaignId, id), eq(emailLogsTable.status, "sent")));
   const [failedRow] = await db.select({ c: count() }).from(emailLogsTable).where(and(eq(emailLogsTable.campaignId, id), eq(emailLogsTable.status, "failed")));
+  const [pendingRow] = await db.select({ c: count() }).from(emailLogsTable).where(and(eq(emailLogsTable.campaignId, id), eq(emailLogsTable.status, "pending")));
   const sentNow = Number(sentRow?.c ?? 0);
   const failedNow = Number(failedRow?.c ?? 0);
+  const pendingNow = Number(pendingRow?.c ?? 0);
   const processedNow = sentNow + failedNow;
   res.json({
     campaignId: id,
@@ -164303,9 +164420,10 @@ router17.get("/admin/emails/campaigns/:id/progress", requireAdmin5, async (req, 
     totalRecipients: campaign[0].totalRecipients,
     sentCount: sentNow,
     failedCount: failedNow,
+    pendingCount: pendingNow,
     processedCount: processedNow,
     percentDone: campaign[0].totalRecipients > 0 ? Math.round(processedNow / campaign[0].totalRecipients * 100) : 0,
-    isDone: campaign[0].status !== "sending"
+    isDone: pendingNow === 0
   });
 });
 router17.get("/admin/emails/campaigns/:id/logs", requireAdmin5, async (req, res) => {
@@ -164391,11 +164509,13 @@ router17.get("/admin/emails/stats", requireAdmin5, async (_req, res) => {
   const [total] = await db.select({ count: count() }).from(emailCampaignsTable);
   const [sent] = await db.select({ count: count() }).from(emailLogsTable).where(eq(emailLogsTable.status, "sent"));
   const [failed] = await db.select({ count: count() }).from(emailLogsTable).where(eq(emailLogsTable.status, "failed"));
+  const [pending] = await db.select({ count: count() }).from(emailLogsTable).where(eq(emailLogsTable.status, "pending"));
   const [activeProvider] = await db.select({ id: emailProvidersTable.id }).from(emailProvidersTable).where(eq(emailProvidersTable.active, true)).limit(1);
   res.json({
     totalCampaigns: Number(total.count),
     totalSent: Number(sent.count),
     totalFailed: Number(failed.count),
+    totalPending: Number(pending.count),
     emailConfigured: !!activeProvider
   });
 });

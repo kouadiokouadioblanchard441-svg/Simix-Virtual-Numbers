@@ -73,10 +73,11 @@ function StatsSection() {
   });
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+    <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
       {[
         { label: "Campagnes", value: data?.totalCampaigns ?? 0, icon: Mail, color: "text-white", bg: "bg-violet-500/10 border-violet-500/20" },
         { label: "Emails envoyés", value: data?.totalSent ?? 0, icon: CheckCircle2, color: "text-white", bg: "bg-green-500/10 border-green-500/20" },
+        { label: "En attente automatique", value: data?.totalPending ?? 0, icon: Clock, color: "text-amber-400", bg: "bg-amber-500/10 border-amber-500/20" },
         { label: "Échecs", value: data?.totalFailed ?? 0, icon: XCircle, color: "text-red-400", bg: "bg-red-500/10 border-red-500/20" },
         {
           label: "Fournisseur email",
@@ -495,6 +496,7 @@ function LiveProgress({ campaignId, onDone }: { campaignId: string; onDone: () =
   const pct       = data?.percentDone ?? 0;
   const sent      = data?.sentCount ?? 0;
   const failed    = data?.failedCount ?? 0;
+  const pending   = data?.pendingCount ?? 0;
   const total     = data?.totalRecipients ?? 0;
   const processed = data?.processedCount ?? 0;
 
@@ -524,6 +526,7 @@ function LiveProgress({ campaignId, onDone }: { campaignId: string; onDone: () =
           <Loader2 className="w-3 h-3 animate-spin text-violet-400" />
           <span className="text-violet-300 font-semibold">{processed}/{total}</span>
           {sent > 0 && <span className="text-green-400">{sent} envoyés</span>}
+          {pending > 0 && <span className="text-amber-400">{pending} en attente</span>}
           {failed > 0 && <span className="text-red-400">{failed} échecs</span>}
         </span>
         <span className="font-mono font-semibold text-violet-400">{pct}%{etaLabel && ` · ${etaLabel}`}</span>
@@ -562,8 +565,8 @@ function CampaignsList() {
     createdAt: string; sentAt?: string;
   }>;
 
-  /* Auto-poll the list more frequently if any campaign is sending */
-  const hasSending = campaigns.some(c => c.status === "sending");
+  /* Continue polling while a campaign is being dispatched or waiting for quota reset */
+  const hasActiveCampaign = campaigns.some(c => c.status === "sending" || c.status === "pending");
 
   return (
     <div className="bg-zinc-800/40 border border-zinc-700/40 rounded-2xl overflow-hidden">
@@ -571,7 +574,7 @@ function CampaignsList() {
         <h3 className="text-white font-semibold text-sm flex items-center gap-2">
           <BarChart3 className="w-4 h-4 text-violet-400" />
           Historique des campagnes
-          {hasSending && <span className="flex items-center gap-1 text-violet-400 text-xs font-normal ml-1"><Loader2 className="w-3 h-3 animate-spin" />Envoi en cours…</span>}
+          {hasActiveCampaign && <span className="flex items-center gap-1 text-amber-400 text-xs font-normal ml-1"><Clock className="w-3 h-3" />Reprise automatique active</span>}
         </h3>
         <span className="text-xs text-zinc-500">{data?.total ?? 0} campagne(s)</span>
       </div>
@@ -588,6 +591,7 @@ function CampaignsList() {
             const ti         = TEMPLATE_TYPES.find(t => t.value === c.templateType) ?? TEMPLATE_TYPES[0];
             const isExpanded = expandedId === c.id;
             const isSending  = c.status === "sending";
+            const pendingCount = Math.max(0, c.totalRecipients - c.sentCount - c.failedCount);
             const successRate = c.totalRecipients > 0 ? Math.round((c.sentCount / c.totalRecipients) * 100) : 0;
 
             return (
@@ -599,6 +603,8 @@ function CampaignsList() {
                   <div className="w-9 h-9 rounded-xl bg-violet-500/15 flex items-center justify-center flex-shrink-0 mt-0.5">
                     {isSending
                       ? <Loader2 className="w-4 h-4 text-violet-400 animate-spin" />
+                        : c.status === "pending"
+                          ? <Clock className="w-4 h-4 text-amber-400" />
                       : <ti.icon className={cn("w-4 h-4", ti.color)} />}
                   </div>
                   <div className="flex-1 min-w-0">
@@ -609,6 +615,7 @@ function CampaignsList() {
                     <div className="flex items-center gap-3 text-[11px] text-zinc-500 flex-wrap">
                       <span className="flex items-center gap-1"><Users className="w-3 h-3" />{c.totalRecipients} destinataires</span>
                       {!isSending && <span className="flex items-center gap-1 text-green-400"><CheckCircle2 className="w-3 h-3" />{c.sentCount} envoyés</span>}
+                      {!isSending && pendingCount > 0 && <span className="flex items-center gap-1 text-amber-400"><Clock className="w-3 h-3" />{pendingCount} en attente automatique</span>}
                       {!isSending && c.failedCount > 0 && <span className="flex items-center gap-1 text-red-400"><XCircle className="w-3 h-3" />{c.failedCount} échecs</span>}
                       <span>{timeAgo(c.createdAt)}</span>
                     </div>
@@ -655,7 +662,9 @@ function CampaignsList() {
                                 <div key={log.id} className="flex items-center gap-3 px-3 py-2 border-b border-zinc-800/60 last:border-0">
                                   {log.status === "sent"
                                     ? <CheckCircle2 className="w-3.5 h-3.5 text-green-400 flex-shrink-0" />
-                                    : <XCircle className="w-3.5 h-3.5 text-red-400 flex-shrink-0" />}
+                                    : log.status === "pending"
+                                      ? <Clock className="w-3.5 h-3.5 text-amber-400 flex-shrink-0" />
+                                      : <XCircle className="w-3.5 h-3.5 text-red-400 flex-shrink-0" />}
                                   <span className="text-xs text-white flex-1 truncate">{log.fullName ?? log.email}</span>
                                   <span className="text-[10px] text-zinc-500 truncate">{log.email}</span>
                                   {log.error && <span className="text-[10px] text-red-400 truncate max-w-[120px]">{log.error}</span>}
