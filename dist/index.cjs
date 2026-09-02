@@ -165276,6 +165276,24 @@ var ISO3_TO_ISO2 = Object.fromEntries(
 router21.get("/admin/payouts/pawapay/local-operators", requireAdmin7, async (_req, res) => {
   try {
     const rows = await db.select().from(mobileOperatorsTable).where(eq(mobileOperatorsTable.active, true)).orderBy(asc(mobileOperatorsTable.sortOrder));
+    let livePayoutProviders = null;
+    const creds = await resolvePawaPayCredentials();
+    if (creds) {
+      try {
+        const config = await new PawaPayClient(creds.token, creds.env).getActiveConfiguration();
+        livePayoutProviders = new Map(
+          config.countries.map((country) => {
+            const iso2 = ISO3_TO_ISO2[country.country] ?? country.country;
+            const providers = new Set(
+              country.providers.filter((p) => p.currencies.some((c2) => c2.operationTypes?.PAYOUT)).map((p) => p.provider)
+            );
+            return [iso2, providers];
+          })
+        );
+      } catch (err) {
+        logger.warn({ err }, "[admin-payouts] Could not load live PawaPay payout configuration; using local catalogue");
+      }
+    }
     const byCountry = /* @__PURE__ */ new Map();
     for (const op of rows) {
       const codes = op.countryCodes ?? [];
@@ -165288,6 +165306,9 @@ router21.get("/admin/payouts/pawapay/local-operators", requireAdmin7, async (_re
           });
         }
         const pawapayCode = getProviderForCountry(iso2, op.slug) ?? op.slug.toUpperCase().replace(/-/g, "_");
+        if (livePayoutProviders && !livePayoutProviders.get(iso2)?.has(pawapayCode)) {
+          continue;
+        }
         byCountry.get(iso2).operators.push({
           name: op.name,
           slug: op.slug,
@@ -165299,7 +165320,11 @@ router21.get("/admin/payouts/pawapay/local-operators", requireAdmin7, async (_re
     const countries = [...byCountry.values()].sort(
       (a, b3) => a.countryIso2.localeCompare(b3.countryIso2)
     );
-    res.json({ countries, source: "local" });
+    res.json({
+      countries,
+      source: "local",
+      filteredByPawaPayPayoutConfig: livePayoutProviders !== null
+    });
   } catch (err) {
     logger.error({ err }, "[admin-payouts] local operators fetch failed");
     res.status(500).json({ error: err.message });
@@ -165357,6 +165382,30 @@ router21.post("/admin/payouts/pawapay", requireAdmin7, async (req, res) => {
     const client = new PawaPayClient(creds.token, creds.env);
     const msisdn = buildMSISDN(phoneNumber, dialCode);
     const pawapayProvider = normalizePawaPayProvider(countryIso2, provider);
+    try {
+      const config = await client.getActiveConfiguration();
+      const iso2 = countryIso2?.trim().toUpperCase();
+      const iso3 = iso2 ? ISO2_TO_ISO3[iso2] ?? iso2 : void 0;
+      const country = config.countries.find(
+        (c2) => c2.country === iso3 || c2.country === iso2
+      );
+      const providerConfig = country?.providers.find((p) => p.provider === pawapayProvider);
+      const payoutCurrency = providerConfig?.currencies.find(
+        (c2) => c2.currency === currency && c2.operationTypes?.PAYOUT
+      );
+      if (!providerConfig || !payoutCurrency) {
+        res.status(422).json({
+          error: `Le retrait PawaPay n'est pas activ\xE9 pour ${pawapayProvider} dans votre compte. Activez ce fournisseur dans la configuration Payouts PawaPay ou choisissez un op\xE9rateur autoris\xE9.`
+        });
+        return;
+      }
+    } catch (err) {
+      logger.error({ err, provider: pawapayProvider, countryIso2 }, "[admin-payouts] PawaPay payout configuration check failed");
+      res.status(503).json({
+        error: "Impossible de v\xE9rifier la configuration des retraits PawaPay. Aucun retrait n'a \xE9t\xE9 envoy\xE9, veuillez r\xE9essayer."
+      });
+      return;
+    }
     const payoutId = crypto.randomUUID();
     logger.info({ payoutId, msisdn, countryIso2, provider: pawapayProvider, currency, amount: String(amountNum) }, "[admin-payouts] Initiating PawaPay payout");
     const result = await client.initiatePayout({

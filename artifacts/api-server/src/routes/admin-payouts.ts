@@ -66,6 +66,33 @@ router.get("/admin/payouts/pawapay/local-operators", requireAdmin, async (_req, 
       .where(eq(mobileOperatorsTable.active, true))
       .orderBy(asc(mobileOperatorsTable.sortOrder));
 
+    /*
+     * The local operator catalogue describes the product UI, but PawaPay's
+     * active configuration is the source of truth for merchant PAYOUT access.
+     * Without this check the panel could offer a valid provider code that is
+     * not enabled for this merchant account (PAYOUTS_NOT_ALLOWED).
+     */
+    let livePayoutProviders: Map<string, Set<string>> | null = null;
+    const creds = await resolvePawaPayCredentials();
+    if (creds) {
+      try {
+        const config = await new PawaPayClient(creds.token, creds.env).getActiveConfiguration();
+        livePayoutProviders = new Map(
+          config.countries.map((country) => {
+            const iso2 = ISO3_TO_ISO2[country.country] ?? country.country;
+            const providers = new Set(
+              country.providers
+                .filter((p) => p.currencies.some((c) => c.operationTypes?.PAYOUT))
+                .map((p) => p.provider),
+            );
+            return [iso2, providers];
+          }),
+        );
+      } catch (err) {
+        logger.warn({ err }, "[admin-payouts] Could not load live PawaPay payout configuration; using local catalogue");
+      }
+    }
+
     /* Group by country */
     const byCountry = new Map<string, {
       countryIso2: string;
@@ -86,6 +113,9 @@ router.get("/admin/payouts/pawapay/local-operators", requireAdmin, async (_req, 
         /* PawaPay uses country-qualified codes, not local slugs:
          * orange + CI → ORANGE_CIV, mtn + CI → MTN_MOMO_CIV. */
         const pawapayCode = getProviderForCountry(iso2, op.slug) ?? op.slug.toUpperCase().replace(/-/g, "_");
+        if (livePayoutProviders && !livePayoutProviders.get(iso2)?.has(pawapayCode)) {
+          continue;
+        }
         byCountry.get(iso2)!.operators.push({
           name: op.name,
           slug: op.slug,
@@ -99,7 +129,11 @@ router.get("/admin/payouts/pawapay/local-operators", requireAdmin, async (_req, 
       a.countryIso2.localeCompare(b.countryIso2),
     );
 
-    res.json({ countries, source: "local" });
+    res.json({
+      countries,
+      source: "local",
+      filteredByPawaPayPayoutConfig: livePayoutProviders !== null,
+    });
   } catch (err) {
     logger.error({ err }, "[admin-payouts] local operators fetch failed");
     res.status(500).json({ error: (err as Error).message });
@@ -190,6 +224,38 @@ router.post("/admin/payouts/pawapay", requireAdmin, async (req, res): Promise<vo
     const client = new PawaPayClient(creds.token, creds.env);
     const msisdn = buildMSISDN(phoneNumber, dialCode);
     const pawapayProvider = normalizePawaPayProvider(countryIso2, provider);
+
+    /*
+     * Do not create a payout request for a provider that the merchant account
+     * cannot use. This turns PawaPay's opaque 403 into an actionable admin
+     * message and prevents unnecessary rejected payout IDs.
+     */
+    try {
+      const config = await client.getActiveConfiguration();
+      const iso2 = countryIso2?.trim().toUpperCase();
+      const iso3 = iso2 ? (ISO2_TO_ISO3[iso2] ?? iso2) : undefined;
+      const country = config.countries.find((c) =>
+        c.country === iso3 || c.country === iso2,
+      );
+      const providerConfig = country?.providers.find((p) => p.provider === pawapayProvider);
+      const payoutCurrency = providerConfig?.currencies.find((c) =>
+        c.currency === currency && c.operationTypes?.PAYOUT,
+      );
+
+      if (!providerConfig || !payoutCurrency) {
+        res.status(422).json({
+          error: `Le retrait PawaPay n'est pas activé pour ${pawapayProvider} dans votre compte. Activez ce fournisseur dans la configuration Payouts PawaPay ou choisissez un opérateur autorisé.`,
+        });
+        return;
+      }
+    } catch (err) {
+      logger.error({ err, provider: pawapayProvider, countryIso2 }, "[admin-payouts] PawaPay payout configuration check failed");
+      res.status(503).json({
+        error: "Impossible de vérifier la configuration des retraits PawaPay. Aucun retrait n'a été envoyé, veuillez réessayer.",
+      });
+      return;
+    }
+
     const payoutId = crypto.randomUUID();
 
     logger.info({ payoutId, msisdn, countryIso2, provider: pawapayProvider, currency, amount: String(amountNum) }, "[admin-payouts] Initiating PawaPay payout");

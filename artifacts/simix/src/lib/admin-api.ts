@@ -461,6 +461,7 @@ export const adminApi = {
   getPayoutsPawapayLocalOperators: () =>
     req<{
       source: "local";
+      filteredByPawaPayPayoutConfig?: boolean;
       countries: Array<{
         countryIso2: string;
         currency: string;
