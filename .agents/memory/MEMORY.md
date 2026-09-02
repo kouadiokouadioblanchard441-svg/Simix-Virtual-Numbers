@@ -14,5 +14,5 @@
 - [Email Router Infrastructure](email-router-infra.md) — multi-provider failover system; workers must start at boot; emailProvidersRouter must mount BEFORE adminRouter; SESSION_SECRET is the AES key.
 - [Plesk deployment architecture](plesk-deployment.md) — project self-builds via startup.js on Plesk; static frontend serves from root public/ not dist/public; object storage degrades gracefully without Replit sidecar.
 - [Email provider table empty despite valid key](email-provider-empty-table.md) — Resend auto-seed can silently never fire; check email_providers directly and seed manually if empty; resending old queued emails is useless since OTP codes expire in 10min, use resend-otps.ts for fresh codes.
-- [PawaPay payout eligibility](pawapay-payout-eligibility.md) — valid provider codes are insufficient; only providers with PAYOUT enabled in the merchant active configuration may be offered or submitted.
+- [PawaPay payout eligibility](pawapay-payout-eligibility.md) — show the full country/operator catalogue with live status, but submit only providers enabled for PAYOUT.
 - [AI token balance visibility](ai-token-balance-visibility.md) — OpenAI/Anthropic inference APIs may not expose cash balance; show verified health, exhaustion and rate-limit data instead.

@@ -469,15 +469,19 @@ export const adminApi = {
   getPayoutsPawapayLocalOperators: () =>
     req<{
       source: "local";
-      filteredByPawaPayPayoutConfig?: boolean;
+      payoutConfigChecked: boolean;
       countries: Array<{
         countryIso2: string;
+        countryName: string;
+        flag: string;
+        dialCode: string;
         currency: string;
         operators: Array<{
           name: string;
           slug: string;
           pawapayCode: string;
           logo: string | null;
+          payoutEnabled: boolean | null;
         }>;
       }>;
     }>("GET", "/admin/payouts/pawapay/local-operators"),

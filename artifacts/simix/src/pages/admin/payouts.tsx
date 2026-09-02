@@ -52,13 +52,15 @@ function Select({
 }
 
 function Input({
-  value, onChange, placeholder, type = "text", disabled,
+  value, onChange, placeholder, type = "text", disabled, min, max,
 }: {
   value: string;
   onChange: (v: string) => void;
   placeholder?: string;
   type?: string;
   disabled?: boolean;
+  min?: number;
+  max?: number;
 }) {
   return (
     <input
@@ -67,6 +69,8 @@ function Input({
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
       disabled={disabled}
+      min={min}
+      max={max}
       className="w-full bg-zinc-900 border border-zinc-700 rounded-xl px-3 py-2.5 text-sm text-white placeholder:text-zinc-600 disabled:opacity-50 focus:outline-none focus:border-violet-500 transition-colors"
     />
   );
@@ -116,7 +120,6 @@ function PawaPayForm() {
   const [countryIso2, setCountryIso2]   = useState("");
   const [providerSlug, setProviderSlug] = useState("");
   const [phoneNumber, setPhoneNumber]   = useState("");
-  const [dialCode, setDialCode]         = useState("");
   const [amount, setAmount]             = useState("");
   const [result, setResult] = useState<{ ok: boolean; message: string; detail?: string } | null>(null);
 
@@ -140,12 +143,21 @@ function PawaPayForm() {
 
   /* PawaPay provider code from selected operator */
   const pawapayCode = selectedOperator?.pawapayCode ?? "";
+  const liveProvider = liveConfig?.countries
+    .find((country) => country.countryIso2 === countryIso2)
+    ?.providers.find((provider) => provider.provider === pawapayCode);
+  const minAmount = liveProvider?.minAmount ? Number(liveProvider.minAmount) : null;
+  const maxAmount = liveProvider?.maxAmount ? Number(liveProvider.maxAmount) : null;
+  const amountNumber = Number(amount);
+  const amountWithinLimits =
+    (!Number.isFinite(minAmount) || minAmount === null || amountNumber >= minAmount) &&
+    (!Number.isFinite(maxAmount) || maxAmount === null || amountNumber <= maxAmount);
 
   const payout = useMutation({
     mutationFn: () =>
       adminApi.initiatePawapayPayout({
         phoneNumber,
-        dialCode: dialCode || undefined,
+        dialCode: selectedCountry?.dialCode || undefined,
         countryIso2,
         provider: pawapayCode,
         currency,
@@ -175,7 +187,14 @@ function PawaPayForm() {
   });
 
   const canSubmit =
-    countryIso2 && providerSlug && phoneNumber && amount && Number(amount) > 0 && !payout.isPending;
+    countryIso2 && providerSlug && phoneNumber && amount && amountNumber > 0 &&
+    amountWithinLimits && !payout.isPending;
+
+  const selectCountry = (value: string) => {
+    setCountryIso2(value);
+    const country = localData?.countries.find((item) => item.countryIso2 === value);
+    setProviderSlug(country?.operators.length === 1 ? country.operators[0].slug : "");
+  };
 
   if (localLoading) {
     return (
@@ -207,7 +226,7 @@ function PawaPayForm() {
           <span className="text-zinc-500">non déterminé</span>
         )}
         {" — "}
-        Opérateurs chargés depuis la configuration locale ({localData.countries.length} pays).
+        {localData.countries.length} pays disponibles. L'indicatif, la devise et le code PawaPay sont remplis automatiquement.
       </div>
 
       {result && <ResultBanner result={result} onDismiss={() => setResult(null)} />}
@@ -216,12 +235,12 @@ function PawaPayForm() {
         <Field label="Pays">
           <Select
             value={countryIso2}
-            onChange={(v) => { setCountryIso2(v); setProviderSlug(""); }}
+            onChange={selectCountry}
             placeholder="— Sélectionner un pays —"
           >
             {localData.countries.map((c) => (
               <option key={c.countryIso2} value={c.countryIso2}>
-                {c.countryIso2} — {c.currency}
+                {c.flag} {c.countryName} — {c.currency}
               </option>
             ))}
           </Select>
@@ -236,7 +255,7 @@ function PawaPayForm() {
           >
             {selectedCountry?.operators.map((op) => (
               <option key={op.slug} value={op.slug}>
-                {op.name} ({op.pawapayCode})
+                {op.name}{op.payoutEnabled === false ? " — non activé sur ce compte" : ""}
               </option>
             ))}
           </Select>
@@ -248,14 +267,11 @@ function PawaPayForm() {
             onChange={setPhoneNumber}
             placeholder="ex: 0701234567"
           />
-        </Field>
-
-        <Field label="Indicatif pays (dial code)">
-          <Input
-            value={dialCode}
-            onChange={setDialCode}
-            placeholder="ex: +225"
-          />
+          {selectedCountry?.dialCode && (
+            <p className="text-[11px] text-zinc-500">
+              Indicatif ajouté automatiquement : {selectedCountry.dialCode}
+            </p>
+          )}
         </Field>
 
         <Field label={`Montant${currency ? ` (${currency})` : ""}`}>
@@ -263,19 +279,30 @@ function PawaPayForm() {
             type="number"
             value={amount}
             onChange={setAmount}
-            placeholder="ex: 50000"
+            placeholder={minAmount ? `Minimum : ${minAmount}` : "ex: 50000"}
+            min={minAmount ?? undefined}
+            max={maxAmount ?? undefined}
           />
+          {(minAmount !== null || maxAmount !== null) && (
+            <p className="text-[11px] text-zinc-500">
+              Limites PawaPay : {minAmount ?? "—"} à {maxAmount ?? "—"} {currency}
+            </p>
+          )}
+          {amount && !amountWithinLimits && (
+            <p className="text-[11px] text-red-400">
+              Le montant doit respecter les limites PawaPay de cet opérateur.
+            </p>
+          )}
         </Field>
 
-        {/* Show the derived PawaPay code for transparency */}
-        {pawapayCode && (
-          <Field label="Code PawaPay (dérivé)">
-            <div className="px-3 py-2.5 bg-zinc-900/60 border border-zinc-800 rounded-xl text-sm text-zinc-400 font-mono">
-              {pawapayCode}
-            </div>
-          </Field>
-        )}
       </div>
+
+      {selectedOperator?.payoutEnabled === false && (
+        <div className="flex items-start gap-2 rounded-xl border border-amber-500/20 bg-amber-500/10 p-3 text-xs text-amber-300">
+          <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+          Ce moyen reste visible dans le catalogue, mais le token PawaPay actuel ne l'annonce pas encore comme autorisé pour les payouts. PawaPay peut refuser l'envoi tant que l'option PAYOUT n'est pas activée sur le compte.
+        </div>
+      )}
 
       <button
         onClick={() => payout.mutate()}

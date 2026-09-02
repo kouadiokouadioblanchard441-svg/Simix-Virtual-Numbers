@@ -14,11 +14,11 @@ import { eq, asc } from "drizzle-orm";
 import { requireAdminJwt } from "../lib/admin-jwt-middleware";
 import {
   PawaPayClient,
+  COUNTRY_TO_PAWAPAY_PROVIDER,
   ISO2_TO_ISO3,
   COUNTRY_CURRENCY,
   buildMSISDN,
   getPawaPayOperationConfig,
-  getProviderForCountry,
   normalizePawaPayProvider,
 } from "../lib/pawapay";
 import {
@@ -30,7 +30,7 @@ import {
   resolveClapayCredentials,
 } from "../lib/gateway-credentials";
 import { logger } from "../lib/logger";
-import { db, mobileOperatorsTable } from "@workspace/db";
+import { countriesTable, db, mobileOperatorsTable } from "@workspace/db";
 
 const router: IRouter = Router();
 router.use(requireAdminJwt);
@@ -49,29 +49,78 @@ const ISO3_TO_ISO2: Record<string, string> = Object.fromEntries(
   Object.entries(ISO2_TO_ISO3).map(([iso2, iso3]) => [iso3, iso2]),
 );
 
+function payoutOperatorSlug(provider: string): string {
+  const prefixes: Array<[string, string]> = [
+    ["MTN_MOMO_", "mtn"],
+    ["ORANGE_", "orange"],
+    ["AIRTELTIGO_", "airtel"],
+    ["AIRTEL_OAPI_", "airtel"],
+    ["AIRTEL_", "airtel"],
+    ["VODAFONE_", "vodafone"],
+    ["VODACOM_", "vodacom"],
+    ["MOBICASH_", "moov"],
+    ["MPESA_", "mpesa"],
+    ["WAVE_", "wave"],
+    ["MOOV_", "moov"],
+    ["FREE_", "free"],
+    ["EXPRESSO_", "expresso"],
+    ["TMONEY_", "tmoney"],
+    ["FLOOZ_", "flooz"],
+    ["MVOLA_", "mvola"],
+    ["ECONET_", "econet"],
+    ["UNITEL_", "unitel"],
+    ["TNM_", "tnm"],
+    ["TIGO_", "tigo"],
+    ["IAM_", "iam"],
+  ];
+  return prefixes.find(([prefix]) => provider.startsWith(prefix))?.[1]
+    ?? provider.split("_")[0].toLowerCase();
+}
+
+function payoutOperatorName(provider: string): string {
+  return provider
+    .replace(/_(CIV|SEN|CMR|GHA|NGA|KEN|TZA|UGA|MOZ|ZMB|RWA|GAB|COG|TCD|BFA|MLI|GIN|TGO|BEN|NER|MRT|GNB|MDG|ZWE|ZAF|AGO|ETH|MWI|EGY|MAR|SLE)$/, "")
+    .replaceAll("_", " ")
+    .toLowerCase()
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
 /* ═══════════════════════════════════════════════════════════════
  * PAWAPAY
  * ═══════════════════════════════════════════════════════════════ */
 
 /**
  * GET /admin/payouts/pawapay/local-operators
- * Returns operators from local mobile_operators table, grouped by country.
- * The local catalogue is intersected with PawaPay /v2/active-conf PAYOUT access.
- * PawaPay provider code is derived from country + operator.
+ * Returns every locally configured operator grouped by country.
+ * PawaPay's live PAYOUT configuration is attached as availability metadata,
+ * but never removes an operator from the admin catalogue.
  */
 router.get("/admin/payouts/pawapay/local-operators", requireAdmin, async (_req, res): Promise<void> => {
   try {
-    const rows = await db
-      .select()
-      .from(mobileOperatorsTable)
-      .where(eq(mobileOperatorsTable.active, true))
-      .orderBy(asc(mobileOperatorsTable.sortOrder));
+    const [rows, countryRows] = await Promise.all([
+      db
+        .select()
+        .from(mobileOperatorsTable)
+        .where(eq(mobileOperatorsTable.active, true))
+        .orderBy(asc(mobileOperatorsTable.sortOrder)),
+      db
+        .select({
+          code: countriesTable.code,
+          name: countriesTable.name,
+          flag: countriesTable.flag,
+          dialCode: countriesTable.dialCode,
+        })
+        .from(countriesTable),
+    ]);
+    const countryDetails = new Map(
+      countryRows.map((country) => [country.code.toUpperCase(), country]),
+    );
+    const operatorDetails = new Map(rows.map((operator) => [operator.slug, operator]));
 
     /*
-     * The local operator catalogue describes the product UI, but PawaPay's
-     * active configuration is the source of truth for merchant PAYOUT access.
-     * Without this check the panel could offer a valid provider code that is
-     * not enabled for this merchant account (PAYOUTS_NOT_ALLOWED).
+     * The local catalogue controls what the administrator can see. The live
+     * configuration only marks whether the current merchant token can submit
+     * a payout for that operator; submission is still checked server-side.
      */
     let livePayoutProviders: Map<string, Set<string>> | null = null;
     const creds = await resolvePawaPayCredentials();
@@ -98,45 +147,51 @@ router.get("/admin/payouts/pawapay/local-operators", requireAdmin, async (_req, 
     }
 
     /* Group by country */
-    const byCountry = new Map<string, {
+    const payoutCountries: Array<{
       countryIso2: string;
+      countryName: string;
+      flag: string;
+      dialCode: string;
       currency: string;
-      operators: { name: string; slug: string; pawapayCode: string; logo: string | null }[];
-    }>();
+      operators: {
+        name: string;
+        slug: string;
+        pawapayCode: string;
+        logo: string | null;
+        payoutEnabled: boolean | null;
+      }[];
+    }> = Object.entries(COUNTRY_TO_PAWAPAY_PROVIDER).map(([iso2, providerCodes]) => {
+      const country = countryDetails.get(iso2);
+      return {
+        countryIso2: iso2,
+        countryName: country?.name ?? iso2,
+        flag: country?.flag ?? "",
+        dialCode: country?.dialCode ?? "",
+        currency: COUNTRY_CURRENCY[iso2] ?? "XOF",
+        operators: providerCodes.map((pawapayCode) => {
+          const slug = payoutOperatorSlug(pawapayCode);
+          const localOperator = operatorDetails.get(slug);
+          return {
+            name: localOperator?.name ?? payoutOperatorName(pawapayCode),
+            slug,
+            pawapayCode,
+            logo: localOperator?.logoUrl ?? null,
+            payoutEnabled: livePayoutProviders
+              ? Boolean(livePayoutProviders.get(iso2)?.has(pawapayCode))
+              : null,
+          };
+        }),
+      };
+    });
 
-    for (const op of rows) {
-      const codes = (op.countryCodes as string[]) ?? [];
-      for (const iso2 of codes) {
-        if (!byCountry.has(iso2)) {
-          byCountry.set(iso2, {
-            countryIso2: iso2,
-            currency: COUNTRY_CURRENCY[iso2] ?? "XOF",
-            operators: [],
-          });
-        }
-        /* PawaPay uses country-qualified codes, not local slugs:
-         * orange + CI → ORANGE_CIV, mtn + CI → MTN_MOMO_CIV. */
-        const pawapayCode = getProviderForCountry(iso2, op.slug) ?? op.slug.toUpperCase().replace(/-/g, "_");
-        if (livePayoutProviders && !livePayoutProviders.get(iso2)?.has(pawapayCode)) {
-          continue;
-        }
-        byCountry.get(iso2)!.operators.push({
-          name: op.name,
-          slug: op.slug,
-          pawapayCode,
-          logo: op.logoUrl,
-        });
-      }
-    }
-
-    const countries = [...byCountry.values()].sort((a, b) =>
+    payoutCountries.sort((a, b) =>
       a.countryIso2.localeCompare(b.countryIso2),
     );
 
     res.json({
-      countries,
+      countries: payoutCountries,
       source: "local",
-      filteredByPawaPayPayoutConfig: livePayoutProviders !== null,
+      payoutConfigChecked: livePayoutProviders !== null,
     });
   } catch (err) {
     logger.error({ err }, "[admin-payouts] local operators fetch failed");
