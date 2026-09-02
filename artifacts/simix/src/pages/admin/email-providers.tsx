@@ -19,6 +19,11 @@ async function api<T>(method: string, path: string, body?: unknown): Promise<T> 
     credentials: "include",
     body: body ? JSON.stringify(body) : undefined,
   });
+  if (res.status === 401) {
+    adminToken.clear();
+    window.location.href = `${BASE}/admin/secure-login`;
+    throw new Error("Session administrateur expirée");
+  }
   if (!res.ok) { const e = await res.json().catch(() => ({ error: res.statusText })); throw new Error((e as { error: string }).error); }
   return res.json() as Promise<T>;
 }
@@ -145,14 +150,22 @@ export default function AdminEmailProviders() {
 
   const handleDelete = async (id: string, name: string) => {
     if (!confirm(`Supprimer "${name}" ?`)) return;
-    await api("DELETE", `/admin/email-providers/${id}`);
-    toast({ title: `${name} supprimé` });
-    await load();
+    try {
+      await api("DELETE", `/admin/email-providers/${id}`);
+      toast({ title: `${name} supprimé` });
+      await load();
+    } catch (e) {
+      toast({ title: "Suppression impossible", description: (e as Error).message, variant: "destructive" });
+    }
   };
 
   const handleToggle = async (id: string) => {
-    await api("POST", `/admin/email-providers/${id}/toggle`);
-    await load();
+    try {
+      await api("POST", `/admin/email-providers/${id}/toggle`);
+      await load();
+    } catch (e) {
+      toast({ title: "Modification impossible", description: (e as Error).message, variant: "destructive" });
+    }
   };
 
   const handleTest = async (id: string) => {
@@ -178,13 +191,19 @@ export default function AdminEmailProviders() {
       await api("POST", "/admin/email-providers/health-check");
       toast({ title: "Health check terminé ✓" });
       await load();
+    } catch (e) {
+      toast({ title: "Health check impossible", description: (e as Error).message, variant: "destructive" });
     } finally { setHealthChecking(false); }
   };
 
   const handlePriorityChange = async (p: Provider, dir: "up" | "down") => {
     const delta = dir === "up" ? -1 : 1;
-    await api("PUT", `/admin/email-providers/${p.id}`, { priority: Math.max(1, p.priority + delta) });
-    await load();
+    try {
+      await api("PUT", `/admin/email-providers/${p.id}`, { priority: Math.max(1, p.priority + delta) });
+      await load();
+    } catch (e) {
+      toast({ title: "Priorité non modifiée", description: (e as Error).message, variant: "destructive" });
+    }
   };
 
   const suggestSlug = (name: string) => name.toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 30);

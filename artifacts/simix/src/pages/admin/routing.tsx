@@ -21,6 +21,11 @@ async function apiFetch(url: string, opts?: RequestInit): Promise<Response> {
     adminToken.clear();
     const base = (import.meta.env.BASE_URL ?? "/").replace(/\/$/, "");
     window.location.href = `${base}/admin/secure-login`;
+    throw new Error("Session administrateur expirée");
+  }
+  if (!res.ok) {
+    const payload = await res.clone().json().catch(() => ({ error: res.statusText }));
+    throw new Error((payload as { error?: string; message?: string }).error || (payload as { message?: string }).message || `Erreur HTTP ${res.status}`);
   }
   return res;
 }
@@ -310,8 +315,8 @@ function RoutingSection({ toast }: { toast: ReturnType<typeof useToast> }) {
         toast.add("success", primaryGatewayId ? `${operatorSlug.toUpperCase()} → ${gwName} activé` : `${operatorSlug.toUpperCase()} désactivé`);
         setTimeout(() => setSavedOk(p => { const n = { ...p }; delete n[rowKey]; return n; }), 2500);
       }
-    } catch {
-      toast.add("error", "Erreur lors de la sauvegarde");
+    } catch (e) {
+      toast.add("error", (e as Error).message || "Erreur lors de la sauvegarde");
       void load();
     } finally {
       setSaving(p => { const n = { ...p }; delete n[rowKey]; return n; });
@@ -324,11 +329,16 @@ function RoutingSection({ toast }: { toast: ReturnType<typeof useToast> }) {
     if (!route?.id) return;
     const newMode = !route.maintenanceMode;
     setRouteMap(p => ({ ...p, [routeKey]: { ...p[routeKey]!, maintenanceMode: newMode } }));
-    await apiFetch(`${BASE()}/admin/payment-routing/routes/${route.id}/maintenance`, {
-      method: "POST", headers: H(),
-      body: JSON.stringify({ maintenanceMode: newMode }),
-    });
-    toast.add("success", newMode ? "Mode maintenance activé" : "Mode maintenance désactivé");
+    try {
+      await apiFetch(`${BASE()}/admin/payment-routing/routes/${route.id}/maintenance`, {
+        method: "POST", headers: H(),
+        body: JSON.stringify({ maintenanceMode: newMode }),
+      });
+      toast.add("success", newMode ? "Mode maintenance activé" : "Mode maintenance désactivé");
+    } catch (e) {
+      setRouteMap(p => ({ ...p, [routeKey]: { ...p[routeKey]!, maintenanceMode: !newMode } }));
+      toast.add("error", (e as Error).message || "Impossible de modifier le mode maintenance");
+    }
   };
 
   const activeGateways = gateways.filter(g => g.active);

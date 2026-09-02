@@ -20,6 +20,12 @@ description: Multi-provider email system with failover, retry queue, health chec
 
 **`maskApiKey()` must receive the decrypted key**, not the ciphertext. `safeProvider()` calls `decrypt(r.apiKeyEnc)` then passes the result to `maskApiKey()`.
 
+**All application sends must use the manager.** Transactional emails, admin tests, and admin campaigns must call `getEmailManager().send()` rather than instantiate Resend or another adapter directly.
+
+**Why:** Direct provider calls bypass encrypted panel configuration, priority, failover, health tracking, and the retry queue; the admin campaign button can appear broken even while a provider is configured correctly.
+
+**How to apply:** Resolve the shared sender address, pass a stable idempotency key, and record feature-specific success/failure after the manager returns.
+
 **Auto-seed:** manager auto-seeds Resend from `system_settings.resend_api_key` if `email_providers` is empty — zero downtime migration from the single-provider system.
 
 ## SQL increment pattern

@@ -280,7 +280,7 @@ export const adminApi = {
       percentDone: number; isDone: boolean;
     }>("GET", `/admin/emails/campaigns/${campaignId}/progress`),
   getEmailStats: () =>
-    req<{ totalCampaigns: number; totalSent: number; totalFailed: number; resendConfigured: boolean }>("GET", "/admin/emails/stats"),
+    req<{ totalCampaigns: number; totalSent: number; totalFailed: number; emailConfigured: boolean }>("GET", "/admin/emails/stats"),
   getEmailRecipients: (params?: { search?: string; limit?: number }) => {
     const q = new URLSearchParams();
     if (params?.search) q.set("search", params.search);

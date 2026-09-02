@@ -79,11 +79,11 @@ function StatsSection() {
         { label: "Emails envoyés", value: data?.totalSent ?? 0, icon: CheckCircle2, color: "text-white", bg: "bg-green-500/10 border-green-500/20" },
         { label: "Échecs", value: data?.totalFailed ?? 0, icon: XCircle, color: "text-red-400", bg: "bg-red-500/10 border-red-500/20" },
         {
-          label: "Resend",
-          value: data?.resendConfigured ? "✓ Actif" : "⚠ Absent",
+          label: "Fournisseur email",
+          value: data?.emailConfigured ? "✓ Actif" : "⚠ Absent",
           icon: Settings,
-          color: data?.resendConfigured ? "text-green-400" : "text-yellow-400",
-          bg: data?.resendConfigured ? "bg-green-500/10 border-green-500/20" : "bg-yellow-500/10 border-yellow-500/20",
+          color: data?.emailConfigured ? "text-green-400" : "text-yellow-400",
+          bg: data?.emailConfigured ? "bg-green-500/10 border-green-500/20" : "bg-yellow-500/10 border-yellow-500/20",
         },
       ].map(c => (
         <div key={c.label} className={cn("rounded-2xl border p-4 flex flex-col gap-1.5", c.bg)}>
@@ -678,18 +678,18 @@ function CampaignsList() {
 }
 
 /* ── Resend config warning ─────────────────────────────── */
-function ResendWarning() {
+function EmailProviderWarning() {
   const { data } = useQuery({ queryKey: ["email-stats"], queryFn: () => adminApi.getEmailStats() });
-  if (data?.resendConfigured) return null;
+  if (data?.emailConfigured) return null;
 
   return (
     <div className="flex items-start gap-3 p-4 rounded-2xl bg-yellow-500/10 border border-yellow-500/20">
       <AlertCircle className="w-5 h-5 text-yellow-400 flex-shrink-0 mt-0.5" />
       <div>
-        <p className="text-yellow-300 text-sm font-semibold">Resend API non configuré</p>
+        <p className="text-yellow-300 text-sm font-semibold">Aucun fournisseur email actif</p>
         <p className="text-yellow-400/70 text-xs mt-0.5 leading-relaxed">
-          La clé API Resend n'est pas configurée. Les emails seront simulés (loggés mais pas envoyés).
-          Ajoutez <code className="bg-yellow-500/20 px-1 rounded text-yellow-300">RESEND_API_KEY</code> dans les secrets d'environnement pour activer l'envoi réel.
+          Activez au moins un fournisseur dans <strong>Fournisseurs Email</strong>.
+          Les campagnes utiliseront automatiquement sa clé chiffrée, sa priorité et les fournisseurs de secours configurés dans le panneau.
         </p>
       </div>
     </div>
@@ -707,11 +707,11 @@ export default function AdminEmails() {
             </div>
             <div>
               <h1 className="text-white text-xl font-bold">Campagnes Email</h1>
-              <p className="text-zinc-400 text-sm">Envoyez des emails professionnels à vos utilisateurs via Resend</p>
+              <p className="text-zinc-400 text-sm">Envoyez des emails à un utilisateur précis ou à l'ensemble de vos utilisateurs</p>
             </div>
           </div>
 
-          <ResendWarning />
+          <EmailProviderWarning />
           <StatsSection />
           <ComposeForm />
           <CampaignsList />

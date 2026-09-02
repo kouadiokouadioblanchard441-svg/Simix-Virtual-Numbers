@@ -164059,7 +164059,6 @@ var import_express18 = __toESM(require_express2(), 1);
 init_drizzle_orm();
 init_src();
 init_logger2();
-init_dist();
 var router17 = (0, import_express18.Router)();
 router17.use(requireAdminJwt);
 function requireAdmin5(req, res, next) {
@@ -164076,21 +164075,6 @@ function requireAdmin5(req, res, next) {
     return;
   }
   next();
-}
-async function getResend() {
-  let key = process.env["RESEND_API_KEY"] ?? null;
-  if (!key) {
-    try {
-      const rows = await db.select().from(systemSettingsTable).where(eq(systemSettingsTable.key, "resend_api_key")).limit(1);
-      key = rows[0]?.value?.trim() || null;
-    } catch {
-    }
-  }
-  if (!key) return null;
-  return new Resend(key);
-}
-function getFromEmail2() {
-  return process.env["EMAIL_FROM"] || "Simix <noreply@simix.site>";
 }
 function buildEmailHtml(subject, body, templateType) {
   const accentColor = templateType === "security" ? "#ef4444" : templateType === "promotion" ? "#f59e0b" : templateType === "bonus" ? "#059669" : "#7c3aed";
@@ -164206,14 +164190,9 @@ router17.post("/admin/emails/send", requireAdmin5, async (req, res) => {
     res.status(400).json({ error: "Contenu requis" });
     return;
   }
-  const resend = await getResend();
-  if (!resend) {
-    res.status(503).json({
-      error: "Cl\xE9 API Resend non configur\xE9e. Ajoutez RESEND_API_KEY dans les secrets ou dans Param\xE8tres > Int\xE9grations > Resend."
-    });
-    return;
-  }
   const finalHtml = htmlContent?.trim() || buildEmailHtml(subject, body.replace(/\n/g, "<br>"), templateType);
+  const from = await getFromEmail();
+  const emailManager = getEmailManager();
   function isRealEmail(email) {
     if (!email || !email.includes("@")) return false;
     const trimmed = email.trim().toLowerCase();
@@ -164248,8 +164227,6 @@ router17.post("/admin/emails/send", requireAdmin5, async (req, res) => {
   let failedCount = 0;
   const BATCH_SIZE = 10;
   const BATCH_DELAY = 1200;
-  const RETRY_DELAY = 5e3;
-  const MAX_RETRIES = 3;
   const sleep = (ms2) => new Promise((r3) => setTimeout(r3, ms2));
   for (let i2 = 0; i2 < recipients.length; i2 += BATCH_SIZE) {
     const batch = recipients.slice(i2, i2 + BATCH_SIZE).filter((r3) => !!r3.email);
@@ -164257,65 +164234,42 @@ router17.post("/admin/emails/send", requireAdmin5, async (req, res) => {
       failedCount += BATCH_SIZE;
       continue;
     }
-    const messages = batch.map((recipient) => ({
-      from: getFromEmail2(),
-      to: recipient.email,
-      subject: subject.trim(),
-      html: finalHtml,
-      ...body?.trim() ? { text: body.trim() } : {}
-    }));
-    let attempt = 0;
-    let batchOk = false;
-    while (attempt < MAX_RETRIES && !batchOk) {
-      attempt++;
+    await Promise.all(batch.map(async (recipient) => {
       try {
-        const result = await resend.batch.send(messages);
-        if (result.error) {
-          const msg = result.error.message ?? JSON.stringify(result.error);
-          if (msg.toLowerCase().includes("too many") && attempt < MAX_RETRIES) {
-            logger.warn({ attempt, batchStart: i2 }, "[emails] Rate-limited, retrying after delay");
-            await sleep(RETRY_DELAY * attempt);
-            continue;
-          }
-          throw new Error(`Resend API error: ${msg}`);
+        const result = await emailManager.send({
+          from,
+          to: recipient.email,
+          subject: subject.trim(),
+          html: finalHtml,
+          ...body?.trim() ? { text: body.trim() } : {},
+          idempotencyKey: `campaign-${campaign.id}-${recipient.id ?? recipient.email}`,
+          metadata: { type: "admin_campaign", campaignId: campaign.id }
+        });
+        if (!result.success) {
+          throw new Error(result.error ?? "\xC9chec de tous les fournisseurs email");
         }
-        const ids = result.data ?? [];
-        await Promise.all(batch.map(async (recipient, idx) => {
-          const messageId = ids[idx]?.id ?? null;
-          sentCount++;
-          await db.insert(emailLogsTable).values({
-            campaignId: campaign.id,
-            userId: recipient.id,
-            email: recipient.email,
-            status: "sent",
-            messageId,
-            sentAt: /* @__PURE__ */ new Date()
-          });
-        }));
-        logger.debug({ batchStart: i2, count: batch.length }, "[emails] Batch sent");
-        batchOk = true;
+        sentCount++;
+        await db.insert(emailLogsTable).values({
+          campaignId: campaign.id,
+          userId: recipient.id,
+          email: recipient.email,
+          status: "sent",
+          messageId: result.messageId ?? null,
+          sentAt: /* @__PURE__ */ new Date()
+        });
       } catch (err) {
+        failedCount++;
         const errMsg = err instanceof Error ? err.message : String(err);
-        const isRateLimit = errMsg.toLowerCase().includes("too many");
-        if (isRateLimit && attempt < MAX_RETRIES) {
-          logger.warn({ attempt, batchStart: i2 }, "[emails] Rate-limited (catch), retrying");
-          await sleep(RETRY_DELAY * attempt);
-          continue;
-        }
-        failedCount += batch.length;
-        logger.error({ batchStart: i2, err: errMsg }, "[emails] Batch failed permanently");
-        await Promise.all(batch.map(
-          (recipient) => db.insert(emailLogsTable).values({
-            campaignId: campaign.id,
-            userId: recipient.id,
-            email: recipient.email,
-            status: "failed",
-            error: errMsg.slice(0, 500)
-          })
-        ));
-        batchOk = true;
+        logger.error({ campaignId: campaign.id, email: recipient.email, err: errMsg }, "[emails] Envoi individuel \xE9chou\xE9");
+        await db.insert(emailLogsTable).values({
+          campaignId: campaign.id,
+          userId: recipient.id,
+          email: recipient.email,
+          status: "failed",
+          error: errMsg.slice(0, 500)
+        });
       }
-    }
+    }));
     if (i2 + BATCH_SIZE < recipients.length) {
       await sleep(BATCH_DELAY);
     }
@@ -164374,75 +164328,31 @@ router17.post("/admin/emails/test", requireAdmin5, async (req, res) => {
     res.status(400).json({ error: "Adresse email invalide" });
     return;
   }
-  const resendClient = await getResend();
-  if (!resendClient) {
-    res.status(503).json({ error: "Cl\xE9 API Resend non configur\xE9e \u2014 ajoutez-la dans Param\xE8tres > Resend" });
-    return;
-  }
-  const testCode = "748291";
-  const digits = testCode.split("");
-  const html = `<!DOCTYPE html>
-<html lang="fr">
-<head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/><title>Test Email \u2014 Simix</title></head>
-<body style="margin:0;padding:0;background:#0a0a0f;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:#0a0a0f;padding:40px 20px;">
-    <tr><td align="center">
-      <table width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;background:linear-gradient(145deg,#12121e,#1a1a2e);border-radius:24px;border:1px solid #2a2a4a;overflow:hidden;">
-        <tr><td style="height:4px;background:linear-gradient(90deg,#7c3aed,#6366f1,#8b5cf6);"></td></tr>
-        <tr><td align="center" style="padding:36px 40px 24px;">
-          <table cellpadding="0" cellspacing="0">
-            <tr>
-              <td valign="middle"><div style="width:40px;height:40px;border-radius:10px;background:linear-gradient(135deg,#7c3aed,#6366f1);display:inline-flex;align-items:center;justify-content:center;"><span style="color:white;font-size:22px;font-weight:800;line-height:1;">S</span></div></td>
-              <td valign="middle" style="padding-left:10px;"><span style="color:#ffffff;font-size:22px;font-weight:800;letter-spacing:-0.5px;">imix</span></td>
-            </tr>
-          </table>
-        </td></tr>
-        <tr><td align="center" style="padding:0 40px 20px;">
-          <span style="display:inline-block;background:rgba(6,182,212,0.15);color:#22d3ee;font-size:11px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;padding:6px 16px;border-radius:100px;border:1px solid rgba(6,182,212,0.3);">
-            \u{1F9EA} Email de test \u2014 Admin
-          </span>
-        </td></tr>
-        <tr><td style="padding:0 40px 24px;">
-          <h1 style="color:#ffffff;font-size:24px;font-weight:700;margin:0 0 12px;text-align:center;">Test de configuration Resend</h1>
-          <p style="color:#94a3b8;font-size:14px;line-height:1.7;margin:0;text-align:center;">
-            Cet email confirme que votre int\xE9gration <strong style="color:#e2e8f0;">Resend</strong> est correctement configur\xE9e sur Simix.<br/>
-            Les utilisateurs recevront des codes OTP dans ce format.
-          </p>
-        </td></tr>
-        <tr><td align="center" style="padding:0 40px 28px;">
-          <p style="color:#64748b;font-size:12px;margin:0 0 14px;text-transform:uppercase;letter-spacing:1px;">Code OTP de d\xE9monstration</p>
-          <table cellpadding="0" cellspacing="0"><tr>
-            ${digits.map((d) => `<td style="padding:0 4px;"><div style="width:48px;height:56px;background:linear-gradient(135deg,rgba(124,58,237,0.15),rgba(99,102,241,0.1));border:2px solid rgba(124,58,237,0.4);border-radius:14px;display:flex;align-items:center;justify-content:center;text-align:center;"><span style="color:#a78bfa;font-size:26px;font-weight:700;font-family:monospace;line-height:56px;display:block;">${d}</span></div></td>`).join("")}
-          </tr></table>
-        </td></tr>
-        <tr><td style="padding:0 40px 32px;">
-          <div style="background:rgba(6,182,212,0.08);border:1px solid rgba(6,182,212,0.2);border-radius:12px;padding:16px 20px;">
-            <p style="color:#22d3ee;font-size:13px;font-weight:600;margin:0 0 6px;">\u2705 Resend op\xE9rationnel</p>
-            <p style="color:#64748b;font-size:12px;line-height:1.6;margin:0;">
-              Envoy\xE9 depuis : <strong style="color:#94a3b8;">simixsupport@gmail.com</strong><br/>
-              Destinataire de test : <strong style="color:#94a3b8;">${email}</strong>
-            </p>
-          </div>
-        </td></tr>
-        <tr><td style="background:#0d0d1a;padding:20px 40px;border-top:1px solid #1e1e3a;">
-          <p style="color:#334155;font-size:11px;text-align:center;margin:0;">Simix \u2014 Plateforme Fintech Mobile Money \xB7 Email de test g\xE9n\xE9r\xE9 par le panel Admin</p>
-        </td></tr>
-      </table>
-    </td></tr>
-  </table>
-</body>
-</html>`;
   const start2 = Date.now();
   try {
-    const result = await resendClient.emails.send({
-      from: "Simix <noreply@simix.site>",
-      to: [email],
-      subject: "\u{1F9EA} Test Resend \u2014 Simix Admin",
-      html
+    const result = await getEmailManager().send({
+      from: await getFromEmail(),
+      to: email,
+      subject: "Test de configuration email \u2014 Simix Admin",
+      html: buildEmailHtml(
+        "Test de configuration email",
+        `Cet email confirme qu'un fournisseur email configur\xE9 dans le panneau administrateur fonctionne correctement.
+
+Destinataire de test : ${email}
+
+Les emails utilisateurs passent par cette m\xEAme infrastructure.`,
+        "system"
+      ),
+      idempotencyKey: `admin-test-${Date.now()}-${email}`,
+      metadata: { type: "admin_email_test" }
     });
     const latencyMs = Date.now() - start2;
-    logger.info({ email, latencyMs, id: result.data?.id }, "[admin] Test email sent via Resend");
-    res.json({ success: true, message: `Email envoy\xE9 avec succ\xE8s \xE0 ${email}`, latencyMs, id: result.data?.id });
+    if (!result.success) {
+      res.status(503).json({ success: false, error: result.error ?? "Aucun fournisseur email n'a pu envoyer le message", latencyMs });
+      return;
+    }
+    logger.info({ email, latencyMs, id: result.messageId, provider: result.provider }, "[admin] Test email envoy\xE9");
+    res.json({ success: true, message: `Email envoy\xE9 avec succ\xE8s \xE0 ${email}`, latencyMs, id: result.messageId, provider: result.provider });
   } catch (err) {
     const latencyMs = Date.now() - start2;
     const msg = err instanceof Error ? err.message : "Erreur inconnue";
@@ -164481,12 +164391,12 @@ router17.get("/admin/emails/stats", requireAdmin5, async (_req, res) => {
   const [total] = await db.select({ count: count() }).from(emailCampaignsTable);
   const [sent] = await db.select({ count: count() }).from(emailLogsTable).where(eq(emailLogsTable.status, "sent"));
   const [failed] = await db.select({ count: count() }).from(emailLogsTable).where(eq(emailLogsTable.status, "failed"));
-  const resend = await getResend();
+  const [activeProvider] = await db.select({ id: emailProvidersTable.id }).from(emailProvidersTable).where(eq(emailProvidersTable.active, true)).limit(1);
   res.json({
     totalCampaigns: Number(total.count),
     totalSent: Number(sent.count),
     totalFailed: Number(failed.count),
-    resendConfigured: !!resend
+    emailConfigured: !!activeProvider
   });
 });
 var admin_emails_default = router17;

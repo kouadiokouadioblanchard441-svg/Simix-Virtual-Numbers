@@ -7,11 +7,12 @@
  */
 import { Router, type IRouter, type Request, type Response } from "express";
 import { eq, desc, count, ne, isNotNull, and, ilike, or } from "drizzle-orm";
-import { db, emailCampaignsTable, emailLogsTable, usersTable, systemSettingsTable } from "@workspace/db";
+import { db, emailCampaignsTable, emailLogsTable, usersTable, emailProvidersTable } from "@workspace/db";
 import { requireAdminJwt } from "../lib/admin-jwt-middleware";
 import { logger } from "../lib/logger";
-import { Resend } from "resend";
 import { getAppUrl } from "../lib/app-url";
+import { getEmailManager } from "../lib/email-router";
+import { getFromEmail } from "../lib/email-from";
 
 const router: IRouter = Router();
 router.use(requireAdminJwt);
@@ -21,25 +22,6 @@ function requireAdmin(req: Request, res: Response, next: () => void): void {
   if (!req.user) { res.status(401).json({ error: "Auth required" }); return; }
   if (!req.user.isAdmin) { res.status(403).json({ error: "Admin only" }); return; }
   next();
-}
-
-async function getResend(): Promise<Resend | null> {
-  let key = process.env["RESEND_API_KEY"] ?? null;
-  if (!key) {
-    try {
-      const rows = await db.select().from(systemSettingsTable)
-        .where(eq(systemSettingsTable.key, "resend_api_key")).limit(1);
-      key = rows[0]?.value?.trim() || null;
-    } catch {
-      /* DB not available — skip */
-    }
-  }
-  if (!key) return null;
-  return new Resend(key);
-}
-
-function getFromEmail(): string {
-  return process.env["EMAIL_FROM"] || "Simix <noreply@simix.site>";
 }
 
 /* ── Build beautiful HTML template ───────────────────────── */
@@ -171,16 +153,9 @@ router.post("/admin/emails/send", requireAdmin, async (req: Request, res: Respon
   if (!subject?.trim()) { res.status(400).json({ error: "Sujet requis" }); return; }
   if (!body?.trim() && !htmlContent?.trim()) { res.status(400).json({ error: "Contenu requis" }); return; }
 
-  /* ── Vérifier Resend AVANT de créer la campagne ─────────── */
-  const resend = await getResend();
-  if (!resend) {
-    res.status(503).json({
-      error: "Clé API Resend non configurée. Ajoutez RESEND_API_KEY dans les secrets ou dans Paramètres > Intégrations > Resend.",
-    });
-    return;
-  }
-
   const finalHtml = htmlContent?.trim() || buildEmailHtml(subject, body!.replace(/\n/g, "<br>"), templateType);
+  const from = await getFromEmail();
+  const emailManager = getEmailManager();
 
   /* ── Filtre des emails réels (exclure les placeholders @simix.site) ── */
   function isRealEmail(email: string | null | undefined): boolean {
@@ -225,17 +200,13 @@ router.post("/admin/emails/send", requireAdmin, async (req: Request, res: Respon
 
   res.status(202).json({ campaignId: campaign.id, totalRecipients: recipients.length, message: "Envoi en cours..." });
 
-  /* ── Envoi en arrière-plan — batching respectant les limites Resend ──────────
-   * Resend free: 2 req/s · Resend paid: 10 req/s
-   * On utilise l'API batch (1 appel HTTP = N emails) + délai entre batches.
-   * Taille de batch : 10 emails max | délai : 1200 ms entre batches.
-   * En cas de 429, on attend 5 s et on réessaie jusqu'à 3 fois.           */
+  /* ── Envoi en arrière-plan par petits lots ─────────────────────────────
+   * Chaque email passe par le routeur multi-fournisseurs. Les lots limitent
+   * la concurrence et évitent de saturer les quotas gratuits.             */
   let sentCount = 0;
   let failedCount = 0;
   const BATCH_SIZE   = 10;
-  const BATCH_DELAY  = 1200;   /* ms entre chaque batch */
-  const RETRY_DELAY  = 5000;   /* ms d'attente sur 429 */
-  const MAX_RETRIES  = 3;
+  const BATCH_DELAY  = 1200;
 
   const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
 
@@ -243,73 +214,46 @@ router.post("/admin/emails/send", requireAdmin, async (req: Request, res: Respon
     const batch = recipients.slice(i, i + BATCH_SIZE).filter(r => !!r.email);
     if (batch.length === 0) { failedCount += BATCH_SIZE; continue; }
 
-    /* Build payload for resend.batch.send() */
-    const messages = batch.map(recipient => ({
-      from: getFromEmail(),
-      to:   recipient.email as string,
-      subject: subject.trim(),
-      html: finalHtml,
-      ...(body?.trim() ? { text: body.trim() } : {}),
-    }));
-
-    let attempt = 0;
-    let batchOk  = false;
-
-    while (attempt < MAX_RETRIES && !batchOk) {
-      attempt++;
+    /* Chaque message passe par le gestionnaire central :
+       clés du panneau, priorité, failover et file d'attente inclus. */
+    await Promise.all(batch.map(async (recipient) => {
       try {
-        /* Use batch send — one HTTP call for all emails in this slice */
-        const result = await (resend.batch as { send: (msgs: typeof messages) => Promise<{ data?: { id: string }[] | null; error?: { message?: string } | null }> }).send(messages);
+        const result = await emailManager.send({
+          from,
+          to: recipient.email as string,
+          subject: subject.trim(),
+          html: finalHtml,
+          ...(body?.trim() ? { text: body.trim() } : {}),
+          idempotencyKey: `campaign-${campaign.id}-${recipient.id ?? recipient.email}`,
+          metadata: { type: "admin_campaign", campaignId: campaign.id },
+        });
 
-        if (result.error) {
-          const msg = result.error.message ?? JSON.stringify(result.error);
-          if (msg.toLowerCase().includes("too many") && attempt < MAX_RETRIES) {
-            logger.warn({ attempt, batchStart: i }, "[emails] Rate-limited, retrying after delay");
-            await sleep(RETRY_DELAY * attempt);
-            continue;
-          }
-          throw new Error(`Resend API error: ${msg}`);
+        if (!result.success) {
+          throw new Error(result.error ?? "Échec de tous les fournisseurs email");
         }
 
-        /* Log each successful email */
-        const ids = result.data ?? [];
-        await Promise.all(batch.map(async (recipient, idx) => {
-          const messageId = ids[idx]?.id ?? null;
-          sentCount++;
-          await db.insert(emailLogsTable).values({
-            campaignId: campaign.id,
-            userId:     recipient.id,
-            email:      recipient.email!,
-            status:     "sent",
-            messageId,
-            sentAt:     new Date(),
-          });
-        }));
-        logger.debug({ batchStart: i, count: batch.length }, "[emails] Batch sent");
-        batchOk = true;
+        sentCount++;
+        await db.insert(emailLogsTable).values({
+          campaignId: campaign.id,
+          userId: recipient.id,
+          email: recipient.email!,
+          status: "sent",
+          messageId: result.messageId ?? null,
+          sentAt: new Date(),
+        });
       } catch (err) {
+        failedCount++;
         const errMsg = err instanceof Error ? err.message : String(err);
-        const isRateLimit = errMsg.toLowerCase().includes("too many");
-        if (isRateLimit && attempt < MAX_RETRIES) {
-          logger.warn({ attempt, batchStart: i }, "[emails] Rate-limited (catch), retrying");
-          await sleep(RETRY_DELAY * attempt);
-          continue;
-        }
-        /* Permanent failure for this batch */
-        failedCount += batch.length;
-        logger.error({ batchStart: i, err: errMsg }, "[emails] Batch failed permanently");
-        await Promise.all(batch.map(recipient =>
-          db.insert(emailLogsTable).values({
-            campaignId: campaign.id,
-            userId:     recipient.id,
-            email:      recipient.email!,
-            status:     "failed",
-            error:      errMsg.slice(0, 500),
-          })
-        ));
-        batchOk = true; /* skip retrying, move to next batch */
+        logger.error({ campaignId: campaign.id, email: recipient.email, err: errMsg }, "[emails] Envoi individuel échoué");
+        await db.insert(emailLogsTable).values({
+          campaignId: campaign.id,
+          userId: recipient.id,
+          email: recipient.email!,
+          status: "failed",
+          error: errMsg.slice(0, 500),
+        });
       }
-    }
+    }));
 
     /* Pause between batches to respect rate limits */
     if (i + BATCH_SIZE < recipients.length) {
@@ -410,78 +354,28 @@ router.post("/admin/emails/test", requireAdmin, async (req: Request, res: Respon
     return;
   }
 
-  const resendClient = await getResend();
-  if (!resendClient) {
-    res.status(503).json({ error: "Clé API Resend non configurée — ajoutez-la dans Paramètres > Resend" });
-    return;
-  }
-
-  const testCode = "748291";
-  const digits = testCode.split("");
-  const html = `<!DOCTYPE html>
-<html lang="fr">
-<head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/><title>Test Email — Simix</title></head>
-<body style="margin:0;padding:0;background:#0a0a0f;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:#0a0a0f;padding:40px 20px;">
-    <tr><td align="center">
-      <table width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;background:linear-gradient(145deg,#12121e,#1a1a2e);border-radius:24px;border:1px solid #2a2a4a;overflow:hidden;">
-        <tr><td style="height:4px;background:linear-gradient(90deg,#7c3aed,#6366f1,#8b5cf6);"></td></tr>
-        <tr><td align="center" style="padding:36px 40px 24px;">
-          <table cellpadding="0" cellspacing="0">
-            <tr>
-              <td valign="middle"><div style="width:40px;height:40px;border-radius:10px;background:linear-gradient(135deg,#7c3aed,#6366f1);display:inline-flex;align-items:center;justify-content:center;"><span style="color:white;font-size:22px;font-weight:800;line-height:1;">S</span></div></td>
-              <td valign="middle" style="padding-left:10px;"><span style="color:#ffffff;font-size:22px;font-weight:800;letter-spacing:-0.5px;">imix</span></td>
-            </tr>
-          </table>
-        </td></tr>
-        <tr><td align="center" style="padding:0 40px 20px;">
-          <span style="display:inline-block;background:rgba(6,182,212,0.15);color:#22d3ee;font-size:11px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;padding:6px 16px;border-radius:100px;border:1px solid rgba(6,182,212,0.3);">
-            🧪 Email de test — Admin
-          </span>
-        </td></tr>
-        <tr><td style="padding:0 40px 24px;">
-          <h1 style="color:#ffffff;font-size:24px;font-weight:700;margin:0 0 12px;text-align:center;">Test de configuration Resend</h1>
-          <p style="color:#94a3b8;font-size:14px;line-height:1.7;margin:0;text-align:center;">
-            Cet email confirme que votre intégration <strong style="color:#e2e8f0;">Resend</strong> est correctement configurée sur Simix.<br/>
-            Les utilisateurs recevront des codes OTP dans ce format.
-          </p>
-        </td></tr>
-        <tr><td align="center" style="padding:0 40px 28px;">
-          <p style="color:#64748b;font-size:12px;margin:0 0 14px;text-transform:uppercase;letter-spacing:1px;">Code OTP de démonstration</p>
-          <table cellpadding="0" cellspacing="0"><tr>
-            ${digits.map(d => `<td style="padding:0 4px;"><div style="width:48px;height:56px;background:linear-gradient(135deg,rgba(124,58,237,0.15),rgba(99,102,241,0.1));border:2px solid rgba(124,58,237,0.4);border-radius:14px;display:flex;align-items:center;justify-content:center;text-align:center;"><span style="color:#a78bfa;font-size:26px;font-weight:700;font-family:monospace;line-height:56px;display:block;">${d}</span></div></td>`).join("")}
-          </tr></table>
-        </td></tr>
-        <tr><td style="padding:0 40px 32px;">
-          <div style="background:rgba(6,182,212,0.08);border:1px solid rgba(6,182,212,0.2);border-radius:12px;padding:16px 20px;">
-            <p style="color:#22d3ee;font-size:13px;font-weight:600;margin:0 0 6px;">✅ Resend opérationnel</p>
-            <p style="color:#64748b;font-size:12px;line-height:1.6;margin:0;">
-              Envoyé depuis : <strong style="color:#94a3b8;">simixsupport@gmail.com</strong><br/>
-              Destinataire de test : <strong style="color:#94a3b8;">${email}</strong>
-            </p>
-          </div>
-        </td></tr>
-        <tr><td style="background:#0d0d1a;padding:20px 40px;border-top:1px solid #1e1e3a;">
-          <p style="color:#334155;font-size:11px;text-align:center;margin:0;">Simix — Plateforme Fintech Mobile Money · Email de test généré par le panel Admin</p>
-        </td></tr>
-      </table>
-    </td></tr>
-  </table>
-</body>
-</html>`;
-
   const start = Date.now();
   try {
-    const result = await resendClient.emails.send({
-      from: "Simix <noreply@simix.site>",
-      to: [email],
-      subject: "🧪 Test Resend — Simix Admin",
-      html,
+    const result = await getEmailManager().send({
+      from: await getFromEmail(),
+      to: email,
+      subject: "Test de configuration email — Simix Admin",
+      html: buildEmailHtml(
+        "Test de configuration email",
+        `Cet email confirme qu'un fournisseur email configuré dans le panneau administrateur fonctionne correctement.\n\nDestinataire de test : ${email}\n\nLes emails utilisateurs passent par cette même infrastructure.`,
+        "system",
+      ),
+      idempotencyKey: `admin-test-${Date.now()}-${email}`,
+      metadata: { type: "admin_email_test" },
     });
 
     const latencyMs = Date.now() - start;
-    logger.info({ email, latencyMs, id: result.data?.id }, "[admin] Test email sent via Resend");
-    res.json({ success: true, message: `Email envoyé avec succès à ${email}`, latencyMs, id: result.data?.id });
+    if (!result.success) {
+      res.status(503).json({ success: false, error: result.error ?? "Aucun fournisseur email n'a pu envoyer le message", latencyMs });
+      return;
+    }
+    logger.info({ email, latencyMs, id: result.messageId, provider: result.provider }, "[admin] Test email envoyé");
+    res.json({ success: true, message: `Email envoyé avec succès à ${email}`, latencyMs, id: result.messageId, provider: result.provider });
   } catch (err) {
     const latencyMs = Date.now() - start;
     const msg = err instanceof Error ? err.message : "Erreur inconnue";
@@ -535,12 +429,15 @@ router.get("/admin/emails/stats", requireAdmin, async (_req: Request, res: Respo
   const [sent] = await db.select({ count: count() }).from(emailLogsTable).where(eq(emailLogsTable.status, "sent"));
   const [failed] = await db.select({ count: count() }).from(emailLogsTable).where(eq(emailLogsTable.status, "failed"));
 
-  const resend = await getResend();
+  const [activeProvider] = await db.select({ id: emailProvidersTable.id })
+    .from(emailProvidersTable)
+    .where(eq(emailProvidersTable.active, true))
+    .limit(1);
   res.json({
     totalCampaigns: Number(total.count),
     totalSent: Number(sent.count),
     totalFailed: Number(failed.count),
-    resendConfigured: !!resend,
+    emailConfigured: !!activeProvider,
   });
 });
 
