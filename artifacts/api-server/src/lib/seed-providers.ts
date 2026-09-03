@@ -54,55 +54,61 @@ export async function seedProvidersFromEnv(): Promise<void> {
 }
 
 /**
- * Bootstrap the transactional email provider from Plesk environment variables.
+ * Bootstrap transactional email providers from Plesk environment variables.
  *
  * Plesk owns the runtime secret, while the email router reads encrypted
  * provider credentials from the shared database. Only a missing or
- * undecryptable DB key is repaired here; a valid admin-configured key and
+ * undecryptable DB key is repaired here; valid admin-configured keys and
  * active/priority settings are never overwritten on restart.
  */
 export async function seedEmailProvidersFromEnv(): Promise<void> {
-  const resendKey = process.env.RESEND_API_KEY?.trim();
+  const providers = [
+    { slug: "resend", name: "Resend", envKey: "RESEND_API_KEY", priority: 1 },
+    { slug: "brevo", name: "Brevo", envKey: "BREVO_API_KEY", priority: 2 },
+  ] as const;
 
-  if (!resendKey) {
-    logger.debug("[seed-email-providers] RESEND_API_KEY not set — skipping email provider bootstrap");
-    return;
-  }
-
-  try {
-    const [existing] = await db
-      .select({
-        id: emailProvidersTable.id,
-        apiKeyEnc: emailProvidersTable.apiKeyEnc,
-      })
-      .from(emailProvidersTable)
-      .where(eq(emailProvidersTable.slug, "resend"))
-      .limit(1);
-
-    if (existing) {
-      const existingKey = existing.apiKeyEnc ? decrypt(existing.apiKeyEnc) : "";
-      if (existingKey) {
-        logger.info("[seed-email-providers] Resend provider already has a usable key — nothing to do");
-        return;
-      }
-
-      await db
-        .update(emailProvidersTable)
-        .set({ apiKeyEnc: encrypt(resendKey) })
-        .where(eq(emailProvidersTable.id, existing.id));
-      logger.info("[seed-email-providers] Missing Resend key restored from RESEND_API_KEY");
-      return;
+  for (const provider of providers) {
+    const apiKey = process.env[provider.envKey]?.trim();
+    if (!apiKey) {
+      logger.debug({ provider: provider.slug }, "[seed-email-providers] API key not set — skipping provider bootstrap");
+      continue;
     }
 
-    await db.insert(emailProvidersTable).values({
-      name: "Resend",
-      slug: "resend",
-      priority: 1,
-      active: true,
-      apiKeyEnc: encrypt(resendKey),
-    });
-    logger.info("[seed-email-providers] Resend provider created from RESEND_API_KEY");
-  } catch (err) {
-    logger.error({ err }, "[seed-email-providers] Failed to bootstrap Resend — continuing startup");
+    try {
+      const [existing] = await db
+        .select({
+          id: emailProvidersTable.id,
+          apiKeyEnc: emailProvidersTable.apiKeyEnc,
+        })
+        .from(emailProvidersTable)
+        .where(eq(emailProvidersTable.slug, provider.slug))
+        .limit(1);
+
+      if (existing) {
+        const existingKey = existing.apiKeyEnc ? decrypt(existing.apiKeyEnc) : "";
+        if (existingKey) {
+          logger.info({ provider: provider.slug }, "[seed-email-providers] Provider already has a usable key — nothing to do");
+          continue;
+        }
+
+        await db
+          .update(emailProvidersTable)
+          .set({ apiKeyEnc: encrypt(apiKey) })
+          .where(eq(emailProvidersTable.id, existing.id));
+        logger.info({ provider: provider.slug }, "[seed-email-providers] Missing provider key restored from environment");
+        continue;
+      }
+
+      await db.insert(emailProvidersTable).values({
+        name: provider.name,
+        slug: provider.slug,
+        priority: provider.priority,
+        active: true,
+        apiKeyEnc: encrypt(apiKey),
+      });
+      logger.info({ provider: provider.slug }, "[seed-email-providers] Provider created from environment");
+    } catch (err) {
+      logger.error({ err, provider: provider.slug }, "[seed-email-providers] Failed to bootstrap provider — continuing startup");
+    }
   }
 }
