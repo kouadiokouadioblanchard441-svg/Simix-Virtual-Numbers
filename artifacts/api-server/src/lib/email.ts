@@ -254,51 +254,55 @@ function getProfessionalAuthEmailHtml(data: {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="color-scheme" content="light">
   <title>${title} — Simix</title>
+  <style>
+    @media only screen and (max-width: 620px) {
+      .email-shell { padding: 16px 0 !important; }
+      .email-card { border-left: 0 !important; border-right: 0 !important; border-radius: 0 !important; }
+      .email-content { padding: 30px 24px 26px !important; }
+      .email-security { padding-left: 24px !important; padding-right: 24px !important; }
+      .email-title { font-size: 24px !important; }
+      .email-code { font-size: 32px !important; letter-spacing: 7px !important; }
+    }
+  </style>
 </head>
-<body style="margin:0;padding:0;background:#f1f1f3;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#1d1d1f;">
+<body style="margin:0;padding:0;background:#f1f1f3;font-family:Arial,Helvetica,sans-serif;color:#17171c;">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f1f1f3;">
     <tr>
-      <td align="center" style="padding:32px 16px 40px;">
+      <td align="center" class="email-shell" style="padding:28px 16px 40px;">
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;">
 
-          <!-- Brand header -->
+          <!-- Brand banner inspired by the reference email -->
           <tr>
-            <td align="center" style="padding:0 0 24px;">
+            <td style="background:#17151f;border-radius:14px 14px 0 0;padding:22px 24px;text-align:center;">
               <a href="${appUrl}" style="text-decoration:none;">
-                <img src="${appUrl}/logo.svg" alt="Simix" width="118" style="display:block;width:118px;height:auto;border:0;margin:0 auto;">
+                <img src="${appUrl}/simix-icon.png" alt="" width="30" height="30" style="display:inline-block;vertical-align:middle;width:30px;height:30px;border:0;border-radius:8px;margin-right:8px;">
+                <span style="display:inline-block;vertical-align:middle;color:#ffffff;font-family:Arial,Helvetica,sans-serif;font-size:20px;line-height:30px;font-weight:700;letter-spacing:1.8px;">SIMIX</span>
               </a>
             </td>
           </tr>
 
-          <!-- Main card -->
           <tr>
-            <td style="background:#ffffff;border:1px solid #e5e5e7;border-radius:18px;overflow:hidden;">
+            <td class="email-card" style="background:#ffffff;border:1px solid #e3e3e7;border-top:0;border-radius:0 0 14px 14px;overflow:hidden;">
               <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
                 <tr>
-                  <td style="height:4px;background:#2563eb;font-size:0;line-height:0;">&nbsp;</td>
-                </tr>
-              </table>
-
-              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
-                <tr>
-                  <td style="padding:38px 42px 34px;">
-                    <p style="margin:0 0 10px;font-size:12px;line-height:1.4;font-weight:700;letter-spacing:1.6px;text-transform:uppercase;color:#2563eb;">${eyebrow}</p>
-                    <h1 style="margin:0 0 12px;font-size:28px;line-height:1.2;font-weight:700;letter-spacing:-0.5px;color:#111827;">${title}</h1>
-                    <p style="margin:0 0 26px;font-size:15px;line-height:1.6;color:#6b7280;">${subtitle}</p>
-                    <p style="margin:0 0 22px;font-size:16px;line-height:1.65;color:#1f2937;">Bonjour <strong style="color:#111827;">${firstName}</strong>,<br>${body}</p>
+                  <td class="email-content" style="padding:32px 42px 28px;">
+                    <p style="margin:0 0 10px;font-size:12px;line-height:1.4;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#7c3aed;">${eyebrow}</p>
+                    <h1 class="email-title" style="margin:0 0 20px;font-family:Arial,Helvetica,sans-serif;font-size:26px;line-height:1.25;font-weight:700;letter-spacing:-0.3px;color:#111114;">${title}</h1>
+                    <p style="margin:0 0 18px;font-size:16px;line-height:1.6;color:#24242a;">Bonjour <strong style="color:#111114;">${firstName}</strong>,</p>
+                    <p style="margin:0 0 24px;font-size:16px;line-height:1.65;color:#24242a;">${body}</p>
 
                     <!-- Verification code -->
-                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f3f7ff;border:1px solid #dbe7ff;border-radius:14px;">
+                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#faf8ff;border:1px solid #e6dcff;border-radius:4px;">
                       <tr>
-                        <td align="center" style="padding:24px 18px 22px;">
-                          <p style="margin:0 0 10px;font-size:11px;line-height:1.4;font-weight:700;letter-spacing:1.8px;text-transform:uppercase;color:#2563eb;">${codeLabel}</p>
-                          <p style="margin:0;font-size:42px;line-height:1.1;font-weight:700;letter-spacing:10px;color:#111827;font-family:'Courier New',Courier,monospace;">${code}</p>
-                          <p style="margin:12px 0 0;font-size:12px;line-height:1.5;color:#6b7280;">Valable pendant 10 minutes · Utilisation unique</p>
+                        <td align="center" style="padding:22px 18px 20px;">
+                          <p style="margin:0 0 11px;font-size:14px;line-height:1.4;font-weight:700;color:#24242a;">${codeLabel}</p>
+                          <p class="email-code" style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:38px;line-height:1.15;font-weight:700;letter-spacing:9px;color:#7c3aed;">${code}</p>
+                          <p style="margin:12px 0 0;font-size:12px;line-height:1.5;color:#6b6b75;">Ce code expire dans 10 minutes.</p>
                         </td>
                       </tr>
                     </table>
 
-                    <p style="margin:24px 0 0;font-size:13px;line-height:1.6;color:#6b7280;">${footerText}</p>
+                    <p style="margin:24px 0 0;font-size:15px;line-height:1.65;color:#24242a;">${footerText}</p>
                   </td>
                 </tr>
               </table>
@@ -306,9 +310,9 @@ function getProfessionalAuthEmailHtml(data: {
               <!-- Security note -->
               <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
                 <tr>
-                  <td style="padding:15px 42px;background:#fafafa;border-top:1px solid #f0f0f2;">
-                    <p style="margin:0;font-size:12px;line-height:1.6;color:#6b7280;">
-                      <strong style="color:#1f2937;">Conseil de sécurité :</strong> Simix ne vous demandera jamais ce code par téléphone, email ou chat.
+                  <td class="email-security" style="padding:15px 42px;background:#fbfbfc;border-top:1px solid #eeeeF2;">
+                    <p style="margin:0;font-size:12px;line-height:1.6;color:#6b6b75;">
+                      <strong style="color:#24242a;">Conseil de sécurité :</strong> Simix ne vous demandera jamais ce code par téléphone, email ou chat.
                     </p>
                   </td>
                 </tr>
@@ -319,8 +323,8 @@ function getProfessionalAuthEmailHtml(data: {
           <!-- Footer -->
           <tr>
             <td align="center" style="padding:22px 12px 0;">
-              <p style="margin:0 0 5px;font-size:12px;line-height:1.5;color:#8b8b93;">© ${new Date().getFullYear()} Simix · <a href="mailto:simixsupport@gmail.com" style="color:#2563eb;text-decoration:none;">Support</a></p>
-              <p style="margin:0;font-size:11px;line-height:1.5;color:#a1a1aa;">Cet email a été envoyé automatiquement, merci de ne pas y répondre.</p>
+              <p style="margin:0 0 5px;font-size:12px;line-height:1.5;color:#8b8b93;">© ${new Date().getFullYear()} Simix · <a href="mailto:simixsupport@gmail.com" style="color:#7c3aed;text-decoration:none;">Support</a></p>
+              <p style="margin:0;font-size:11px;line-height:1.5;color:#a1a1aa;">Ceci est un message automatique, veuillez ne pas y répondre.</p>
             </td>
           </tr>
 
@@ -362,21 +366,25 @@ function formatDateFR(d: Date): string {
    CONFIRMATION DÉPÔT
 ───────────────────────────────────────────────────────────────── */
 function getDepositConfirmationHtml(data: DepositEmailData): string {
-  const firstName = data.userFullName.split(" ")[0] ?? data.userFullName;
+  const firstName = escapeEmailHtml(data.userFullName.split(" ")[0] ?? data.userFullName);
   const txRef     = data.depositId ?? data.transactionId;
-  const shortRef  = `TRX-${txRef.slice(-8).toUpperCase()}`;
+  const shortRef  = escapeEmailHtml(`TRX-${txRef.slice(-8).toUpperCase()}`);
   const dateStr   = formatDateFR(data.createdAt);
   const amountStr = formatFCFA(data.amount);
+  const safeAmount = escapeEmailHtml(amountStr);
+  const safeMethod = escapeEmailHtml(data.method);
+  const safePhone = data.phoneNumber ? escapeEmailHtml(data.phoneNumber) : null;
+  const safeDate = escapeEmailHtml(dateStr);
+  const safeBalance = data.newBalance != null ? escapeEmailHtml(formatFCFA(data.newBalance)) : null;
 
   const rows: { label: string; value: string }[] = [
-    { label: "Opérateur",       value: data.method },
-    ...(data.phoneNumber ? [{ label: "Numéro utilisé", value: data.phoneNumber }] : []),
+    { label: "Opérateur",       value: safeMethod },
+    ...(safePhone ? [{ label: "Numéro utilisé", value: safePhone }] : []),
     { label: "Référence",        value: shortRef },
-    { label: "Date et heure",    value: dateStr },
-    { label: "Statut",           value: "✅ Validé" },
-    ...(data.newBalance != null ? [{ label: "Nouveau solde", value: formatFCFA(data.newBalance) }] : []),
+    { label: "Date et heure",    value: safeDate },
+    { label: "Statut",           value: "Validé" },
+    ...(safeBalance ? [{ label: "Nouveau solde", value: safeBalance }] : []),
   ];
-
   return `<!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -497,6 +505,118 @@ function getDepositConfirmationHtml(data: DepositEmailData): string {
 </html>`;
 }
 
+function getBrandedDepositConfirmationHtml(data: DepositEmailData): string {
+  const appUrl = getAppUrl();
+  const firstName = escapeEmailHtml(data.userFullName.split(" ")[0] ?? data.userFullName);
+  const txRef = data.depositId ?? data.transactionId;
+  const shortRef = escapeEmailHtml(`TRX-${txRef.slice(-8).toUpperCase()}`);
+  const amount = escapeEmailHtml(formatFCFA(data.amount));
+  const rows = [
+    { label: "Opérateur", value: data.method },
+    ...(data.phoneNumber ? [{ label: "Numéro utilisé", value: data.phoneNumber }] : []),
+    { label: "Référence", value: shortRef },
+    { label: "Date et heure", value: formatDateFR(data.createdAt) },
+    { label: "Statut", value: "Validé" },
+    ...(data.newBalance != null ? [{ label: "Nouveau solde", value: formatFCFA(data.newBalance) }] : []),
+  ].map((row) => ({
+    label: escapeEmailHtml(row.label),
+    value: escapeEmailHtml(row.value),
+  }));
+
+  return `<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="light">
+  <title>Rechargement confirmé — Simix</title>
+  <style>
+    @media only screen and (max-width:620px) {
+      .email-shell { padding:16px 0 !important; }
+      .email-card { border-left:0 !important;border-right:0 !important;border-radius:0 !important; }
+      .email-content { padding:30px 24px 26px !important; }
+      .email-details { font-size:12px !important; }
+    }
+  </style>
+</head>
+<body style="margin:0;padding:0;background:#f1f1f3;font-family:Arial,Helvetica,sans-serif;color:#17171c;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f1f1f3;">
+    <tr>
+      <td align="center" class="email-shell" style="padding:28px 16px 40px;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;">
+          <tr>
+            <td style="background:#17151f;border-radius:14px 14px 0 0;padding:22px 24px;text-align:center;">
+              <a href="${appUrl}" style="text-decoration:none;">
+                <img src="${appUrl}/simix-icon.png" alt="" width="30" height="30" style="display:inline-block;vertical-align:middle;width:30px;height:30px;border:0;border-radius:8px;margin-right:8px;">
+                <span style="display:inline-block;vertical-align:middle;color:#ffffff;font-family:Arial,Helvetica,sans-serif;font-size:20px;line-height:30px;font-weight:700;letter-spacing:1.8px;">SIMIX</span>
+              </a>
+            </td>
+          </tr>
+          <tr>
+            <td class="email-card" style="background:#ffffff;border:1px solid #e3e3e7;border-top:0;border-radius:0 0 14px 14px;overflow:hidden;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                  <td class="email-content" style="padding:32px 42px 28px;">
+                    <p style="margin:0 0 10px;font-size:12px;line-height:1.4;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#7c3aed;">Portefeuille Simix</p>
+                    <h1 style="margin:0 0 18px;font-family:Arial,Helvetica,sans-serif;font-size:26px;line-height:1.25;font-weight:700;letter-spacing:-0.3px;color:#111114;">Rechargement confirmé</h1>
+                    <p style="margin:0 0 8px;font-size:16px;line-height:1.6;color:#24242a;">Bonjour <strong style="color:#111114;">${firstName}</strong>,</p>
+                    <p style="margin:0 0 22px;font-size:16px;line-height:1.65;color:#24242a;">Votre portefeuille Simix a été crédité avec succès.</p>
+
+                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#faf8ff;border:1px solid #e6dcff;border-radius:4px;">
+                      <tr>
+                        <td align="center" style="padding:20px 18px 19px;">
+                          <p style="margin:0 0 8px;font-size:13px;line-height:1.4;color:#6b6b75;">Montant crédité</p>
+                          <p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:28px;line-height:1.2;font-weight:700;color:#7c3aed;">${amount}</p>
+                        </td>
+                      </tr>
+                    </table>
+
+                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:24px 0 22px;border:1px solid #e5e5e9;border-radius:4px;border-collapse:separate;overflow:hidden;">
+                      <tr>
+                        <td colspan="2" style="padding:12px 16px;background:#f7f7f9;border-bottom:1px solid #e5e5e9;">
+                          <p style="margin:0;color:#6b6b75;font-size:11px;font-weight:700;letter-spacing:1.4px;text-transform:uppercase;">Détails de la transaction</p>
+                        </td>
+                      </tr>
+                      ${rows.map((row, index) => `
+                      <tr>
+                        <td class="email-details" style="padding:11px 16px;color:#6b6b75;font-size:13px;${index < rows.length - 1 ? "border-bottom:1px solid #f0f0f2;" : ""}">${row.label}</td>
+                        <td class="email-details" style="padding:11px 16px;color:#17171c;font-size:13px;font-weight:700;text-align:right;${index < rows.length - 1 ? "border-bottom:1px solid #f0f0f2;" : ""}">${row.value}</td>
+                      </tr>`).join("")}
+                    </table>
+
+                    <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 auto;">
+                      <tr>
+                        <td style="background:#7c3aed;border-radius:4px;">
+                          <a href="${appUrl}" style="display:block;padding:13px 28px;color:#ffffff;font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:700;text-decoration:none;">Accéder à mon compte</a>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                  <td style="padding:15px 24px;background:#fbfbfc;border-top:1px solid #eeeef2;">
+                    <p style="margin:0;font-size:12px;line-height:1.6;color:#6b6b75;"><strong style="color:#24242a;">Conseil de sécurité :</strong> Simix ne vous demandera jamais vos identifiants par email ou téléphone.</p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          <tr>
+            <td align="center" style="padding:22px 12px 0;">
+              <p style="margin:0 0 5px;font-size:12px;line-height:1.5;color:#8b8b93;">© ${new Date().getFullYear()} Simix · <a href="mailto:simixsupport@gmail.com" style="color:#7c3aed;text-decoration:none;">Support</a></p>
+              <p style="margin:0;font-size:11px;line-height:1.5;color:#a1a1aa;">Ceci est un message automatique, veuillez ne pas y répondre.</p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+}
+
 
 export async function sendDepositConfirmationEmail(data: DepositEmailData): Promise<void> {
   const from    = await getFromEmail();
@@ -504,7 +624,7 @@ export async function sendDepositConfirmationEmail(data: DepositEmailData): Prom
     to:      data.userEmail,
     from,
     subject: `✅ Rechargement de ${data.amount.toLocaleString("fr-FR")} FCFA confirmé — Simix`,
-    html:    getDepositConfirmationHtml(data),
+    html:    getBrandedDepositConfirmationHtml(data),
     idempotencyKey: `deposit-${data.transactionId}`,
     metadata: { type: "deposit_confirmation", transactionId: data.transactionId },
   });
