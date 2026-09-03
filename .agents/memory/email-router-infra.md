@@ -32,6 +32,12 @@ description: Multi-provider email system with failover, retry queue, health chec
 
 **How to apply:** Keep provider activation and priority editable, show no role badge on disabled providers, and never sort runtime providers by a fixed slug preference.
 
+**The database is authoritative for provider credentials.** Plesk/Replit environment keys are bootstrap-only and may fill an empty provider record, but must never overwrite an existing encrypted database credential.
+
+**Why:** Multiple API environments share the provider table; letting each startup overwrite credentials creates configuration races and makes panel changes unreliable.
+
+**How to apply:** Runtime reads encrypted database credentials, admin edits replace them explicitly, and startup skips every provider row that already has credential ciphertext—even if the current environment cannot decrypt it.
+
 **Provider credentials are write-only in admin APIs.** Existing API keys, secrets, and sensitive config values are returned only as masks; edit forms stay empty and replace values only when a new secret is submitted.
 
 **Why:** Administrators need to confirm and rotate database credentials without allowing browsers, logs, or unchanged form submissions to expose or corrupt them.
