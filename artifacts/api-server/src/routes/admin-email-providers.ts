@@ -54,11 +54,6 @@ function safeProvider(
   role: "primary" | "fallback" | null,
   defaultFrom: string,
 ) {
-  const envApiKey = r.slug === "brevo"
-    ? process.env["BREVO_API_KEY"]?.trim()
-    : r.slug === "resend"
-      ? process.env["RESEND_API_KEY"]?.trim()
-      : undefined;
   const configuredSenderEmail = r.slug === "brevo"
     ? process.env["BREVO_SENDER_EMAIL"]?.trim() || null
     : r.slug === "resend"
@@ -76,8 +71,7 @@ function safeProvider(
   const databaseApiSecret = r.apiSecretEnc ? decrypt(r.apiSecretEnc) : "";
   let apiKeyMasked: string | null = null;
   if (databaseApiKey) apiKeyMasked = maskApiKey(databaseApiKey);
-  if (!apiKeyMasked && envApiKey) apiKeyMasked = maskApiKey(envApiKey);
-  const apiKeySource = databaseApiKey ? "database" : envApiKey ? "environment" : "none";
+  const apiKeySource = databaseApiKey ? "database" : "none";
   return {
     id:               r.id,
     name:             r.name,

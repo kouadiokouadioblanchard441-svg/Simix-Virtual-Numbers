@@ -56,10 +56,11 @@ export async function seedProvidersFromEnv(): Promise<void> {
 /**
  * Bootstrap transactional email providers from Plesk environment variables.
  *
- * Plesk owns the runtime secret, while the email router reads encrypted
- * provider credentials from the shared database. Only a missing or
- * undecryptable DB key is repaired here; valid admin-configured keys and
- * active/priority settings are never overwritten on restart.
+ * The database is the source of truth for provider credentials. Environment
+ * variables are bootstrap-only: they may create a missing provider or fill a
+ * provider row that has no credential, but they must never overwrite an
+ * existing database credential. This prevents Replit/Plesk values from
+ * fighting each other when both environments share the database.
  */
 export async function seedEmailProvidersFromEnv(): Promise<void> {
   const providers = [
@@ -87,29 +88,23 @@ export async function seedEmailProvidersFromEnv(): Promise<void> {
         .limit(1);
 
       if (existing) {
-        let existingKey = "";
         if (existing.apiKeyEnc) {
-          try {
-            existingKey = decrypt(existing.apiKeyEnc).trim();
-          } catch (err) {
-            // Une clé chiffrée avec une ancienne SESSION_SECRET doit être
-            // remplacée par la clé Plesk, sans empêcher le démarrage.
-            logger.warn(
-              { provider: provider.slug, err },
-              "[seed-email-providers] Existing provider key could not be decrypted — replacing from environment",
+          const existingKey = decrypt(existing.apiKeyEnc).trim();
+          if (existingKey) {
+            logger.info({ provider: provider.slug }, "[seed-email-providers] Database credential is authoritative — nothing to do");
+          } else {
+            logger.error(
+              { provider: provider.slug },
+              "[seed-email-providers] Database credential is not decryptable — replace it from the admin panel; environment value will not overwrite it",
             );
           }
-        }
-        if (existingKey) {
-          logger.info({ provider: provider.slug }, "[seed-email-providers] Provider already has a usable key — nothing to do");
           continue;
         }
-
         await db
           .update(emailProvidersTable)
           .set({ apiKeyEnc: encrypt(apiKey) })
           .where(eq(emailProvidersTable.id, existing.id));
-        logger.info({ provider: provider.slug }, "[seed-email-providers] Missing provider key restored from environment");
+        logger.info({ provider: provider.slug }, "[seed-email-providers] Missing database credential restored from bootstrap environment");
         continue;
       }
 

@@ -165554,23 +165554,20 @@ async function seedEmailProvidersFromEnv() {
         apiKeyEnc: emailProvidersTable.apiKeyEnc
       }).from(emailProvidersTable).where(eq(emailProvidersTable.slug, provider.slug)).limit(1);
       if (existing) {
-        let existingKey = "";
         if (existing.apiKeyEnc) {
-          try {
-            existingKey = decrypt(existing.apiKeyEnc).trim();
-          } catch (err) {
-            logger.warn(
-              { provider: provider.slug, err },
-              "[seed-email-providers] Existing provider key could not be decrypted \u2014 replacing from environment"
+          const existingKey = decrypt(existing.apiKeyEnc).trim();
+          if (existingKey) {
+            logger.info({ provider: provider.slug }, "[seed-email-providers] Database credential is authoritative \u2014 nothing to do");
+          } else {
+            logger.error(
+              { provider: provider.slug },
+              "[seed-email-providers] Database credential is not decryptable \u2014 replace it from the admin panel; environment value will not overwrite it"
             );
           }
-        }
-        if (existingKey) {
-          logger.info({ provider: provider.slug }, "[seed-email-providers] Provider already has a usable key \u2014 nothing to do");
           continue;
         }
         await db.update(emailProvidersTable).set({ apiKeyEnc: encrypt(apiKey) }).where(eq(emailProvidersTable.id, existing.id));
-        logger.info({ provider: provider.slug }, "[seed-email-providers] Missing provider key restored from environment");
+        logger.info({ provider: provider.slug }, "[seed-email-providers] Missing database credential restored from bootstrap environment");
         continue;
       }
       await db.insert(emailProvidersTable).values({
@@ -165606,7 +165603,6 @@ function maskConfig(config) {
   );
 }
 function safeProvider(r3, role, defaultFrom) {
-  const envApiKey = r3.slug === "brevo" ? process.env["BREVO_API_KEY"]?.trim() : r3.slug === "resend" ? process.env["RESEND_API_KEY"]?.trim() : void 0;
   const configuredSenderEmail = r3.slug === "brevo" ? process.env["BREVO_SENDER_EMAIL"]?.trim() || null : r3.slug === "resend" ? process.env["RESEND_SENDER_EMAIL"]?.trim() || null : null;
   const configuredSenderName = r3.slug === "brevo" ? process.env["BREVO_SENDER_NAME"]?.trim() || null : r3.slug === "resend" ? process.env["RESEND_SENDER_NAME"]?.trim() || null : null;
   const fallbackSender = parseSender2(defaultFrom);
@@ -165616,8 +165612,7 @@ function safeProvider(r3, role, defaultFrom) {
   const databaseApiSecret = r3.apiSecretEnc ? decrypt(r3.apiSecretEnc) : "";
   let apiKeyMasked = null;
   if (databaseApiKey) apiKeyMasked = maskApiKey(databaseApiKey);
-  if (!apiKeyMasked && envApiKey) apiKeyMasked = maskApiKey(envApiKey);
-  const apiKeySource = databaseApiKey ? "database" : envApiKey ? "environment" : "none";
+  const apiKeySource = databaseApiKey ? "database" : "none";
   return {
     id: r3.id,
     name: r3.name,
