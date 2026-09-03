@@ -25,6 +25,100 @@ function requireAdmin(req: Request, res: Response, next: () => void): void {
   next();
 }
 
+function escapeCampaignHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+export function buildBrandedCampaignEmailHtml(subject: string, body: string, templateType: string): string {
+  const appUrl = getAppUrl();
+  const safeSubject = escapeCampaignHtml(subject);
+  const safeBody = escapeCampaignHtml(body).replace(/\r?\n/g, "<br>");
+  const accentColor = templateType === "security" ? "#ef4444"
+    : templateType === "promotion" ? "#f59e0b"
+    : templateType === "bonus" ? "#059669"
+    : "#7c3aed";
+  const badgeLabel = templateType === "security" ? "Sécurité"
+    : templateType === "promotion" ? "Promotion"
+    : templateType === "bonus" ? "Bonus"
+    : templateType === "system" ? "Système"
+    : templateType === "announcement" ? "Annonce"
+    : "Information";
+
+  return `<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="light">
+  <title>${safeSubject} — Simix</title>
+  <style>
+    @media only screen and (max-width:620px) {
+      .email-shell { padding:16px 0 !important; }
+      .email-card { border-left:0 !important;border-right:0 !important;border-radius:0 !important; }
+      .email-content { padding:30px 24px 26px !important; }
+      .email-title { font-size:24px !important; }
+    }
+  </style>
+</head>
+<body style="margin:0;padding:0;background:#f1f1f3;font-family:Arial,Helvetica,sans-serif;color:#17171c;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f1f1f3;">
+    <tr>
+      <td align="center" class="email-shell" style="padding:28px 16px 40px;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;">
+          <tr>
+            <td style="background:#17151f;border-radius:14px 14px 0 0;padding:22px 24px;text-align:center;">
+              <a href="${appUrl}" style="text-decoration:none;">
+                <img src="${appUrl}/simix-icon.png" alt="" width="30" height="30" style="display:inline-block;vertical-align:middle;width:30px;height:30px;border:0;border-radius:8px;margin-right:8px;">
+                <span style="display:inline-block;vertical-align:middle;color:#ffffff;font-family:Arial,Helvetica,sans-serif;font-size:20px;line-height:30px;font-weight:700;letter-spacing:1.8px;">SIMIX</span>
+              </a>
+            </td>
+          </tr>
+          <tr>
+            <td class="email-card" style="background:#ffffff;border:1px solid #e3e3e7;border-top:0;border-radius:0 0 14px 14px;overflow:hidden;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                  <td class="email-content" style="padding:32px 42px 30px;">
+                    <p style="margin:0 0 10px;font-size:12px;line-height:1.4;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:${accentColor};">${badgeLabel} Simix</p>
+                    <h1 class="email-title" style="margin:0 0 22px;font-family:Arial,Helvetica,sans-serif;font-size:26px;line-height:1.25;font-weight:700;letter-spacing:-0.3px;color:#111114;">${safeSubject}</h1>
+                    <div style="font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:1.7;color:#24242a;">${safeBody}</div>
+                    <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:26px auto 0;">
+                      <tr>
+                        <td style="background:#7c3aed;border-radius:4px;">
+                          <a href="${appUrl}" style="display:block;padding:13px 28px;color:#ffffff;font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:700;text-decoration:none;">Accéder à Simix</a>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                  <td style="padding:15px 24px;background:#fbfbfc;border-top:1px solid #eeeef2;text-align:center;">
+                    <p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:1.6;color:#6b6b75;">Vous recevez cet email parce que vous êtes inscrit sur Simix.</p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          <tr>
+            <td align="center" style="padding:22px 12px 0;">
+              <p style="margin:0 0 5px;font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:1.5;color:#8b8b93;">© ${new Date().getFullYear()} Simix · <a href="mailto:simixsupport@gmail.com" style="color:#7c3aed;text-decoration:none;">Support</a></p>
+              <p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:11px;line-height:1.5;color:#a1a1aa;">Ceci est un message automatique, veuillez ne pas y répondre.</p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+}
+
 /* ── Build beautiful HTML template ───────────────────────── */
 function buildEmailHtml(subject: string, body: string, templateType: string): string {
   const accentColor = templateType === "security" ? "#ef4444"
@@ -154,7 +248,7 @@ router.post("/admin/emails/send", requireAdmin, async (req: Request, res: Respon
   if (!subject?.trim()) { res.status(400).json({ error: "Sujet requis" }); return; }
   if (!body?.trim() && !htmlContent?.trim()) { res.status(400).json({ error: "Contenu requis" }); return; }
 
-  const finalHtml = htmlContent?.trim() || buildEmailHtml(subject, body!.replace(/\n/g, "<br>"), templateType);
+  const finalHtml = htmlContent?.trim() || buildBrandedCampaignEmailHtml(subject, body!, templateType);
   const from = await getFromEmail();
 
   /* ── Filtre des emails réels (exclure les placeholders @simix.site) ── */
@@ -359,7 +453,7 @@ router.post("/admin/emails/test", requireAdmin, async (req: Request, res: Respon
       from: await getFromEmail(),
       to: email,
       subject: "Test de configuration email — Simix Admin",
-      html: buildEmailHtml(
+      html: buildBrandedCampaignEmailHtml(
         "Test de configuration email",
         `Cet email confirme qu'un fournisseur email configuré dans le panneau administrateur fonctionne correctement.\n\nDestinataire de test : ${email}\n\nLes emails utilisateurs passent par cette même infrastructure.`,
         "system",

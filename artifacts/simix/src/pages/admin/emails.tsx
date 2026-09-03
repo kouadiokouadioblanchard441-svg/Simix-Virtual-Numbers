@@ -400,16 +400,25 @@ function ComposeForm() {
               <Eye className="w-3.5 h-3.5 text-violet-400" />
               <span className="text-xs text-zinc-400 font-medium">Aperçu de l'email</span>
             </div>
-            <div className="max-h-64 overflow-y-auto bg-[#0f0a1e] p-4">
-              <div className="text-center mb-3">
-                <div className="inline-flex items-center gap-2 text-white font-bold text-lg">
-                  <div className="w-8 h-8 rounded-xl flex items-center justify-center text-white font-bold text-sm" style={{ background: `linear-gradient(135deg, ${accent}, ${accent}99)` }}>S</div>
-                  Simix
+            <div className="max-h-96 overflow-y-auto bg-[#f1f1f3] p-4 font-[Arial,Helvetica,sans-serif]">
+              <div className="mx-auto max-w-[600px] overflow-hidden rounded-[14px] border border-[#e3e3e7] bg-white">
+                <div className="flex items-center justify-center gap-2 bg-[#17151f] px-6 py-5">
+                  <div className="flex h-[30px] w-[30px] items-center justify-center rounded-lg bg-violet-600 text-sm font-bold text-white">S</div>
+                  <span className="text-lg font-bold tracking-[0.18em] text-white">SIMIX</span>
                 </div>
-              </div>
-              <div className="rounded-2xl p-4" style={{ background: `${accent}11`, border: `1px solid ${accent}33` }}>
-                <h2 className="text-white font-bold text-base mb-2">{subject}</h2>
-                <p className="text-zinc-300 text-sm leading-relaxed whitespace-pre-wrap">{body}</p>
+                <div className="px-6 py-7">
+                  <p className="mb-2 text-[11px] font-bold uppercase tracking-[0.15em]" style={{ color: accent }}>
+                    {TEMPLATE_TYPES.find(t => t.value === templateType)?.label ?? "Information"} Simix
+                  </p>
+                  <h2 className="mb-4 text-xl font-bold leading-tight text-[#111114]">{subject}</h2>
+                  <p className="whitespace-pre-wrap text-sm leading-7 text-[#24242a]">{body}</p>
+                  <div className="mt-6 text-center">
+                    <span className="inline-block rounded bg-[#7c3aed] px-6 py-3 text-xs font-bold text-white">Accéder à Simix</span>
+                  </div>
+                </div>
+                <div className="border-t border-[#eeeef2] bg-[#fbfbfc] px-5 py-3 text-center text-[10px] text-[#6b6b75]">
+                  Vous recevez cet email parce que vous êtes inscrit sur Simix.
+                </div>
               </div>
             </div>
           </motion.div>
