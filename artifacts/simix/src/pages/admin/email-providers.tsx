@@ -237,7 +237,7 @@ export default function AdminEmailProviders() {
             </div>
             <div>
               <h1 className="text-xl font-bold text-white">Fournisseurs Email</h1>
-              <p className="text-xs text-zinc-500">Infrastructure multi-fournisseurs avec failover automatique</p>
+              <p className="text-xs text-zinc-500">Deux fournisseurs actifs possibles : priorité 1, puis secours automatique en cas d’échec confirmé</p>
             </div>
           </div>
           <div className="flex gap-2 flex-wrap">

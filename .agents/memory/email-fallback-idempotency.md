@@ -7,4 +7,6 @@ When an email provider times out after a request may have been accepted, persist
 
 **Why:** Provider-local idempotency cannot deduplicate a second send made through a different provider. A Brevo response timeout followed by Resend fallback can therefore deliver two copies.
 
+Confirmed temporary or definitive non-acceptance may immediately fall through to the next active provider. Only ambiguous outcomes block cross-provider fallback.
+
 **How to apply:** Use a durable unique issuance identifier for each logical message. Keep the queue claim atomic, pass the same key to provider retries, and clear affinity only after a definitive non-acceptance or a confirmed success.

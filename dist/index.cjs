@@ -155543,7 +155543,7 @@ var EmailProviderManager = class {
         definitiveFailureDetected ||= failureKind === "definitive";
         logger.warn(
           { provider: provider.slug, to: payload.to, err: errMsg, latencyMs, failureKind },
-          failureKind === "temporary" ? "[email-router] \xC9chec temporaire \u2014 tentative du fournisseur de secours" : "[email-router] \xC9chec sans fallback automatique"
+          failureKind === "ambiguous" ? "[email-router] R\xE9sultat ambigu \u2014 pas de fallback pour \xE9viter un doublon" : "[email-router] \xC9chec \u2014 tentative du fournisseur de secours"
         );
         const newConsec = quotaOrRateLimit ? provider.consecutiveErrors : provider.consecutiveErrors + 1;
         const newHealth = quotaOrRateLimit ? provider.healthStatus : newConsec >= CONSECUTIVE_ERROR_THRESHOLD ? "down" : newConsec >= CONSECUTIVE_ERROR_DEGRADED ? "degraded" : provider.healthStatus;
@@ -155564,7 +155564,7 @@ var EmailProviderManager = class {
           }).where(eq(emailProvidersTable.id, provider.id))
         ]);
         this.invalidateCache();
-        if (failureKind !== "temporary") break;
+        if (failureKind === "ambiguous") break;
       }
     }
     const attempts = (existing[0]?.attempts ?? 0) + attemptedProviders;
@@ -165496,8 +165496,10 @@ async function seedProvidersFromEnv() {
 }
 async function seedEmailProvidersFromEnv() {
   const providers = [
-    { slug: "brevo", name: "Brevo", envKey: "BREVO_API_KEY", priority: 1 },
-    { slug: "resend", name: "Resend", envKey: "RESEND_API_KEY", priority: 2 }
+    // Resend est le fournisseur actuellement préféré. Ces priorités ne
+    // remplacent jamais un réglage déjà enregistré par l'administrateur.
+    { slug: "resend", name: "Resend", envKey: "RESEND_API_KEY", priority: 1 },
+    { slug: "brevo", name: "Brevo", envKey: "BREVO_API_KEY", priority: 2 }
   ];
   for (const provider of providers) {
     const apiKey = process.env[provider.envKey]?.trim();

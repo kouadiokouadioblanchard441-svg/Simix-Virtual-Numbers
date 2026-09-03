@@ -459,9 +459,9 @@ class EmailProviderManager {
         definitiveFailureDetected ||= failureKind === "definitive";
         logger.warn(
           { provider: provider.slug, to: payload.to, err: errMsg, latencyMs, failureKind },
-          failureKind === "temporary"
-            ? "[email-router] Échec temporaire — tentative du fournisseur de secours"
-            : "[email-router] Échec sans fallback automatique",
+          failureKind === "ambiguous"
+            ? "[email-router] Résultat ambigu — pas de fallback pour éviter un doublon"
+            : "[email-router] Échec — tentative du fournisseur de secours",
         );
 
         const newConsec = quotaOrRateLimit ? provider.consecutiveErrors : provider.consecutiveErrors + 1;
@@ -485,10 +485,11 @@ class EmailProviderManager {
           }).where(eq(emailProvidersTable.id, provider.id)),
         ]);
         this.invalidateCache();
-        // Une erreur définitive ne doit pas être répétée chez un autre fournisseur.
-        // Une réponse ambiguë (timeout après émission possible) est d'abord retentée
-        // chez le même fournisseur avec la même clé d'idempotence.
-        if (failureKind !== "temporary") break;
+        // Une erreur temporaire ou définitive prouve que ce fournisseur n'a
+        // pas accepté l'envoi : essayer le suivant. Une réponse ambiguë
+        // (timeout après émission possible) reste verrouillée sur ce même
+        // fournisseur avec la même clé d'idempotence pour éviter un doublon.
+        if (failureKind === "ambiguous") break;
       }
     }
 
