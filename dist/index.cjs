@@ -165544,6 +165544,16 @@ function parseSender2(value) {
   if (named) return { name: named[1].trim() || null, email: named[2].trim() || null };
   return { name: null, email: value.trim() || null };
 }
+function maskConfig(config) {
+  if (!config) return null;
+  const sensitive = /(key|secret|token|password|credential|authorization)/i;
+  return Object.fromEntries(
+    Object.entries(config).map(([key, value]) => [
+      key,
+      sensitive.test(key) ? value ? "\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022" : "" : value
+    ])
+  );
+}
 function safeProvider(r3, role, defaultFrom) {
   const envApiKey = r3.slug === "brevo" ? process.env["BREVO_API_KEY"]?.trim() : r3.slug === "resend" ? process.env["RESEND_API_KEY"]?.trim() : void 0;
   const configuredSenderEmail = r3.slug === "brevo" ? process.env["BREVO_SENDER_EMAIL"]?.trim() || null : r3.slug === "resend" ? process.env["RESEND_SENDER_EMAIL"]?.trim() || null : null;
@@ -165551,14 +165561,12 @@ function safeProvider(r3, role, defaultFrom) {
   const fallbackSender = parseSender2(defaultFrom);
   const senderEmail = configuredSenderEmail ?? fallbackSender.email;
   const senderName = configuredSenderName ?? fallbackSender.name;
+  const databaseApiKey = r3.apiKeyEnc ? decrypt(r3.apiKeyEnc) : "";
+  const databaseApiSecret = r3.apiSecretEnc ? decrypt(r3.apiSecretEnc) : "";
   let apiKeyMasked = null;
-  if (r3.apiKeyEnc) {
-    try {
-      apiKeyMasked = maskApiKey(decrypt(r3.apiKeyEnc));
-    } catch {
-    }
-  }
+  if (databaseApiKey) apiKeyMasked = maskApiKey(databaseApiKey);
   if (!apiKeyMasked && envApiKey) apiKeyMasked = maskApiKey(envApiKey);
+  const apiKeySource = databaseApiKey ? "database" : envApiKey ? "environment" : "none";
   return {
     id: r3.id,
     name: r3.name,
@@ -165566,14 +165574,15 @@ function safeProvider(r3, role, defaultFrom) {
     priority: r3.priority,
     active: r3.active,
     apiKeyMasked,
-    apiKeySource: r3.apiKeyEnc ? "database" : envApiKey ? "environment" : "none",
+    apiKeySource,
+    apiSecretMasked: databaseApiSecret ? maskApiKey(databaseApiSecret) : null,
     senderEmail,
     senderName,
     role,
     hasApiSecret: !!r3.apiSecretEnc,
     domain: r3.domain,
     region: r3.region,
-    config: r3.config,
+    config: maskConfig(r3.config),
     healthStatus: r3.healthStatus,
     lastHealthCheck: r3.lastHealthCheck,
     consecutiveErrors: r3.consecutiveErrors,

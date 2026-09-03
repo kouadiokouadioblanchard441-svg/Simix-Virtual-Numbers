@@ -38,6 +38,17 @@ function parseSender(value: string): { email: string | null; name: string | null
   return { name: null, email: value.trim() || null };
 }
 
+function maskConfig(config: Record<string, string> | null): Record<string, string> | null {
+  if (!config) return null;
+  const sensitive = /(key|secret|token|password|credential|authorization)/i;
+  return Object.fromEntries(
+    Object.entries(config).map(([key, value]) => [
+      key,
+      sensitive.test(key) ? (value ? "••••••••" : "") : value,
+    ]),
+  );
+}
+
 function safeProvider(
   r: typeof emailProvidersTable.$inferSelect,
   role: "primary" | "fallback" | null,
@@ -61,11 +72,12 @@ function safeProvider(
   const fallbackSender = parseSender(defaultFrom);
   const senderEmail = configuredSenderEmail ?? fallbackSender.email;
   const senderName = configuredSenderName ?? fallbackSender.name;
+  const databaseApiKey = r.apiKeyEnc ? decrypt(r.apiKeyEnc) : "";
+  const databaseApiSecret = r.apiSecretEnc ? decrypt(r.apiSecretEnc) : "";
   let apiKeyMasked: string | null = null;
-  if (r.apiKeyEnc) {
-    try { apiKeyMasked = maskApiKey(decrypt(r.apiKeyEnc)); } catch { /* clé chiffrée avec une ancienne clé */ }
-  }
+  if (databaseApiKey) apiKeyMasked = maskApiKey(databaseApiKey);
   if (!apiKeyMasked && envApiKey) apiKeyMasked = maskApiKey(envApiKey);
+  const apiKeySource = databaseApiKey ? "database" : envApiKey ? "environment" : "none";
   return {
     id:               r.id,
     name:             r.name,
@@ -73,14 +85,15 @@ function safeProvider(
     priority:         r.priority,
     active:           r.active,
     apiKeyMasked,
-    apiKeySource:     r.apiKeyEnc ? "database" : envApiKey ? "environment" : "none",
+    apiKeySource,
+    apiSecretMasked:   databaseApiSecret ? maskApiKey(databaseApiSecret) : null,
     senderEmail,
     senderName,
     role,
     hasApiSecret:     !!r.apiSecretEnc,
     domain:           r.domain,
     region:           r.region,
-    config:           r.config,
+    config:           maskConfig(r.config as Record<string, string> | null),
     healthStatus:     r.healthStatus,
     lastHealthCheck:  r.lastHealthCheck,
     consecutiveErrors: r.consecutiveErrors,

@@ -32,6 +32,12 @@ description: Multi-provider email system with failover, retry queue, health chec
 
 **How to apply:** Keep provider activation and priority editable, show no role badge on disabled providers, and never sort runtime providers by a fixed slug preference.
 
+**Provider credentials are write-only in admin APIs.** Existing API keys, secrets, and sensitive config values are returned only as masks; edit forms stay empty and replace values only when a new secret is submitted.
+
+**Why:** Administrators need to confirm and rotate database credentials without allowing browsers, logs, or unchanged form submissions to expose or corrupt them.
+
+**How to apply:** Decrypt only server-side to generate masks, sanitize generic config keys, and omit blank credential/config fields from update payloads so stored values remain unchanged.
+
 **Quota exhaustion is not a final failure.** Durable emails blocked by quota/rate limits stay in the persistent queue and retry indefinitely; OTP and password-reset emails keep bounded retries because delayed codes expire.
 
 **Why:** Promotions must resume after provider quotas reset without losing recipients, while stale authentication codes must never arrive later and confuse users.

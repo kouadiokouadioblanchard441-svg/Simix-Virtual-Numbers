@@ -33,7 +33,8 @@ interface Provider {
   id: string; name: string; slug: string; priority: number; active: boolean;
   apiKeyMasked: string | null; hasApiSecret: boolean; domain: string | null;
   region: string | null; config: Record<string,string> | null;
-  apiKeySource?: "database" | "environment" | "none"; senderEmail: string | null;
+  apiKeySource?: "database" | "environment" | "none"; apiSecretMasked: string | null;
+  senderEmail: string | null;
   senderName: string | null; role: "primary" | "fallback" | null;
   healthStatus: string; lastHealthCheck: string | null;
   consecutiveErrors: number; totalSent: number; totalFailed: number;
@@ -121,7 +122,9 @@ export default function AdminEmailProviders() {
 
   const openEdit = (p: Provider) => {
     setEditProvider(p);
-    setForm({ name: p.name, slug: p.slug, priority: p.priority, active: p.active, apiKey: "", apiSecret: "", domain: p.domain ?? "", region: p.region ?? "", config: p.config ? JSON.stringify(p.config, null, 2) : "" });
+    // La configuration renvoyée par l'API est masquée pour les champs sensibles.
+    // Ne jamais la renvoyer telle quelle lors d'une simple modification.
+    setForm({ name: p.name, slug: p.slug, priority: p.priority, active: p.active, apiKey: "", apiSecret: "", domain: p.domain ?? "", region: p.region ?? "", config: "" });
     setShowKey(false);
     setShowModal(true);
   };
@@ -321,6 +324,12 @@ export default function AdminEmailProviders() {
                           <HealthBadge status={p.healthStatus}/>
                           <span className="text-xs text-zinc-500">{p.totalSent.toLocaleString("fr-FR")} envoyés · {p.successRate}% succès</span>
                         </div>
+                         <div className="flex items-center gap-2 mt-1 text-[11px]">
+                           <span className="text-zinc-600">Clé API :</span>
+                           <code className={p.apiKeyMasked ? "text-zinc-400 font-mono" : "text-red-400"}>{p.apiKeyMasked ?? "non configurée"}</code>
+                           {p.apiKeySource === "database" && <span className="text-emerald-400/80">base chiffrée</span>}
+                           {p.apiKeySource === "environment" && <span className="text-emerald-400/80">Plesk</span>}
+                         </div>
                       </div>
                     </div>
 
@@ -356,9 +365,9 @@ export default function AdminEmailProviders() {
                     {expandedId === p.id && (
                       <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }}
                         className="mt-4 pt-4 border-t border-zinc-800 grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
-                         <div><p className="text-zinc-500 text-xs mb-0.5">Clé API</p><p className="text-zinc-300 font-mono text-xs">{p.apiKeyMasked ?? "—"}{p.apiKeySource === "environment" && <span className="ml-1 text-emerald-400">(Plesk)</span>}</p></div>
+                         <div><p className="text-zinc-500 text-xs mb-0.5">Clé API</p><p className="text-zinc-300 font-mono text-xs">{p.apiKeyMasked ?? "—"}{p.apiKeySource === "database" && <span className="ml-1 text-emerald-400">(base chiffrée)</span>}{p.apiKeySource === "environment" && <span className="ml-1 text-emerald-400">(Plesk)</span>}</p></div>
                          <div><p className="text-zinc-500 text-xs mb-0.5">Expéditeur</p><p className="text-zinc-300 text-xs">{p.senderName ? `${p.senderName} — ` : ""}{p.senderEmail ?? "—"}</p></div>
-                        <div><p className="text-zinc-500 text-xs mb-0.5">Secret</p><p className="text-zinc-300 text-xs">{p.hasApiSecret ? "✓ configuré" : "—"}</p></div>
+                         <div><p className="text-zinc-500 text-xs mb-0.5">Secret</p><p className="text-zinc-300 font-mono text-xs">{p.apiSecretMasked ?? (p.hasApiSecret ? "••••••••" : "—")}</p></div>
                         <div><p className="text-zinc-500 text-xs mb-0.5">Domaine</p><p className="text-zinc-300 text-xs">{p.domain ?? "—"}</p></div>
                         <div><p className="text-zinc-500 text-xs mb-0.5">Région</p><p className="text-zinc-300 text-xs">{p.region ?? "—"}</p></div>
                         <div><p className="text-zinc-500 text-xs mb-0.5">Erreurs consécutives</p><p className={`text-xs font-semibold ${p.consecutiveErrors > 0 ? "text-red-400" : "text-emerald-400"}`}>{p.consecutiveErrors}</p></div>
@@ -518,7 +527,7 @@ export default function AdminEmailProviders() {
 
                   <div>
                     <label className="text-xs text-zinc-400 mb-1 flex items-center gap-1.5 justify-between">
-                      <span>Clé API {editProvider && <span className="text-zinc-600">(laisser vide pour ne pas changer)</span>}</span>
+                       <span>Clé API {editProvider && <span className="text-zinc-600">(actuelle masquée · laisser vide pour conserver)</span>}</span>
                       <button type="button" onClick={() => setShowKey(!showKey)} className="text-zinc-500 hover:text-zinc-300">
                         {showKey ? <EyeOff className="w-3.5 h-3.5"/> : <Eye className="w-3.5 h-3.5"/>}
                       </button>
@@ -526,11 +535,12 @@ export default function AdminEmailProviders() {
                     <input type={showKey ? "text" : "password"} value={form.apiKey} onChange={e => setForm(f => ({ ...f, apiKey: e.target.value }))}
                       placeholder={editProvider ? "••••••• (non modifié)" : "re_xxxx..."}
                       className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-white font-mono focus:outline-none focus:border-violet-500"/>
+                     {editProvider && <p className="text-[11px] text-zinc-600 mt-1">Pour remplacer la clé, saisis uniquement la nouvelle valeur. La clé existante n’est jamais relue ni affichée en clair.</p>}
                   </div>
 
                   <div>
                     <label className="text-xs text-zinc-400 mb-1 block">Secret (Mailjet, SES…)</label>
-                    <input type="password" value={form.apiSecret} onChange={e => setForm(f => ({ ...f, apiSecret: e.target.value }))}
+                     <input type="password" value={form.apiSecret} onChange={e => setForm(f => ({ ...f, apiSecret: e.target.value }))}
                       placeholder={editProvider && editProvider.hasApiSecret ? "••••••• (non modifié)" : "optionnel"}
                       className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-white font-mono focus:outline-none focus:border-violet-500"/>
                   </div>
@@ -551,7 +561,7 @@ export default function AdminEmailProviders() {
                   </div>
 
                   <div>
-                    <label className="text-xs text-zinc-400 mb-1 block">Config JSON (optionnel)</label>
+                     <label className="text-xs text-zinc-400 mb-1 block">Config JSON (optionnel{editProvider ? " — vide pour conserver" : ""})</label>
                     <textarea value={form.config} onChange={e => setForm(f => ({ ...f, config: e.target.value }))}
                       rows={3} placeholder='{"key": "value"}'
                       className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-white font-mono focus:outline-none focus:border-violet-500 resize-none"/>
