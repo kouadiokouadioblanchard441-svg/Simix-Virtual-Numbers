@@ -13,7 +13,7 @@ export function generateOtpCode(): string {
 export async function createOtp(
   userId: string,
   purpose: "email_verification" | "inactivity_check" | "password_reset",
-): Promise<string> {
+): Promise<{ code: string; issuanceId: string }> {
   const code = generateOtpCode();
   const expiresAt = new Date(Date.now() + OTP_EXPIRY_MS);
 
@@ -28,16 +28,16 @@ export async function createOtp(
       ),
     );
 
-  await db.insert(emailOtpTable).values({
+  const [created] = await db.insert(emailOtpTable).values({
     userId,
     code,
     purpose,
     attempts: 0,
     verified: false,
     expiresAt,
-  });
+  }).returning({ id: emailOtpTable.id });
 
-  return code;
+  return { code, issuanceId: created.id };
 }
 
 export async function verifyOtp(

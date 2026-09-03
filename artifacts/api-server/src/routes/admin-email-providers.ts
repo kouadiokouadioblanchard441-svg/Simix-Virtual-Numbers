@@ -23,21 +23,48 @@ import {
 import { requireAdminJwt } from "../lib/admin-jwt-middleware";
 import { logger } from "../lib/logger";
 import { encrypt, decrypt, maskApiKey } from "../lib/email-router/crypto";
-import { getEmailManager, SUPPORTED_PROVIDERS } from "../lib/email-router";
+import { SUPPORTED_PROVIDERS } from "../lib/email-router";
+import { emailService } from "../lib/email-service";
 import { getFromEmail } from "../lib/email-from";
+import { seedEmailProvidersFromEnv } from "../lib/seed-providers";
 
 const router: IRouter = Router();
 router.use(requireAdminJwt);
 
 /* ── Serialise un fournisseur sans exposer les clés ─────────── */
 function safeProvider(r: typeof emailProvidersTable.$inferSelect) {
+  const envApiKey = r.slug === "brevo"
+    ? process.env["BREVO_API_KEY"]?.trim()
+    : r.slug === "resend"
+      ? process.env["RESEND_API_KEY"]?.trim()
+      : undefined;
+  const senderEmail = r.slug === "brevo"
+    ? process.env["BREVO_SENDER_EMAIL"]?.trim() || null
+    : r.slug === "resend"
+      ? process.env["RESEND_SENDER_EMAIL"]?.trim() || null
+      : null;
+  const senderName = r.slug === "brevo"
+    ? process.env["BREVO_SENDER_NAME"]?.trim() || null
+    : r.slug === "resend"
+      ? process.env["RESEND_SENDER_NAME"]?.trim() || null
+      : null;
+  let apiKeyMasked: string | null = null;
+  if (r.apiKeyEnc) {
+    try { apiKeyMasked = maskApiKey(decrypt(r.apiKeyEnc)); } catch { /* clé chiffrée avec une ancienne clé */ }
+  }
+  if (!apiKeyMasked && envApiKey) apiKeyMasked = maskApiKey(envApiKey);
+  const role = r.slug === "brevo" ? "primary" : r.slug === "resend" ? "fallback" : null;
   return {
     id:               r.id,
     name:             r.name,
     slug:             r.slug,
     priority:         r.priority,
     active:           r.active,
-    apiKeyMasked:     r.apiKeyEnc    ? maskApiKey(decrypt(r.apiKeyEnc)) : null,
+    apiKeyMasked,
+    apiKeySource:     r.apiKeyEnc ? "database" : envApiKey ? "environment" : "none",
+    senderEmail,
+    senderName,
+    role,
     hasApiSecret:     !!r.apiSecretEnc,
     domain:           r.domain,
     region:           r.region,
@@ -58,7 +85,15 @@ function safeProvider(r: typeof emailProvidersTable.$inferSelect) {
 
 /* ── GET /admin/email-providers ─────────────────────────────── */
 router.get("/admin/email-providers", async (_req: Request, res: Response): Promise<void> => {
+  // Permet au panneau de faire apparaître/réparer automatiquement Brevo et
+  // Resend dès que les variables Plesk sont présentes, sans exposer les clés.
+  try { await seedEmailProvidersFromEnv(); }
+  catch (err) { logger.warn({ err }, "[admin] Bootstrap email depuis environnement ignoré"); }
   const rows = await db.select().from(emailProvidersTable).orderBy(asc(emailProvidersTable.priority));
+  rows.sort((a, b) => {
+    const role = (slug: string) => slug === "brevo" ? 1 : slug === "resend" ? 2 : 100;
+    return role(a.slug) - role(b.slug) || a.priority - b.priority;
+  });
   res.json({ providers: rows.map(safeProvider), supported: SUPPORTED_PROVIDERS });
 });
 
@@ -86,7 +121,7 @@ router.post("/admin/email-providers", async (req: Request, res: Response): Promi
     config:      config    ?? null,
   }).returning();
 
-  getEmailManager().invalidateCache();
+  emailService.invalidateCache();
   logger.info({ slug, name }, "[admin] Fournisseur email créé");
   res.status(201).json({ provider: safeProvider(row) });
 });
@@ -127,7 +162,7 @@ router.put("/admin/email-providers/:id", async (req: Request, res: Response): Pr
     .where(eq(emailProvidersTable.id, id)).returning();
   if (!row) { res.status(404).json({ error: "Fournisseur introuvable" }); return; }
 
-  getEmailManager().invalidateCache();
+  emailService.invalidateCache();
   logger.info({ id, slug: row.slug }, "[admin] Fournisseur email modifié");
   res.json({ provider: safeProvider(row) });
 });
@@ -136,7 +171,7 @@ router.put("/admin/email-providers/:id", async (req: Request, res: Response): Pr
 router.delete("/admin/email-providers/:id", async (req: Request, res: Response): Promise<void> => {
   const { id } = req.params;
   await db.delete(emailProvidersTable).where(eq(emailProvidersTable.id, id));
-  getEmailManager().invalidateCache();
+  emailService.invalidateCache();
   logger.info({ id }, "[admin] Fournisseur email supprimé");
   res.json({ success: true });
 });
@@ -159,13 +194,13 @@ router.post("/admin/email-providers/:id/toggle", async (req: Request, res: Respo
     .set({ active: !current.active })
     .where(eq(emailProvidersTable.id, id)).returning();
 
-  getEmailManager().invalidateCache();
+  emailService.invalidateCache();
   res.json({ provider: safeProvider(row) });
 });
 
 /* ── POST /admin/email-providers/:id/test ───────────────────── */
 router.post("/admin/email-providers/:id/test", async (req: Request, res: Response): Promise<void> => {
-  const { id } = req.params;
+  const id = String(req.params.id);
   const { email } = req.body as { email?: string };
   if (!email) { res.status(400).json({ error: "email requis" }); return; }
 
@@ -173,39 +208,16 @@ router.post("/admin/email-providers/:id/test", async (req: Request, res: Respons
     .where(eq(emailProvidersTable.id, id)).limit(1);
   if (!row) { res.status(404).json({ error: "Fournisseur introuvable" }); return; }
 
-  const { decrypt: dec } = await import("../lib/email-router/crypto");
-  const adaptersMap: Record<string, import("../lib/email-router/types").ProviderAdapter> = {
-    resend:       (await import("../lib/email-router/adapters/resend")).resendAdapter,
-    ses:          (await import("../lib/email-router/adapters/ses")).sesAdapter,
-    postmark:     (await import("../lib/email-router/adapters/postmark")).postmarkAdapter,
-    mailgun:      (await import("../lib/email-router/adapters/mailgun")).mailgunAdapter,
-    sendgrid:     (await import("../lib/email-router/adapters/sendgrid")).sendgridAdapter,
-    brevo:        (await import("../lib/email-router/adapters/brevo")).brevoAdapter,
-    mailjet:      (await import("../lib/email-router/adapters/mailjet")).mailjetAdapter,
-    sparkpost:    (await import("../lib/email-router/adapters/sparkpost")).sparkpostAdapter,
-    zeptomail:    (await import("../lib/email-router/adapters/zeptomail")).zeptomailAdapter,
-    elasticemail: (await import("../lib/email-router/adapters/elasticemail")).elasticemailAdapter,
-  };
-
-  const adapter = adaptersMap[row.slug];
-  if (!adapter) { res.status(400).json({ error: `Adaptateur "${row.slug}" introuvable` }); return; }
-
   const from = await getFromEmail();
   const start = Date.now();
   try {
-    const result = await adapter.send(
+    const result = await emailService.testProvider(
+      id,
       {
         to: email, from,
         subject: `🧪 Test ${row.name} — Simix Admin`,
         html: buildTestEmailHtml(row.name, email),
         idempotencyKey: `test-${id}-${Date.now()}`,
-      },
-      {
-        apiKey:    row.apiKeyEnc    ? dec(row.apiKeyEnc)    : undefined,
-        apiSecret: row.apiSecretEnc ? dec(row.apiSecretEnc) : undefined,
-        domain:    row.domain       ?? undefined,
-        region:    row.region       ?? undefined,
-        config:    (row.config as Record<string, string>) ?? undefined,
       }
     );
     const latencyMs = Date.now() - start;
@@ -221,7 +233,7 @@ router.post("/admin/email-providers/:id/test", async (req: Request, res: Respons
 
 /* ── POST /admin/email-providers/health-check ───────────────── */
 router.post("/admin/email-providers/health-check", async (_req: Request, res: Response): Promise<void> => {
-  await getEmailManager().runHealthChecks();
+  await emailService.runHealthChecks();
   res.json({ success: true, message: "Health check terminé" });
 });
 
@@ -247,7 +259,7 @@ router.post("/admin/email-providers/retry-pending", async (_req: Request, res: R
       lte(emailQueueTable.nextRetryAt, new Date()),
     ));
 
-  await getEmailManager().processRetryQueue();
+  await emailService.processRetryQueue();
 
   const [{ after }] = await db.select({ after: count() })
     .from(emailQueueTable)
@@ -273,7 +285,7 @@ router.get("/admin/email-providers/stats", async (_req: Request, res: Response):
   const [totalPending] = await db.select({ c: count() }).from(emailQueueTable).where(eq(emailQueueTable.status, "pending"));
   const [totalFailed]  = await db.select({ c: count() }).from(emailQueueTable).where(eq(emailQueueTable.status, "failed"));
   const [totalLogs]    = await db.select({ c: count() }).from(emailSendLogsTable);
-  const providerStats  = await getEmailManager().getStats();
+  const providerStats  = await emailService.getStats();
 
   res.json({
     queue: {

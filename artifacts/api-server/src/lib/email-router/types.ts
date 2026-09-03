@@ -35,6 +35,31 @@ export interface AdapterSendResult {
   messageId: string;
 }
 
+export type ProviderFailureKind = "temporary" | "definitive" | "ambiguous";
+
+/**
+ * Erreur normalisée d'un fournisseur.
+ * - temporary: aucun envoi accepté, le fallback est sûr
+ * - definitive: destinataire/contenu invalide, ne pas retenter ailleurs
+ * - ambiguous: la requête a pu être acceptée; ne jamais basculer immédiatement
+ */
+export class ProviderSendError extends Error {
+  readonly kind: ProviderFailureKind;
+  readonly status?: number;
+  readonly code?: string;
+
+  constructor(
+    message: string,
+    options: { kind: ProviderFailureKind; status?: number; code?: string; cause?: unknown },
+  ) {
+    super(message, { cause: options.cause });
+    this.name = "ProviderSendError";
+    this.kind = options.kind;
+    this.status = options.status;
+    this.code = options.code;
+  }
+}
+
 export interface HealthCheckResult {
   healthy:   boolean;
   latencyMs: number;
@@ -61,6 +86,8 @@ export interface ResolvedProvider {
   domain:       string | null;
   region:       string | null;
   config:       Record<string, string> | null;
+  senderEmail:  string | null;
+  senderName:   string | null;
   healthStatus: string;
   consecutiveErrors: number;
 }

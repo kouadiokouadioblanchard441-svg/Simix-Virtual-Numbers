@@ -64529,3945 +64529,6 @@ var init_settings = __esm({
   }
 });
 
-// src/lib/email-router/crypto.ts
-var crypto_exports = {};
-__export(crypto_exports, {
-  decrypt: () => decrypt,
-  encrypt: () => encrypt,
-  maskApiKey: () => maskApiKey
-});
-function getDerivedKey() {
-  const secret = process.env.ENCRYPTION_KEY ?? process.env.SESSION_SECRET;
-  if (!secret) {
-    throw new Error("[email-router] ENCRYPTION_KEY ou SESSION_SECRET requis pour chiffrer les cl\xE9s API des fournisseurs email");
-  }
-  return (0, import_crypto6.createHash)("sha256").update(secret).digest();
-}
-function encrypt(plaintext) {
-  if (!plaintext) return "";
-  const key = getDerivedKey();
-  const iv = (0, import_crypto6.randomBytes)(12);
-  const cipher = (0, import_crypto6.createCipheriv)("aes-256-gcm", key, iv);
-  const encrypted = Buffer.concat([cipher.update(plaintext, "utf8"), cipher.final()]);
-  const tag = cipher.getAuthTag();
-  return Buffer.concat([iv, tag, encrypted]).toString("base64");
-}
-function decrypt(ciphertext) {
-  if (!ciphertext) return "";
-  try {
-    const buf = Buffer.from(ciphertext, "base64");
-    const key = getDerivedKey();
-    const iv = buf.subarray(0, 12);
-    const tag = buf.subarray(12, 28);
-    const data = buf.subarray(28);
-    const decipher = (0, import_crypto6.createDecipheriv)("aes-256-gcm", key, iv);
-    decipher.setAuthTag(tag);
-    return decipher.update(data) + decipher.final("utf8");
-  } catch {
-    return "";
-  }
-}
-function maskApiKey(key) {
-  if (!key || key.length < 8) return "****";
-  return key.substring(0, 4) + "***" + key.substring(key.length - 4);
-}
-var import_crypto6;
-var init_crypto = __esm({
-  "src/lib/email-router/crypto.ts"() {
-    "use strict";
-    import_crypto6 = require("crypto");
-  }
-});
-
-// ../../node_modules/.pnpm/postal-mime@2.7.4/node_modules/postal-mime/src/decode-strings.js
-function decodeBase642(base64) {
-  let bufferLength = Math.ceil(base64.length / 4) * 3;
-  const len = base64.length;
-  let p = 0;
-  if (base64.length % 4 === 3) {
-    bufferLength--;
-  } else if (base64.length % 4 === 2) {
-    bufferLength -= 2;
-  } else if (base64[base64.length - 1] === "=") {
-    bufferLength--;
-    if (base64[base64.length - 2] === "=") {
-      bufferLength--;
-    }
-  }
-  const arrayBuffer = new ArrayBuffer(bufferLength);
-  const bytes = new Uint8Array(arrayBuffer);
-  for (let i2 = 0; i2 < len; i2 += 4) {
-    let encoded1 = base64Lookup[base64.charCodeAt(i2)];
-    let encoded2 = base64Lookup[base64.charCodeAt(i2 + 1)];
-    let encoded3 = base64Lookup[base64.charCodeAt(i2 + 2)];
-    let encoded4 = base64Lookup[base64.charCodeAt(i2 + 3)];
-    bytes[p++] = encoded1 << 2 | encoded2 >> 4;
-    bytes[p++] = (encoded2 & 15) << 4 | encoded3 >> 2;
-    bytes[p++] = (encoded3 & 3) << 6 | encoded4 & 63;
-  }
-  return arrayBuffer;
-}
-function getDecoder(charset) {
-  charset = charset || "utf8";
-  let decoder2;
-  try {
-    decoder2 = new TextDecoder(charset);
-  } catch (err) {
-    decoder2 = new TextDecoder("windows-1252");
-  }
-  return decoder2;
-}
-async function blobToArrayBuffer(blob) {
-  if ("arrayBuffer" in blob) {
-    return await blob.arrayBuffer();
-  }
-  const fr3 = new FileReader();
-  return new Promise((resolve, reject) => {
-    fr3.onload = function(e3) {
-      resolve(e3.target.result);
-    };
-    fr3.onerror = function(e3) {
-      reject(fr3.error);
-    };
-    fr3.readAsArrayBuffer(blob);
-  });
-}
-function getHex(c2) {
-  if (c2 >= 48 && c2 <= 57 || c2 >= 97 && c2 <= 102 || c2 >= 65 && c2 <= 70) {
-    return String.fromCharCode(c2);
-  }
-  return false;
-}
-function decodeWord(charset, encoding, str) {
-  let splitPos = charset.indexOf("*");
-  if (splitPos >= 0) {
-    charset = charset.substr(0, splitPos);
-  }
-  encoding = encoding.toUpperCase();
-  let byteStr;
-  if (encoding === "Q") {
-    str = str.replace(/=\s+([0-9a-fA-F])/g, "=$1").replace(/[_\s]/g, " ");
-    let buf = textEncoder.encode(str);
-    let encodedBytes = [];
-    for (let i2 = 0, len = buf.length; i2 < len; i2++) {
-      let c2 = buf[i2];
-      if (i2 <= len - 2 && c2 === 61) {
-        let c1 = getHex(buf[i2 + 1]);
-        let c22 = getHex(buf[i2 + 2]);
-        if (c1 && c22) {
-          let c3 = parseInt(c1 + c22, 16);
-          encodedBytes.push(c3);
-          i2 += 2;
-          continue;
-        }
-      }
-      encodedBytes.push(c2);
-    }
-    byteStr = new ArrayBuffer(encodedBytes.length);
-    let dataView = new DataView(byteStr);
-    for (let i2 = 0, len = encodedBytes.length; i2 < len; i2++) {
-      dataView.setUint8(i2, encodedBytes[i2]);
-    }
-  } else if (encoding === "B") {
-    byteStr = decodeBase642(str.replace(/[^a-zA-Z0-9\+\/=]+/g, ""));
-  } else {
-    byteStr = textEncoder.encode(str);
-  }
-  return getDecoder(charset).decode(byteStr);
-}
-function decodeWords(str) {
-  let joinString = true;
-  let done = false;
-  while (!done) {
-    let result = (str || "").toString().replace(
-      /(=\?([^?]+)\?[Bb]\?([^?]*)\?=)\s*(?==\?([^?]+)\?[Bb]\?[^?]*\?=)/g,
-      (match, left2, chLeft, encodedLeftStr, chRight) => {
-        if (!joinString) {
-          return match;
-        }
-        if (chLeft === chRight && encodedLeftStr.length % 4 === 0 && !/=$/.test(encodedLeftStr)) {
-          return left2 + "__\0JOIN\0__";
-        }
-        return match;
-      }
-    ).replace(
-      /(=\?([^?]+)\?[Qq]\?[^?]*\?=)\s*(?==\?([^?]+)\?[Qq]\?[^?]*\?=)/g,
-      (match, left2, chLeft, chRight) => {
-        if (!joinString) {
-          return match;
-        }
-        if (chLeft === chRight) {
-          return left2 + "__\0JOIN\0__";
-        }
-        return match;
-      }
-    ).replace(/(\?=)?__\x00JOIN\x00__(=\?([^?]+)\?[QqBb]\?)?/g, "").replace(/(=\?[^?]+\?[QqBb]\?[^?]*\?=)\s+(?==\?[^?]+\?[QqBb]\?[^?]*\?=)/g, "$1").replace(
-      /=\?([\w_\-*]+)\?([QqBb])\?([^?]*)\?=/g,
-      (m2, charset, encoding, text2) => decodeWord(charset, encoding, text2)
-    );
-    if (joinString && result.indexOf("\uFFFD") >= 0) {
-      joinString = false;
-    } else {
-      return result;
-    }
-  }
-}
-function decodeURIComponentWithCharset(encodedStr, charset) {
-  charset = charset || "utf-8";
-  let encodedBytes = [];
-  for (let i2 = 0; i2 < encodedStr.length; i2++) {
-    let c2 = encodedStr.charAt(i2);
-    if (c2 === "%" && /^[a-f0-9]{2}/i.test(encodedStr.substr(i2 + 1, 2))) {
-      let byte = encodedStr.substr(i2 + 1, 2);
-      i2 += 2;
-      encodedBytes.push(parseInt(byte, 16));
-    } else if (c2.charCodeAt(0) > 126) {
-      c2 = textEncoder.encode(c2);
-      for (let j3 = 0; j3 < c2.length; j3++) {
-        encodedBytes.push(c2[j3]);
-      }
-    } else {
-      encodedBytes.push(c2.charCodeAt(0));
-    }
-  }
-  const byteStr = new ArrayBuffer(encodedBytes.length);
-  const dataView = new DataView(byteStr);
-  for (let i2 = 0, len = encodedBytes.length; i2 < len; i2++) {
-    dataView.setUint8(i2, encodedBytes[i2]);
-  }
-  return getDecoder(charset).decode(byteStr);
-}
-function decodeParameterValueContinuations(header) {
-  let paramKeys = /* @__PURE__ */ new Map();
-  Object.keys(header.params).forEach((key) => {
-    let match = key.match(/\*((\d+)\*?)?$/);
-    if (!match) {
-      return;
-    }
-    let actualKey = key.substr(0, match.index).toLowerCase();
-    let nr2 = Number(match[2]) || 0;
-    let paramVal;
-    if (!paramKeys.has(actualKey)) {
-      paramVal = {
-        charset: false,
-        values: []
-      };
-      paramKeys.set(actualKey, paramVal);
-    } else {
-      paramVal = paramKeys.get(actualKey);
-    }
-    let value = header.params[key];
-    if (nr2 === 0 && match[0].charAt(match[0].length - 1) === "*" && (match = value.match(/^([^']*)'[^']*'(.*)$/))) {
-      paramVal.charset = match[1] || "utf-8";
-      value = match[2];
-    }
-    paramVal.values.push({ nr: nr2, value });
-    delete header.params[key];
-  });
-  paramKeys.forEach((paramVal, key) => {
-    header.params[key] = decodeURIComponentWithCharset(
-      paramVal.values.sort((a, b3) => a.nr - b3.nr).map((a) => a.value).join(""),
-      paramVal.charset
-    );
-  });
-}
-var textEncoder, base64Chars, base64Lookup;
-var init_decode_strings = __esm({
-  "../../node_modules/.pnpm/postal-mime@2.7.4/node_modules/postal-mime/src/decode-strings.js"() {
-    textEncoder = new TextEncoder();
-    base64Chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-    base64Lookup = new Uint8Array(256);
-    for (let i2 = 0; i2 < base64Chars.length; i2++) {
-      base64Lookup[base64Chars.charCodeAt(i2)] = i2;
-    }
-  }
-});
-
-// ../../node_modules/.pnpm/postal-mime@2.7.4/node_modules/postal-mime/src/pass-through-decoder.js
-var PassThroughDecoder;
-var init_pass_through_decoder = __esm({
-  "../../node_modules/.pnpm/postal-mime@2.7.4/node_modules/postal-mime/src/pass-through-decoder.js"() {
-    init_decode_strings();
-    PassThroughDecoder = class {
-      constructor() {
-        this.chunks = [];
-      }
-      update(line2) {
-        this.chunks.push(line2);
-        this.chunks.push("\n");
-      }
-      finalize() {
-        return blobToArrayBuffer(new Blob(this.chunks, { type: "application/octet-stream" }));
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/postal-mime@2.7.4/node_modules/postal-mime/src/base64-decoder.js
-var Base64Decoder;
-var init_base64_decoder = __esm({
-  "../../node_modules/.pnpm/postal-mime@2.7.4/node_modules/postal-mime/src/base64-decoder.js"() {
-    init_decode_strings();
-    Base64Decoder = class {
-      constructor(opts) {
-        opts = opts || {};
-        this.decoder = opts.decoder || new TextDecoder();
-        this.maxChunkSize = 100 * 1024;
-        this.chunks = [];
-        this.remainder = "";
-      }
-      update(buffer) {
-        let str = this.decoder.decode(buffer);
-        str = str.replace(/[^a-zA-Z0-9+\/]+/g, "");
-        this.remainder += str;
-        if (this.remainder.length >= this.maxChunkSize) {
-          let allowedBytes = Math.floor(this.remainder.length / 4) * 4;
-          let base64Str;
-          if (allowedBytes === this.remainder.length) {
-            base64Str = this.remainder;
-            this.remainder = "";
-          } else {
-            base64Str = this.remainder.substr(0, allowedBytes);
-            this.remainder = this.remainder.substr(allowedBytes);
-          }
-          if (base64Str.length) {
-            this.chunks.push(decodeBase642(base64Str));
-          }
-        }
-      }
-      finalize() {
-        if (this.remainder && !/^=+$/.test(this.remainder)) {
-          this.chunks.push(decodeBase642(this.remainder));
-        }
-        return blobToArrayBuffer(new Blob(this.chunks, { type: "application/octet-stream" }));
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/postal-mime@2.7.4/node_modules/postal-mime/src/qp-decoder.js
-var VALID_QP_REGEX, QP_SPLIT_REGEX, SOFT_LINE_BREAK_REGEX, PARTIAL_QP_ENDING_REGEX, QPDecoder;
-var init_qp_decoder = __esm({
-  "../../node_modules/.pnpm/postal-mime@2.7.4/node_modules/postal-mime/src/qp-decoder.js"() {
-    init_decode_strings();
-    VALID_QP_REGEX = /^=[a-f0-9]{2}$/i;
-    QP_SPLIT_REGEX = /(?==[a-f0-9]{2})/i;
-    SOFT_LINE_BREAK_REGEX = /=\r?\n/g;
-    PARTIAL_QP_ENDING_REGEX = /=[a-fA-F0-9]?$/;
-    QPDecoder = class {
-      constructor(opts) {
-        opts = opts || {};
-        this.decoder = opts.decoder || new TextDecoder();
-        this.maxChunkSize = 100 * 1024;
-        this.remainder = "";
-        this.chunks = [];
-      }
-      decodeQPBytes(encodedBytes) {
-        let buf = new ArrayBuffer(encodedBytes.length);
-        let dataView = new DataView(buf);
-        for (let i2 = 0, len = encodedBytes.length; i2 < len; i2++) {
-          dataView.setUint8(i2, parseInt(encodedBytes[i2], 16));
-        }
-        return buf;
-      }
-      decodeChunks(str) {
-        str = str.replace(SOFT_LINE_BREAK_REGEX, "");
-        let list = str.split(QP_SPLIT_REGEX);
-        let encodedBytes = [];
-        for (let part of list) {
-          if (part.charAt(0) !== "=") {
-            if (encodedBytes.length) {
-              this.chunks.push(this.decodeQPBytes(encodedBytes));
-              encodedBytes = [];
-            }
-            this.chunks.push(part);
-            continue;
-          }
-          if (part.length === 3) {
-            if (VALID_QP_REGEX.test(part)) {
-              encodedBytes.push(part.substr(1));
-            } else {
-              if (encodedBytes.length) {
-                this.chunks.push(this.decodeQPBytes(encodedBytes));
-                encodedBytes = [];
-              }
-              this.chunks.push(part);
-            }
-            continue;
-          }
-          if (part.length > 3) {
-            const firstThree = part.substr(0, 3);
-            if (VALID_QP_REGEX.test(firstThree)) {
-              encodedBytes.push(part.substr(1, 2));
-              this.chunks.push(this.decodeQPBytes(encodedBytes));
-              encodedBytes = [];
-              part = part.substr(3);
-              this.chunks.push(part);
-            } else {
-              if (encodedBytes.length) {
-                this.chunks.push(this.decodeQPBytes(encodedBytes));
-                encodedBytes = [];
-              }
-              this.chunks.push(part);
-            }
-          }
-        }
-        if (encodedBytes.length) {
-          this.chunks.push(this.decodeQPBytes(encodedBytes));
-        }
-      }
-      update(buffer) {
-        let str = this.decoder.decode(buffer) + "\n";
-        str = this.remainder + str;
-        if (str.length < this.maxChunkSize) {
-          this.remainder = str;
-          return;
-        }
-        this.remainder = "";
-        let partialEnding = str.match(PARTIAL_QP_ENDING_REGEX);
-        if (partialEnding) {
-          if (partialEnding.index === 0) {
-            this.remainder = str;
-            return;
-          }
-          this.remainder = str.substr(partialEnding.index);
-          str = str.substr(0, partialEnding.index);
-        }
-        this.decodeChunks(str);
-      }
-      finalize() {
-        if (this.remainder.length) {
-          this.decodeChunks(this.remainder);
-          this.remainder = "";
-        }
-        return blobToArrayBuffer(new Blob(this.chunks, { type: "application/octet-stream" }));
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/postal-mime@2.7.4/node_modules/postal-mime/src/mime-node.js
-var defaultDecoder, MimeNode;
-var init_mime_node = __esm({
-  "../../node_modules/.pnpm/postal-mime@2.7.4/node_modules/postal-mime/src/mime-node.js"() {
-    init_decode_strings();
-    init_pass_through_decoder();
-    init_base64_decoder();
-    init_qp_decoder();
-    defaultDecoder = getDecoder();
-    MimeNode = class {
-      constructor(options) {
-        this.options = options || {};
-        this.postalMime = this.options.postalMime;
-        this.root = !!this.options.parentNode;
-        this.childNodes = [];
-        if (this.options.parentNode) {
-          this.parentNode = this.options.parentNode;
-          this.depth = this.parentNode.depth + 1;
-          if (this.depth > this.options.maxNestingDepth) {
-            throw new Error(`Maximum MIME nesting depth of ${this.options.maxNestingDepth} levels exceeded`);
-          }
-          this.options.parentNode.childNodes.push(this);
-        } else {
-          this.depth = 0;
-        }
-        this.state = "header";
-        this.headerLines = [];
-        this.headerSize = 0;
-        const parentMultipartType = this.options.parentMultipartType || null;
-        const defaultContentType = parentMultipartType === "digest" ? "message/rfc822" : "text/plain";
-        this.contentType = {
-          value: defaultContentType,
-          default: true
-        };
-        this.contentTransferEncoding = {
-          value: "8bit"
-        };
-        this.contentDisposition = {
-          value: ""
-        };
-        this.headers = [];
-        this.contentDecoder = false;
-      }
-      setupContentDecoder(transferEncoding) {
-        if (/base64/i.test(transferEncoding)) {
-          this.contentDecoder = new Base64Decoder();
-        } else if (/quoted-printable/i.test(transferEncoding)) {
-          this.contentDecoder = new QPDecoder({ decoder: getDecoder(this.contentType.parsed.params.charset) });
-        } else {
-          this.contentDecoder = new PassThroughDecoder();
-        }
-      }
-      async finalize() {
-        if (this.state === "finished") {
-          return;
-        }
-        if (this.state === "header") {
-          this.processHeaders();
-        }
-        let boundaries = this.postalMime.boundaries;
-        for (let i2 = boundaries.length - 1; i2 >= 0; i2--) {
-          let boundary = boundaries[i2];
-          if (boundary.node === this) {
-            boundaries.splice(i2, 1);
-            break;
-          }
-        }
-        await this.finalizeChildNodes();
-        this.content = this.contentDecoder ? await this.contentDecoder.finalize() : null;
-        this.state = "finished";
-      }
-      async finalizeChildNodes() {
-        for (let childNode of this.childNodes) {
-          await childNode.finalize();
-        }
-      }
-      // Strip RFC 822 comments (parenthesized text) from structured header values
-      stripComments(str) {
-        let result = "";
-        let depth = 0;
-        let escaped = false;
-        let inQuote = false;
-        for (let i2 = 0; i2 < str.length; i2++) {
-          const chr = str.charAt(i2);
-          if (escaped) {
-            if (depth === 0) {
-              result += chr;
-            }
-            escaped = false;
-            continue;
-          }
-          if (chr === "\\") {
-            escaped = true;
-            if (depth === 0) {
-              result += chr;
-            }
-            continue;
-          }
-          if (chr === '"' && depth === 0) {
-            inQuote = !inQuote;
-            result += chr;
-            continue;
-          }
-          if (!inQuote) {
-            if (chr === "(") {
-              depth++;
-              continue;
-            }
-            if (chr === ")" && depth > 0) {
-              depth--;
-              continue;
-            }
-          }
-          if (depth === 0) {
-            result += chr;
-          }
-        }
-        return result;
-      }
-      parseStructuredHeader(str) {
-        str = this.stripComments(str);
-        let response = {
-          value: false,
-          params: {}
-        };
-        let key = false;
-        let value = "";
-        let stage = "value";
-        let quote = false;
-        let escaped = false;
-        let chr;
-        for (let i2 = 0, len = str.length; i2 < len; i2++) {
-          chr = str.charAt(i2);
-          switch (stage) {
-            case "key":
-              if (chr === "=") {
-                key = value.trim().toLowerCase();
-                stage = "value";
-                value = "";
-                break;
-              }
-              value += chr;
-              break;
-            case "value":
-              if (escaped) {
-                value += chr;
-              } else if (chr === "\\") {
-                escaped = true;
-                continue;
-              } else if (quote && chr === quote) {
-                quote = false;
-              } else if (!quote && chr === '"') {
-                quote = chr;
-              } else if (!quote && chr === ";") {
-                if (key === false) {
-                  response.value = value.trim();
-                } else {
-                  response.params[key] = value.trim();
-                }
-                stage = "key";
-                value = "";
-              } else {
-                value += chr;
-              }
-              escaped = false;
-              break;
-          }
-        }
-        value = value.trim();
-        if (stage === "value") {
-          if (key === false) {
-            response.value = value;
-          } else {
-            response.params[key] = value;
-          }
-        } else if (value) {
-          response.params[value.toLowerCase()] = "";
-        }
-        if (response.value) {
-          response.value = response.value.toLowerCase();
-        }
-        decodeParameterValueContinuations(response);
-        return response;
-      }
-      decodeFlowedText(str, delSp) {
-        return str.split(/\r?\n/).reduce((previousValue, currentValue) => {
-          if (previousValue.endsWith(" ") && previousValue !== "-- " && !previousValue.endsWith("\n-- ")) {
-            if (delSp) {
-              return previousValue.slice(0, -1) + currentValue;
-            } else {
-              return previousValue + currentValue;
-            }
-          } else {
-            return previousValue + "\n" + currentValue;
-          }
-        }).replace(/^ /gm, "");
-      }
-      getTextContent() {
-        if (!this.content) {
-          return "";
-        }
-        let str = getDecoder(this.contentType.parsed.params.charset).decode(this.content);
-        if (/^flowed$/i.test(this.contentType.parsed.params.format)) {
-          str = this.decodeFlowedText(str, /^yes$/i.test(this.contentType.parsed.params.delsp));
-        }
-        return str;
-      }
-      processHeaders() {
-        for (let i2 = this.headerLines.length - 1; i2 >= 0; i2--) {
-          let line2 = this.headerLines[i2];
-          if (i2 && /^\s/.test(line2)) {
-            this.headerLines[i2 - 1] += "\n" + line2;
-            this.headerLines.splice(i2, 1);
-          }
-        }
-        this.rawHeaderLines = [];
-        for (let i2 = this.headerLines.length - 1; i2 >= 0; i2--) {
-          let rawLine = this.headerLines[i2];
-          let sep = rawLine.indexOf(":");
-          let rawKey = sep < 0 ? rawLine.trim() : rawLine.substr(0, sep).trim();
-          this.rawHeaderLines.push({
-            key: rawKey.toLowerCase(),
-            line: rawLine
-          });
-          let normalizedLine = rawLine.replace(/\s+/g, " ");
-          sep = normalizedLine.indexOf(":");
-          let key = sep < 0 ? normalizedLine.trim() : normalizedLine.substr(0, sep).trim();
-          let value = sep < 0 ? "" : normalizedLine.substr(sep + 1).trim();
-          this.headers.push({ key: key.toLowerCase(), originalKey: key, value });
-          switch (key.toLowerCase()) {
-            case "content-type":
-              if (this.contentType.default) {
-                this.contentType = { value, parsed: {} };
-              }
-              break;
-            case "content-transfer-encoding":
-              this.contentTransferEncoding = { value, parsed: {} };
-              break;
-            case "content-disposition":
-              this.contentDisposition = { value, parsed: {} };
-              break;
-            case "content-id":
-              this.contentId = value;
-              break;
-            case "content-description":
-              this.contentDescription = value;
-              break;
-          }
-        }
-        this.contentType.parsed = this.parseStructuredHeader(this.contentType.value);
-        this.contentType.multipart = /^multipart\//i.test(this.contentType.parsed.value) ? this.contentType.parsed.value.substr(this.contentType.parsed.value.indexOf("/") + 1) : false;
-        if (this.contentType.multipart && this.contentType.parsed.params.boundary) {
-          this.postalMime.boundaries.push({
-            value: textEncoder.encode(this.contentType.parsed.params.boundary),
-            node: this
-          });
-        }
-        this.contentDisposition.parsed = this.parseStructuredHeader(this.contentDisposition.value);
-        this.contentTransferEncoding.encoding = this.contentTransferEncoding.value.toLowerCase().split(/[^\w-]/).shift();
-        this.setupContentDecoder(this.contentTransferEncoding.encoding);
-      }
-      feed(line2) {
-        switch (this.state) {
-          case "header":
-            if (!line2.length) {
-              this.state = "body";
-              return this.processHeaders();
-            }
-            this.headerSize += line2.length;
-            if (this.headerSize > this.options.maxHeadersSize) {
-              let error = new Error(`Maximum header size of ${this.options.maxHeadersSize} bytes exceeded`);
-              throw error;
-            }
-            this.headerLines.push(defaultDecoder.decode(line2));
-            break;
-          case "body": {
-            this.contentDecoder.update(line2);
-          }
-        }
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/postal-mime@2.7.4/node_modules/postal-mime/src/html-entities.js
-var htmlEntities, html_entities_default;
-var init_html_entities = __esm({
-  "../../node_modules/.pnpm/postal-mime@2.7.4/node_modules/postal-mime/src/html-entities.js"() {
-    htmlEntities = {
-      "&AElig": "\xC6",
-      "&AElig;": "\xC6",
-      "&AMP": "&",
-      "&AMP;": "&",
-      "&Aacute": "\xC1",
-      "&Aacute;": "\xC1",
-      "&Abreve;": "\u0102",
-      "&Acirc": "\xC2",
-      "&Acirc;": "\xC2",
-      "&Acy;": "\u0410",
-      "&Afr;": "\u{1D504}",
-      "&Agrave": "\xC0",
-      "&Agrave;": "\xC0",
-      "&Alpha;": "\u0391",
-      "&Amacr;": "\u0100",
-      "&And;": "\u2A53",
-      "&Aogon;": "\u0104",
-      "&Aopf;": "\u{1D538}",
-      "&ApplyFunction;": "\u2061",
-      "&Aring": "\xC5",
-      "&Aring;": "\xC5",
-      "&Ascr;": "\u{1D49C}",
-      "&Assign;": "\u2254",
-      "&Atilde": "\xC3",
-      "&Atilde;": "\xC3",
-      "&Auml": "\xC4",
-      "&Auml;": "\xC4",
-      "&Backslash;": "\u2216",
-      "&Barv;": "\u2AE7",
-      "&Barwed;": "\u2306",
-      "&Bcy;": "\u0411",
-      "&Because;": "\u2235",
-      "&Bernoullis;": "\u212C",
-      "&Beta;": "\u0392",
-      "&Bfr;": "\u{1D505}",
-      "&Bopf;": "\u{1D539}",
-      "&Breve;": "\u02D8",
-      "&Bscr;": "\u212C",
-      "&Bumpeq;": "\u224E",
-      "&CHcy;": "\u0427",
-      "&COPY": "\xA9",
-      "&COPY;": "\xA9",
-      "&Cacute;": "\u0106",
-      "&Cap;": "\u22D2",
-      "&CapitalDifferentialD;": "\u2145",
-      "&Cayleys;": "\u212D",
-      "&Ccaron;": "\u010C",
-      "&Ccedil": "\xC7",
-      "&Ccedil;": "\xC7",
-      "&Ccirc;": "\u0108",
-      "&Cconint;": "\u2230",
-      "&Cdot;": "\u010A",
-      "&Cedilla;": "\xB8",
-      "&CenterDot;": "\xB7",
-      "&Cfr;": "\u212D",
-      "&Chi;": "\u03A7",
-      "&CircleDot;": "\u2299",
-      "&CircleMinus;": "\u2296",
-      "&CirclePlus;": "\u2295",
-      "&CircleTimes;": "\u2297",
-      "&ClockwiseContourIntegral;": "\u2232",
-      "&CloseCurlyDoubleQuote;": "\u201D",
-      "&CloseCurlyQuote;": "\u2019",
-      "&Colon;": "\u2237",
-      "&Colone;": "\u2A74",
-      "&Congruent;": "\u2261",
-      "&Conint;": "\u222F",
-      "&ContourIntegral;": "\u222E",
-      "&Copf;": "\u2102",
-      "&Coproduct;": "\u2210",
-      "&CounterClockwiseContourIntegral;": "\u2233",
-      "&Cross;": "\u2A2F",
-      "&Cscr;": "\u{1D49E}",
-      "&Cup;": "\u22D3",
-      "&CupCap;": "\u224D",
-      "&DD;": "\u2145",
-      "&DDotrahd;": "\u2911",
-      "&DJcy;": "\u0402",
-      "&DScy;": "\u0405",
-      "&DZcy;": "\u040F",
-      "&Dagger;": "\u2021",
-      "&Darr;": "\u21A1",
-      "&Dashv;": "\u2AE4",
-      "&Dcaron;": "\u010E",
-      "&Dcy;": "\u0414",
-      "&Del;": "\u2207",
-      "&Delta;": "\u0394",
-      "&Dfr;": "\u{1D507}",
-      "&DiacriticalAcute;": "\xB4",
-      "&DiacriticalDot;": "\u02D9",
-      "&DiacriticalDoubleAcute;": "\u02DD",
-      "&DiacriticalGrave;": "`",
-      "&DiacriticalTilde;": "\u02DC",
-      "&Diamond;": "\u22C4",
-      "&DifferentialD;": "\u2146",
-      "&Dopf;": "\u{1D53B}",
-      "&Dot;": "\xA8",
-      "&DotDot;": "\u20DC",
-      "&DotEqual;": "\u2250",
-      "&DoubleContourIntegral;": "\u222F",
-      "&DoubleDot;": "\xA8",
-      "&DoubleDownArrow;": "\u21D3",
-      "&DoubleLeftArrow;": "\u21D0",
-      "&DoubleLeftRightArrow;": "\u21D4",
-      "&DoubleLeftTee;": "\u2AE4",
-      "&DoubleLongLeftArrow;": "\u27F8",
-      "&DoubleLongLeftRightArrow;": "\u27FA",
-      "&DoubleLongRightArrow;": "\u27F9",
-      "&DoubleRightArrow;": "\u21D2",
-      "&DoubleRightTee;": "\u22A8",
-      "&DoubleUpArrow;": "\u21D1",
-      "&DoubleUpDownArrow;": "\u21D5",
-      "&DoubleVerticalBar;": "\u2225",
-      "&DownArrow;": "\u2193",
-      "&DownArrowBar;": "\u2913",
-      "&DownArrowUpArrow;": "\u21F5",
-      "&DownBreve;": "\u0311",
-      "&DownLeftRightVector;": "\u2950",
-      "&DownLeftTeeVector;": "\u295E",
-      "&DownLeftVector;": "\u21BD",
-      "&DownLeftVectorBar;": "\u2956",
-      "&DownRightTeeVector;": "\u295F",
-      "&DownRightVector;": "\u21C1",
-      "&DownRightVectorBar;": "\u2957",
-      "&DownTee;": "\u22A4",
-      "&DownTeeArrow;": "\u21A7",
-      "&Downarrow;": "\u21D3",
-      "&Dscr;": "\u{1D49F}",
-      "&Dstrok;": "\u0110",
-      "&ENG;": "\u014A",
-      "&ETH": "\xD0",
-      "&ETH;": "\xD0",
-      "&Eacute": "\xC9",
-      "&Eacute;": "\xC9",
-      "&Ecaron;": "\u011A",
-      "&Ecirc": "\xCA",
-      "&Ecirc;": "\xCA",
-      "&Ecy;": "\u042D",
-      "&Edot;": "\u0116",
-      "&Efr;": "\u{1D508}",
-      "&Egrave": "\xC8",
-      "&Egrave;": "\xC8",
-      "&Element;": "\u2208",
-      "&Emacr;": "\u0112",
-      "&EmptySmallSquare;": "\u25FB",
-      "&EmptyVerySmallSquare;": "\u25AB",
-      "&Eogon;": "\u0118",
-      "&Eopf;": "\u{1D53C}",
-      "&Epsilon;": "\u0395",
-      "&Equal;": "\u2A75",
-      "&EqualTilde;": "\u2242",
-      "&Equilibrium;": "\u21CC",
-      "&Escr;": "\u2130",
-      "&Esim;": "\u2A73",
-      "&Eta;": "\u0397",
-      "&Euml": "\xCB",
-      "&Euml;": "\xCB",
-      "&Exists;": "\u2203",
-      "&ExponentialE;": "\u2147",
-      "&Fcy;": "\u0424",
-      "&Ffr;": "\u{1D509}",
-      "&FilledSmallSquare;": "\u25FC",
-      "&FilledVerySmallSquare;": "\u25AA",
-      "&Fopf;": "\u{1D53D}",
-      "&ForAll;": "\u2200",
-      "&Fouriertrf;": "\u2131",
-      "&Fscr;": "\u2131",
-      "&GJcy;": "\u0403",
-      "&GT": ">",
-      "&GT;": ">",
-      "&Gamma;": "\u0393",
-      "&Gammad;": "\u03DC",
-      "&Gbreve;": "\u011E",
-      "&Gcedil;": "\u0122",
-      "&Gcirc;": "\u011C",
-      "&Gcy;": "\u0413",
-      "&Gdot;": "\u0120",
-      "&Gfr;": "\u{1D50A}",
-      "&Gg;": "\u22D9",
-      "&Gopf;": "\u{1D53E}",
-      "&GreaterEqual;": "\u2265",
-      "&GreaterEqualLess;": "\u22DB",
-      "&GreaterFullEqual;": "\u2267",
-      "&GreaterGreater;": "\u2AA2",
-      "&GreaterLess;": "\u2277",
-      "&GreaterSlantEqual;": "\u2A7E",
-      "&GreaterTilde;": "\u2273",
-      "&Gscr;": "\u{1D4A2}",
-      "&Gt;": "\u226B",
-      "&HARDcy;": "\u042A",
-      "&Hacek;": "\u02C7",
-      "&Hat;": "^",
-      "&Hcirc;": "\u0124",
-      "&Hfr;": "\u210C",
-      "&HilbertSpace;": "\u210B",
-      "&Hopf;": "\u210D",
-      "&HorizontalLine;": "\u2500",
-      "&Hscr;": "\u210B",
-      "&Hstrok;": "\u0126",
-      "&HumpDownHump;": "\u224E",
-      "&HumpEqual;": "\u224F",
-      "&IEcy;": "\u0415",
-      "&IJlig;": "\u0132",
-      "&IOcy;": "\u0401",
-      "&Iacute": "\xCD",
-      "&Iacute;": "\xCD",
-      "&Icirc": "\xCE",
-      "&Icirc;": "\xCE",
-      "&Icy;": "\u0418",
-      "&Idot;": "\u0130",
-      "&Ifr;": "\u2111",
-      "&Igrave": "\xCC",
-      "&Igrave;": "\xCC",
-      "&Im;": "\u2111",
-      "&Imacr;": "\u012A",
-      "&ImaginaryI;": "\u2148",
-      "&Implies;": "\u21D2",
-      "&Int;": "\u222C",
-      "&Integral;": "\u222B",
-      "&Intersection;": "\u22C2",
-      "&InvisibleComma;": "\u2063",
-      "&InvisibleTimes;": "\u2062",
-      "&Iogon;": "\u012E",
-      "&Iopf;": "\u{1D540}",
-      "&Iota;": "\u0399",
-      "&Iscr;": "\u2110",
-      "&Itilde;": "\u0128",
-      "&Iukcy;": "\u0406",
-      "&Iuml": "\xCF",
-      "&Iuml;": "\xCF",
-      "&Jcirc;": "\u0134",
-      "&Jcy;": "\u0419",
-      "&Jfr;": "\u{1D50D}",
-      "&Jopf;": "\u{1D541}",
-      "&Jscr;": "\u{1D4A5}",
-      "&Jsercy;": "\u0408",
-      "&Jukcy;": "\u0404",
-      "&KHcy;": "\u0425",
-      "&KJcy;": "\u040C",
-      "&Kappa;": "\u039A",
-      "&Kcedil;": "\u0136",
-      "&Kcy;": "\u041A",
-      "&Kfr;": "\u{1D50E}",
-      "&Kopf;": "\u{1D542}",
-      "&Kscr;": "\u{1D4A6}",
-      "&LJcy;": "\u0409",
-      "&LT": "<",
-      "&LT;": "<",
-      "&Lacute;": "\u0139",
-      "&Lambda;": "\u039B",
-      "&Lang;": "\u27EA",
-      "&Laplacetrf;": "\u2112",
-      "&Larr;": "\u219E",
-      "&Lcaron;": "\u013D",
-      "&Lcedil;": "\u013B",
-      "&Lcy;": "\u041B",
-      "&LeftAngleBracket;": "\u27E8",
-      "&LeftArrow;": "\u2190",
-      "&LeftArrowBar;": "\u21E4",
-      "&LeftArrowRightArrow;": "\u21C6",
-      "&LeftCeiling;": "\u2308",
-      "&LeftDoubleBracket;": "\u27E6",
-      "&LeftDownTeeVector;": "\u2961",
-      "&LeftDownVector;": "\u21C3",
-      "&LeftDownVectorBar;": "\u2959",
-      "&LeftFloor;": "\u230A",
-      "&LeftRightArrow;": "\u2194",
-      "&LeftRightVector;": "\u294E",
-      "&LeftTee;": "\u22A3",
-      "&LeftTeeArrow;": "\u21A4",
-      "&LeftTeeVector;": "\u295A",
-      "&LeftTriangle;": "\u22B2",
-      "&LeftTriangleBar;": "\u29CF",
-      "&LeftTriangleEqual;": "\u22B4",
-      "&LeftUpDownVector;": "\u2951",
-      "&LeftUpTeeVector;": "\u2960",
-      "&LeftUpVector;": "\u21BF",
-      "&LeftUpVectorBar;": "\u2958",
-      "&LeftVector;": "\u21BC",
-      "&LeftVectorBar;": "\u2952",
-      "&Leftarrow;": "\u21D0",
-      "&Leftrightarrow;": "\u21D4",
-      "&LessEqualGreater;": "\u22DA",
-      "&LessFullEqual;": "\u2266",
-      "&LessGreater;": "\u2276",
-      "&LessLess;": "\u2AA1",
-      "&LessSlantEqual;": "\u2A7D",
-      "&LessTilde;": "\u2272",
-      "&Lfr;": "\u{1D50F}",
-      "&Ll;": "\u22D8",
-      "&Lleftarrow;": "\u21DA",
-      "&Lmidot;": "\u013F",
-      "&LongLeftArrow;": "\u27F5",
-      "&LongLeftRightArrow;": "\u27F7",
-      "&LongRightArrow;": "\u27F6",
-      "&Longleftarrow;": "\u27F8",
-      "&Longleftrightarrow;": "\u27FA",
-      "&Longrightarrow;": "\u27F9",
-      "&Lopf;": "\u{1D543}",
-      "&LowerLeftArrow;": "\u2199",
-      "&LowerRightArrow;": "\u2198",
-      "&Lscr;": "\u2112",
-      "&Lsh;": "\u21B0",
-      "&Lstrok;": "\u0141",
-      "&Lt;": "\u226A",
-      "&Map;": "\u2905",
-      "&Mcy;": "\u041C",
-      "&MediumSpace;": "\u205F",
-      "&Mellintrf;": "\u2133",
-      "&Mfr;": "\u{1D510}",
-      "&MinusPlus;": "\u2213",
-      "&Mopf;": "\u{1D544}",
-      "&Mscr;": "\u2133",
-      "&Mu;": "\u039C",
-      "&NJcy;": "\u040A",
-      "&Nacute;": "\u0143",
-      "&Ncaron;": "\u0147",
-      "&Ncedil;": "\u0145",
-      "&Ncy;": "\u041D",
-      "&NegativeMediumSpace;": "\u200B",
-      "&NegativeThickSpace;": "\u200B",
-      "&NegativeThinSpace;": "\u200B",
-      "&NegativeVeryThinSpace;": "\u200B",
-      "&NestedGreaterGreater;": "\u226B",
-      "&NestedLessLess;": "\u226A",
-      "&NewLine;": "\n",
-      "&Nfr;": "\u{1D511}",
-      "&NoBreak;": "\u2060",
-      "&NonBreakingSpace;": "\xA0",
-      "&Nopf;": "\u2115",
-      "&Not;": "\u2AEC",
-      "&NotCongruent;": "\u2262",
-      "&NotCupCap;": "\u226D",
-      "&NotDoubleVerticalBar;": "\u2226",
-      "&NotElement;": "\u2209",
-      "&NotEqual;": "\u2260",
-      "&NotEqualTilde;": "\u2242\u0338",
-      "&NotExists;": "\u2204",
-      "&NotGreater;": "\u226F",
-      "&NotGreaterEqual;": "\u2271",
-      "&NotGreaterFullEqual;": "\u2267\u0338",
-      "&NotGreaterGreater;": "\u226B\u0338",
-      "&NotGreaterLess;": "\u2279",
-      "&NotGreaterSlantEqual;": "\u2A7E\u0338",
-      "&NotGreaterTilde;": "\u2275",
-      "&NotHumpDownHump;": "\u224E\u0338",
-      "&NotHumpEqual;": "\u224F\u0338",
-      "&NotLeftTriangle;": "\u22EA",
-      "&NotLeftTriangleBar;": "\u29CF\u0338",
-      "&NotLeftTriangleEqual;": "\u22EC",
-      "&NotLess;": "\u226E",
-      "&NotLessEqual;": "\u2270",
-      "&NotLessGreater;": "\u2278",
-      "&NotLessLess;": "\u226A\u0338",
-      "&NotLessSlantEqual;": "\u2A7D\u0338",
-      "&NotLessTilde;": "\u2274",
-      "&NotNestedGreaterGreater;": "\u2AA2\u0338",
-      "&NotNestedLessLess;": "\u2AA1\u0338",
-      "&NotPrecedes;": "\u2280",
-      "&NotPrecedesEqual;": "\u2AAF\u0338",
-      "&NotPrecedesSlantEqual;": "\u22E0",
-      "&NotReverseElement;": "\u220C",
-      "&NotRightTriangle;": "\u22EB",
-      "&NotRightTriangleBar;": "\u29D0\u0338",
-      "&NotRightTriangleEqual;": "\u22ED",
-      "&NotSquareSubset;": "\u228F\u0338",
-      "&NotSquareSubsetEqual;": "\u22E2",
-      "&NotSquareSuperset;": "\u2290\u0338",
-      "&NotSquareSupersetEqual;": "\u22E3",
-      "&NotSubset;": "\u2282\u20D2",
-      "&NotSubsetEqual;": "\u2288",
-      "&NotSucceeds;": "\u2281",
-      "&NotSucceedsEqual;": "\u2AB0\u0338",
-      "&NotSucceedsSlantEqual;": "\u22E1",
-      "&NotSucceedsTilde;": "\u227F\u0338",
-      "&NotSuperset;": "\u2283\u20D2",
-      "&NotSupersetEqual;": "\u2289",
-      "&NotTilde;": "\u2241",
-      "&NotTildeEqual;": "\u2244",
-      "&NotTildeFullEqual;": "\u2247",
-      "&NotTildeTilde;": "\u2249",
-      "&NotVerticalBar;": "\u2224",
-      "&Nscr;": "\u{1D4A9}",
-      "&Ntilde": "\xD1",
-      "&Ntilde;": "\xD1",
-      "&Nu;": "\u039D",
-      "&OElig;": "\u0152",
-      "&Oacute": "\xD3",
-      "&Oacute;": "\xD3",
-      "&Ocirc": "\xD4",
-      "&Ocirc;": "\xD4",
-      "&Ocy;": "\u041E",
-      "&Odblac;": "\u0150",
-      "&Ofr;": "\u{1D512}",
-      "&Ograve": "\xD2",
-      "&Ograve;": "\xD2",
-      "&Omacr;": "\u014C",
-      "&Omega;": "\u03A9",
-      "&Omicron;": "\u039F",
-      "&Oopf;": "\u{1D546}",
-      "&OpenCurlyDoubleQuote;": "\u201C",
-      "&OpenCurlyQuote;": "\u2018",
-      "&Or;": "\u2A54",
-      "&Oscr;": "\u{1D4AA}",
-      "&Oslash": "\xD8",
-      "&Oslash;": "\xD8",
-      "&Otilde": "\xD5",
-      "&Otilde;": "\xD5",
-      "&Otimes;": "\u2A37",
-      "&Ouml": "\xD6",
-      "&Ouml;": "\xD6",
-      "&OverBar;": "\u203E",
-      "&OverBrace;": "\u23DE",
-      "&OverBracket;": "\u23B4",
-      "&OverParenthesis;": "\u23DC",
-      "&PartialD;": "\u2202",
-      "&Pcy;": "\u041F",
-      "&Pfr;": "\u{1D513}",
-      "&Phi;": "\u03A6",
-      "&Pi;": "\u03A0",
-      "&PlusMinus;": "\xB1",
-      "&Poincareplane;": "\u210C",
-      "&Popf;": "\u2119",
-      "&Pr;": "\u2ABB",
-      "&Precedes;": "\u227A",
-      "&PrecedesEqual;": "\u2AAF",
-      "&PrecedesSlantEqual;": "\u227C",
-      "&PrecedesTilde;": "\u227E",
-      "&Prime;": "\u2033",
-      "&Product;": "\u220F",
-      "&Proportion;": "\u2237",
-      "&Proportional;": "\u221D",
-      "&Pscr;": "\u{1D4AB}",
-      "&Psi;": "\u03A8",
-      "&QUOT": '"',
-      "&QUOT;": '"',
-      "&Qfr;": "\u{1D514}",
-      "&Qopf;": "\u211A",
-      "&Qscr;": "\u{1D4AC}",
-      "&RBarr;": "\u2910",
-      "&REG": "\xAE",
-      "&REG;": "\xAE",
-      "&Racute;": "\u0154",
-      "&Rang;": "\u27EB",
-      "&Rarr;": "\u21A0",
-      "&Rarrtl;": "\u2916",
-      "&Rcaron;": "\u0158",
-      "&Rcedil;": "\u0156",
-      "&Rcy;": "\u0420",
-      "&Re;": "\u211C",
-      "&ReverseElement;": "\u220B",
-      "&ReverseEquilibrium;": "\u21CB",
-      "&ReverseUpEquilibrium;": "\u296F",
-      "&Rfr;": "\u211C",
-      "&Rho;": "\u03A1",
-      "&RightAngleBracket;": "\u27E9",
-      "&RightArrow;": "\u2192",
-      "&RightArrowBar;": "\u21E5",
-      "&RightArrowLeftArrow;": "\u21C4",
-      "&RightCeiling;": "\u2309",
-      "&RightDoubleBracket;": "\u27E7",
-      "&RightDownTeeVector;": "\u295D",
-      "&RightDownVector;": "\u21C2",
-      "&RightDownVectorBar;": "\u2955",
-      "&RightFloor;": "\u230B",
-      "&RightTee;": "\u22A2",
-      "&RightTeeArrow;": "\u21A6",
-      "&RightTeeVector;": "\u295B",
-      "&RightTriangle;": "\u22B3",
-      "&RightTriangleBar;": "\u29D0",
-      "&RightTriangleEqual;": "\u22B5",
-      "&RightUpDownVector;": "\u294F",
-      "&RightUpTeeVector;": "\u295C",
-      "&RightUpVector;": "\u21BE",
-      "&RightUpVectorBar;": "\u2954",
-      "&RightVector;": "\u21C0",
-      "&RightVectorBar;": "\u2953",
-      "&Rightarrow;": "\u21D2",
-      "&Ropf;": "\u211D",
-      "&RoundImplies;": "\u2970",
-      "&Rrightarrow;": "\u21DB",
-      "&Rscr;": "\u211B",
-      "&Rsh;": "\u21B1",
-      "&RuleDelayed;": "\u29F4",
-      "&SHCHcy;": "\u0429",
-      "&SHcy;": "\u0428",
-      "&SOFTcy;": "\u042C",
-      "&Sacute;": "\u015A",
-      "&Sc;": "\u2ABC",
-      "&Scaron;": "\u0160",
-      "&Scedil;": "\u015E",
-      "&Scirc;": "\u015C",
-      "&Scy;": "\u0421",
-      "&Sfr;": "\u{1D516}",
-      "&ShortDownArrow;": "\u2193",
-      "&ShortLeftArrow;": "\u2190",
-      "&ShortRightArrow;": "\u2192",
-      "&ShortUpArrow;": "\u2191",
-      "&Sigma;": "\u03A3",
-      "&SmallCircle;": "\u2218",
-      "&Sopf;": "\u{1D54A}",
-      "&Sqrt;": "\u221A",
-      "&Square;": "\u25A1",
-      "&SquareIntersection;": "\u2293",
-      "&SquareSubset;": "\u228F",
-      "&SquareSubsetEqual;": "\u2291",
-      "&SquareSuperset;": "\u2290",
-      "&SquareSupersetEqual;": "\u2292",
-      "&SquareUnion;": "\u2294",
-      "&Sscr;": "\u{1D4AE}",
-      "&Star;": "\u22C6",
-      "&Sub;": "\u22D0",
-      "&Subset;": "\u22D0",
-      "&SubsetEqual;": "\u2286",
-      "&Succeeds;": "\u227B",
-      "&SucceedsEqual;": "\u2AB0",
-      "&SucceedsSlantEqual;": "\u227D",
-      "&SucceedsTilde;": "\u227F",
-      "&SuchThat;": "\u220B",
-      "&Sum;": "\u2211",
-      "&Sup;": "\u22D1",
-      "&Superset;": "\u2283",
-      "&SupersetEqual;": "\u2287",
-      "&Supset;": "\u22D1",
-      "&THORN": "\xDE",
-      "&THORN;": "\xDE",
-      "&TRADE;": "\u2122",
-      "&TSHcy;": "\u040B",
-      "&TScy;": "\u0426",
-      "&Tab;": "	",
-      "&Tau;": "\u03A4",
-      "&Tcaron;": "\u0164",
-      "&Tcedil;": "\u0162",
-      "&Tcy;": "\u0422",
-      "&Tfr;": "\u{1D517}",
-      "&Therefore;": "\u2234",
-      "&Theta;": "\u0398",
-      "&ThickSpace;": "\u205F\u200A",
-      "&ThinSpace;": "\u2009",
-      "&Tilde;": "\u223C",
-      "&TildeEqual;": "\u2243",
-      "&TildeFullEqual;": "\u2245",
-      "&TildeTilde;": "\u2248",
-      "&Topf;": "\u{1D54B}",
-      "&TripleDot;": "\u20DB",
-      "&Tscr;": "\u{1D4AF}",
-      "&Tstrok;": "\u0166",
-      "&Uacute": "\xDA",
-      "&Uacute;": "\xDA",
-      "&Uarr;": "\u219F",
-      "&Uarrocir;": "\u2949",
-      "&Ubrcy;": "\u040E",
-      "&Ubreve;": "\u016C",
-      "&Ucirc": "\xDB",
-      "&Ucirc;": "\xDB",
-      "&Ucy;": "\u0423",
-      "&Udblac;": "\u0170",
-      "&Ufr;": "\u{1D518}",
-      "&Ugrave": "\xD9",
-      "&Ugrave;": "\xD9",
-      "&Umacr;": "\u016A",
-      "&UnderBar;": "_",
-      "&UnderBrace;": "\u23DF",
-      "&UnderBracket;": "\u23B5",
-      "&UnderParenthesis;": "\u23DD",
-      "&Union;": "\u22C3",
-      "&UnionPlus;": "\u228E",
-      "&Uogon;": "\u0172",
-      "&Uopf;": "\u{1D54C}",
-      "&UpArrow;": "\u2191",
-      "&UpArrowBar;": "\u2912",
-      "&UpArrowDownArrow;": "\u21C5",
-      "&UpDownArrow;": "\u2195",
-      "&UpEquilibrium;": "\u296E",
-      "&UpTee;": "\u22A5",
-      "&UpTeeArrow;": "\u21A5",
-      "&Uparrow;": "\u21D1",
-      "&Updownarrow;": "\u21D5",
-      "&UpperLeftArrow;": "\u2196",
-      "&UpperRightArrow;": "\u2197",
-      "&Upsi;": "\u03D2",
-      "&Upsilon;": "\u03A5",
-      "&Uring;": "\u016E",
-      "&Uscr;": "\u{1D4B0}",
-      "&Utilde;": "\u0168",
-      "&Uuml": "\xDC",
-      "&Uuml;": "\xDC",
-      "&VDash;": "\u22AB",
-      "&Vbar;": "\u2AEB",
-      "&Vcy;": "\u0412",
-      "&Vdash;": "\u22A9",
-      "&Vdashl;": "\u2AE6",
-      "&Vee;": "\u22C1",
-      "&Verbar;": "\u2016",
-      "&Vert;": "\u2016",
-      "&VerticalBar;": "\u2223",
-      "&VerticalLine;": "|",
-      "&VerticalSeparator;": "\u2758",
-      "&VerticalTilde;": "\u2240",
-      "&VeryThinSpace;": "\u200A",
-      "&Vfr;": "\u{1D519}",
-      "&Vopf;": "\u{1D54D}",
-      "&Vscr;": "\u{1D4B1}",
-      "&Vvdash;": "\u22AA",
-      "&Wcirc;": "\u0174",
-      "&Wedge;": "\u22C0",
-      "&Wfr;": "\u{1D51A}",
-      "&Wopf;": "\u{1D54E}",
-      "&Wscr;": "\u{1D4B2}",
-      "&Xfr;": "\u{1D51B}",
-      "&Xi;": "\u039E",
-      "&Xopf;": "\u{1D54F}",
-      "&Xscr;": "\u{1D4B3}",
-      "&YAcy;": "\u042F",
-      "&YIcy;": "\u0407",
-      "&YUcy;": "\u042E",
-      "&Yacute": "\xDD",
-      "&Yacute;": "\xDD",
-      "&Ycirc;": "\u0176",
-      "&Ycy;": "\u042B",
-      "&Yfr;": "\u{1D51C}",
-      "&Yopf;": "\u{1D550}",
-      "&Yscr;": "\u{1D4B4}",
-      "&Yuml;": "\u0178",
-      "&ZHcy;": "\u0416",
-      "&Zacute;": "\u0179",
-      "&Zcaron;": "\u017D",
-      "&Zcy;": "\u0417",
-      "&Zdot;": "\u017B",
-      "&ZeroWidthSpace;": "\u200B",
-      "&Zeta;": "\u0396",
-      "&Zfr;": "\u2128",
-      "&Zopf;": "\u2124",
-      "&Zscr;": "\u{1D4B5}",
-      "&aacute": "\xE1",
-      "&aacute;": "\xE1",
-      "&abreve;": "\u0103",
-      "&ac;": "\u223E",
-      "&acE;": "\u223E\u0333",
-      "&acd;": "\u223F",
-      "&acirc": "\xE2",
-      "&acirc;": "\xE2",
-      "&acute": "\xB4",
-      "&acute;": "\xB4",
-      "&acy;": "\u0430",
-      "&aelig": "\xE6",
-      "&aelig;": "\xE6",
-      "&af;": "\u2061",
-      "&afr;": "\u{1D51E}",
-      "&agrave": "\xE0",
-      "&agrave;": "\xE0",
-      "&alefsym;": "\u2135",
-      "&aleph;": "\u2135",
-      "&alpha;": "\u03B1",
-      "&amacr;": "\u0101",
-      "&amalg;": "\u2A3F",
-      "&amp": "&",
-      "&amp;": "&",
-      "&and;": "\u2227",
-      "&andand;": "\u2A55",
-      "&andd;": "\u2A5C",
-      "&andslope;": "\u2A58",
-      "&andv;": "\u2A5A",
-      "&ang;": "\u2220",
-      "&ange;": "\u29A4",
-      "&angle;": "\u2220",
-      "&angmsd;": "\u2221",
-      "&angmsdaa;": "\u29A8",
-      "&angmsdab;": "\u29A9",
-      "&angmsdac;": "\u29AA",
-      "&angmsdad;": "\u29AB",
-      "&angmsdae;": "\u29AC",
-      "&angmsdaf;": "\u29AD",
-      "&angmsdag;": "\u29AE",
-      "&angmsdah;": "\u29AF",
-      "&angrt;": "\u221F",
-      "&angrtvb;": "\u22BE",
-      "&angrtvbd;": "\u299D",
-      "&angsph;": "\u2222",
-      "&angst;": "\xC5",
-      "&angzarr;": "\u237C",
-      "&aogon;": "\u0105",
-      "&aopf;": "\u{1D552}",
-      "&ap;": "\u2248",
-      "&apE;": "\u2A70",
-      "&apacir;": "\u2A6F",
-      "&ape;": "\u224A",
-      "&apid;": "\u224B",
-      "&apos;": "'",
-      "&approx;": "\u2248",
-      "&approxeq;": "\u224A",
-      "&aring": "\xE5",
-      "&aring;": "\xE5",
-      "&ascr;": "\u{1D4B6}",
-      "&ast;": "*",
-      "&asymp;": "\u2248",
-      "&asympeq;": "\u224D",
-      "&atilde": "\xE3",
-      "&atilde;": "\xE3",
-      "&auml": "\xE4",
-      "&auml;": "\xE4",
-      "&awconint;": "\u2233",
-      "&awint;": "\u2A11",
-      "&bNot;": "\u2AED",
-      "&backcong;": "\u224C",
-      "&backepsilon;": "\u03F6",
-      "&backprime;": "\u2035",
-      "&backsim;": "\u223D",
-      "&backsimeq;": "\u22CD",
-      "&barvee;": "\u22BD",
-      "&barwed;": "\u2305",
-      "&barwedge;": "\u2305",
-      "&bbrk;": "\u23B5",
-      "&bbrktbrk;": "\u23B6",
-      "&bcong;": "\u224C",
-      "&bcy;": "\u0431",
-      "&bdquo;": "\u201E",
-      "&becaus;": "\u2235",
-      "&because;": "\u2235",
-      "&bemptyv;": "\u29B0",
-      "&bepsi;": "\u03F6",
-      "&bernou;": "\u212C",
-      "&beta;": "\u03B2",
-      "&beth;": "\u2136",
-      "&between;": "\u226C",
-      "&bfr;": "\u{1D51F}",
-      "&bigcap;": "\u22C2",
-      "&bigcirc;": "\u25EF",
-      "&bigcup;": "\u22C3",
-      "&bigodot;": "\u2A00",
-      "&bigoplus;": "\u2A01",
-      "&bigotimes;": "\u2A02",
-      "&bigsqcup;": "\u2A06",
-      "&bigstar;": "\u2605",
-      "&bigtriangledown;": "\u25BD",
-      "&bigtriangleup;": "\u25B3",
-      "&biguplus;": "\u2A04",
-      "&bigvee;": "\u22C1",
-      "&bigwedge;": "\u22C0",
-      "&bkarow;": "\u290D",
-      "&blacklozenge;": "\u29EB",
-      "&blacksquare;": "\u25AA",
-      "&blacktriangle;": "\u25B4",
-      "&blacktriangledown;": "\u25BE",
-      "&blacktriangleleft;": "\u25C2",
-      "&blacktriangleright;": "\u25B8",
-      "&blank;": "\u2423",
-      "&blk12;": "\u2592",
-      "&blk14;": "\u2591",
-      "&blk34;": "\u2593",
-      "&block;": "\u2588",
-      "&bne;": "=\u20E5",
-      "&bnequiv;": "\u2261\u20E5",
-      "&bnot;": "\u2310",
-      "&bopf;": "\u{1D553}",
-      "&bot;": "\u22A5",
-      "&bottom;": "\u22A5",
-      "&bowtie;": "\u22C8",
-      "&boxDL;": "\u2557",
-      "&boxDR;": "\u2554",
-      "&boxDl;": "\u2556",
-      "&boxDr;": "\u2553",
-      "&boxH;": "\u2550",
-      "&boxHD;": "\u2566",
-      "&boxHU;": "\u2569",
-      "&boxHd;": "\u2564",
-      "&boxHu;": "\u2567",
-      "&boxUL;": "\u255D",
-      "&boxUR;": "\u255A",
-      "&boxUl;": "\u255C",
-      "&boxUr;": "\u2559",
-      "&boxV;": "\u2551",
-      "&boxVH;": "\u256C",
-      "&boxVL;": "\u2563",
-      "&boxVR;": "\u2560",
-      "&boxVh;": "\u256B",
-      "&boxVl;": "\u2562",
-      "&boxVr;": "\u255F",
-      "&boxbox;": "\u29C9",
-      "&boxdL;": "\u2555",
-      "&boxdR;": "\u2552",
-      "&boxdl;": "\u2510",
-      "&boxdr;": "\u250C",
-      "&boxh;": "\u2500",
-      "&boxhD;": "\u2565",
-      "&boxhU;": "\u2568",
-      "&boxhd;": "\u252C",
-      "&boxhu;": "\u2534",
-      "&boxminus;": "\u229F",
-      "&boxplus;": "\u229E",
-      "&boxtimes;": "\u22A0",
-      "&boxuL;": "\u255B",
-      "&boxuR;": "\u2558",
-      "&boxul;": "\u2518",
-      "&boxur;": "\u2514",
-      "&boxv;": "\u2502",
-      "&boxvH;": "\u256A",
-      "&boxvL;": "\u2561",
-      "&boxvR;": "\u255E",
-      "&boxvh;": "\u253C",
-      "&boxvl;": "\u2524",
-      "&boxvr;": "\u251C",
-      "&bprime;": "\u2035",
-      "&breve;": "\u02D8",
-      "&brvbar": "\xA6",
-      "&brvbar;": "\xA6",
-      "&bscr;": "\u{1D4B7}",
-      "&bsemi;": "\u204F",
-      "&bsim;": "\u223D",
-      "&bsime;": "\u22CD",
-      "&bsol;": "\\",
-      "&bsolb;": "\u29C5",
-      "&bsolhsub;": "\u27C8",
-      "&bull;": "\u2022",
-      "&bullet;": "\u2022",
-      "&bump;": "\u224E",
-      "&bumpE;": "\u2AAE",
-      "&bumpe;": "\u224F",
-      "&bumpeq;": "\u224F",
-      "&cacute;": "\u0107",
-      "&cap;": "\u2229",
-      "&capand;": "\u2A44",
-      "&capbrcup;": "\u2A49",
-      "&capcap;": "\u2A4B",
-      "&capcup;": "\u2A47",
-      "&capdot;": "\u2A40",
-      "&caps;": "\u2229\uFE00",
-      "&caret;": "\u2041",
-      "&caron;": "\u02C7",
-      "&ccaps;": "\u2A4D",
-      "&ccaron;": "\u010D",
-      "&ccedil": "\xE7",
-      "&ccedil;": "\xE7",
-      "&ccirc;": "\u0109",
-      "&ccups;": "\u2A4C",
-      "&ccupssm;": "\u2A50",
-      "&cdot;": "\u010B",
-      "&cedil": "\xB8",
-      "&cedil;": "\xB8",
-      "&cemptyv;": "\u29B2",
-      "&cent": "\xA2",
-      "&cent;": "\xA2",
-      "&centerdot;": "\xB7",
-      "&cfr;": "\u{1D520}",
-      "&chcy;": "\u0447",
-      "&check;": "\u2713",
-      "&checkmark;": "\u2713",
-      "&chi;": "\u03C7",
-      "&cir;": "\u25CB",
-      "&cirE;": "\u29C3",
-      "&circ;": "\u02C6",
-      "&circeq;": "\u2257",
-      "&circlearrowleft;": "\u21BA",
-      "&circlearrowright;": "\u21BB",
-      "&circledR;": "\xAE",
-      "&circledS;": "\u24C8",
-      "&circledast;": "\u229B",
-      "&circledcirc;": "\u229A",
-      "&circleddash;": "\u229D",
-      "&cire;": "\u2257",
-      "&cirfnint;": "\u2A10",
-      "&cirmid;": "\u2AEF",
-      "&cirscir;": "\u29C2",
-      "&clubs;": "\u2663",
-      "&clubsuit;": "\u2663",
-      "&colon;": ":",
-      "&colone;": "\u2254",
-      "&coloneq;": "\u2254",
-      "&comma;": ",",
-      "&commat;": "@",
-      "&comp;": "\u2201",
-      "&compfn;": "\u2218",
-      "&complement;": "\u2201",
-      "&complexes;": "\u2102",
-      "&cong;": "\u2245",
-      "&congdot;": "\u2A6D",
-      "&conint;": "\u222E",
-      "&copf;": "\u{1D554}",
-      "&coprod;": "\u2210",
-      "&copy": "\xA9",
-      "&copy;": "\xA9",
-      "&copysr;": "\u2117",
-      "&crarr;": "\u21B5",
-      "&cross;": "\u2717",
-      "&cscr;": "\u{1D4B8}",
-      "&csub;": "\u2ACF",
-      "&csube;": "\u2AD1",
-      "&csup;": "\u2AD0",
-      "&csupe;": "\u2AD2",
-      "&ctdot;": "\u22EF",
-      "&cudarrl;": "\u2938",
-      "&cudarrr;": "\u2935",
-      "&cuepr;": "\u22DE",
-      "&cuesc;": "\u22DF",
-      "&cularr;": "\u21B6",
-      "&cularrp;": "\u293D",
-      "&cup;": "\u222A",
-      "&cupbrcap;": "\u2A48",
-      "&cupcap;": "\u2A46",
-      "&cupcup;": "\u2A4A",
-      "&cupdot;": "\u228D",
-      "&cupor;": "\u2A45",
-      "&cups;": "\u222A\uFE00",
-      "&curarr;": "\u21B7",
-      "&curarrm;": "\u293C",
-      "&curlyeqprec;": "\u22DE",
-      "&curlyeqsucc;": "\u22DF",
-      "&curlyvee;": "\u22CE",
-      "&curlywedge;": "\u22CF",
-      "&curren": "\xA4",
-      "&curren;": "\xA4",
-      "&curvearrowleft;": "\u21B6",
-      "&curvearrowright;": "\u21B7",
-      "&cuvee;": "\u22CE",
-      "&cuwed;": "\u22CF",
-      "&cwconint;": "\u2232",
-      "&cwint;": "\u2231",
-      "&cylcty;": "\u232D",
-      "&dArr;": "\u21D3",
-      "&dHar;": "\u2965",
-      "&dagger;": "\u2020",
-      "&daleth;": "\u2138",
-      "&darr;": "\u2193",
-      "&dash;": "\u2010",
-      "&dashv;": "\u22A3",
-      "&dbkarow;": "\u290F",
-      "&dblac;": "\u02DD",
-      "&dcaron;": "\u010F",
-      "&dcy;": "\u0434",
-      "&dd;": "\u2146",
-      "&ddagger;": "\u2021",
-      "&ddarr;": "\u21CA",
-      "&ddotseq;": "\u2A77",
-      "&deg": "\xB0",
-      "&deg;": "\xB0",
-      "&delta;": "\u03B4",
-      "&demptyv;": "\u29B1",
-      "&dfisht;": "\u297F",
-      "&dfr;": "\u{1D521}",
-      "&dharl;": "\u21C3",
-      "&dharr;": "\u21C2",
-      "&diam;": "\u22C4",
-      "&diamond;": "\u22C4",
-      "&diamondsuit;": "\u2666",
-      "&diams;": "\u2666",
-      "&die;": "\xA8",
-      "&digamma;": "\u03DD",
-      "&disin;": "\u22F2",
-      "&div;": "\xF7",
-      "&divide": "\xF7",
-      "&divide;": "\xF7",
-      "&divideontimes;": "\u22C7",
-      "&divonx;": "\u22C7",
-      "&djcy;": "\u0452",
-      "&dlcorn;": "\u231E",
-      "&dlcrop;": "\u230D",
-      "&dollar;": "$",
-      "&dopf;": "\u{1D555}",
-      "&dot;": "\u02D9",
-      "&doteq;": "\u2250",
-      "&doteqdot;": "\u2251",
-      "&dotminus;": "\u2238",
-      "&dotplus;": "\u2214",
-      "&dotsquare;": "\u22A1",
-      "&doublebarwedge;": "\u2306",
-      "&downarrow;": "\u2193",
-      "&downdownarrows;": "\u21CA",
-      "&downharpoonleft;": "\u21C3",
-      "&downharpoonright;": "\u21C2",
-      "&drbkarow;": "\u2910",
-      "&drcorn;": "\u231F",
-      "&drcrop;": "\u230C",
-      "&dscr;": "\u{1D4B9}",
-      "&dscy;": "\u0455",
-      "&dsol;": "\u29F6",
-      "&dstrok;": "\u0111",
-      "&dtdot;": "\u22F1",
-      "&dtri;": "\u25BF",
-      "&dtrif;": "\u25BE",
-      "&duarr;": "\u21F5",
-      "&duhar;": "\u296F",
-      "&dwangle;": "\u29A6",
-      "&dzcy;": "\u045F",
-      "&dzigrarr;": "\u27FF",
-      "&eDDot;": "\u2A77",
-      "&eDot;": "\u2251",
-      "&eacute": "\xE9",
-      "&eacute;": "\xE9",
-      "&easter;": "\u2A6E",
-      "&ecaron;": "\u011B",
-      "&ecir;": "\u2256",
-      "&ecirc": "\xEA",
-      "&ecirc;": "\xEA",
-      "&ecolon;": "\u2255",
-      "&ecy;": "\u044D",
-      "&edot;": "\u0117",
-      "&ee;": "\u2147",
-      "&efDot;": "\u2252",
-      "&efr;": "\u{1D522}",
-      "&eg;": "\u2A9A",
-      "&egrave": "\xE8",
-      "&egrave;": "\xE8",
-      "&egs;": "\u2A96",
-      "&egsdot;": "\u2A98",
-      "&el;": "\u2A99",
-      "&elinters;": "\u23E7",
-      "&ell;": "\u2113",
-      "&els;": "\u2A95",
-      "&elsdot;": "\u2A97",
-      "&emacr;": "\u0113",
-      "&empty;": "\u2205",
-      "&emptyset;": "\u2205",
-      "&emptyv;": "\u2205",
-      "&emsp13;": "\u2004",
-      "&emsp14;": "\u2005",
-      "&emsp;": "\u2003",
-      "&eng;": "\u014B",
-      "&ensp;": "\u2002",
-      "&eogon;": "\u0119",
-      "&eopf;": "\u{1D556}",
-      "&epar;": "\u22D5",
-      "&eparsl;": "\u29E3",
-      "&eplus;": "\u2A71",
-      "&epsi;": "\u03B5",
-      "&epsilon;": "\u03B5",
-      "&epsiv;": "\u03F5",
-      "&eqcirc;": "\u2256",
-      "&eqcolon;": "\u2255",
-      "&eqsim;": "\u2242",
-      "&eqslantgtr;": "\u2A96",
-      "&eqslantless;": "\u2A95",
-      "&equals;": "=",
-      "&equest;": "\u225F",
-      "&equiv;": "\u2261",
-      "&equivDD;": "\u2A78",
-      "&eqvparsl;": "\u29E5",
-      "&erDot;": "\u2253",
-      "&erarr;": "\u2971",
-      "&escr;": "\u212F",
-      "&esdot;": "\u2250",
-      "&esim;": "\u2242",
-      "&eta;": "\u03B7",
-      "&eth": "\xF0",
-      "&eth;": "\xF0",
-      "&euml": "\xEB",
-      "&euml;": "\xEB",
-      "&euro;": "\u20AC",
-      "&excl;": "!",
-      "&exist;": "\u2203",
-      "&expectation;": "\u2130",
-      "&exponentiale;": "\u2147",
-      "&fallingdotseq;": "\u2252",
-      "&fcy;": "\u0444",
-      "&female;": "\u2640",
-      "&ffilig;": "\uFB03",
-      "&fflig;": "\uFB00",
-      "&ffllig;": "\uFB04",
-      "&ffr;": "\u{1D523}",
-      "&filig;": "\uFB01",
-      "&fjlig;": "fj",
-      "&flat;": "\u266D",
-      "&fllig;": "\uFB02",
-      "&fltns;": "\u25B1",
-      "&fnof;": "\u0192",
-      "&fopf;": "\u{1D557}",
-      "&forall;": "\u2200",
-      "&fork;": "\u22D4",
-      "&forkv;": "\u2AD9",
-      "&fpartint;": "\u2A0D",
-      "&frac12": "\xBD",
-      "&frac12;": "\xBD",
-      "&frac13;": "\u2153",
-      "&frac14": "\xBC",
-      "&frac14;": "\xBC",
-      "&frac15;": "\u2155",
-      "&frac16;": "\u2159",
-      "&frac18;": "\u215B",
-      "&frac23;": "\u2154",
-      "&frac25;": "\u2156",
-      "&frac34": "\xBE",
-      "&frac34;": "\xBE",
-      "&frac35;": "\u2157",
-      "&frac38;": "\u215C",
-      "&frac45;": "\u2158",
-      "&frac56;": "\u215A",
-      "&frac58;": "\u215D",
-      "&frac78;": "\u215E",
-      "&frasl;": "\u2044",
-      "&frown;": "\u2322",
-      "&fscr;": "\u{1D4BB}",
-      "&gE;": "\u2267",
-      "&gEl;": "\u2A8C",
-      "&gacute;": "\u01F5",
-      "&gamma;": "\u03B3",
-      "&gammad;": "\u03DD",
-      "&gap;": "\u2A86",
-      "&gbreve;": "\u011F",
-      "&gcirc;": "\u011D",
-      "&gcy;": "\u0433",
-      "&gdot;": "\u0121",
-      "&ge;": "\u2265",
-      "&gel;": "\u22DB",
-      "&geq;": "\u2265",
-      "&geqq;": "\u2267",
-      "&geqslant;": "\u2A7E",
-      "&ges;": "\u2A7E",
-      "&gescc;": "\u2AA9",
-      "&gesdot;": "\u2A80",
-      "&gesdoto;": "\u2A82",
-      "&gesdotol;": "\u2A84",
-      "&gesl;": "\u22DB\uFE00",
-      "&gesles;": "\u2A94",
-      "&gfr;": "\u{1D524}",
-      "&gg;": "\u226B",
-      "&ggg;": "\u22D9",
-      "&gimel;": "\u2137",
-      "&gjcy;": "\u0453",
-      "&gl;": "\u2277",
-      "&glE;": "\u2A92",
-      "&gla;": "\u2AA5",
-      "&glj;": "\u2AA4",
-      "&gnE;": "\u2269",
-      "&gnap;": "\u2A8A",
-      "&gnapprox;": "\u2A8A",
-      "&gne;": "\u2A88",
-      "&gneq;": "\u2A88",
-      "&gneqq;": "\u2269",
-      "&gnsim;": "\u22E7",
-      "&gopf;": "\u{1D558}",
-      "&grave;": "`",
-      "&gscr;": "\u210A",
-      "&gsim;": "\u2273",
-      "&gsime;": "\u2A8E",
-      "&gsiml;": "\u2A90",
-      "&gt": ">",
-      "&gt;": ">",
-      "&gtcc;": "\u2AA7",
-      "&gtcir;": "\u2A7A",
-      "&gtdot;": "\u22D7",
-      "&gtlPar;": "\u2995",
-      "&gtquest;": "\u2A7C",
-      "&gtrapprox;": "\u2A86",
-      "&gtrarr;": "\u2978",
-      "&gtrdot;": "\u22D7",
-      "&gtreqless;": "\u22DB",
-      "&gtreqqless;": "\u2A8C",
-      "&gtrless;": "\u2277",
-      "&gtrsim;": "\u2273",
-      "&gvertneqq;": "\u2269\uFE00",
-      "&gvnE;": "\u2269\uFE00",
-      "&hArr;": "\u21D4",
-      "&hairsp;": "\u200A",
-      "&half;": "\xBD",
-      "&hamilt;": "\u210B",
-      "&hardcy;": "\u044A",
-      "&harr;": "\u2194",
-      "&harrcir;": "\u2948",
-      "&harrw;": "\u21AD",
-      "&hbar;": "\u210F",
-      "&hcirc;": "\u0125",
-      "&hearts;": "\u2665",
-      "&heartsuit;": "\u2665",
-      "&hellip;": "\u2026",
-      "&hercon;": "\u22B9",
-      "&hfr;": "\u{1D525}",
-      "&hksearow;": "\u2925",
-      "&hkswarow;": "\u2926",
-      "&hoarr;": "\u21FF",
-      "&homtht;": "\u223B",
-      "&hookleftarrow;": "\u21A9",
-      "&hookrightarrow;": "\u21AA",
-      "&hopf;": "\u{1D559}",
-      "&horbar;": "\u2015",
-      "&hscr;": "\u{1D4BD}",
-      "&hslash;": "\u210F",
-      "&hstrok;": "\u0127",
-      "&hybull;": "\u2043",
-      "&hyphen;": "\u2010",
-      "&iacute": "\xED",
-      "&iacute;": "\xED",
-      "&ic;": "\u2063",
-      "&icirc": "\xEE",
-      "&icirc;": "\xEE",
-      "&icy;": "\u0438",
-      "&iecy;": "\u0435",
-      "&iexcl": "\xA1",
-      "&iexcl;": "\xA1",
-      "&iff;": "\u21D4",
-      "&ifr;": "\u{1D526}",
-      "&igrave": "\xEC",
-      "&igrave;": "\xEC",
-      "&ii;": "\u2148",
-      "&iiiint;": "\u2A0C",
-      "&iiint;": "\u222D",
-      "&iinfin;": "\u29DC",
-      "&iiota;": "\u2129",
-      "&ijlig;": "\u0133",
-      "&imacr;": "\u012B",
-      "&image;": "\u2111",
-      "&imagline;": "\u2110",
-      "&imagpart;": "\u2111",
-      "&imath;": "\u0131",
-      "&imof;": "\u22B7",
-      "&imped;": "\u01B5",
-      "&in;": "\u2208",
-      "&incare;": "\u2105",
-      "&infin;": "\u221E",
-      "&infintie;": "\u29DD",
-      "&inodot;": "\u0131",
-      "&int;": "\u222B",
-      "&intcal;": "\u22BA",
-      "&integers;": "\u2124",
-      "&intercal;": "\u22BA",
-      "&intlarhk;": "\u2A17",
-      "&intprod;": "\u2A3C",
-      "&iocy;": "\u0451",
-      "&iogon;": "\u012F",
-      "&iopf;": "\u{1D55A}",
-      "&iota;": "\u03B9",
-      "&iprod;": "\u2A3C",
-      "&iquest": "\xBF",
-      "&iquest;": "\xBF",
-      "&iscr;": "\u{1D4BE}",
-      "&isin;": "\u2208",
-      "&isinE;": "\u22F9",
-      "&isindot;": "\u22F5",
-      "&isins;": "\u22F4",
-      "&isinsv;": "\u22F3",
-      "&isinv;": "\u2208",
-      "&it;": "\u2062",
-      "&itilde;": "\u0129",
-      "&iukcy;": "\u0456",
-      "&iuml": "\xEF",
-      "&iuml;": "\xEF",
-      "&jcirc;": "\u0135",
-      "&jcy;": "\u0439",
-      "&jfr;": "\u{1D527}",
-      "&jmath;": "\u0237",
-      "&jopf;": "\u{1D55B}",
-      "&jscr;": "\u{1D4BF}",
-      "&jsercy;": "\u0458",
-      "&jukcy;": "\u0454",
-      "&kappa;": "\u03BA",
-      "&kappav;": "\u03F0",
-      "&kcedil;": "\u0137",
-      "&kcy;": "\u043A",
-      "&kfr;": "\u{1D528}",
-      "&kgreen;": "\u0138",
-      "&khcy;": "\u0445",
-      "&kjcy;": "\u045C",
-      "&kopf;": "\u{1D55C}",
-      "&kscr;": "\u{1D4C0}",
-      "&lAarr;": "\u21DA",
-      "&lArr;": "\u21D0",
-      "&lAtail;": "\u291B",
-      "&lBarr;": "\u290E",
-      "&lE;": "\u2266",
-      "&lEg;": "\u2A8B",
-      "&lHar;": "\u2962",
-      "&lacute;": "\u013A",
-      "&laemptyv;": "\u29B4",
-      "&lagran;": "\u2112",
-      "&lambda;": "\u03BB",
-      "&lang;": "\u27E8",
-      "&langd;": "\u2991",
-      "&langle;": "\u27E8",
-      "&lap;": "\u2A85",
-      "&laquo": "\xAB",
-      "&laquo;": "\xAB",
-      "&larr;": "\u2190",
-      "&larrb;": "\u21E4",
-      "&larrbfs;": "\u291F",
-      "&larrfs;": "\u291D",
-      "&larrhk;": "\u21A9",
-      "&larrlp;": "\u21AB",
-      "&larrpl;": "\u2939",
-      "&larrsim;": "\u2973",
-      "&larrtl;": "\u21A2",
-      "&lat;": "\u2AAB",
-      "&latail;": "\u2919",
-      "&late;": "\u2AAD",
-      "&lates;": "\u2AAD\uFE00",
-      "&lbarr;": "\u290C",
-      "&lbbrk;": "\u2772",
-      "&lbrace;": "{",
-      "&lbrack;": "[",
-      "&lbrke;": "\u298B",
-      "&lbrksld;": "\u298F",
-      "&lbrkslu;": "\u298D",
-      "&lcaron;": "\u013E",
-      "&lcedil;": "\u013C",
-      "&lceil;": "\u2308",
-      "&lcub;": "{",
-      "&lcy;": "\u043B",
-      "&ldca;": "\u2936",
-      "&ldquo;": "\u201C",
-      "&ldquor;": "\u201E",
-      "&ldrdhar;": "\u2967",
-      "&ldrushar;": "\u294B",
-      "&ldsh;": "\u21B2",
-      "&le;": "\u2264",
-      "&leftarrow;": "\u2190",
-      "&leftarrowtail;": "\u21A2",
-      "&leftharpoondown;": "\u21BD",
-      "&leftharpoonup;": "\u21BC",
-      "&leftleftarrows;": "\u21C7",
-      "&leftrightarrow;": "\u2194",
-      "&leftrightarrows;": "\u21C6",
-      "&leftrightharpoons;": "\u21CB",
-      "&leftrightsquigarrow;": "\u21AD",
-      "&leftthreetimes;": "\u22CB",
-      "&leg;": "\u22DA",
-      "&leq;": "\u2264",
-      "&leqq;": "\u2266",
-      "&leqslant;": "\u2A7D",
-      "&les;": "\u2A7D",
-      "&lescc;": "\u2AA8",
-      "&lesdot;": "\u2A7F",
-      "&lesdoto;": "\u2A81",
-      "&lesdotor;": "\u2A83",
-      "&lesg;": "\u22DA\uFE00",
-      "&lesges;": "\u2A93",
-      "&lessapprox;": "\u2A85",
-      "&lessdot;": "\u22D6",
-      "&lesseqgtr;": "\u22DA",
-      "&lesseqqgtr;": "\u2A8B",
-      "&lessgtr;": "\u2276",
-      "&lesssim;": "\u2272",
-      "&lfisht;": "\u297C",
-      "&lfloor;": "\u230A",
-      "&lfr;": "\u{1D529}",
-      "&lg;": "\u2276",
-      "&lgE;": "\u2A91",
-      "&lhard;": "\u21BD",
-      "&lharu;": "\u21BC",
-      "&lharul;": "\u296A",
-      "&lhblk;": "\u2584",
-      "&ljcy;": "\u0459",
-      "&ll;": "\u226A",
-      "&llarr;": "\u21C7",
-      "&llcorner;": "\u231E",
-      "&llhard;": "\u296B",
-      "&lltri;": "\u25FA",
-      "&lmidot;": "\u0140",
-      "&lmoust;": "\u23B0",
-      "&lmoustache;": "\u23B0",
-      "&lnE;": "\u2268",
-      "&lnap;": "\u2A89",
-      "&lnapprox;": "\u2A89",
-      "&lne;": "\u2A87",
-      "&lneq;": "\u2A87",
-      "&lneqq;": "\u2268",
-      "&lnsim;": "\u22E6",
-      "&loang;": "\u27EC",
-      "&loarr;": "\u21FD",
-      "&lobrk;": "\u27E6",
-      "&longleftarrow;": "\u27F5",
-      "&longleftrightarrow;": "\u27F7",
-      "&longmapsto;": "\u27FC",
-      "&longrightarrow;": "\u27F6",
-      "&looparrowleft;": "\u21AB",
-      "&looparrowright;": "\u21AC",
-      "&lopar;": "\u2985",
-      "&lopf;": "\u{1D55D}",
-      "&loplus;": "\u2A2D",
-      "&lotimes;": "\u2A34",
-      "&lowast;": "\u2217",
-      "&lowbar;": "_",
-      "&loz;": "\u25CA",
-      "&lozenge;": "\u25CA",
-      "&lozf;": "\u29EB",
-      "&lpar;": "(",
-      "&lparlt;": "\u2993",
-      "&lrarr;": "\u21C6",
-      "&lrcorner;": "\u231F",
-      "&lrhar;": "\u21CB",
-      "&lrhard;": "\u296D",
-      "&lrm;": "\u200E",
-      "&lrtri;": "\u22BF",
-      "&lsaquo;": "\u2039",
-      "&lscr;": "\u{1D4C1}",
-      "&lsh;": "\u21B0",
-      "&lsim;": "\u2272",
-      "&lsime;": "\u2A8D",
-      "&lsimg;": "\u2A8F",
-      "&lsqb;": "[",
-      "&lsquo;": "\u2018",
-      "&lsquor;": "\u201A",
-      "&lstrok;": "\u0142",
-      "&lt": "<",
-      "&lt;": "<",
-      "&ltcc;": "\u2AA6",
-      "&ltcir;": "\u2A79",
-      "&ltdot;": "\u22D6",
-      "&lthree;": "\u22CB",
-      "&ltimes;": "\u22C9",
-      "&ltlarr;": "\u2976",
-      "&ltquest;": "\u2A7B",
-      "&ltrPar;": "\u2996",
-      "&ltri;": "\u25C3",
-      "&ltrie;": "\u22B4",
-      "&ltrif;": "\u25C2",
-      "&lurdshar;": "\u294A",
-      "&luruhar;": "\u2966",
-      "&lvertneqq;": "\u2268\uFE00",
-      "&lvnE;": "\u2268\uFE00",
-      "&mDDot;": "\u223A",
-      "&macr": "\xAF",
-      "&macr;": "\xAF",
-      "&male;": "\u2642",
-      "&malt;": "\u2720",
-      "&maltese;": "\u2720",
-      "&map;": "\u21A6",
-      "&mapsto;": "\u21A6",
-      "&mapstodown;": "\u21A7",
-      "&mapstoleft;": "\u21A4",
-      "&mapstoup;": "\u21A5",
-      "&marker;": "\u25AE",
-      "&mcomma;": "\u2A29",
-      "&mcy;": "\u043C",
-      "&mdash;": "\u2014",
-      "&measuredangle;": "\u2221",
-      "&mfr;": "\u{1D52A}",
-      "&mho;": "\u2127",
-      "&micro": "\xB5",
-      "&micro;": "\xB5",
-      "&mid;": "\u2223",
-      "&midast;": "*",
-      "&midcir;": "\u2AF0",
-      "&middot": "\xB7",
-      "&middot;": "\xB7",
-      "&minus;": "\u2212",
-      "&minusb;": "\u229F",
-      "&minusd;": "\u2238",
-      "&minusdu;": "\u2A2A",
-      "&mlcp;": "\u2ADB",
-      "&mldr;": "\u2026",
-      "&mnplus;": "\u2213",
-      "&models;": "\u22A7",
-      "&mopf;": "\u{1D55E}",
-      "&mp;": "\u2213",
-      "&mscr;": "\u{1D4C2}",
-      "&mstpos;": "\u223E",
-      "&mu;": "\u03BC",
-      "&multimap;": "\u22B8",
-      "&mumap;": "\u22B8",
-      "&nGg;": "\u22D9\u0338",
-      "&nGt;": "\u226B\u20D2",
-      "&nGtv;": "\u226B\u0338",
-      "&nLeftarrow;": "\u21CD",
-      "&nLeftrightarrow;": "\u21CE",
-      "&nLl;": "\u22D8\u0338",
-      "&nLt;": "\u226A\u20D2",
-      "&nLtv;": "\u226A\u0338",
-      "&nRightarrow;": "\u21CF",
-      "&nVDash;": "\u22AF",
-      "&nVdash;": "\u22AE",
-      "&nabla;": "\u2207",
-      "&nacute;": "\u0144",
-      "&nang;": "\u2220\u20D2",
-      "&nap;": "\u2249",
-      "&napE;": "\u2A70\u0338",
-      "&napid;": "\u224B\u0338",
-      "&napos;": "\u0149",
-      "&napprox;": "\u2249",
-      "&natur;": "\u266E",
-      "&natural;": "\u266E",
-      "&naturals;": "\u2115",
-      "&nbsp": "\xA0",
-      "&nbsp;": "\xA0",
-      "&nbump;": "\u224E\u0338",
-      "&nbumpe;": "\u224F\u0338",
-      "&ncap;": "\u2A43",
-      "&ncaron;": "\u0148",
-      "&ncedil;": "\u0146",
-      "&ncong;": "\u2247",
-      "&ncongdot;": "\u2A6D\u0338",
-      "&ncup;": "\u2A42",
-      "&ncy;": "\u043D",
-      "&ndash;": "\u2013",
-      "&ne;": "\u2260",
-      "&neArr;": "\u21D7",
-      "&nearhk;": "\u2924",
-      "&nearr;": "\u2197",
-      "&nearrow;": "\u2197",
-      "&nedot;": "\u2250\u0338",
-      "&nequiv;": "\u2262",
-      "&nesear;": "\u2928",
-      "&nesim;": "\u2242\u0338",
-      "&nexist;": "\u2204",
-      "&nexists;": "\u2204",
-      "&nfr;": "\u{1D52B}",
-      "&ngE;": "\u2267\u0338",
-      "&nge;": "\u2271",
-      "&ngeq;": "\u2271",
-      "&ngeqq;": "\u2267\u0338",
-      "&ngeqslant;": "\u2A7E\u0338",
-      "&nges;": "\u2A7E\u0338",
-      "&ngsim;": "\u2275",
-      "&ngt;": "\u226F",
-      "&ngtr;": "\u226F",
-      "&nhArr;": "\u21CE",
-      "&nharr;": "\u21AE",
-      "&nhpar;": "\u2AF2",
-      "&ni;": "\u220B",
-      "&nis;": "\u22FC",
-      "&nisd;": "\u22FA",
-      "&niv;": "\u220B",
-      "&njcy;": "\u045A",
-      "&nlArr;": "\u21CD",
-      "&nlE;": "\u2266\u0338",
-      "&nlarr;": "\u219A",
-      "&nldr;": "\u2025",
-      "&nle;": "\u2270",
-      "&nleftarrow;": "\u219A",
-      "&nleftrightarrow;": "\u21AE",
-      "&nleq;": "\u2270",
-      "&nleqq;": "\u2266\u0338",
-      "&nleqslant;": "\u2A7D\u0338",
-      "&nles;": "\u2A7D\u0338",
-      "&nless;": "\u226E",
-      "&nlsim;": "\u2274",
-      "&nlt;": "\u226E",
-      "&nltri;": "\u22EA",
-      "&nltrie;": "\u22EC",
-      "&nmid;": "\u2224",
-      "&nopf;": "\u{1D55F}",
-      "&not": "\xAC",
-      "&not;": "\xAC",
-      "&notin;": "\u2209",
-      "&notinE;": "\u22F9\u0338",
-      "&notindot;": "\u22F5\u0338",
-      "&notinva;": "\u2209",
-      "&notinvb;": "\u22F7",
-      "&notinvc;": "\u22F6",
-      "&notni;": "\u220C",
-      "&notniva;": "\u220C",
-      "&notnivb;": "\u22FE",
-      "&notnivc;": "\u22FD",
-      "&npar;": "\u2226",
-      "&nparallel;": "\u2226",
-      "&nparsl;": "\u2AFD\u20E5",
-      "&npart;": "\u2202\u0338",
-      "&npolint;": "\u2A14",
-      "&npr;": "\u2280",
-      "&nprcue;": "\u22E0",
-      "&npre;": "\u2AAF\u0338",
-      "&nprec;": "\u2280",
-      "&npreceq;": "\u2AAF\u0338",
-      "&nrArr;": "\u21CF",
-      "&nrarr;": "\u219B",
-      "&nrarrc;": "\u2933\u0338",
-      "&nrarrw;": "\u219D\u0338",
-      "&nrightarrow;": "\u219B",
-      "&nrtri;": "\u22EB",
-      "&nrtrie;": "\u22ED",
-      "&nsc;": "\u2281",
-      "&nsccue;": "\u22E1",
-      "&nsce;": "\u2AB0\u0338",
-      "&nscr;": "\u{1D4C3}",
-      "&nshortmid;": "\u2224",
-      "&nshortparallel;": "\u2226",
-      "&nsim;": "\u2241",
-      "&nsime;": "\u2244",
-      "&nsimeq;": "\u2244",
-      "&nsmid;": "\u2224",
-      "&nspar;": "\u2226",
-      "&nsqsube;": "\u22E2",
-      "&nsqsupe;": "\u22E3",
-      "&nsub;": "\u2284",
-      "&nsubE;": "\u2AC5\u0338",
-      "&nsube;": "\u2288",
-      "&nsubset;": "\u2282\u20D2",
-      "&nsubseteq;": "\u2288",
-      "&nsubseteqq;": "\u2AC5\u0338",
-      "&nsucc;": "\u2281",
-      "&nsucceq;": "\u2AB0\u0338",
-      "&nsup;": "\u2285",
-      "&nsupE;": "\u2AC6\u0338",
-      "&nsupe;": "\u2289",
-      "&nsupset;": "\u2283\u20D2",
-      "&nsupseteq;": "\u2289",
-      "&nsupseteqq;": "\u2AC6\u0338",
-      "&ntgl;": "\u2279",
-      "&ntilde": "\xF1",
-      "&ntilde;": "\xF1",
-      "&ntlg;": "\u2278",
-      "&ntriangleleft;": "\u22EA",
-      "&ntrianglelefteq;": "\u22EC",
-      "&ntriangleright;": "\u22EB",
-      "&ntrianglerighteq;": "\u22ED",
-      "&nu;": "\u03BD",
-      "&num;": "#",
-      "&numero;": "\u2116",
-      "&numsp;": "\u2007",
-      "&nvDash;": "\u22AD",
-      "&nvHarr;": "\u2904",
-      "&nvap;": "\u224D\u20D2",
-      "&nvdash;": "\u22AC",
-      "&nvge;": "\u2265\u20D2",
-      "&nvgt;": ">\u20D2",
-      "&nvinfin;": "\u29DE",
-      "&nvlArr;": "\u2902",
-      "&nvle;": "\u2264\u20D2",
-      "&nvlt;": "<\u20D2",
-      "&nvltrie;": "\u22B4\u20D2",
-      "&nvrArr;": "\u2903",
-      "&nvrtrie;": "\u22B5\u20D2",
-      "&nvsim;": "\u223C\u20D2",
-      "&nwArr;": "\u21D6",
-      "&nwarhk;": "\u2923",
-      "&nwarr;": "\u2196",
-      "&nwarrow;": "\u2196",
-      "&nwnear;": "\u2927",
-      "&oS;": "\u24C8",
-      "&oacute": "\xF3",
-      "&oacute;": "\xF3",
-      "&oast;": "\u229B",
-      "&ocir;": "\u229A",
-      "&ocirc": "\xF4",
-      "&ocirc;": "\xF4",
-      "&ocy;": "\u043E",
-      "&odash;": "\u229D",
-      "&odblac;": "\u0151",
-      "&odiv;": "\u2A38",
-      "&odot;": "\u2299",
-      "&odsold;": "\u29BC",
-      "&oelig;": "\u0153",
-      "&ofcir;": "\u29BF",
-      "&ofr;": "\u{1D52C}",
-      "&ogon;": "\u02DB",
-      "&ograve": "\xF2",
-      "&ograve;": "\xF2",
-      "&ogt;": "\u29C1",
-      "&ohbar;": "\u29B5",
-      "&ohm;": "\u03A9",
-      "&oint;": "\u222E",
-      "&olarr;": "\u21BA",
-      "&olcir;": "\u29BE",
-      "&olcross;": "\u29BB",
-      "&oline;": "\u203E",
-      "&olt;": "\u29C0",
-      "&omacr;": "\u014D",
-      "&omega;": "\u03C9",
-      "&omicron;": "\u03BF",
-      "&omid;": "\u29B6",
-      "&ominus;": "\u2296",
-      "&oopf;": "\u{1D560}",
-      "&opar;": "\u29B7",
-      "&operp;": "\u29B9",
-      "&oplus;": "\u2295",
-      "&or;": "\u2228",
-      "&orarr;": "\u21BB",
-      "&ord;": "\u2A5D",
-      "&order;": "\u2134",
-      "&orderof;": "\u2134",
-      "&ordf": "\xAA",
-      "&ordf;": "\xAA",
-      "&ordm": "\xBA",
-      "&ordm;": "\xBA",
-      "&origof;": "\u22B6",
-      "&oror;": "\u2A56",
-      "&orslope;": "\u2A57",
-      "&orv;": "\u2A5B",
-      "&oscr;": "\u2134",
-      "&oslash": "\xF8",
-      "&oslash;": "\xF8",
-      "&osol;": "\u2298",
-      "&otilde": "\xF5",
-      "&otilde;": "\xF5",
-      "&otimes;": "\u2297",
-      "&otimesas;": "\u2A36",
-      "&ouml": "\xF6",
-      "&ouml;": "\xF6",
-      "&ovbar;": "\u233D",
-      "&par;": "\u2225",
-      "&para": "\xB6",
-      "&para;": "\xB6",
-      "&parallel;": "\u2225",
-      "&parsim;": "\u2AF3",
-      "&parsl;": "\u2AFD",
-      "&part;": "\u2202",
-      "&pcy;": "\u043F",
-      "&percnt;": "%",
-      "&period;": ".",
-      "&permil;": "\u2030",
-      "&perp;": "\u22A5",
-      "&pertenk;": "\u2031",
-      "&pfr;": "\u{1D52D}",
-      "&phi;": "\u03C6",
-      "&phiv;": "\u03D5",
-      "&phmmat;": "\u2133",
-      "&phone;": "\u260E",
-      "&pi;": "\u03C0",
-      "&pitchfork;": "\u22D4",
-      "&piv;": "\u03D6",
-      "&planck;": "\u210F",
-      "&planckh;": "\u210E",
-      "&plankv;": "\u210F",
-      "&plus;": "+",
-      "&plusacir;": "\u2A23",
-      "&plusb;": "\u229E",
-      "&pluscir;": "\u2A22",
-      "&plusdo;": "\u2214",
-      "&plusdu;": "\u2A25",
-      "&pluse;": "\u2A72",
-      "&plusmn": "\xB1",
-      "&plusmn;": "\xB1",
-      "&plussim;": "\u2A26",
-      "&plustwo;": "\u2A27",
-      "&pm;": "\xB1",
-      "&pointint;": "\u2A15",
-      "&popf;": "\u{1D561}",
-      "&pound": "\xA3",
-      "&pound;": "\xA3",
-      "&pr;": "\u227A",
-      "&prE;": "\u2AB3",
-      "&prap;": "\u2AB7",
-      "&prcue;": "\u227C",
-      "&pre;": "\u2AAF",
-      "&prec;": "\u227A",
-      "&precapprox;": "\u2AB7",
-      "&preccurlyeq;": "\u227C",
-      "&preceq;": "\u2AAF",
-      "&precnapprox;": "\u2AB9",
-      "&precneqq;": "\u2AB5",
-      "&precnsim;": "\u22E8",
-      "&precsim;": "\u227E",
-      "&prime;": "\u2032",
-      "&primes;": "\u2119",
-      "&prnE;": "\u2AB5",
-      "&prnap;": "\u2AB9",
-      "&prnsim;": "\u22E8",
-      "&prod;": "\u220F",
-      "&profalar;": "\u232E",
-      "&profline;": "\u2312",
-      "&profsurf;": "\u2313",
-      "&prop;": "\u221D",
-      "&propto;": "\u221D",
-      "&prsim;": "\u227E",
-      "&prurel;": "\u22B0",
-      "&pscr;": "\u{1D4C5}",
-      "&psi;": "\u03C8",
-      "&puncsp;": "\u2008",
-      "&qfr;": "\u{1D52E}",
-      "&qint;": "\u2A0C",
-      "&qopf;": "\u{1D562}",
-      "&qprime;": "\u2057",
-      "&qscr;": "\u{1D4C6}",
-      "&quaternions;": "\u210D",
-      "&quatint;": "\u2A16",
-      "&quest;": "?",
-      "&questeq;": "\u225F",
-      "&quot": '"',
-      "&quot;": '"',
-      "&rAarr;": "\u21DB",
-      "&rArr;": "\u21D2",
-      "&rAtail;": "\u291C",
-      "&rBarr;": "\u290F",
-      "&rHar;": "\u2964",
-      "&race;": "\u223D\u0331",
-      "&racute;": "\u0155",
-      "&radic;": "\u221A",
-      "&raemptyv;": "\u29B3",
-      "&rang;": "\u27E9",
-      "&rangd;": "\u2992",
-      "&range;": "\u29A5",
-      "&rangle;": "\u27E9",
-      "&raquo": "\xBB",
-      "&raquo;": "\xBB",
-      "&rarr;": "\u2192",
-      "&rarrap;": "\u2975",
-      "&rarrb;": "\u21E5",
-      "&rarrbfs;": "\u2920",
-      "&rarrc;": "\u2933",
-      "&rarrfs;": "\u291E",
-      "&rarrhk;": "\u21AA",
-      "&rarrlp;": "\u21AC",
-      "&rarrpl;": "\u2945",
-      "&rarrsim;": "\u2974",
-      "&rarrtl;": "\u21A3",
-      "&rarrw;": "\u219D",
-      "&ratail;": "\u291A",
-      "&ratio;": "\u2236",
-      "&rationals;": "\u211A",
-      "&rbarr;": "\u290D",
-      "&rbbrk;": "\u2773",
-      "&rbrace;": "}",
-      "&rbrack;": "]",
-      "&rbrke;": "\u298C",
-      "&rbrksld;": "\u298E",
-      "&rbrkslu;": "\u2990",
-      "&rcaron;": "\u0159",
-      "&rcedil;": "\u0157",
-      "&rceil;": "\u2309",
-      "&rcub;": "}",
-      "&rcy;": "\u0440",
-      "&rdca;": "\u2937",
-      "&rdldhar;": "\u2969",
-      "&rdquo;": "\u201D",
-      "&rdquor;": "\u201D",
-      "&rdsh;": "\u21B3",
-      "&real;": "\u211C",
-      "&realine;": "\u211B",
-      "&realpart;": "\u211C",
-      "&reals;": "\u211D",
-      "&rect;": "\u25AD",
-      "&reg": "\xAE",
-      "&reg;": "\xAE",
-      "&rfisht;": "\u297D",
-      "&rfloor;": "\u230B",
-      "&rfr;": "\u{1D52F}",
-      "&rhard;": "\u21C1",
-      "&rharu;": "\u21C0",
-      "&rharul;": "\u296C",
-      "&rho;": "\u03C1",
-      "&rhov;": "\u03F1",
-      "&rightarrow;": "\u2192",
-      "&rightarrowtail;": "\u21A3",
-      "&rightharpoondown;": "\u21C1",
-      "&rightharpoonup;": "\u21C0",
-      "&rightleftarrows;": "\u21C4",
-      "&rightleftharpoons;": "\u21CC",
-      "&rightrightarrows;": "\u21C9",
-      "&rightsquigarrow;": "\u219D",
-      "&rightthreetimes;": "\u22CC",
-      "&ring;": "\u02DA",
-      "&risingdotseq;": "\u2253",
-      "&rlarr;": "\u21C4",
-      "&rlhar;": "\u21CC",
-      "&rlm;": "\u200F",
-      "&rmoust;": "\u23B1",
-      "&rmoustache;": "\u23B1",
-      "&rnmid;": "\u2AEE",
-      "&roang;": "\u27ED",
-      "&roarr;": "\u21FE",
-      "&robrk;": "\u27E7",
-      "&ropar;": "\u2986",
-      "&ropf;": "\u{1D563}",
-      "&roplus;": "\u2A2E",
-      "&rotimes;": "\u2A35",
-      "&rpar;": ")",
-      "&rpargt;": "\u2994",
-      "&rppolint;": "\u2A12",
-      "&rrarr;": "\u21C9",
-      "&rsaquo;": "\u203A",
-      "&rscr;": "\u{1D4C7}",
-      "&rsh;": "\u21B1",
-      "&rsqb;": "]",
-      "&rsquo;": "\u2019",
-      "&rsquor;": "\u2019",
-      "&rthree;": "\u22CC",
-      "&rtimes;": "\u22CA",
-      "&rtri;": "\u25B9",
-      "&rtrie;": "\u22B5",
-      "&rtrif;": "\u25B8",
-      "&rtriltri;": "\u29CE",
-      "&ruluhar;": "\u2968",
-      "&rx;": "\u211E",
-      "&sacute;": "\u015B",
-      "&sbquo;": "\u201A",
-      "&sc;": "\u227B",
-      "&scE;": "\u2AB4",
-      "&scap;": "\u2AB8",
-      "&scaron;": "\u0161",
-      "&sccue;": "\u227D",
-      "&sce;": "\u2AB0",
-      "&scedil;": "\u015F",
-      "&scirc;": "\u015D",
-      "&scnE;": "\u2AB6",
-      "&scnap;": "\u2ABA",
-      "&scnsim;": "\u22E9",
-      "&scpolint;": "\u2A13",
-      "&scsim;": "\u227F",
-      "&scy;": "\u0441",
-      "&sdot;": "\u22C5",
-      "&sdotb;": "\u22A1",
-      "&sdote;": "\u2A66",
-      "&seArr;": "\u21D8",
-      "&searhk;": "\u2925",
-      "&searr;": "\u2198",
-      "&searrow;": "\u2198",
-      "&sect": "\xA7",
-      "&sect;": "\xA7",
-      "&semi;": ";",
-      "&seswar;": "\u2929",
-      "&setminus;": "\u2216",
-      "&setmn;": "\u2216",
-      "&sext;": "\u2736",
-      "&sfr;": "\u{1D530}",
-      "&sfrown;": "\u2322",
-      "&sharp;": "\u266F",
-      "&shchcy;": "\u0449",
-      "&shcy;": "\u0448",
-      "&shortmid;": "\u2223",
-      "&shortparallel;": "\u2225",
-      "&shy": "\xAD",
-      "&shy;": "\xAD",
-      "&sigma;": "\u03C3",
-      "&sigmaf;": "\u03C2",
-      "&sigmav;": "\u03C2",
-      "&sim;": "\u223C",
-      "&simdot;": "\u2A6A",
-      "&sime;": "\u2243",
-      "&simeq;": "\u2243",
-      "&simg;": "\u2A9E",
-      "&simgE;": "\u2AA0",
-      "&siml;": "\u2A9D",
-      "&simlE;": "\u2A9F",
-      "&simne;": "\u2246",
-      "&simplus;": "\u2A24",
-      "&simrarr;": "\u2972",
-      "&slarr;": "\u2190",
-      "&smallsetminus;": "\u2216",
-      "&smashp;": "\u2A33",
-      "&smeparsl;": "\u29E4",
-      "&smid;": "\u2223",
-      "&smile;": "\u2323",
-      "&smt;": "\u2AAA",
-      "&smte;": "\u2AAC",
-      "&smtes;": "\u2AAC\uFE00",
-      "&softcy;": "\u044C",
-      "&sol;": "/",
-      "&solb;": "\u29C4",
-      "&solbar;": "\u233F",
-      "&sopf;": "\u{1D564}",
-      "&spades;": "\u2660",
-      "&spadesuit;": "\u2660",
-      "&spar;": "\u2225",
-      "&sqcap;": "\u2293",
-      "&sqcaps;": "\u2293\uFE00",
-      "&sqcup;": "\u2294",
-      "&sqcups;": "\u2294\uFE00",
-      "&sqsub;": "\u228F",
-      "&sqsube;": "\u2291",
-      "&sqsubset;": "\u228F",
-      "&sqsubseteq;": "\u2291",
-      "&sqsup;": "\u2290",
-      "&sqsupe;": "\u2292",
-      "&sqsupset;": "\u2290",
-      "&sqsupseteq;": "\u2292",
-      "&squ;": "\u25A1",
-      "&square;": "\u25A1",
-      "&squarf;": "\u25AA",
-      "&squf;": "\u25AA",
-      "&srarr;": "\u2192",
-      "&sscr;": "\u{1D4C8}",
-      "&ssetmn;": "\u2216",
-      "&ssmile;": "\u2323",
-      "&sstarf;": "\u22C6",
-      "&star;": "\u2606",
-      "&starf;": "\u2605",
-      "&straightepsilon;": "\u03F5",
-      "&straightphi;": "\u03D5",
-      "&strns;": "\xAF",
-      "&sub;": "\u2282",
-      "&subE;": "\u2AC5",
-      "&subdot;": "\u2ABD",
-      "&sube;": "\u2286",
-      "&subedot;": "\u2AC3",
-      "&submult;": "\u2AC1",
-      "&subnE;": "\u2ACB",
-      "&subne;": "\u228A",
-      "&subplus;": "\u2ABF",
-      "&subrarr;": "\u2979",
-      "&subset;": "\u2282",
-      "&subseteq;": "\u2286",
-      "&subseteqq;": "\u2AC5",
-      "&subsetneq;": "\u228A",
-      "&subsetneqq;": "\u2ACB",
-      "&subsim;": "\u2AC7",
-      "&subsub;": "\u2AD5",
-      "&subsup;": "\u2AD3",
-      "&succ;": "\u227B",
-      "&succapprox;": "\u2AB8",
-      "&succcurlyeq;": "\u227D",
-      "&succeq;": "\u2AB0",
-      "&succnapprox;": "\u2ABA",
-      "&succneqq;": "\u2AB6",
-      "&succnsim;": "\u22E9",
-      "&succsim;": "\u227F",
-      "&sum;": "\u2211",
-      "&sung;": "\u266A",
-      "&sup1": "\xB9",
-      "&sup1;": "\xB9",
-      "&sup2": "\xB2",
-      "&sup2;": "\xB2",
-      "&sup3": "\xB3",
-      "&sup3;": "\xB3",
-      "&sup;": "\u2283",
-      "&supE;": "\u2AC6",
-      "&supdot;": "\u2ABE",
-      "&supdsub;": "\u2AD8",
-      "&supe;": "\u2287",
-      "&supedot;": "\u2AC4",
-      "&suphsol;": "\u27C9",
-      "&suphsub;": "\u2AD7",
-      "&suplarr;": "\u297B",
-      "&supmult;": "\u2AC2",
-      "&supnE;": "\u2ACC",
-      "&supne;": "\u228B",
-      "&supplus;": "\u2AC0",
-      "&supset;": "\u2283",
-      "&supseteq;": "\u2287",
-      "&supseteqq;": "\u2AC6",
-      "&supsetneq;": "\u228B",
-      "&supsetneqq;": "\u2ACC",
-      "&supsim;": "\u2AC8",
-      "&supsub;": "\u2AD4",
-      "&supsup;": "\u2AD6",
-      "&swArr;": "\u21D9",
-      "&swarhk;": "\u2926",
-      "&swarr;": "\u2199",
-      "&swarrow;": "\u2199",
-      "&swnwar;": "\u292A",
-      "&szlig": "\xDF",
-      "&szlig;": "\xDF",
-      "&target;": "\u2316",
-      "&tau;": "\u03C4",
-      "&tbrk;": "\u23B4",
-      "&tcaron;": "\u0165",
-      "&tcedil;": "\u0163",
-      "&tcy;": "\u0442",
-      "&tdot;": "\u20DB",
-      "&telrec;": "\u2315",
-      "&tfr;": "\u{1D531}",
-      "&there4;": "\u2234",
-      "&therefore;": "\u2234",
-      "&theta;": "\u03B8",
-      "&thetasym;": "\u03D1",
-      "&thetav;": "\u03D1",
-      "&thickapprox;": "\u2248",
-      "&thicksim;": "\u223C",
-      "&thinsp;": "\u2009",
-      "&thkap;": "\u2248",
-      "&thksim;": "\u223C",
-      "&thorn": "\xFE",
-      "&thorn;": "\xFE",
-      "&tilde;": "\u02DC",
-      "&times": "\xD7",
-      "&times;": "\xD7",
-      "&timesb;": "\u22A0",
-      "&timesbar;": "\u2A31",
-      "&timesd;": "\u2A30",
-      "&tint;": "\u222D",
-      "&toea;": "\u2928",
-      "&top;": "\u22A4",
-      "&topbot;": "\u2336",
-      "&topcir;": "\u2AF1",
-      "&topf;": "\u{1D565}",
-      "&topfork;": "\u2ADA",
-      "&tosa;": "\u2929",
-      "&tprime;": "\u2034",
-      "&trade;": "\u2122",
-      "&triangle;": "\u25B5",
-      "&triangledown;": "\u25BF",
-      "&triangleleft;": "\u25C3",
-      "&trianglelefteq;": "\u22B4",
-      "&triangleq;": "\u225C",
-      "&triangleright;": "\u25B9",
-      "&trianglerighteq;": "\u22B5",
-      "&tridot;": "\u25EC",
-      "&trie;": "\u225C",
-      "&triminus;": "\u2A3A",
-      "&triplus;": "\u2A39",
-      "&trisb;": "\u29CD",
-      "&tritime;": "\u2A3B",
-      "&trpezium;": "\u23E2",
-      "&tscr;": "\u{1D4C9}",
-      "&tscy;": "\u0446",
-      "&tshcy;": "\u045B",
-      "&tstrok;": "\u0167",
-      "&twixt;": "\u226C",
-      "&twoheadleftarrow;": "\u219E",
-      "&twoheadrightarrow;": "\u21A0",
-      "&uArr;": "\u21D1",
-      "&uHar;": "\u2963",
-      "&uacute": "\xFA",
-      "&uacute;": "\xFA",
-      "&uarr;": "\u2191",
-      "&ubrcy;": "\u045E",
-      "&ubreve;": "\u016D",
-      "&ucirc": "\xFB",
-      "&ucirc;": "\xFB",
-      "&ucy;": "\u0443",
-      "&udarr;": "\u21C5",
-      "&udblac;": "\u0171",
-      "&udhar;": "\u296E",
-      "&ufisht;": "\u297E",
-      "&ufr;": "\u{1D532}",
-      "&ugrave": "\xF9",
-      "&ugrave;": "\xF9",
-      "&uharl;": "\u21BF",
-      "&uharr;": "\u21BE",
-      "&uhblk;": "\u2580",
-      "&ulcorn;": "\u231C",
-      "&ulcorner;": "\u231C",
-      "&ulcrop;": "\u230F",
-      "&ultri;": "\u25F8",
-      "&umacr;": "\u016B",
-      "&uml": "\xA8",
-      "&uml;": "\xA8",
-      "&uogon;": "\u0173",
-      "&uopf;": "\u{1D566}",
-      "&uparrow;": "\u2191",
-      "&updownarrow;": "\u2195",
-      "&upharpoonleft;": "\u21BF",
-      "&upharpoonright;": "\u21BE",
-      "&uplus;": "\u228E",
-      "&upsi;": "\u03C5",
-      "&upsih;": "\u03D2",
-      "&upsilon;": "\u03C5",
-      "&upuparrows;": "\u21C8",
-      "&urcorn;": "\u231D",
-      "&urcorner;": "\u231D",
-      "&urcrop;": "\u230E",
-      "&uring;": "\u016F",
-      "&urtri;": "\u25F9",
-      "&uscr;": "\u{1D4CA}",
-      "&utdot;": "\u22F0",
-      "&utilde;": "\u0169",
-      "&utri;": "\u25B5",
-      "&utrif;": "\u25B4",
-      "&uuarr;": "\u21C8",
-      "&uuml": "\xFC",
-      "&uuml;": "\xFC",
-      "&uwangle;": "\u29A7",
-      "&vArr;": "\u21D5",
-      "&vBar;": "\u2AE8",
-      "&vBarv;": "\u2AE9",
-      "&vDash;": "\u22A8",
-      "&vangrt;": "\u299C",
-      "&varepsilon;": "\u03F5",
-      "&varkappa;": "\u03F0",
-      "&varnothing;": "\u2205",
-      "&varphi;": "\u03D5",
-      "&varpi;": "\u03D6",
-      "&varpropto;": "\u221D",
-      "&varr;": "\u2195",
-      "&varrho;": "\u03F1",
-      "&varsigma;": "\u03C2",
-      "&varsubsetneq;": "\u228A\uFE00",
-      "&varsubsetneqq;": "\u2ACB\uFE00",
-      "&varsupsetneq;": "\u228B\uFE00",
-      "&varsupsetneqq;": "\u2ACC\uFE00",
-      "&vartheta;": "\u03D1",
-      "&vartriangleleft;": "\u22B2",
-      "&vartriangleright;": "\u22B3",
-      "&vcy;": "\u0432",
-      "&vdash;": "\u22A2",
-      "&vee;": "\u2228",
-      "&veebar;": "\u22BB",
-      "&veeeq;": "\u225A",
-      "&vellip;": "\u22EE",
-      "&verbar;": "|",
-      "&vert;": "|",
-      "&vfr;": "\u{1D533}",
-      "&vltri;": "\u22B2",
-      "&vnsub;": "\u2282\u20D2",
-      "&vnsup;": "\u2283\u20D2",
-      "&vopf;": "\u{1D567}",
-      "&vprop;": "\u221D",
-      "&vrtri;": "\u22B3",
-      "&vscr;": "\u{1D4CB}",
-      "&vsubnE;": "\u2ACB\uFE00",
-      "&vsubne;": "\u228A\uFE00",
-      "&vsupnE;": "\u2ACC\uFE00",
-      "&vsupne;": "\u228B\uFE00",
-      "&vzigzag;": "\u299A",
-      "&wcirc;": "\u0175",
-      "&wedbar;": "\u2A5F",
-      "&wedge;": "\u2227",
-      "&wedgeq;": "\u2259",
-      "&weierp;": "\u2118",
-      "&wfr;": "\u{1D534}",
-      "&wopf;": "\u{1D568}",
-      "&wp;": "\u2118",
-      "&wr;": "\u2240",
-      "&wreath;": "\u2240",
-      "&wscr;": "\u{1D4CC}",
-      "&xcap;": "\u22C2",
-      "&xcirc;": "\u25EF",
-      "&xcup;": "\u22C3",
-      "&xdtri;": "\u25BD",
-      "&xfr;": "\u{1D535}",
-      "&xhArr;": "\u27FA",
-      "&xharr;": "\u27F7",
-      "&xi;": "\u03BE",
-      "&xlArr;": "\u27F8",
-      "&xlarr;": "\u27F5",
-      "&xmap;": "\u27FC",
-      "&xnis;": "\u22FB",
-      "&xodot;": "\u2A00",
-      "&xopf;": "\u{1D569}",
-      "&xoplus;": "\u2A01",
-      "&xotime;": "\u2A02",
-      "&xrArr;": "\u27F9",
-      "&xrarr;": "\u27F6",
-      "&xscr;": "\u{1D4CD}",
-      "&xsqcup;": "\u2A06",
-      "&xuplus;": "\u2A04",
-      "&xutri;": "\u25B3",
-      "&xvee;": "\u22C1",
-      "&xwedge;": "\u22C0",
-      "&yacute": "\xFD",
-      "&yacute;": "\xFD",
-      "&yacy;": "\u044F",
-      "&ycirc;": "\u0177",
-      "&ycy;": "\u044B",
-      "&yen": "\xA5",
-      "&yen;": "\xA5",
-      "&yfr;": "\u{1D536}",
-      "&yicy;": "\u0457",
-      "&yopf;": "\u{1D56A}",
-      "&yscr;": "\u{1D4CE}",
-      "&yucy;": "\u044E",
-      "&yuml": "\xFF",
-      "&yuml;": "\xFF",
-      "&zacute;": "\u017A",
-      "&zcaron;": "\u017E",
-      "&zcy;": "\u0437",
-      "&zdot;": "\u017C",
-      "&zeetrf;": "\u2128",
-      "&zeta;": "\u03B6",
-      "&zfr;": "\u{1D537}",
-      "&zhcy;": "\u0436",
-      "&zigrarr;": "\u21DD",
-      "&zopf;": "\u{1D56B}",
-      "&zscr;": "\u{1D4CF}",
-      "&zwj;": "\u200D",
-      "&zwnj;": "\u200C"
-    };
-    html_entities_default = htmlEntities;
-  }
-});
-
-// ../../node_modules/.pnpm/postal-mime@2.7.4/node_modules/postal-mime/src/text-format.js
-function decodeHTMLEntities(str) {
-  return str.replace(/&(#\d+|#x[a-f0-9]+|[a-z]+\d*);?/gi, (match, entity) => {
-    if (typeof html_entities_default[match] === "string") {
-      return html_entities_default[match];
-    }
-    if (entity.charAt(0) !== "#" || match.charAt(match.length - 1) !== ";") {
-      return match;
-    }
-    let codePoint;
-    if (entity.charAt(1) === "x") {
-      codePoint = parseInt(entity.substr(2), 16);
-    } else {
-      codePoint = parseInt(entity.substr(1), 10);
-    }
-    let output = "";
-    if (codePoint >= 55296 && codePoint <= 57343 || codePoint > 1114111) {
-      return "\uFFFD";
-    }
-    if (codePoint > 65535) {
-      codePoint -= 65536;
-      output += String.fromCharCode(codePoint >>> 10 & 1023 | 55296);
-      codePoint = 56320 | codePoint & 1023;
-    }
-    output += String.fromCharCode(codePoint);
-    return output;
-  });
-}
-function escapeHtml(str) {
-  return str.trim().replace(/[<>"'?&]/g, (c2) => {
-    let hex = c2.charCodeAt(0).toString(16);
-    if (hex.length < 2) {
-      hex = "0" + hex;
-    }
-    return "&#x" + hex.toUpperCase() + ";";
-  });
-}
-function textToHtml(str) {
-  let html = escapeHtml(str).replace(/\n/g, "<br />");
-  return "<div>" + html + "</div>";
-}
-function htmlToText(str) {
-  str = str.replace(/\r?\n/g, "").replace(/<\!\-\-.*?\-\->/gi, " ").replace(/<br\b[^>]*>/gi, "\n").replace(/<\/?(p|div|table|tr|td|th)\b[^>]*>/gi, "\n\n").replace(/<script\b[^>]*>.*?<\/script\b[^>]*>/gi, " ").replace(/^.*<body\b[^>]*>/i, "").replace(/^.*<\/head\b[^>]*>/i, "").replace(/^.*<\!doctype\b[^>]*>/i, "").replace(/<\/body\b[^>]*>.*$/i, "").replace(/<\/html\b[^>]*>.*$/i, "").replace(/<a\b[^>]*href\s*=\s*["']?([^\s"']+)[^>]*>/gi, " ($1) ").replace(/<\/?(span|em|i|strong|b|u|a)\b[^>]*>/gi, "").replace(/<li\b[^>]*>[\n\u0001\s]*/gi, "* ").replace(/<hr\b[^>]*>/g, "\n-------------\n").replace(/<[^>]*>/g, " ").replace(/\u0001/g, "\n").replace(/[ \t]+/g, " ").replace(/^\s+$/gm, "").replace(/\n\n+/g, "\n\n").replace(/^\n+/, "\n").replace(/\n+$/, "\n");
-  str = decodeHTMLEntities(str);
-  return str;
-}
-function formatTextAddress(address) {
-  return [].concat(address.name || []).concat(address.name ? `<${address.address}>` : address.address).join(" ");
-}
-function formatTextAddresses(addresses) {
-  let parts = [];
-  let processAddress = (address, partCounter) => {
-    if (partCounter) {
-      parts.push(", ");
-    }
-    if (address.group) {
-      let groupStart = `${address.name}:`;
-      let groupEnd = `;`;
-      parts.push(groupStart);
-      address.group.forEach(processAddress);
-      parts.push(groupEnd);
-    } else {
-      parts.push(formatTextAddress(address));
-    }
-  };
-  addresses.forEach(processAddress);
-  return parts.join("");
-}
-function formatHtmlAddress(address) {
-  return `<a href="mailto:${escapeHtml(address.address)}" class="postal-email-address">${escapeHtml(address.name || `<${address.address}>`)}</a>`;
-}
-function formatHtmlAddresses(addresses) {
-  let parts = [];
-  let processAddress = (address, partCounter) => {
-    if (partCounter) {
-      parts.push('<span class="postal-email-address-separator">, </span>');
-    }
-    if (address.group) {
-      let groupStart = `<span class="postal-email-address-group">${escapeHtml(address.name)}:</span>`;
-      let groupEnd = `<span class="postal-email-address-group">;</span>`;
-      parts.push(groupStart);
-      address.group.forEach(processAddress);
-      parts.push(groupEnd);
-    } else {
-      parts.push(formatHtmlAddress(address));
-    }
-  };
-  addresses.forEach(processAddress);
-  return parts.join(" ");
-}
-function foldLines(str, lineLength, afterSpace) {
-  str = (str || "").toString();
-  lineLength = lineLength || 76;
-  let pos = 0, len = str.length, result = "", line2, match;
-  while (pos < len) {
-    line2 = str.substr(pos, lineLength);
-    if (line2.length < lineLength) {
-      result += line2;
-      break;
-    }
-    if (match = line2.match(/^[^\n\r]*(\r?\n|\r)/)) {
-      line2 = match[0];
-      result += line2;
-      pos += line2.length;
-      continue;
-    } else if ((match = line2.match(/(\s+)[^\s]*$/)) && match[0].length - (afterSpace ? (match[1] || "").length : 0) < line2.length) {
-      line2 = line2.substr(0, line2.length - (match[0].length - (afterSpace ? (match[1] || "").length : 0)));
-    } else if (match = str.substr(pos + line2.length).match(/^[^\s]+(\s*)/)) {
-      line2 = line2 + match[0].substr(0, match[0].length - (!afterSpace ? (match[1] || "").length : 0));
-    }
-    result += line2;
-    pos += line2.length;
-    if (pos < len) {
-      result += "\r\n";
-    }
-  }
-  return result;
-}
-function formatTextHeader(message) {
-  let rows = [];
-  if (message.from) {
-    rows.push({ key: "From", val: formatTextAddress(message.from) });
-  }
-  if (message.subject) {
-    rows.push({ key: "Subject", val: message.subject });
-  }
-  if (message.date) {
-    let dateOptions = {
-      year: "numeric",
-      month: "numeric",
-      day: "numeric",
-      hour: "numeric",
-      minute: "numeric",
-      second: "numeric",
-      hour12: false
-    };
-    let dateStr = typeof Intl === "undefined" ? message.date : new Intl.DateTimeFormat("default", dateOptions).format(new Date(message.date));
-    rows.push({ key: "Date", val: dateStr });
-  }
-  if (message.to && message.to.length) {
-    rows.push({ key: "To", val: formatTextAddresses(message.to) });
-  }
-  if (message.cc && message.cc.length) {
-    rows.push({ key: "Cc", val: formatTextAddresses(message.cc) });
-  }
-  if (message.bcc && message.bcc.length) {
-    rows.push({ key: "Bcc", val: formatTextAddresses(message.bcc) });
-  }
-  let maxKeyLength = rows.map((r3) => r3.key.length).reduce((acc, cur) => {
-    return cur > acc ? cur : acc;
-  }, 0);
-  rows = rows.flatMap((row) => {
-    let sepLen = maxKeyLength - row.key.length;
-    let prefix = `${row.key}: ${" ".repeat(sepLen)}`;
-    let emptyPrefix = `${" ".repeat(row.key.length + 1)} ${" ".repeat(sepLen)}`;
-    let foldedLines = foldLines(row.val, 80, true).split(/\r?\n/).map((line2) => line2.trim());
-    return foldedLines.map((line2, i2) => `${i2 ? emptyPrefix : prefix}${line2}`);
-  });
-  let maxLineLength = rows.map((r3) => r3.length).reduce((acc, cur) => {
-    return cur > acc ? cur : acc;
-  }, 0);
-  let lineMarker = "-".repeat(maxLineLength);
-  let template = `
-${lineMarker}
-${rows.join("\n")}
-${lineMarker}
-`;
-  return template;
-}
-function formatHtmlHeader(message) {
-  let rows = [];
-  if (message.from) {
-    rows.push(
-      `<div class="postal-email-header-key">From</div><div class="postal-email-header-value">${formatHtmlAddress(message.from)}</div>`
-    );
-  }
-  if (message.subject) {
-    rows.push(
-      `<div class="postal-email-header-key">Subject</div><div class="postal-email-header-value postal-email-header-subject">${escapeHtml(
-        message.subject
-      )}</div>`
-    );
-  }
-  if (message.date) {
-    let dateOptions = {
-      year: "numeric",
-      month: "numeric",
-      day: "numeric",
-      hour: "numeric",
-      minute: "numeric",
-      second: "numeric",
-      hour12: false
-    };
-    let dateStr = typeof Intl === "undefined" ? message.date : new Intl.DateTimeFormat("default", dateOptions).format(new Date(message.date));
-    rows.push(
-      `<div class="postal-email-header-key">Date</div><div class="postal-email-header-value postal-email-header-date" data-date="${escapeHtml(
-        message.date
-      )}">${escapeHtml(dateStr)}</div>`
-    );
-  }
-  if (message.to && message.to.length) {
-    rows.push(
-      `<div class="postal-email-header-key">To</div><div class="postal-email-header-value">${formatHtmlAddresses(message.to)}</div>`
-    );
-  }
-  if (message.cc && message.cc.length) {
-    rows.push(
-      `<div class="postal-email-header-key">Cc</div><div class="postal-email-header-value">${formatHtmlAddresses(message.cc)}</div>`
-    );
-  }
-  if (message.bcc && message.bcc.length) {
-    rows.push(
-      `<div class="postal-email-header-key">Bcc</div><div class="postal-email-header-value">${formatHtmlAddresses(message.bcc)}</div>`
-    );
-  }
-  let template = `<div class="postal-email-header">${rows.length ? '<div class="postal-email-header-row">' : ""}${rows.join(
-    '</div>\n<div class="postal-email-header-row">'
-  )}${rows.length ? "</div>" : ""}</div>`;
-  return template;
-}
-var init_text_format = __esm({
-  "../../node_modules/.pnpm/postal-mime@2.7.4/node_modules/postal-mime/src/text-format.js"() {
-    init_html_entities();
-  }
-});
-
-// ../../node_modules/.pnpm/postal-mime@2.7.4/node_modules/postal-mime/src/address-parser.js
-function _handleAddress(tokens, depth) {
-  let isGroup = false;
-  let state = "text";
-  let address;
-  let addresses = [];
-  let data = {
-    address: [],
-    comment: [],
-    group: [],
-    text: [],
-    textWasQuoted: []
-    // Track which text tokens came from inside quotes
-  };
-  let i2;
-  let len;
-  let insideQuotes = false;
-  for (i2 = 0, len = tokens.length; i2 < len; i2++) {
-    let token2 = tokens[i2];
-    let prevToken = i2 ? tokens[i2 - 1] : null;
-    if (token2.type === "operator") {
-      switch (token2.value) {
-        case "<":
-          state = "address";
-          insideQuotes = false;
-          break;
-        case "(":
-          state = "comment";
-          insideQuotes = false;
-          break;
-        case ":":
-          state = "group";
-          isGroup = true;
-          insideQuotes = false;
-          break;
-        case '"':
-          insideQuotes = !insideQuotes;
-          state = "text";
-          break;
-        default:
-          state = "text";
-          insideQuotes = false;
-          break;
-      }
-    } else if (token2.value) {
-      if (state === "address") {
-        token2.value = token2.value.replace(/^[^<]*<\s*/, "");
-      }
-      if (prevToken && prevToken.noBreak && data[state].length) {
-        data[state][data[state].length - 1] += token2.value;
-        if (state === "text" && insideQuotes) {
-          data.textWasQuoted[data.textWasQuoted.length - 1] = true;
-        }
-      } else {
-        data[state].push(token2.value);
-        if (state === "text") {
-          data.textWasQuoted.push(insideQuotes);
-        }
-      }
-    }
-  }
-  if (!data.text.length && data.comment.length) {
-    data.text = data.comment;
-    data.comment = [];
-  }
-  if (isGroup) {
-    data.text = data.text.join(" ");
-    let groupMembers = [];
-    if (data.group.length) {
-      let parsedGroup = addressParser(data.group.join(","), { _depth: depth + 1 });
-      parsedGroup.forEach((member) => {
-        if (member.group) {
-          groupMembers = groupMembers.concat(member.group);
-        } else {
-          groupMembers.push(member);
-        }
-      });
-    }
-    addresses.push({
-      name: decodeWords(data.text || address && address.name),
-      group: groupMembers
-    });
-  } else {
-    if (!data.address.length && data.text.length) {
-      for (i2 = data.text.length - 1; i2 >= 0; i2--) {
-        if (!data.textWasQuoted[i2] && data.text[i2].match(/^[^@\s]+@[^@\s]+$/)) {
-          data.address = data.text.splice(i2, 1);
-          data.textWasQuoted.splice(i2, 1);
-          break;
-        }
-      }
-      let _regexHandler = function(address2) {
-        if (!data.address.length) {
-          data.address = [address2.trim()];
-          return " ";
-        } else {
-          return address2;
-        }
-      };
-      if (!data.address.length) {
-        for (i2 = data.text.length - 1; i2 >= 0; i2--) {
-          if (!data.textWasQuoted[i2]) {
-            data.text[i2] = data.text[i2].replace(/\s*\b[^@\s]+@[^\s]+\b\s*/, _regexHandler).trim();
-            if (data.address.length) {
-              break;
-            }
-          }
-        }
-      }
-    }
-    if (!data.text.length && data.comment.length) {
-      data.text = data.comment;
-      data.comment = [];
-    }
-    if (data.address.length > 1) {
-      data.text = data.text.concat(data.address.splice(1));
-    }
-    data.text = data.text.join(" ");
-    data.address = data.address.join(" ");
-    if (!data.address && /^=\?[^=]+?=$/.test(data.text.trim())) {
-      const decodedText = decodeWords(data.text);
-      if (/<[^<>]+@[^<>]+>/.test(decodedText)) {
-        const parsedSubAddresses = addressParser(decodedText);
-        if (parsedSubAddresses && parsedSubAddresses.length) {
-          return parsedSubAddresses;
-        }
-      }
-      return [{ address: "", name: decodedText }];
-    }
-    address = {
-      address: data.address || data.text || "",
-      name: decodeWords(data.text || data.address || "")
-    };
-    if (address.address === address.name) {
-      if ((address.address || "").match(/@/)) {
-        address.name = "";
-      } else {
-        address.address = "";
-      }
-    }
-    addresses.push(address);
-  }
-  return addresses;
-}
-function addressParser(str, options) {
-  options = options || {};
-  let depth = options._depth || 0;
-  if (depth > MAX_NESTED_GROUP_DEPTH) {
-    return [];
-  }
-  let tokenizer = new Tokenizer(str);
-  let tokens = tokenizer.tokenize();
-  let addresses = [];
-  let address = [];
-  let parsedAddresses = [];
-  tokens.forEach((token2) => {
-    if (token2.type === "operator" && (token2.value === "," || token2.value === ";")) {
-      if (address.length) {
-        addresses.push(address);
-      }
-      address = [];
-    } else {
-      address.push(token2);
-    }
-  });
-  if (address.length) {
-    addresses.push(address);
-  }
-  addresses.forEach((address2) => {
-    address2 = _handleAddress(address2, depth);
-    if (address2.length) {
-      parsedAddresses = parsedAddresses.concat(address2);
-    }
-  });
-  if (options.flatten) {
-    let addresses2 = [];
-    let walkAddressList = (list) => {
-      list.forEach((address2) => {
-        if (address2.group) {
-          return walkAddressList(address2.group);
-        } else {
-          addresses2.push(address2);
-        }
-      });
-    };
-    walkAddressList(parsedAddresses);
-    return addresses2;
-  }
-  return parsedAddresses;
-}
-var Tokenizer, MAX_NESTED_GROUP_DEPTH, address_parser_default;
-var init_address_parser = __esm({
-  "../../node_modules/.pnpm/postal-mime@2.7.4/node_modules/postal-mime/src/address-parser.js"() {
-    init_decode_strings();
-    Tokenizer = class {
-      constructor(str) {
-        this.str = (str || "").toString();
-        this.operatorCurrent = "";
-        this.operatorExpecting = "";
-        this.node = null;
-        this.escaped = false;
-        this.list = [];
-        this.operators = {
-          '"': '"',
-          "(": ")",
-          "<": ">",
-          ",": "",
-          ":": ";",
-          // Semicolons are not a legal delimiter per the RFC2822 grammar other
-          // than for terminating a group, but they are also not valid for any
-          // other use in this context.  Given that some mail clients have
-          // historically allowed the semicolon as a delimiter equivalent to the
-          // comma in their UI, it makes sense to treat them the same as a comma
-          // when used outside of a group.
-          ";": ""
-        };
-      }
-      /**
-       * Tokenizes the original input string
-       *
-       * @return {Array} An array of operator|text tokens
-       */
-      tokenize() {
-        let list = [];
-        for (let i2 = 0, len = this.str.length; i2 < len; i2++) {
-          let chr = this.str.charAt(i2);
-          let nextChr = i2 < len - 1 ? this.str.charAt(i2 + 1) : null;
-          this.checkChar(chr, nextChr);
-        }
-        this.list.forEach((node) => {
-          node.value = (node.value || "").toString().trim();
-          if (node.value) {
-            list.push(node);
-          }
-        });
-        return list;
-      }
-      /**
-       * Checks if a character is an operator or text and acts accordingly
-       *
-       * @param {String} chr Character from the address field
-       */
-      checkChar(chr, nextChr) {
-        if (this.escaped) {
-        } else if (chr === this.operatorExpecting) {
-          this.node = {
-            type: "operator",
-            value: chr
-          };
-          if (nextChr && ![" ", "	", "\r", "\n", ",", ";"].includes(nextChr)) {
-            this.node.noBreak = true;
-          }
-          this.list.push(this.node);
-          this.node = null;
-          this.operatorExpecting = "";
-          this.escaped = false;
-          return;
-        } else if (!this.operatorExpecting && chr in this.operators) {
-          this.node = {
-            type: "operator",
-            value: chr
-          };
-          this.list.push(this.node);
-          this.node = null;
-          this.operatorExpecting = this.operators[chr];
-          this.escaped = false;
-          return;
-        } else if (this.operatorExpecting === '"' && chr === "\\") {
-          this.escaped = true;
-          return;
-        }
-        if (!this.node) {
-          this.node = {
-            type: "text",
-            value: ""
-          };
-          this.list.push(this.node);
-        }
-        if (chr === "\n") {
-          chr = " ";
-        }
-        if (chr.charCodeAt(0) >= 33 || [" ", "	"].includes(chr)) {
-          this.node.value += chr;
-        }
-        this.escaped = false;
-      }
-    };
-    MAX_NESTED_GROUP_DEPTH = 50;
-    address_parser_default = addressParser;
-  }
-});
-
-// ../../node_modules/.pnpm/postal-mime@2.7.4/node_modules/postal-mime/src/base64-encoder.js
-function base64ArrayBuffer(arrayBuffer) {
-  var base64 = "";
-  var encodings = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-  var bytes = new Uint8Array(arrayBuffer);
-  var byteLength = bytes.byteLength;
-  var byteRemainder = byteLength % 3;
-  var mainLength = byteLength - byteRemainder;
-  var a, b3, c2, d;
-  var chunk;
-  for (var i2 = 0; i2 < mainLength; i2 = i2 + 3) {
-    chunk = bytes[i2] << 16 | bytes[i2 + 1] << 8 | bytes[i2 + 2];
-    a = (chunk & 16515072) >> 18;
-    b3 = (chunk & 258048) >> 12;
-    c2 = (chunk & 4032) >> 6;
-    d = chunk & 63;
-    base64 += encodings[a] + encodings[b3] + encodings[c2] + encodings[d];
-  }
-  if (byteRemainder == 1) {
-    chunk = bytes[mainLength];
-    a = (chunk & 252) >> 2;
-    b3 = (chunk & 3) << 4;
-    base64 += encodings[a] + encodings[b3] + "==";
-  } else if (byteRemainder == 2) {
-    chunk = bytes[mainLength] << 8 | bytes[mainLength + 1];
-    a = (chunk & 64512) >> 10;
-    b3 = (chunk & 1008) >> 4;
-    c2 = (chunk & 15) << 2;
-    base64 += encodings[a] + encodings[b3] + encodings[c2] + "=";
-  }
-  return base64;
-}
-var init_base64_encoder = __esm({
-  "../../node_modules/.pnpm/postal-mime@2.7.4/node_modules/postal-mime/src/base64-encoder.js"() {
-  }
-});
-
-// ../../node_modules/.pnpm/postal-mime@2.7.4/node_modules/postal-mime/src/postal-mime.js
-function toCamelCase2(key) {
-  return key.replace(/-(.)/g, (o2, c2) => c2.toUpperCase());
-}
-var MAX_NESTING_DEPTH, MAX_HEADERS_SIZE, PostalMime;
-var init_postal_mime = __esm({
-  "../../node_modules/.pnpm/postal-mime@2.7.4/node_modules/postal-mime/src/postal-mime.js"() {
-    init_mime_node();
-    init_text_format();
-    init_address_parser();
-    init_decode_strings();
-    init_base64_encoder();
-    MAX_NESTING_DEPTH = 256;
-    MAX_HEADERS_SIZE = 2 * 1024 * 1024;
-    PostalMime = class _PostalMime {
-      static parse(buf, options) {
-        const parser = new _PostalMime(options);
-        return parser.parse(buf);
-      }
-      constructor(options) {
-        this.options = options || {};
-        this.mimeOptions = {
-          maxNestingDepth: this.options.maxNestingDepth || MAX_NESTING_DEPTH,
-          maxHeadersSize: this.options.maxHeadersSize || MAX_HEADERS_SIZE
-        };
-        this.root = this.currentNode = new MimeNode({
-          postalMime: this,
-          ...this.mimeOptions
-        });
-        this.boundaries = [];
-        this.textContent = {};
-        this.attachments = [];
-        this.attachmentEncoding = (this.options.attachmentEncoding || "").toString().replace(/[-_\s]/g, "").trim().toLowerCase() || "arraybuffer";
-        this.started = false;
-      }
-      async finalize() {
-        await this.root.finalize();
-      }
-      async processLine(line2, isFinal) {
-        let boundaries = this.boundaries;
-        if (boundaries.length && line2.length > 2 && line2[0] === 45 && line2[1] === 45) {
-          for (let i2 = boundaries.length - 1; i2 >= 0; i2--) {
-            let boundary = boundaries[i2];
-            if (line2.length < boundary.value.length + 2) {
-              continue;
-            }
-            let boundaryMatches = true;
-            for (let j3 = 0; j3 < boundary.value.length; j3++) {
-              if (line2[j3 + 2] !== boundary.value[j3]) {
-                boundaryMatches = false;
-                break;
-              }
-            }
-            if (!boundaryMatches) {
-              continue;
-            }
-            let boundaryEnd = boundary.value.length + 2;
-            let isTerminator = false;
-            if (line2.length >= boundary.value.length + 4 && line2[boundary.value.length + 2] === 45 && line2[boundary.value.length + 3] === 45) {
-              isTerminator = true;
-              boundaryEnd = boundary.value.length + 4;
-            }
-            let hasValidTrailing = true;
-            for (let j3 = boundaryEnd; j3 < line2.length; j3++) {
-              if (line2[j3] !== 32 && line2[j3] !== 9) {
-                hasValidTrailing = false;
-                break;
-              }
-            }
-            if (!hasValidTrailing) {
-              continue;
-            }
-            if (isTerminator) {
-              await boundary.node.finalize();
-              this.currentNode = boundary.node.parentNode || this.root;
-            } else {
-              await boundary.node.finalizeChildNodes();
-              this.currentNode = new MimeNode({
-                postalMime: this,
-                parentNode: boundary.node,
-                parentMultipartType: boundary.node.contentType.multipart,
-                ...this.mimeOptions
-              });
-            }
-            if (isFinal) {
-              return this.finalize();
-            }
-            return;
-          }
-        }
-        this.currentNode.feed(line2);
-        if (isFinal) {
-          return this.finalize();
-        }
-      }
-      readLine() {
-        let startPos = this.readPos;
-        let endPos = this.readPos;
-        while (this.readPos < this.av.length) {
-          const c2 = this.av[this.readPos++];
-          if (c2 !== 13 && c2 !== 10) {
-            endPos = this.readPos;
-          }
-          if (c2 === 10) {
-            return {
-              bytes: new Uint8Array(this.buf, startPos, endPos - startPos),
-              done: this.readPos >= this.av.length
-            };
-          }
-        }
-        return {
-          bytes: new Uint8Array(this.buf, startPos, endPos - startPos),
-          done: this.readPos >= this.av.length
-        };
-      }
-      async processNodeTree() {
-        let textContent2 = {};
-        let textTypes = /* @__PURE__ */ new Set();
-        let textMap = this.textMap = /* @__PURE__ */ new Map();
-        let forceRfc822Attachments = this.forceRfc822Attachments();
-        let walk = async (node, alternative, related) => {
-          alternative = alternative || false;
-          related = related || false;
-          if (!node.contentType.multipart) {
-            if (this.isInlineMessageRfc822(node) && !forceRfc822Attachments) {
-              const subParser = new _PostalMime();
-              node.subMessage = await subParser.parse(node.content);
-              if (!textMap.has(node)) {
-                textMap.set(node, {});
-              }
-              let textEntry = textMap.get(node);
-              if (node.subMessage.text || !node.subMessage.html) {
-                textEntry.plain = textEntry.plain || [];
-                textEntry.plain.push({ type: "subMessage", value: node.subMessage });
-                textTypes.add("plain");
-              }
-              if (node.subMessage.html) {
-                textEntry.html = textEntry.html || [];
-                textEntry.html.push({ type: "subMessage", value: node.subMessage });
-                textTypes.add("html");
-              }
-              if (subParser.textMap) {
-                subParser.textMap.forEach((subTextEntry, subTextNode) => {
-                  textMap.set(subTextNode, subTextEntry);
-                });
-              }
-              for (let attachment of node.subMessage.attachments || []) {
-                this.attachments.push(attachment);
-              }
-            } else if (this.isInlineTextNode(node)) {
-              let textType = node.contentType.parsed.value.substr(node.contentType.parsed.value.indexOf("/") + 1);
-              let selectorNode = alternative || node;
-              if (!textMap.has(selectorNode)) {
-                textMap.set(selectorNode, {});
-              }
-              let textEntry = textMap.get(selectorNode);
-              textEntry[textType] = textEntry[textType] || [];
-              textEntry[textType].push({ type: "text", value: node.getTextContent() });
-              textTypes.add(textType);
-            } else if (node.content) {
-              const filename = node.contentDisposition?.parsed?.params?.filename || node.contentType.parsed.params.name || null;
-              const attachment = {
-                filename: filename ? decodeWords(filename) : null,
-                mimeType: node.contentType.parsed.value,
-                disposition: node.contentDisposition?.parsed?.value || null
-              };
-              if (related && node.contentId) {
-                attachment.related = true;
-              }
-              if (node.contentDescription) {
-                attachment.description = node.contentDescription;
-              }
-              if (node.contentId) {
-                attachment.contentId = node.contentId;
-              }
-              switch (node.contentType.parsed.value) {
-                // Special handling for calendar events
-                case "text/calendar":
-                case "application/ics": {
-                  if (node.contentType.parsed.params.method) {
-                    attachment.method = node.contentType.parsed.params.method.toString().toUpperCase().trim();
-                  }
-                  const decodedText = node.getTextContent().replace(/\r?\n/g, "\n").replace(/\n*$/, "\n");
-                  attachment.content = textEncoder.encode(decodedText);
-                  break;
-                }
-                // Regular attachments
-                default:
-                  attachment.content = node.content;
-              }
-              this.attachments.push(attachment);
-            }
-          } else if (node.contentType.multipart === "alternative") {
-            alternative = node;
-          } else if (node.contentType.multipart === "related") {
-            related = node;
-          }
-          for (let childNode of node.childNodes) {
-            await walk(childNode, alternative, related);
-          }
-        };
-        await walk(this.root, false, false);
-        textMap.forEach((mapEntry) => {
-          textTypes.forEach((textType) => {
-            if (!textContent2[textType]) {
-              textContent2[textType] = [];
-            }
-            if (mapEntry[textType]) {
-              mapEntry[textType].forEach((textEntry) => {
-                switch (textEntry.type) {
-                  case "text":
-                    textContent2[textType].push(textEntry.value);
-                    break;
-                  case "subMessage":
-                    {
-                      switch (textType) {
-                        case "html":
-                          textContent2[textType].push(formatHtmlHeader(textEntry.value));
-                          break;
-                        case "plain":
-                          textContent2[textType].push(formatTextHeader(textEntry.value));
-                          break;
-                      }
-                    }
-                    break;
-                }
-              });
-            } else {
-              let alternativeType;
-              switch (textType) {
-                case "html":
-                  alternativeType = "plain";
-                  break;
-                case "plain":
-                  alternativeType = "html";
-                  break;
-              }
-              (mapEntry[alternativeType] || []).forEach((textEntry) => {
-                switch (textEntry.type) {
-                  case "text":
-                    switch (textType) {
-                      case "html":
-                        textContent2[textType].push(textToHtml(textEntry.value));
-                        break;
-                      case "plain":
-                        textContent2[textType].push(htmlToText(textEntry.value));
-                        break;
-                    }
-                    break;
-                  case "subMessage":
-                    {
-                      switch (textType) {
-                        case "html":
-                          textContent2[textType].push(formatHtmlHeader(textEntry.value));
-                          break;
-                        case "plain":
-                          textContent2[textType].push(formatTextHeader(textEntry.value));
-                          break;
-                      }
-                    }
-                    break;
-                }
-              });
-            }
-          });
-        });
-        Object.keys(textContent2).forEach((textType) => {
-          textContent2[textType] = textContent2[textType].join("\n");
-        });
-        this.textContent = textContent2;
-      }
-      isInlineTextNode(node) {
-        if (node.contentDisposition?.parsed?.value === "attachment") {
-          return false;
-        }
-        switch (node.contentType.parsed?.value) {
-          case "text/html":
-          case "text/plain":
-            return true;
-          case "text/calendar":
-          case "text/csv":
-          default:
-            return false;
-        }
-      }
-      isInlineMessageRfc822(node) {
-        if (node.contentType.parsed?.value !== "message/rfc822") {
-          return false;
-        }
-        let disposition = node.contentDisposition?.parsed?.value || (this.options.rfc822Attachments ? "attachment" : "inline");
-        return disposition === "inline";
-      }
-      // Check if this is a specially crafted report email where message/rfc822 content should not be inlined
-      forceRfc822Attachments() {
-        if (this.options.forceRfc822Attachments) {
-          return true;
-        }
-        let forceRfc822Attachments = false;
-        let walk = (node) => {
-          if (!node.contentType.multipart) {
-            if (node.contentType.parsed && ["message/delivery-status", "message/feedback-report"].includes(node.contentType.parsed.value)) {
-              forceRfc822Attachments = true;
-            }
-          }
-          for (let childNode of node.childNodes) {
-            walk(childNode);
-          }
-        };
-        walk(this.root);
-        return forceRfc822Attachments;
-      }
-      async resolveStream(stream) {
-        let chunkLen = 0;
-        let chunks = [];
-        const reader = stream.getReader();
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) {
-            break;
-          }
-          chunks.push(value);
-          chunkLen += value.length;
-        }
-        const result = new Uint8Array(chunkLen);
-        let chunkPointer = 0;
-        for (let chunk of chunks) {
-          result.set(chunk, chunkPointer);
-          chunkPointer += chunk.length;
-        }
-        return result;
-      }
-      async parse(buf) {
-        if (this.started) {
-          throw new Error("Can not reuse parser, create a new PostalMime object");
-        }
-        this.started = true;
-        if (buf && typeof buf.getReader === "function") {
-          buf = await this.resolveStream(buf);
-        }
-        buf = buf || new ArrayBuffer(0);
-        if (typeof buf === "string") {
-          buf = textEncoder.encode(buf);
-        }
-        if (buf instanceof Blob || Object.prototype.toString.call(buf) === "[object Blob]") {
-          buf = await blobToArrayBuffer(buf);
-        }
-        if (buf.buffer instanceof ArrayBuffer) {
-          buf = new Uint8Array(buf).buffer;
-        }
-        this.buf = buf;
-        this.av = new Uint8Array(buf);
-        this.readPos = 0;
-        while (this.readPos < this.av.length) {
-          const line2 = this.readLine();
-          await this.processLine(line2.bytes, line2.done);
-        }
-        await this.processNodeTree();
-        const message = {
-          headers: this.root.headers.map((entry) => ({ key: entry.key, originalKey: entry.originalKey, value: entry.value })).reverse()
-        };
-        for (const key of ["from", "sender"]) {
-          const addressHeader = this.root.headers.find((line2) => line2.key === key);
-          if (addressHeader && addressHeader.value) {
-            const addresses = address_parser_default(addressHeader.value);
-            if (addresses && addresses.length) {
-              message[key] = addresses[0];
-            }
-          }
-        }
-        for (const key of ["delivered-to", "return-path"]) {
-          const addressHeader = this.root.headers.find((line2) => line2.key === key);
-          if (addressHeader && addressHeader.value) {
-            const addresses = address_parser_default(addressHeader.value);
-            if (addresses && addresses.length && addresses[0].address) {
-              const camelKey = toCamelCase2(key);
-              message[camelKey] = addresses[0].address;
-            }
-          }
-        }
-        for (const key of ["to", "cc", "bcc", "reply-to"]) {
-          const addressHeaders = this.root.headers.filter((line2) => line2.key === key);
-          let addresses = [];
-          addressHeaders.filter((entry) => entry && entry.value).map((entry) => address_parser_default(entry.value)).forEach((parsed) => addresses = addresses.concat(parsed || []));
-          if (addresses && addresses.length) {
-            const camelKey = toCamelCase2(key);
-            message[camelKey] = addresses;
-          }
-        }
-        for (const key of ["subject", "message-id", "in-reply-to", "references"]) {
-          const header = this.root.headers.find((line2) => line2.key === key);
-          if (header && header.value) {
-            const camelKey = toCamelCase2(key);
-            message[camelKey] = decodeWords(header.value);
-          }
-        }
-        let dateHeader = this.root.headers.find((line2) => line2.key === "date");
-        if (dateHeader) {
-          let date2 = new Date(dateHeader.value);
-          if (date2.toString() === "Invalid Date") {
-            date2 = dateHeader.value;
-          } else {
-            date2 = date2.toISOString();
-          }
-          message.date = date2;
-        }
-        if (this.textContent?.html) {
-          message.html = this.textContent.html;
-        }
-        if (this.textContent?.plain) {
-          message.text = this.textContent.plain;
-        }
-        message.attachments = this.attachments;
-        message.headerLines = (this.root.rawHeaderLines || []).slice().reverse();
-        switch (this.attachmentEncoding) {
-          case "arraybuffer":
-            break;
-          case "base64":
-            for (let attachment of message.attachments || []) {
-              if (attachment?.content) {
-                attachment.content = base64ArrayBuffer(attachment.content);
-                attachment.encoding = "base64";
-              }
-            }
-            break;
-          case "utf8":
-            let attachmentDecoder = new TextDecoder("utf8");
-            for (let attachment of message.attachments || []) {
-              if (attachment?.content) {
-                attachment.content = attachmentDecoder.decode(attachment.content);
-                attachment.encoding = "utf8";
-              }
-            }
-            break;
-          default:
-            throw new Error("Unknown attachment encoding");
-        }
-        return message;
-      }
-    };
-  }
-});
-
 // ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/applicationIn.js
 var require_applicationIn = __commonJS({
   "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/applicationIn.js"(exports2) {
@@ -112416,1708 +108477,6 @@ var init_node2 = __esm({
   }
 });
 
-// ../../node_modules/.pnpm/resend@6.12.3_@react-email+render@1.1.2_react-dom@19.1.0_react@19.1.0__react@19.1.0_/node_modules/resend/dist/index.mjs
-function buildPaginationQuery(options) {
-  const searchParams = new URLSearchParams();
-  if (options.limit !== void 0) searchParams.set("limit", options.limit.toString());
-  if ("after" in options && options.after !== void 0) searchParams.set("after", options.after);
-  if ("before" in options && options.before !== void 0) searchParams.set("before", options.before);
-  return searchParams.toString();
-}
-function parseStepConfig(step) {
-  switch (step.type) {
-    case "trigger":
-      return {
-        key: step.key,
-        type: step.type,
-        config: { event_name: step.config.eventName }
-      };
-    case "delay":
-      return {
-        key: step.key,
-        type: step.type,
-        config: step.config
-      };
-    case "send_email":
-      return {
-        key: step.key,
-        type: step.type,
-        config: {
-          template: step.config.template,
-          subject: step.config.subject,
-          from: step.config.from,
-          reply_to: step.config.replyTo
-        }
-      };
-    case "wait_for_event":
-      return {
-        key: step.key,
-        type: step.type,
-        config: {
-          event_name: step.config.eventName,
-          timeout: step.config.timeout,
-          filter_rule: step.config.filterRule
-        }
-      };
-    case "condition":
-      return {
-        key: step.key,
-        type: step.type,
-        config: step.config
-      };
-    case "contact_update":
-      return {
-        key: step.key,
-        type: step.type,
-        config: {
-          first_name: step.config.firstName,
-          last_name: step.config.lastName,
-          unsubscribed: step.config.unsubscribed,
-          properties: step.config.properties
-        }
-      };
-    case "contact_delete":
-      return {
-        key: step.key,
-        type: step.type,
-        config: step.config
-      };
-    case "add_to_segment":
-      return {
-        key: step.key,
-        type: step.type,
-        config: { segment_id: step.config.segmentId }
-      };
-  }
-}
-function parseConnection(connection) {
-  return {
-    from: connection.from,
-    to: connection.to,
-    type: connection.type
-  };
-}
-function parseAutomationToApiOptions(automation) {
-  return {
-    name: automation.name,
-    status: automation.status,
-    steps: automation.steps.map(parseStepConfig),
-    connections: automation.connections.map(parseConnection)
-  };
-}
-function parseEventToApiOptions(event) {
-  return {
-    event: event.event,
-    contact_id: event.contactId,
-    email: event.email,
-    payload: event.payload
-  };
-}
-function parseAttachments(attachments) {
-  return attachments?.map((attachment) => ({
-    content: attachment.content,
-    filename: attachment.filename,
-    path: attachment.path,
-    content_type: attachment.contentType,
-    content_id: attachment.contentId
-  }));
-}
-function parseEmailToApiOptions(email) {
-  return {
-    attachments: parseAttachments(email.attachments),
-    bcc: email.bcc,
-    cc: email.cc,
-    from: email.from,
-    headers: email.headers,
-    html: email.html,
-    reply_to: email.replyTo,
-    scheduled_at: email.scheduledAt,
-    subject: email.subject,
-    tags: email.tags,
-    text: email.text,
-    to: email.to,
-    template: email.template ? {
-      id: email.template.id,
-      variables: email.template.variables
-    } : void 0,
-    topic_id: email.topicId
-  };
-}
-async function render3(node) {
-  let render4;
-  try {
-    ({ render: render4 } = await Promise.resolve().then(() => (init_node2(), node_exports)));
-  } catch {
-    throw new Error("Failed to render React component. Make sure to install `@react-email/render` or `@react-email/components`.");
-  }
-  return render4(node);
-}
-function parseContactPropertyFromApi(contactProperty) {
-  return {
-    id: contactProperty.id,
-    key: contactProperty.key,
-    createdAt: contactProperty.created_at,
-    type: contactProperty.type,
-    fallbackValue: contactProperty.fallback_value
-  };
-}
-function parseContactPropertyToApiOptions(contactProperty) {
-  if ("key" in contactProperty) return {
-    key: contactProperty.key,
-    type: contactProperty.type,
-    fallback_value: contactProperty.fallbackValue
-  };
-  return { fallback_value: contactProperty.fallbackValue };
-}
-function parseDomainToApiOptions(domain) {
-  return {
-    name: domain.name,
-    region: domain.region,
-    custom_return_path: domain.customReturnPath,
-    capabilities: domain.capabilities,
-    open_tracking: domain.openTracking,
-    click_tracking: domain.clickTracking,
-    tls: domain.tls,
-    tracking_subdomain: domain.trackingSubdomain
-  };
-}
-function getPaginationQueryProperties(options = {}) {
-  const query = new URLSearchParams();
-  if (options.before) query.set("before", options.before);
-  if (options.after) query.set("after", options.after);
-  if (options.limit) query.set("limit", options.limit.toString());
-  return query.size > 0 ? `?${query.toString()}` : "";
-}
-function parseVariables(variables) {
-  return variables?.map((variable) => ({
-    key: variable.key,
-    type: variable.type,
-    fallback_value: variable.fallbackValue
-  }));
-}
-function parseTemplateToApiOptions(template) {
-  return {
-    name: "name" in template ? template.name : void 0,
-    subject: template.subject,
-    html: template.html,
-    text: template.text,
-    alias: template.alias,
-    from: template.from,
-    reply_to: template.replyTo,
-    variables: parseVariables(template.variables)
-  };
-}
-var import_svix, version3, ApiKeys, AutomationRuns, Automations, Batch, Broadcasts, ContactProperties, ContactSegments, ContactTopics, Contacts, Domains, Attachments$1, Attachments, Receiving, Emails, Events, Logs, Segments, ChainableTemplateResult, Templates, Topics, Webhooks, defaultBaseUrl, defaultUserAgent, baseUrl, userAgent, Resend;
-var init_dist = __esm({
-  "../../node_modules/.pnpm/resend@6.12.3_@react-email+render@1.1.2_react-dom@19.1.0_react@19.1.0__react@19.1.0_/node_modules/resend/dist/index.mjs"() {
-    init_postal_mime();
-    import_svix = __toESM(require_dist10(), 1);
-    version3 = "6.12.3";
-    ApiKeys = class {
-      constructor(resend) {
-        this.resend = resend;
-      }
-      async create(payload, options = {}) {
-        return await this.resend.post("/api-keys", payload, options);
-      }
-      async list(options = {}) {
-        const queryString = buildPaginationQuery(options);
-        const url2 = queryString ? `/api-keys?${queryString}` : "/api-keys";
-        return await this.resend.get(url2);
-      }
-      async remove(id) {
-        return await this.resend.delete(`/api-keys/${id}`);
-      }
-    };
-    AutomationRuns = class {
-      constructor(resend) {
-        this.resend = resend;
-      }
-      async get(options) {
-        return await this.resend.get(`/automations/${options.automationId}/runs/${options.runId}`);
-      }
-      async list(options) {
-        const queryString = buildPaginationQuery(options);
-        const searchParams = new URLSearchParams(queryString);
-        if (options.status) {
-          const statusValue = Array.isArray(options.status) ? options.status.join(",") : options.status;
-          searchParams.set("status", statusValue);
-        }
-        const qs2 = searchParams.toString();
-        const url2 = qs2 ? `/automations/${options.automationId}/runs?${qs2}` : `/automations/${options.automationId}/runs`;
-        return await this.resend.get(url2);
-      }
-    };
-    Automations = class {
-      constructor(resend) {
-        this.resend = resend;
-        this.runs = new AutomationRuns(this.resend);
-      }
-      async create(payload) {
-        return await this.resend.post("/automations", parseAutomationToApiOptions(payload));
-      }
-      async list(options = {}) {
-        const params = [buildPaginationQuery(options)];
-        if (options.status) params.push(`status=${encodeURIComponent(options.status)}`);
-        const qs2 = params.filter(Boolean).join("&");
-        const url2 = qs2 ? `/automations?${qs2}` : "/automations";
-        return await this.resend.get(url2);
-      }
-      async get(id) {
-        return await this.resend.get(`/automations/${id}`);
-      }
-      async remove(id) {
-        return await this.resend.delete(`/automations/${id}`);
-      }
-      async update(id, payload) {
-        const apiPayload = {};
-        if (payload.name !== void 0) apiPayload.name = payload.name;
-        if (payload.status !== void 0) apiPayload.status = payload.status;
-        if (payload.steps !== void 0) apiPayload.steps = payload.steps.map(parseStepConfig);
-        if (payload.connections !== void 0) apiPayload.connections = payload.connections.map(parseConnection);
-        return await this.resend.patch(`/automations/${id}`, apiPayload);
-      }
-      async stop(id) {
-        return await this.resend.post(`/automations/${id}/stop`);
-      }
-    };
-    Batch = class {
-      constructor(resend) {
-        this.resend = resend;
-      }
-      async send(payload, options) {
-        return this.create(payload, options);
-      }
-      async create(payload, options) {
-        const emails = [];
-        for (const email of payload) {
-          if (email.react) {
-            email.html = await render3(email.react);
-            email.react = void 0;
-          }
-          emails.push(parseEmailToApiOptions(email));
-        }
-        return await this.resend.post("/emails/batch", emails, {
-          ...options,
-          headers: {
-            "x-batch-validation": options?.batchValidation ?? "strict",
-            ...options?.headers
-          }
-        });
-      }
-    };
-    Broadcasts = class {
-      constructor(resend) {
-        this.resend = resend;
-      }
-      async create(payload, options = {}) {
-        if (payload.react) payload.html = await render3(payload.react);
-        return await this.resend.post("/broadcasts", {
-          name: payload.name,
-          segment_id: payload.segmentId,
-          audience_id: payload.audienceId,
-          preview_text: payload.previewText,
-          from: payload.from,
-          html: payload.html,
-          reply_to: payload.replyTo,
-          subject: payload.subject,
-          text: payload.text,
-          topic_id: payload.topicId,
-          send: payload.send,
-          scheduled_at: payload.scheduledAt
-        }, options);
-      }
-      async send(id, payload) {
-        return await this.resend.post(`/broadcasts/${id}/send`, { scheduled_at: payload?.scheduledAt });
-      }
-      async list(options = {}) {
-        const queryString = buildPaginationQuery(options);
-        const url2 = queryString ? `/broadcasts?${queryString}` : "/broadcasts";
-        return await this.resend.get(url2);
-      }
-      async get(id) {
-        return await this.resend.get(`/broadcasts/${id}`);
-      }
-      async remove(id) {
-        return await this.resend.delete(`/broadcasts/${id}`);
-      }
-      async update(id, payload) {
-        if (payload.react) payload.html = await render3(payload.react);
-        return await this.resend.patch(`/broadcasts/${id}`, {
-          name: payload.name,
-          segment_id: payload.segmentId,
-          audience_id: payload.audienceId,
-          from: payload.from,
-          html: payload.html,
-          text: payload.text,
-          subject: payload.subject,
-          reply_to: payload.replyTo,
-          preview_text: payload.previewText,
-          topic_id: payload.topicId
-        });
-      }
-    };
-    ContactProperties = class {
-      constructor(resend) {
-        this.resend = resend;
-      }
-      async create(options) {
-        const apiOptions = parseContactPropertyToApiOptions(options);
-        return await this.resend.post("/contact-properties", apiOptions);
-      }
-      async list(options = {}) {
-        const queryString = buildPaginationQuery(options);
-        const url2 = queryString ? `/contact-properties?${queryString}` : "/contact-properties";
-        const response = await this.resend.get(url2);
-        if (response.data) return {
-          data: {
-            ...response.data,
-            data: response.data.data.map((apiContactProperty) => parseContactPropertyFromApi(apiContactProperty))
-          },
-          headers: response.headers,
-          error: null
-        };
-        return response;
-      }
-      async get(id) {
-        if (!id) return {
-          data: null,
-          headers: null,
-          error: {
-            message: "Missing `id` field.",
-            statusCode: null,
-            name: "missing_required_field"
-          }
-        };
-        const response = await this.resend.get(`/contact-properties/${id}`);
-        if (response.data) return {
-          data: {
-            object: "contact_property",
-            ...parseContactPropertyFromApi(response.data)
-          },
-          headers: response.headers,
-          error: null
-        };
-        return response;
-      }
-      async update(payload) {
-        if (!payload.id) return {
-          data: null,
-          headers: null,
-          error: {
-            message: "Missing `id` field.",
-            statusCode: null,
-            name: "missing_required_field"
-          }
-        };
-        const apiOptions = parseContactPropertyToApiOptions(payload);
-        return await this.resend.patch(`/contact-properties/${payload.id}`, apiOptions);
-      }
-      async remove(id) {
-        if (!id) return {
-          data: null,
-          headers: null,
-          error: {
-            message: "Missing `id` field.",
-            statusCode: null,
-            name: "missing_required_field"
-          }
-        };
-        return await this.resend.delete(`/contact-properties/${id}`);
-      }
-    };
-    ContactSegments = class {
-      constructor(resend) {
-        this.resend = resend;
-      }
-      async list(options) {
-        if (!options.contactId && !options.email) return {
-          data: null,
-          headers: null,
-          error: {
-            message: "Missing `id` or `email` field.",
-            statusCode: null,
-            name: "missing_required_field"
-          }
-        };
-        const identifier = options.email ? options.email : options.contactId;
-        const queryString = buildPaginationQuery(options);
-        const url2 = queryString ? `/contacts/${identifier}/segments?${queryString}` : `/contacts/${identifier}/segments`;
-        return await this.resend.get(url2);
-      }
-      async add(options) {
-        if (!options.contactId && !options.email) return {
-          data: null,
-          headers: null,
-          error: {
-            message: "Missing `id` or `email` field.",
-            statusCode: null,
-            name: "missing_required_field"
-          }
-        };
-        const identifier = options.email ? options.email : options.contactId;
-        return this.resend.post(`/contacts/${identifier}/segments/${options.segmentId}`);
-      }
-      async remove(options) {
-        if (!options.contactId && !options.email) return {
-          data: null,
-          headers: null,
-          error: {
-            message: "Missing `id` or `email` field.",
-            statusCode: null,
-            name: "missing_required_field"
-          }
-        };
-        const identifier = options.email ? options.email : options.contactId;
-        return this.resend.delete(`/contacts/${identifier}/segments/${options.segmentId}`);
-      }
-    };
-    ContactTopics = class {
-      constructor(resend) {
-        this.resend = resend;
-      }
-      async update(payload) {
-        if (!payload.id && !payload.email) return {
-          data: null,
-          headers: null,
-          error: {
-            message: "Missing `id` or `email` field.",
-            statusCode: null,
-            name: "missing_required_field"
-          }
-        };
-        const identifier = payload.email ? payload.email : payload.id;
-        return this.resend.patch(`/contacts/${identifier}/topics`, payload.topics);
-      }
-      async list(options) {
-        if (!options.id && !options.email) return {
-          data: null,
-          headers: null,
-          error: {
-            message: "Missing `id` or `email` field.",
-            statusCode: null,
-            name: "missing_required_field"
-          }
-        };
-        const identifier = options.email ? options.email : options.id;
-        const queryString = buildPaginationQuery(options);
-        const url2 = queryString ? `/contacts/${identifier}/topics?${queryString}` : `/contacts/${identifier}/topics`;
-        return this.resend.get(url2);
-      }
-    };
-    Contacts = class {
-      constructor(resend) {
-        this.resend = resend;
-        this.topics = new ContactTopics(this.resend);
-        this.segments = new ContactSegments(this.resend);
-      }
-      async create(payload, options = {}) {
-        if ("audienceId" in payload) {
-          if ("segments" in payload || "topics" in payload) return {
-            data: null,
-            headers: null,
-            error: {
-              message: "`audienceId` is deprecated, and cannot be used together with `segments` or `topics`. Use `segments` instead to add one or more segments to the new contact.",
-              statusCode: null,
-              name: "invalid_parameter"
-            }
-          };
-          return await this.resend.post(`/audiences/${payload.audienceId}/contacts`, {
-            unsubscribed: payload.unsubscribed,
-            email: payload.email,
-            first_name: payload.firstName,
-            last_name: payload.lastName,
-            properties: payload.properties
-          }, options);
-        }
-        return await this.resend.post("/contacts", {
-          unsubscribed: payload.unsubscribed,
-          email: payload.email,
-          first_name: payload.firstName,
-          last_name: payload.lastName,
-          properties: payload.properties,
-          segments: payload.segments,
-          topics: payload.topics
-        }, options);
-      }
-      async list(options = {}) {
-        const segmentId = options.segmentId ?? options.audienceId;
-        if (!segmentId) {
-          const queryString2 = buildPaginationQuery(options);
-          const url3 = queryString2 ? `/contacts?${queryString2}` : "/contacts";
-          return await this.resend.get(url3);
-        }
-        const queryString = buildPaginationQuery(options);
-        const url2 = queryString ? `/segments/${segmentId}/contacts?${queryString}` : `/segments/${segmentId}/contacts`;
-        return await this.resend.get(url2);
-      }
-      async get(options) {
-        if (typeof options === "string") return this.resend.get(`/contacts/${options}`);
-        if (!options.id && !options.email) return {
-          data: null,
-          headers: null,
-          error: {
-            message: "Missing `id` or `email` field.",
-            statusCode: null,
-            name: "missing_required_field"
-          }
-        };
-        if (!options.audienceId) return this.resend.get(`/contacts/${options?.email ? options?.email : options?.id}`);
-        return this.resend.get(`/audiences/${options.audienceId}/contacts/${options?.email ? options?.email : options?.id}`);
-      }
-      async update(options) {
-        if (!options.id && !options.email) return {
-          data: null,
-          headers: null,
-          error: {
-            message: "Missing `id` or `email` field.",
-            statusCode: null,
-            name: "missing_required_field"
-          }
-        };
-        if (!options.audienceId) return await this.resend.patch(`/contacts/${options?.email ? options?.email : options?.id}`, {
-          unsubscribed: options.unsubscribed,
-          first_name: options.firstName,
-          last_name: options.lastName,
-          properties: options.properties
-        });
-        return await this.resend.patch(`/audiences/${options.audienceId}/contacts/${options?.email ? options?.email : options?.id}`, {
-          unsubscribed: options.unsubscribed,
-          first_name: options.firstName,
-          last_name: options.lastName,
-          properties: options.properties
-        });
-      }
-      async remove(payload) {
-        if (typeof payload === "string") return this.resend.delete(`/contacts/${payload}`);
-        if (!payload.id && !payload.email) return {
-          data: null,
-          headers: null,
-          error: {
-            message: "Missing `id` or `email` field.",
-            statusCode: null,
-            name: "missing_required_field"
-          }
-        };
-        if (!payload.audienceId) return this.resend.delete(`/contacts/${payload?.email ? payload?.email : payload?.id}`);
-        return this.resend.delete(`/audiences/${payload.audienceId}/contacts/${payload?.email ? payload?.email : payload?.id}`);
-      }
-    };
-    Domains = class {
-      constructor(resend) {
-        this.resend = resend;
-      }
-      async create(payload, options = {}) {
-        return await this.resend.post("/domains", parseDomainToApiOptions(payload), options);
-      }
-      async list(options = {}) {
-        const queryString = buildPaginationQuery(options);
-        const url2 = queryString ? `/domains?${queryString}` : "/domains";
-        return await this.resend.get(url2);
-      }
-      async get(id) {
-        return await this.resend.get(`/domains/${id}`);
-      }
-      async update(payload) {
-        return await this.resend.patch(`/domains/${payload.id}`, {
-          click_tracking: payload.clickTracking,
-          open_tracking: payload.openTracking,
-          tls: payload.tls,
-          capabilities: payload.capabilities,
-          tracking_subdomain: payload.trackingSubdomain
-        });
-      }
-      async remove(id) {
-        return await this.resend.delete(`/domains/${id}`);
-      }
-      async verify(id) {
-        return await this.resend.post(`/domains/${id}/verify`);
-      }
-    };
-    Attachments$1 = class {
-      constructor(resend) {
-        this.resend = resend;
-      }
-      async get(options) {
-        const { emailId, id } = options;
-        return await this.resend.get(`/emails/${emailId}/attachments/${id}`);
-      }
-      async list(options) {
-        const { emailId } = options;
-        const queryString = buildPaginationQuery(options);
-        const url2 = queryString ? `/emails/${emailId}/attachments?${queryString}` : `/emails/${emailId}/attachments`;
-        return await this.resend.get(url2);
-      }
-    };
-    Attachments = class {
-      constructor(resend) {
-        this.resend = resend;
-      }
-      async get(options) {
-        const { emailId, id } = options;
-        return await this.resend.get(`/emails/receiving/${emailId}/attachments/${id}`);
-      }
-      async list(options) {
-        const { emailId } = options;
-        const queryString = buildPaginationQuery(options);
-        const url2 = queryString ? `/emails/receiving/${emailId}/attachments?${queryString}` : `/emails/receiving/${emailId}/attachments`;
-        return await this.resend.get(url2);
-      }
-    };
-    Receiving = class {
-      constructor(resend) {
-        this.resend = resend;
-        this.attachments = new Attachments(resend);
-      }
-      async get(id) {
-        return await this.resend.get(`/emails/receiving/${id}`);
-      }
-      async list(options = {}) {
-        const queryString = buildPaginationQuery(options);
-        const url2 = queryString ? `/emails/receiving?${queryString}` : "/emails/receiving";
-        return await this.resend.get(url2);
-      }
-      async forward(options) {
-        const { emailId, to: to3, from } = options;
-        const passthrough = options.passthrough !== false;
-        const emailResponse = await this.get(emailId);
-        if (emailResponse.error) return {
-          data: null,
-          error: emailResponse.error,
-          headers: emailResponse.headers
-        };
-        const email = emailResponse.data;
-        const originalSubject = email.subject || "(no subject)";
-        if (passthrough) return this.forwardPassthrough(email, {
-          to: to3,
-          from,
-          subject: originalSubject
-        });
-        const forwardSubject = originalSubject.startsWith("Fwd:") ? originalSubject : `Fwd: ${originalSubject}`;
-        return this.forwardWrapped(email, {
-          to: to3,
-          from,
-          subject: forwardSubject,
-          text: "text" in options ? options.text : void 0,
-          html: "html" in options ? options.html : void 0
-        });
-      }
-      async forwardPassthrough(email, options) {
-        const { to: to3, from, subject } = options;
-        if (!email.raw?.download_url) return {
-          data: null,
-          error: {
-            name: "validation_error",
-            message: "Raw email content is not available for this email",
-            statusCode: 400
-          },
-          headers: null
-        };
-        const rawResponse = await fetch(email.raw.download_url);
-        if (!rawResponse.ok) return {
-          data: null,
-          error: {
-            name: "application_error",
-            message: "Failed to download raw email content",
-            statusCode: rawResponse.status
-          },
-          headers: null
-        };
-        const rawEmailContent = await rawResponse.text();
-        const parsed = await PostalMime.parse(rawEmailContent, { attachmentEncoding: "base64" });
-        const attachments = parsed.attachments.map((attachment) => {
-          const contentId = attachment.contentId ? attachment.contentId.replace(/^<|>$/g, "") : void 0;
-          return {
-            filename: attachment.filename,
-            content: attachment.content.toString(),
-            content_type: attachment.mimeType,
-            content_id: contentId || void 0
-          };
-        });
-        return await this.resend.post("/emails", {
-          from,
-          to: to3,
-          subject,
-          text: parsed.text || void 0,
-          html: parsed.html || void 0,
-          attachments: attachments.length > 0 ? attachments : void 0
-        });
-      }
-      async forwardWrapped(email, options) {
-        const { to: to3, from, subject, text: text2, html } = options;
-        if (!email.raw?.download_url) return {
-          data: null,
-          error: {
-            name: "validation_error",
-            message: "Raw email content is not available for this email",
-            statusCode: 400
-          },
-          headers: null
-        };
-        const rawResponse = await fetch(email.raw.download_url);
-        if (!rawResponse.ok) return {
-          data: null,
-          error: {
-            name: "application_error",
-            message: "Failed to download raw email content",
-            statusCode: rawResponse.status
-          },
-          headers: null
-        };
-        const rawEmailContent = await rawResponse.text();
-        return await this.resend.post("/emails", {
-          from,
-          to: to3,
-          subject,
-          text: text2,
-          html,
-          attachments: [{
-            filename: "forwarded_message.eml",
-            content: Buffer.from(rawEmailContent).toString("base64"),
-            content_type: "message/rfc822"
-          }]
-        });
-      }
-    };
-    Emails = class {
-      constructor(resend) {
-        this.resend = resend;
-        this.attachments = new Attachments$1(resend);
-        this.receiving = new Receiving(resend);
-      }
-      async send(payload, options = {}) {
-        return this.create(payload, options);
-      }
-      async create(payload, options = {}) {
-        if (payload.react) payload.html = await render3(payload.react);
-        return await this.resend.post("/emails", parseEmailToApiOptions(payload), options);
-      }
-      async get(id) {
-        return await this.resend.get(`/emails/${id}`);
-      }
-      async list(options = {}) {
-        const queryString = buildPaginationQuery(options);
-        const url2 = queryString ? `/emails?${queryString}` : "/emails";
-        return await this.resend.get(url2);
-      }
-      async update(payload) {
-        return await this.resend.patch(`/emails/${payload.id}`, { scheduled_at: payload.scheduledAt });
-      }
-      async cancel(id) {
-        return await this.resend.post(`/emails/${id}/cancel`);
-      }
-    };
-    Events = class {
-      constructor(resend) {
-        this.resend = resend;
-      }
-      async send(payload) {
-        return await this.resend.post("/events/send", parseEventToApiOptions(payload));
-      }
-      async create(payload) {
-        return await this.resend.post("/events", payload);
-      }
-      async get(identifier) {
-        return await this.resend.get(`/events/${encodeURIComponent(identifier)}`);
-      }
-      async list(options = {}) {
-        const queryString = buildPaginationQuery(options);
-        const url2 = queryString ? `/events?${queryString}` : "/events";
-        return await this.resend.get(url2);
-      }
-      async update(identifier, payload) {
-        return await this.resend.patch(`/events/${encodeURIComponent(identifier)}`, payload);
-      }
-      async remove(identifier) {
-        return await this.resend.delete(`/events/${encodeURIComponent(identifier)}`);
-      }
-    };
-    Logs = class {
-      constructor(resend) {
-        this.resend = resend;
-      }
-      async list(options = {}) {
-        const queryString = buildPaginationQuery(options);
-        const url2 = queryString ? `/logs?${queryString}` : "/logs";
-        return await this.resend.get(url2);
-      }
-      async get(id) {
-        return await this.resend.get(`/logs/${id}`);
-      }
-    };
-    Segments = class {
-      constructor(resend) {
-        this.resend = resend;
-      }
-      async create(payload, options = {}) {
-        return await this.resend.post("/segments", payload, options);
-      }
-      async list(options = {}) {
-        const queryString = buildPaginationQuery(options);
-        const url2 = queryString ? `/segments?${queryString}` : "/segments";
-        return await this.resend.get(url2);
-      }
-      async get(id) {
-        return await this.resend.get(`/segments/${id}`);
-      }
-      async remove(id) {
-        return await this.resend.delete(`/segments/${id}`);
-      }
-    };
-    ChainableTemplateResult = class {
-      constructor(promise, publishFn) {
-        this.promise = promise;
-        this.publishFn = publishFn;
-      }
-      then(onfulfilled, onrejected) {
-        return this.promise.then(onfulfilled, onrejected);
-      }
-      async publish() {
-        const { data, error } = await this.promise;
-        if (error) return {
-          data: null,
-          headers: null,
-          error
-        };
-        return this.publishFn(data.id);
-      }
-    };
-    Templates = class {
-      constructor(resend) {
-        this.resend = resend;
-      }
-      create(payload) {
-        return new ChainableTemplateResult(this.performCreate(payload), this.publish.bind(this));
-      }
-      async performCreate(payload) {
-        if (payload.react) {
-          if (!this.renderAsync) try {
-            const { renderAsync: renderAsync2 } = await Promise.resolve().then(() => (init_node2(), node_exports));
-            this.renderAsync = renderAsync2;
-          } catch {
-            throw new Error("Failed to render React component. Make sure to install `@react-email/render`");
-          }
-          payload.html = await this.renderAsync(payload.react);
-        }
-        return this.resend.post("/templates", parseTemplateToApiOptions(payload));
-      }
-      async remove(identifier) {
-        return await this.resend.delete(`/templates/${identifier}`);
-      }
-      async get(identifier) {
-        return await this.resend.get(`/templates/${identifier}`);
-      }
-      async list(options = {}) {
-        return this.resend.get(`/templates${getPaginationQueryProperties(options)}`);
-      }
-      duplicate(identifier) {
-        return new ChainableTemplateResult(this.resend.post(`/templates/${identifier}/duplicate`), this.publish.bind(this));
-      }
-      async publish(identifier) {
-        return await this.resend.post(`/templates/${identifier}/publish`);
-      }
-      async update(identifier, payload) {
-        return await this.resend.patch(`/templates/${identifier}`, parseTemplateToApiOptions(payload));
-      }
-    };
-    Topics = class {
-      constructor(resend) {
-        this.resend = resend;
-      }
-      async create(payload) {
-        const { defaultSubscription, ...body } = payload;
-        return await this.resend.post("/topics", {
-          ...body,
-          default_subscription: defaultSubscription
-        });
-      }
-      async list() {
-        return await this.resend.get("/topics");
-      }
-      async get(id) {
-        if (!id) return {
-          data: null,
-          headers: null,
-          error: {
-            message: "Missing `id` field.",
-            statusCode: null,
-            name: "missing_required_field"
-          }
-        };
-        return await this.resend.get(`/topics/${id}`);
-      }
-      async update(payload) {
-        if (!payload.id) return {
-          data: null,
-          headers: null,
-          error: {
-            message: "Missing `id` field.",
-            statusCode: null,
-            name: "missing_required_field"
-          }
-        };
-        return await this.resend.patch(`/topics/${payload.id}`, payload);
-      }
-      async remove(id) {
-        if (!id) return {
-          data: null,
-          headers: null,
-          error: {
-            message: "Missing `id` field.",
-            statusCode: null,
-            name: "missing_required_field"
-          }
-        };
-        return await this.resend.delete(`/topics/${id}`);
-      }
-    };
-    Webhooks = class {
-      constructor(resend) {
-        this.resend = resend;
-      }
-      async create(payload, options = {}) {
-        return await this.resend.post("/webhooks", payload, options);
-      }
-      async get(id) {
-        return await this.resend.get(`/webhooks/${id}`);
-      }
-      async list(options = {}) {
-        const queryString = buildPaginationQuery(options);
-        const url2 = queryString ? `/webhooks?${queryString}` : "/webhooks";
-        return await this.resend.get(url2);
-      }
-      async update(id, payload) {
-        return await this.resend.patch(`/webhooks/${id}`, payload);
-      }
-      async remove(id) {
-        return await this.resend.delete(`/webhooks/${id}`);
-      }
-      verify(payload) {
-        return new import_svix.Webhook(payload.webhookSecret).verify(payload.payload, {
-          "svix-id": payload.headers.id,
-          "svix-timestamp": payload.headers.timestamp,
-          "svix-signature": payload.headers.signature
-        });
-      }
-    };
-    defaultBaseUrl = "https://api.resend.com";
-    defaultUserAgent = `resend-node:${version3}`;
-    baseUrl = typeof process !== "undefined" && process.env ? process.env.RESEND_BASE_URL || defaultBaseUrl : defaultBaseUrl;
-    userAgent = typeof process !== "undefined" && process.env ? process.env.RESEND_USER_AGENT || defaultUserAgent : defaultUserAgent;
-    Resend = class {
-      constructor(key) {
-        this.key = key;
-        this.segments = new Segments(this);
-        this.apiKeys = new ApiKeys(this);
-        this.audiences = this.segments;
-        this.automations = new Automations(this);
-        this.batch = new Batch(this);
-        this.broadcasts = new Broadcasts(this);
-        this.contactProperties = new ContactProperties(this);
-        this.contacts = new Contacts(this);
-        this.domains = new Domains(this);
-        this.emails = new Emails(this);
-        this.events = new Events(this);
-        this.logs = new Logs(this);
-        this.templates = new Templates(this);
-        this.topics = new Topics(this);
-        this.webhooks = new Webhooks(this);
-        if (!key) {
-          if (typeof process !== "undefined" && process.env) this.key = process.env.RESEND_API_KEY;
-          if (!this.key) throw new Error('Missing API key. Pass it to the constructor `new Resend("re_123")`');
-        }
-        this.headers = new Headers({
-          Authorization: `Bearer ${this.key}`,
-          "User-Agent": userAgent,
-          "Content-Type": "application/json"
-        });
-      }
-      async fetchRequest(path6, options = {}) {
-        try {
-          const response = await fetch(`${baseUrl}${path6}`, options);
-          if (!response.ok) try {
-            const rawError = await response.text();
-            return {
-              data: null,
-              error: JSON.parse(rawError),
-              headers: Object.fromEntries(response.headers.entries())
-            };
-          } catch (err) {
-            if (err instanceof SyntaxError) return {
-              data: null,
-              error: {
-                name: "application_error",
-                statusCode: response.status,
-                message: "Internal server error. We are unable to process your request right now, please try again later."
-              },
-              headers: Object.fromEntries(response.headers.entries())
-            };
-            const error = {
-              message: response.statusText,
-              statusCode: response.status,
-              name: "application_error"
-            };
-            if (err instanceof Error) return {
-              data: null,
-              error: {
-                ...error,
-                message: err.message
-              },
-              headers: Object.fromEntries(response.headers.entries())
-            };
-            return {
-              data: null,
-              error,
-              headers: Object.fromEntries(response.headers.entries())
-            };
-          }
-          return {
-            data: await response.json(),
-            error: null,
-            headers: Object.fromEntries(response.headers.entries())
-          };
-        } catch {
-          return {
-            data: null,
-            error: {
-              name: "application_error",
-              statusCode: null,
-              message: "Unable to fetch data. The request could not be resolved."
-            },
-            headers: null
-          };
-        }
-      }
-      async post(path6, entity, options = {}) {
-        const headers = new Headers(this.headers);
-        if (options.headers) for (const [key, value] of new Headers(options.headers).entries()) headers.set(key, value);
-        if (options.idempotencyKey) headers.set("Idempotency-Key", options.idempotencyKey);
-        const requestOptions = {
-          method: "POST",
-          body: JSON.stringify(entity),
-          ...options,
-          headers
-        };
-        return this.fetchRequest(path6, requestOptions);
-      }
-      async get(path6, options = {}) {
-        const headers = new Headers(this.headers);
-        if (options.headers) for (const [key, value] of new Headers(options.headers).entries()) headers.set(key, value);
-        const requestOptions = {
-          method: "GET",
-          ...options,
-          headers
-        };
-        return this.fetchRequest(path6, requestOptions);
-      }
-      async put(path6, entity, options = {}) {
-        const headers = new Headers(this.headers);
-        if (options.headers) for (const [key, value] of new Headers(options.headers).entries()) headers.set(key, value);
-        const requestOptions = {
-          method: "PUT",
-          body: JSON.stringify(entity),
-          ...options,
-          headers
-        };
-        return this.fetchRequest(path6, requestOptions);
-      }
-      async patch(path6, entity, options = {}) {
-        const headers = new Headers(this.headers);
-        if (options.headers) for (const [key, value] of new Headers(options.headers).entries()) headers.set(key, value);
-        const requestOptions = {
-          method: "PATCH",
-          body: JSON.stringify(entity),
-          ...options,
-          headers
-        };
-        return this.fetchRequest(path6, requestOptions);
-      }
-      async delete(path6, query) {
-        const requestOptions = {
-          method: "DELETE",
-          body: JSON.stringify(query),
-          headers: this.headers
-        };
-        return this.fetchRequest(path6, requestOptions);
-      }
-    };
-  }
-});
-
-// src/lib/email-router/adapters/resend.ts
-var resend_exports = {};
-__export(resend_exports, {
-  resendAdapter: () => resendAdapter
-});
-var resendAdapter;
-var init_resend = __esm({
-  "src/lib/email-router/adapters/resend.ts"() {
-    "use strict";
-    init_dist();
-    resendAdapter = {
-      slug: "resend",
-      name: "Resend",
-      async send(payload, config) {
-        if (!config.apiKey) throw new Error("Resend: apiKey manquante");
-        const client = new Resend(config.apiKey);
-        const { data, error } = await client.emails.send({
-          from: payload.from,
-          to: [payload.to],
-          subject: payload.subject,
-          html: payload.html,
-          text: payload.text
-        });
-        if (error) {
-          const status = error.statusCode;
-          throw new Error(`Resend${status ? ` HTTP ${status}` : ""}: ${error.message}`);
-        }
-        return { messageId: data?.id ?? "resend-unknown" };
-      },
-      async healthCheck(config) {
-        if (!config.apiKey) return { healthy: false, latencyMs: 0, detail: "apiKey manquante" };
-        const start2 = Date.now();
-        try {
-          const client = new Resend(config.apiKey);
-          await client.domains.list();
-          return { healthy: true, latencyMs: Date.now() - start2 };
-        } catch (err) {
-          return { healthy: false, latencyMs: Date.now() - start2, detail: String(err) };
-        }
-      }
-    };
-  }
-});
-
-// src/lib/email-router/adapters/ses.ts
-var ses_exports = {};
-__export(ses_exports, {
-  sesAdapter: () => sesAdapter
-});
-function hmac(key, data) {
-  return (0, import_crypto7.createHmac)("sha256", key).update(data).digest();
-}
-function sha256hex(data) {
-  return (0, import_crypto7.createHash)("sha256").update(data).digest("hex");
-}
-function getSigningKey(secret, date2, region) {
-  const k1 = hmac("AWS4" + secret, date2);
-  const k22 = hmac(k1, region);
-  const k3 = hmac(k22, "ses");
-  return hmac(k3, "aws4_request");
-}
-async function sesRequest(region, accessKey, secretKey, body) {
-  const host = `email.${region}.amazonaws.com`;
-  const service = "ses";
-  const endpoint = `https://${host}/v2/email/outbound-emails`;
-  const now = /* @__PURE__ */ new Date();
-  const amzDate = now.toISOString().replace(/[:-]|\.\d{3}/g, "").slice(0, 15) + "Z";
-  const dateStamp = amzDate.slice(0, 8);
-  const payloadHash = sha256hex(body);
-  const signedHeaders = "content-type;host;x-amz-date";
-  const canonicalHeaders = `content-type:application/json
-host:${host}
-x-amz-date:${amzDate}
-`;
-  const canonicalRequest = [
-    "POST",
-    "/v2/email/outbound-emails",
-    "",
-    canonicalHeaders,
-    signedHeaders,
-    payloadHash
-  ].join("\n");
-  const credentialScope = `${dateStamp}/${region}/${service}/aws4_request`;
-  const stringToSign = [
-    "AWS4-HMAC-SHA256",
-    amzDate,
-    credentialScope,
-    sha256hex(canonicalRequest)
-  ].join("\n");
-  const signingKey = getSigningKey(secretKey, dateStamp, region);
-  const signature = hmac(signingKey, stringToSign).toString("hex");
-  const authorization = `AWS4-HMAC-SHA256 Credential=${accessKey}/${credentialScope}, SignedHeaders=${signedHeaders}, Signature=${signature}`;
-  return fetch(endpoint, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-amz-date": amzDate,
-      "Authorization": authorization
-    },
-    body
-  });
-}
-var import_crypto7, sesAdapter;
-var init_ses = __esm({
-  "src/lib/email-router/adapters/ses.ts"() {
-    "use strict";
-    import_crypto7 = require("crypto");
-    sesAdapter = {
-      slug: "ses",
-      name: "Amazon SES",
-      async send(payload, config) {
-        if (!config.apiKey || !config.apiSecret) throw new Error("SES: Access Key ID et Secret Key requis");
-        const region = config.region ?? "us-east-1";
-        const body = JSON.stringify({
-          FromEmailAddress: payload.from,
-          Destination: { ToAddresses: [payload.to] },
-          Content: {
-            Simple: {
-              Subject: { Data: payload.subject, Charset: "UTF-8" },
-              Body: {
-                Html: { Data: payload.html, Charset: "UTF-8" },
-                ...payload.text ? { Text: { Data: payload.text, Charset: "UTF-8" } } : {}
-              }
-            }
-          }
-        });
-        const res = await sesRequest(region, config.apiKey, config.apiSecret, body);
-        const json2 = await res.json();
-        if (!res.ok) throw new Error(`SES HTTP ${res.status}: ${json2.message ?? res.statusText}`);
-        return { messageId: json2.MessageId ?? "ses-unknown" };
-      },
-      async healthCheck(config) {
-        if (!config.apiKey || !config.apiSecret) return { healthy: false, latencyMs: 0, detail: "credentials manquants" };
-        const region = config.region ?? "us-east-1";
-        const start2 = Date.now();
-        try {
-          const endpoint = `https://email.${region}.amazonaws.com/v2/email/account`;
-          const host = `email.${region}.amazonaws.com`;
-          const now = /* @__PURE__ */ new Date();
-          const amzDate = now.toISOString().replace(/[:-]|\.\d{3}/g, "").slice(0, 15) + "Z";
-          const dateStamp = amzDate.slice(0, 8);
-          const payloadHash = sha256hex("");
-          const signedHeaders = "host;x-amz-date";
-          const canonicalHeaders = `host:${host}
-x-amz-date:${amzDate}
-`;
-          const canonicalRequest = ["GET", "/v2/email/account", "", canonicalHeaders, signedHeaders, payloadHash].join("\n");
-          const credScope = `${dateStamp}/${region}/ses/aws4_request`;
-          const stringToSign = ["AWS4-HMAC-SHA256", amzDate, credScope, sha256hex(canonicalRequest)].join("\n");
-          const sigKey = getSigningKey(config.apiSecret, dateStamp, region);
-          const sig = hmac(sigKey, stringToSign).toString("hex");
-          const auth = `AWS4-HMAC-SHA256 Credential=${config.apiKey}/${credScope}, SignedHeaders=${signedHeaders}, Signature=${sig}`;
-          const res = await fetch(endpoint, { headers: { "x-amz-date": amzDate, Authorization: auth } });
-          return { healthy: res.ok || res.status === 403, latencyMs: Date.now() - start2 };
-        } catch (err) {
-          return { healthy: false, latencyMs: Date.now() - start2, detail: String(err) };
-        }
-      }
-    };
-  }
-});
-
-// src/lib/email-router/adapters/postmark.ts
-var postmark_exports = {};
-__export(postmark_exports, {
-  postmarkAdapter: () => postmarkAdapter
-});
-var BASE, postmarkAdapter;
-var init_postmark = __esm({
-  "src/lib/email-router/adapters/postmark.ts"() {
-    "use strict";
-    BASE = "https://api.postmarkapp.com";
-    postmarkAdapter = {
-      slug: "postmark",
-      name: "Postmark",
-      async send(payload, config) {
-        if (!config.apiKey) throw new Error("Postmark: apiKey manquante");
-        const res = await fetch(`${BASE}/email`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Accept": "application/json",
-            "X-Postmark-Server-Token": config.apiKey
-          },
-          body: JSON.stringify({
-            From: payload.from,
-            To: payload.to,
-            Subject: payload.subject,
-            HtmlBody: payload.html,
-            TextBody: payload.text,
-            MessageStream: "outbound"
-          })
-        });
-        const body = await res.json();
-        if (!res.ok || body.ErrorCode) throw new Error(`Postmark HTTP ${res.status}: ${body.Message ?? res.statusText}`);
-        return { messageId: body.MessageID ?? "postmark-unknown" };
-      },
-      async healthCheck(config) {
-        if (!config.apiKey) return { healthy: false, latencyMs: 0, detail: "apiKey manquante" };
-        const start2 = Date.now();
-        try {
-          const res = await fetch(`${BASE}/server`, {
-            headers: { "X-Postmark-Account-Token": config.apiKey, "Accept": "application/json" }
-          });
-          return { healthy: res.ok, latencyMs: Date.now() - start2, detail: res.ok ? void 0 : String(res.status) };
-        } catch (err) {
-          return { healthy: false, latencyMs: Date.now() - start2, detail: String(err) };
-        }
-      }
-    };
-  }
-});
-
-// src/lib/email-router/adapters/mailgun.ts
-var mailgun_exports = {};
-__export(mailgun_exports, {
-  mailgunAdapter: () => mailgunAdapter
-});
-var mailgunAdapter;
-var init_mailgun = __esm({
-  "src/lib/email-router/adapters/mailgun.ts"() {
-    "use strict";
-    mailgunAdapter = {
-      slug: "mailgun",
-      name: "Mailgun",
-      async send(payload, config) {
-        if (!config.apiKey) throw new Error("Mailgun: apiKey manquante");
-        if (!config.domain) throw new Error("Mailgun: domain manquant");
-        const region = config.region === "eu" ? "api.eu.mailgun.net" : "api.mailgun.net";
-        const url2 = `https://${region}/v3/${config.domain}/messages`;
-        const form = new URLSearchParams({
-          from: payload.from,
-          to: payload.to,
-          subject: payload.subject,
-          html: payload.html,
-          ...payload.text ? { text: payload.text } : {}
-        });
-        const res = await fetch(url2, {
-          method: "POST",
-          headers: {
-            Authorization: "Basic " + Buffer.from(`api:${config.apiKey}`).toString("base64"),
-            "Content-Type": "application/x-www-form-urlencoded"
-          },
-          body: form
-        });
-        const body = await res.json();
-        if (!res.ok) throw new Error(`Mailgun HTTP ${res.status}: ${body.message ?? res.statusText}`);
-        return { messageId: body.id ?? "mailgun-unknown" };
-      },
-      async healthCheck(config) {
-        if (!config.apiKey || !config.domain) return { healthy: false, latencyMs: 0, detail: "apiKey/domain manquant" };
-        const start2 = Date.now();
-        const region = config.region === "eu" ? "api.eu.mailgun.net" : "api.mailgun.net";
-        try {
-          const res = await fetch(`https://${region}/v3/domains/${config.domain}`, {
-            headers: { Authorization: "Basic " + Buffer.from(`api:${config.apiKey}`).toString("base64") }
-          });
-          return { healthy: res.ok, latencyMs: Date.now() - start2, detail: res.ok ? void 0 : String(res.status) };
-        } catch (err) {
-          return { healthy: false, latencyMs: Date.now() - start2, detail: String(err) };
-        }
-      }
-    };
-  }
-});
-
-// src/lib/email-router/adapters/sendgrid.ts
-var sendgrid_exports = {};
-__export(sendgrid_exports, {
-  sendgridAdapter: () => sendgridAdapter
-});
-var BASE2, sendgridAdapter;
-var init_sendgrid = __esm({
-  "src/lib/email-router/adapters/sendgrid.ts"() {
-    "use strict";
-    BASE2 = "https://api.sendgrid.com/v3";
-    sendgridAdapter = {
-      slug: "sendgrid",
-      name: "SendGrid",
-      async send(payload, config) {
-        if (!config.apiKey) throw new Error("SendGrid: apiKey manquante");
-        const res = await fetch(`${BASE2}/mail/send`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${config.apiKey}`
-          },
-          body: JSON.stringify({
-            personalizations: [{ to: [{ email: payload.to }] }],
-            from: { email: payload.from },
-            subject: payload.subject,
-            content: [
-              { type: "text/html", value: payload.html },
-              ...payload.text ? [{ type: "text/plain", value: payload.text }] : []
-            ]
-          })
-        });
-        if (!res.ok) {
-          const body = await res.json().catch(() => ({}));
-          throw new Error(`SendGrid HTTP ${res.status}: ${body.errors?.[0]?.message ?? res.statusText}`);
-        }
-        const msgId = res.headers.get("X-Message-Id") ?? "sendgrid-unknown";
-        return { messageId: msgId };
-      },
-      async healthCheck(config) {
-        if (!config.apiKey) return { healthy: false, latencyMs: 0, detail: "apiKey manquante" };
-        const start2 = Date.now();
-        try {
-          const res = await fetch(`${BASE2}/user/profile`, {
-            headers: { Authorization: `Bearer ${config.apiKey}` }
-          });
-          return { healthy: res.ok, latencyMs: Date.now() - start2, detail: res.ok ? void 0 : String(res.status) };
-        } catch (err) {
-          return { healthy: false, latencyMs: Date.now() - start2, detail: String(err) };
-        }
-      }
-    };
-  }
-});
-
-// src/lib/email-router/adapters/brevo.ts
-var brevo_exports = {};
-__export(brevo_exports, {
-  brevoAdapter: () => brevoAdapter
-});
-var BASE3, brevoAdapter;
-var init_brevo = __esm({
-  "src/lib/email-router/adapters/brevo.ts"() {
-    "use strict";
-    BASE3 = "https://api.brevo.com/v3";
-    brevoAdapter = {
-      slug: "brevo",
-      name: "Brevo (Sendinblue)",
-      async send(payload, config) {
-        if (!config.apiKey) throw new Error("Brevo: apiKey manquante");
-        const res = await fetch(`${BASE3}/smtp/email`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "api-key": config.apiKey
-          },
-          body: JSON.stringify({
-            sender: { email: payload.from },
-            to: [{ email: payload.to }],
-            subject: payload.subject,
-            htmlContent: payload.html,
-            textContent: payload.text
-          })
-        });
-        const body = await res.json();
-        if (!res.ok) throw new Error(`Brevo HTTP ${res.status}: ${body.message ?? res.statusText}`);
-        return { messageId: body.messageId ?? "brevo-unknown" };
-      },
-      async healthCheck(config) {
-        if (!config.apiKey) return { healthy: false, latencyMs: 0, detail: "apiKey manquante" };
-        const start2 = Date.now();
-        try {
-          const res = await fetch(`${BASE3}/account`, {
-            headers: { "api-key": config.apiKey }
-          });
-          return { healthy: res.ok, latencyMs: Date.now() - start2, detail: res.ok ? void 0 : String(res.status) };
-        } catch (err) {
-          return { healthy: false, latencyMs: Date.now() - start2, detail: String(err) };
-        }
-      }
-    };
-  }
-});
-
-// src/lib/email-router/adapters/mailjet.ts
-var mailjet_exports = {};
-__export(mailjet_exports, {
-  mailjetAdapter: () => mailjetAdapter
-});
-var BASE4, mailjetAdapter;
-var init_mailjet = __esm({
-  "src/lib/email-router/adapters/mailjet.ts"() {
-    "use strict";
-    BASE4 = "https://api.mailjet.com/v3.1";
-    mailjetAdapter = {
-      slug: "mailjet",
-      name: "Mailjet",
-      async send(payload, config) {
-        if (!config.apiKey || !config.apiSecret) throw new Error("Mailjet: apiKey et apiSecret requis");
-        const auth = Buffer.from(`${config.apiKey}:${config.apiSecret}`).toString("base64");
-        const res = await fetch(`${BASE4}/send`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json", Authorization: `Basic ${auth}` },
-          body: JSON.stringify({
-            Messages: [{
-              From: { Email: payload.from },
-              To: [{ Email: payload.to }],
-              Subject: payload.subject,
-              HTMLPart: payload.html,
-              TextPart: payload.text
-            }]
-          })
-        });
-        const body = await res.json();
-        if (!res.ok || body.Messages?.[0]?.Status !== "success") {
-          throw new Error(`Mailjet HTTP ${res.status}: ${body.ErrorMessage ?? res.statusText}`);
-        }
-        return { messageId: String(body.Messages?.[0]?.To?.[0]?.MessageID ?? "mailjet-unknown") };
-      },
-      async healthCheck(config) {
-        if (!config.apiKey || !config.apiSecret) return { healthy: false, latencyMs: 0, detail: "apiKey/apiSecret manquant" };
-        const start2 = Date.now();
-        const auth = Buffer.from(`${config.apiKey}:${config.apiSecret}`).toString("base64");
-        try {
-          const res = await fetch("https://api.mailjet.com/v3/REST/apikey", {
-            headers: { Authorization: `Basic ${auth}` }
-          });
-          return { healthy: res.ok, latencyMs: Date.now() - start2, detail: res.ok ? void 0 : String(res.status) };
-        } catch (err) {
-          return { healthy: false, latencyMs: Date.now() - start2, detail: String(err) };
-        }
-      }
-    };
-  }
-});
-
-// src/lib/email-router/adapters/sparkpost.ts
-var sparkpost_exports = {};
-__export(sparkpost_exports, {
-  sparkpostAdapter: () => sparkpostAdapter
-});
-var BASE5, sparkpostAdapter;
-var init_sparkpost = __esm({
-  "src/lib/email-router/adapters/sparkpost.ts"() {
-    "use strict";
-    BASE5 = "https://api.sparkpost.com/api/v1";
-    sparkpostAdapter = {
-      slug: "sparkpost",
-      name: "SparkPost",
-      async send(payload, config) {
-        if (!config.apiKey) throw new Error("SparkPost: apiKey manquante");
-        const res = await fetch(`${BASE5}/transmissions`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json", Authorization: config.apiKey },
-          body: JSON.stringify({
-            recipients: [{ address: { email: payload.to } }],
-            content: {
-              from: payload.from,
-              subject: payload.subject,
-              html: payload.html,
-              text: payload.text
-            }
-          })
-        });
-        const body = await res.json();
-        if (!res.ok) throw new Error(`SparkPost HTTP ${res.status}: ${body.errors?.[0]?.message ?? res.statusText}`);
-        return { messageId: body.results?.id ?? "sparkpost-unknown" };
-      },
-      async healthCheck(config) {
-        if (!config.apiKey) return { healthy: false, latencyMs: 0, detail: "apiKey manquante" };
-        const start2 = Date.now();
-        try {
-          const res = await fetch(`${BASE5}/account`, {
-            headers: { Authorization: config.apiKey }
-          });
-          return { healthy: res.ok, latencyMs: Date.now() - start2, detail: res.ok ? void 0 : String(res.status) };
-        } catch (err) {
-          return { healthy: false, latencyMs: Date.now() - start2, detail: String(err) };
-        }
-      }
-    };
-  }
-});
-
-// src/lib/email-router/adapters/zeptomail.ts
-var zeptomail_exports = {};
-__export(zeptomail_exports, {
-  zeptomailAdapter: () => zeptomailAdapter
-});
-var BASE6, zeptomailAdapter;
-var init_zeptomail = __esm({
-  "src/lib/email-router/adapters/zeptomail.ts"() {
-    "use strict";
-    BASE6 = "https://api.zeptomail.com/v1.1";
-    zeptomailAdapter = {
-      slug: "zeptomail",
-      name: "ZeptoMail",
-      async send(payload, config) {
-        if (!config.apiKey) throw new Error("ZeptoMail: apiKey manquante");
-        const res = await fetch(`${BASE6}/email`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Zoho-enczapikey ${config.apiKey}`
-          },
-          body: JSON.stringify({
-            from: { address: payload.from },
-            to: [{ email_address: { address: payload.to } }],
-            subject: payload.subject,
-            htmlbody: payload.html,
-            textbody: payload.text
-          })
-        });
-        const body = await res.json();
-        if (!res.ok) throw new Error(`ZeptoMail HTTP ${res.status}: ${body.message ?? res.statusText}`);
-        return { messageId: body.data?.[0]?.message_id ?? "zeptomail-unknown" };
-      },
-      async healthCheck(config) {
-        if (!config.apiKey) return { healthy: false, latencyMs: 0, detail: "apiKey manquante" };
-        const start2 = Date.now();
-        try {
-          const res = await fetch(`${BASE6}/email`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json", Authorization: `Zoho-enczapikey ${config.apiKey}` },
-            body: JSON.stringify({})
-          });
-          const healthy = res.status !== 401;
-          return { healthy, latencyMs: Date.now() - start2, detail: healthy ? void 0 : "Cl\xE9 API invalide" };
-        } catch (err) {
-          return { healthy: false, latencyMs: Date.now() - start2, detail: String(err) };
-        }
-      }
-    };
-  }
-});
-
-// src/lib/email-router/adapters/elasticemail.ts
-var elasticemail_exports = {};
-__export(elasticemail_exports, {
-  elasticemailAdapter: () => elasticemailAdapter
-});
-var BASE7, elasticemailAdapter;
-var init_elasticemail = __esm({
-  "src/lib/email-router/adapters/elasticemail.ts"() {
-    "use strict";
-    BASE7 = "https://api.elasticemail.com/v4";
-    elasticemailAdapter = {
-      slug: "elasticemail",
-      name: "Elastic Email",
-      async send(payload, config) {
-        if (!config.apiKey) throw new Error("Elastic Email: apiKey manquante");
-        const res = await fetch(`${BASE7}/emails/transactional`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "X-ElasticEmail-ApiKey": config.apiKey
-          },
-          body: JSON.stringify({
-            Recipients: { To: [payload.to] },
-            Content: {
-              From: payload.from,
-              Subject: payload.subject,
-              Body: [
-                { ContentType: "HTML", Content: payload.html },
-                ...payload.text ? [{ ContentType: "PlainText", Content: payload.text }] : []
-              ]
-            }
-          })
-        });
-        const body = await res.json();
-        if (!res.ok) throw new Error(`Elastic Email HTTP ${res.status}: ${body.Error ?? res.statusText}`);
-        return { messageId: body.TransactionID ?? "elasticemail-unknown" };
-      },
-      async healthCheck(config) {
-        if (!config.apiKey) return { healthy: false, latencyMs: 0, detail: "apiKey manquante" };
-        const start2 = Date.now();
-        try {
-          const res = await fetch(`${BASE7}/accounts`, {
-            headers: { "X-ElasticEmail-ApiKey": config.apiKey }
-          });
-          return { healthy: res.ok, latencyMs: Date.now() - start2, detail: res.ok ? void 0 : String(res.status) };
-        } catch (err) {
-          return { healthy: false, latencyMs: Date.now() - start2, detail: String(err) };
-        }
-      }
-    };
-  }
-});
-
 // ../../node_modules/.pnpm/gaxios@7.1.4/node_modules/gaxios/package.json
 var require_package5 = __commonJS({
   "../../node_modules/.pnpm/gaxios@7.1.4/node_modules/gaxios/package.json"(exports2, module2) {
@@ -114637,7 +108996,7 @@ function dataUriToBuffer(uri) {
   return buffer;
 }
 var dist_default;
-var init_dist2 = __esm({
+var init_dist = __esm({
   "../../node_modules/.pnpm/data-uri-to-buffer@4.0.1/node_modules/data-uri-to-buffer/dist/index.js"() {
     dist_default = dataUriToBuffer;
   }
@@ -121070,7 +115429,7 @@ var init_src2 = __esm({
     import_node_zlib = __toESM(require("node:zlib"), 1);
     import_node_stream3 = __toESM(require("node:stream"), 1);
     import_node_buffer2 = require("node:buffer");
-    init_dist2();
+    init_dist();
     init_body();
     init_response();
     init_headers();
@@ -155226,15 +149585,15 @@ async function createOtp(userId, purpose) {
       eq(emailOtpTable.verified, false)
     )
   );
-  await db.insert(emailOtpTable).values({
+  const [created] = await db.insert(emailOtpTable).values({
     userId,
     code,
     purpose,
     attempts: 0,
     verified: false,
     expiresAt
-  });
-  return code;
+  }).returning({ id: emailOtpTable.id });
+  return { code, issuanceId: created.id };
 }
 async function verifyOtp(userId, code, purpose) {
   const [otp] = await db.select().from(emailOtpTable).where(
@@ -155303,9 +149662,58 @@ init_drizzle_orm();
 init_src();
 init_src();
 init_logger2();
-init_crypto();
+
+// src/lib/email-router/crypto.ts
+var import_crypto6 = require("crypto");
+function getDerivedKey() {
+  const secret = process.env.ENCRYPTION_KEY ?? process.env.SESSION_SECRET;
+  if (!secret) {
+    throw new Error("[email-router] ENCRYPTION_KEY ou SESSION_SECRET requis pour chiffrer les cl\xE9s API des fournisseurs email");
+  }
+  return (0, import_crypto6.createHash)("sha256").update(secret).digest();
+}
+function encrypt(plaintext) {
+  if (!plaintext) return "";
+  const key = getDerivedKey();
+  const iv = (0, import_crypto6.randomBytes)(12);
+  const cipher = (0, import_crypto6.createCipheriv)("aes-256-gcm", key, iv);
+  const encrypted = Buffer.concat([cipher.update(plaintext, "utf8"), cipher.final()]);
+  const tag = cipher.getAuthTag();
+  return Buffer.concat([iv, tag, encrypted]).toString("base64");
+}
+function decrypt(ciphertext) {
+  if (!ciphertext) return "";
+  try {
+    const buf = Buffer.from(ciphertext, "base64");
+    const key = getDerivedKey();
+    const iv = buf.subarray(0, 12);
+    const tag = buf.subarray(12, 28);
+    const data = buf.subarray(28);
+    const decipher = (0, import_crypto6.createDecipheriv)("aes-256-gcm", key, iv);
+    decipher.setAuthTag(tag);
+    return decipher.update(data) + decipher.final("utf8");
+  } catch {
+    return "";
+  }
+}
+function maskApiKey(key) {
+  if (!key || key.length < 8) return "****";
+  return key.substring(0, 4) + "***" + key.substring(key.length - 4);
+}
 
 // src/lib/email-router/types.ts
+var ProviderSendError = class extends Error {
+  kind;
+  status;
+  code;
+  constructor(message, options) {
+    super(message, { cause: options.cause });
+    this.name = "ProviderSendError";
+    this.kind = options.kind;
+    this.status = options.status;
+    this.code = options.code;
+  }
+};
 function retryDelayMs(attempt) {
   return Math.min(2 * 6e4 * Math.pow(2, attempt), 32 * 6e4);
 }
@@ -155313,17 +149721,5495 @@ var SEND_TIMEOUT_MS = 15e3;
 var CONSECUTIVE_ERROR_THRESHOLD = 5;
 var CONSECUTIVE_ERROR_DEGRADED = 2;
 
+// ../../node_modules/.pnpm/postal-mime@2.7.4/node_modules/postal-mime/src/decode-strings.js
+var textEncoder = new TextEncoder();
+var base64Chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+var base64Lookup = new Uint8Array(256);
+for (let i2 = 0; i2 < base64Chars.length; i2++) {
+  base64Lookup[base64Chars.charCodeAt(i2)] = i2;
+}
+function decodeBase642(base64) {
+  let bufferLength = Math.ceil(base64.length / 4) * 3;
+  const len = base64.length;
+  let p = 0;
+  if (base64.length % 4 === 3) {
+    bufferLength--;
+  } else if (base64.length % 4 === 2) {
+    bufferLength -= 2;
+  } else if (base64[base64.length - 1] === "=") {
+    bufferLength--;
+    if (base64[base64.length - 2] === "=") {
+      bufferLength--;
+    }
+  }
+  const arrayBuffer = new ArrayBuffer(bufferLength);
+  const bytes = new Uint8Array(arrayBuffer);
+  for (let i2 = 0; i2 < len; i2 += 4) {
+    let encoded1 = base64Lookup[base64.charCodeAt(i2)];
+    let encoded2 = base64Lookup[base64.charCodeAt(i2 + 1)];
+    let encoded3 = base64Lookup[base64.charCodeAt(i2 + 2)];
+    let encoded4 = base64Lookup[base64.charCodeAt(i2 + 3)];
+    bytes[p++] = encoded1 << 2 | encoded2 >> 4;
+    bytes[p++] = (encoded2 & 15) << 4 | encoded3 >> 2;
+    bytes[p++] = (encoded3 & 3) << 6 | encoded4 & 63;
+  }
+  return arrayBuffer;
+}
+function getDecoder(charset) {
+  charset = charset || "utf8";
+  let decoder2;
+  try {
+    decoder2 = new TextDecoder(charset);
+  } catch (err) {
+    decoder2 = new TextDecoder("windows-1252");
+  }
+  return decoder2;
+}
+async function blobToArrayBuffer(blob) {
+  if ("arrayBuffer" in blob) {
+    return await blob.arrayBuffer();
+  }
+  const fr3 = new FileReader();
+  return new Promise((resolve, reject) => {
+    fr3.onload = function(e3) {
+      resolve(e3.target.result);
+    };
+    fr3.onerror = function(e3) {
+      reject(fr3.error);
+    };
+    fr3.readAsArrayBuffer(blob);
+  });
+}
+function getHex(c2) {
+  if (c2 >= 48 && c2 <= 57 || c2 >= 97 && c2 <= 102 || c2 >= 65 && c2 <= 70) {
+    return String.fromCharCode(c2);
+  }
+  return false;
+}
+function decodeWord(charset, encoding, str) {
+  let splitPos = charset.indexOf("*");
+  if (splitPos >= 0) {
+    charset = charset.substr(0, splitPos);
+  }
+  encoding = encoding.toUpperCase();
+  let byteStr;
+  if (encoding === "Q") {
+    str = str.replace(/=\s+([0-9a-fA-F])/g, "=$1").replace(/[_\s]/g, " ");
+    let buf = textEncoder.encode(str);
+    let encodedBytes = [];
+    for (let i2 = 0, len = buf.length; i2 < len; i2++) {
+      let c2 = buf[i2];
+      if (i2 <= len - 2 && c2 === 61) {
+        let c1 = getHex(buf[i2 + 1]);
+        let c22 = getHex(buf[i2 + 2]);
+        if (c1 && c22) {
+          let c3 = parseInt(c1 + c22, 16);
+          encodedBytes.push(c3);
+          i2 += 2;
+          continue;
+        }
+      }
+      encodedBytes.push(c2);
+    }
+    byteStr = new ArrayBuffer(encodedBytes.length);
+    let dataView = new DataView(byteStr);
+    for (let i2 = 0, len = encodedBytes.length; i2 < len; i2++) {
+      dataView.setUint8(i2, encodedBytes[i2]);
+    }
+  } else if (encoding === "B") {
+    byteStr = decodeBase642(str.replace(/[^a-zA-Z0-9\+\/=]+/g, ""));
+  } else {
+    byteStr = textEncoder.encode(str);
+  }
+  return getDecoder(charset).decode(byteStr);
+}
+function decodeWords(str) {
+  let joinString = true;
+  let done = false;
+  while (!done) {
+    let result = (str || "").toString().replace(
+      /(=\?([^?]+)\?[Bb]\?([^?]*)\?=)\s*(?==\?([^?]+)\?[Bb]\?[^?]*\?=)/g,
+      (match, left2, chLeft, encodedLeftStr, chRight) => {
+        if (!joinString) {
+          return match;
+        }
+        if (chLeft === chRight && encodedLeftStr.length % 4 === 0 && !/=$/.test(encodedLeftStr)) {
+          return left2 + "__\0JOIN\0__";
+        }
+        return match;
+      }
+    ).replace(
+      /(=\?([^?]+)\?[Qq]\?[^?]*\?=)\s*(?==\?([^?]+)\?[Qq]\?[^?]*\?=)/g,
+      (match, left2, chLeft, chRight) => {
+        if (!joinString) {
+          return match;
+        }
+        if (chLeft === chRight) {
+          return left2 + "__\0JOIN\0__";
+        }
+        return match;
+      }
+    ).replace(/(\?=)?__\x00JOIN\x00__(=\?([^?]+)\?[QqBb]\?)?/g, "").replace(/(=\?[^?]+\?[QqBb]\?[^?]*\?=)\s+(?==\?[^?]+\?[QqBb]\?[^?]*\?=)/g, "$1").replace(
+      /=\?([\w_\-*]+)\?([QqBb])\?([^?]*)\?=/g,
+      (m2, charset, encoding, text2) => decodeWord(charset, encoding, text2)
+    );
+    if (joinString && result.indexOf("\uFFFD") >= 0) {
+      joinString = false;
+    } else {
+      return result;
+    }
+  }
+}
+function decodeURIComponentWithCharset(encodedStr, charset) {
+  charset = charset || "utf-8";
+  let encodedBytes = [];
+  for (let i2 = 0; i2 < encodedStr.length; i2++) {
+    let c2 = encodedStr.charAt(i2);
+    if (c2 === "%" && /^[a-f0-9]{2}/i.test(encodedStr.substr(i2 + 1, 2))) {
+      let byte = encodedStr.substr(i2 + 1, 2);
+      i2 += 2;
+      encodedBytes.push(parseInt(byte, 16));
+    } else if (c2.charCodeAt(0) > 126) {
+      c2 = textEncoder.encode(c2);
+      for (let j3 = 0; j3 < c2.length; j3++) {
+        encodedBytes.push(c2[j3]);
+      }
+    } else {
+      encodedBytes.push(c2.charCodeAt(0));
+    }
+  }
+  const byteStr = new ArrayBuffer(encodedBytes.length);
+  const dataView = new DataView(byteStr);
+  for (let i2 = 0, len = encodedBytes.length; i2 < len; i2++) {
+    dataView.setUint8(i2, encodedBytes[i2]);
+  }
+  return getDecoder(charset).decode(byteStr);
+}
+function decodeParameterValueContinuations(header) {
+  let paramKeys = /* @__PURE__ */ new Map();
+  Object.keys(header.params).forEach((key) => {
+    let match = key.match(/\*((\d+)\*?)?$/);
+    if (!match) {
+      return;
+    }
+    let actualKey = key.substr(0, match.index).toLowerCase();
+    let nr2 = Number(match[2]) || 0;
+    let paramVal;
+    if (!paramKeys.has(actualKey)) {
+      paramVal = {
+        charset: false,
+        values: []
+      };
+      paramKeys.set(actualKey, paramVal);
+    } else {
+      paramVal = paramKeys.get(actualKey);
+    }
+    let value = header.params[key];
+    if (nr2 === 0 && match[0].charAt(match[0].length - 1) === "*" && (match = value.match(/^([^']*)'[^']*'(.*)$/))) {
+      paramVal.charset = match[1] || "utf-8";
+      value = match[2];
+    }
+    paramVal.values.push({ nr: nr2, value });
+    delete header.params[key];
+  });
+  paramKeys.forEach((paramVal, key) => {
+    header.params[key] = decodeURIComponentWithCharset(
+      paramVal.values.sort((a, b3) => a.nr - b3.nr).map((a) => a.value).join(""),
+      paramVal.charset
+    );
+  });
+}
+
+// ../../node_modules/.pnpm/postal-mime@2.7.4/node_modules/postal-mime/src/pass-through-decoder.js
+var PassThroughDecoder = class {
+  constructor() {
+    this.chunks = [];
+  }
+  update(line2) {
+    this.chunks.push(line2);
+    this.chunks.push("\n");
+  }
+  finalize() {
+    return blobToArrayBuffer(new Blob(this.chunks, { type: "application/octet-stream" }));
+  }
+};
+
+// ../../node_modules/.pnpm/postal-mime@2.7.4/node_modules/postal-mime/src/base64-decoder.js
+var Base64Decoder = class {
+  constructor(opts) {
+    opts = opts || {};
+    this.decoder = opts.decoder || new TextDecoder();
+    this.maxChunkSize = 100 * 1024;
+    this.chunks = [];
+    this.remainder = "";
+  }
+  update(buffer) {
+    let str = this.decoder.decode(buffer);
+    str = str.replace(/[^a-zA-Z0-9+\/]+/g, "");
+    this.remainder += str;
+    if (this.remainder.length >= this.maxChunkSize) {
+      let allowedBytes = Math.floor(this.remainder.length / 4) * 4;
+      let base64Str;
+      if (allowedBytes === this.remainder.length) {
+        base64Str = this.remainder;
+        this.remainder = "";
+      } else {
+        base64Str = this.remainder.substr(0, allowedBytes);
+        this.remainder = this.remainder.substr(allowedBytes);
+      }
+      if (base64Str.length) {
+        this.chunks.push(decodeBase642(base64Str));
+      }
+    }
+  }
+  finalize() {
+    if (this.remainder && !/^=+$/.test(this.remainder)) {
+      this.chunks.push(decodeBase642(this.remainder));
+    }
+    return blobToArrayBuffer(new Blob(this.chunks, { type: "application/octet-stream" }));
+  }
+};
+
+// ../../node_modules/.pnpm/postal-mime@2.7.4/node_modules/postal-mime/src/qp-decoder.js
+var VALID_QP_REGEX = /^=[a-f0-9]{2}$/i;
+var QP_SPLIT_REGEX = /(?==[a-f0-9]{2})/i;
+var SOFT_LINE_BREAK_REGEX = /=\r?\n/g;
+var PARTIAL_QP_ENDING_REGEX = /=[a-fA-F0-9]?$/;
+var QPDecoder = class {
+  constructor(opts) {
+    opts = opts || {};
+    this.decoder = opts.decoder || new TextDecoder();
+    this.maxChunkSize = 100 * 1024;
+    this.remainder = "";
+    this.chunks = [];
+  }
+  decodeQPBytes(encodedBytes) {
+    let buf = new ArrayBuffer(encodedBytes.length);
+    let dataView = new DataView(buf);
+    for (let i2 = 0, len = encodedBytes.length; i2 < len; i2++) {
+      dataView.setUint8(i2, parseInt(encodedBytes[i2], 16));
+    }
+    return buf;
+  }
+  decodeChunks(str) {
+    str = str.replace(SOFT_LINE_BREAK_REGEX, "");
+    let list = str.split(QP_SPLIT_REGEX);
+    let encodedBytes = [];
+    for (let part of list) {
+      if (part.charAt(0) !== "=") {
+        if (encodedBytes.length) {
+          this.chunks.push(this.decodeQPBytes(encodedBytes));
+          encodedBytes = [];
+        }
+        this.chunks.push(part);
+        continue;
+      }
+      if (part.length === 3) {
+        if (VALID_QP_REGEX.test(part)) {
+          encodedBytes.push(part.substr(1));
+        } else {
+          if (encodedBytes.length) {
+            this.chunks.push(this.decodeQPBytes(encodedBytes));
+            encodedBytes = [];
+          }
+          this.chunks.push(part);
+        }
+        continue;
+      }
+      if (part.length > 3) {
+        const firstThree = part.substr(0, 3);
+        if (VALID_QP_REGEX.test(firstThree)) {
+          encodedBytes.push(part.substr(1, 2));
+          this.chunks.push(this.decodeQPBytes(encodedBytes));
+          encodedBytes = [];
+          part = part.substr(3);
+          this.chunks.push(part);
+        } else {
+          if (encodedBytes.length) {
+            this.chunks.push(this.decodeQPBytes(encodedBytes));
+            encodedBytes = [];
+          }
+          this.chunks.push(part);
+        }
+      }
+    }
+    if (encodedBytes.length) {
+      this.chunks.push(this.decodeQPBytes(encodedBytes));
+    }
+  }
+  update(buffer) {
+    let str = this.decoder.decode(buffer) + "\n";
+    str = this.remainder + str;
+    if (str.length < this.maxChunkSize) {
+      this.remainder = str;
+      return;
+    }
+    this.remainder = "";
+    let partialEnding = str.match(PARTIAL_QP_ENDING_REGEX);
+    if (partialEnding) {
+      if (partialEnding.index === 0) {
+        this.remainder = str;
+        return;
+      }
+      this.remainder = str.substr(partialEnding.index);
+      str = str.substr(0, partialEnding.index);
+    }
+    this.decodeChunks(str);
+  }
+  finalize() {
+    if (this.remainder.length) {
+      this.decodeChunks(this.remainder);
+      this.remainder = "";
+    }
+    return blobToArrayBuffer(new Blob(this.chunks, { type: "application/octet-stream" }));
+  }
+};
+
+// ../../node_modules/.pnpm/postal-mime@2.7.4/node_modules/postal-mime/src/mime-node.js
+var defaultDecoder = getDecoder();
+var MimeNode = class {
+  constructor(options) {
+    this.options = options || {};
+    this.postalMime = this.options.postalMime;
+    this.root = !!this.options.parentNode;
+    this.childNodes = [];
+    if (this.options.parentNode) {
+      this.parentNode = this.options.parentNode;
+      this.depth = this.parentNode.depth + 1;
+      if (this.depth > this.options.maxNestingDepth) {
+        throw new Error(`Maximum MIME nesting depth of ${this.options.maxNestingDepth} levels exceeded`);
+      }
+      this.options.parentNode.childNodes.push(this);
+    } else {
+      this.depth = 0;
+    }
+    this.state = "header";
+    this.headerLines = [];
+    this.headerSize = 0;
+    const parentMultipartType = this.options.parentMultipartType || null;
+    const defaultContentType = parentMultipartType === "digest" ? "message/rfc822" : "text/plain";
+    this.contentType = {
+      value: defaultContentType,
+      default: true
+    };
+    this.contentTransferEncoding = {
+      value: "8bit"
+    };
+    this.contentDisposition = {
+      value: ""
+    };
+    this.headers = [];
+    this.contentDecoder = false;
+  }
+  setupContentDecoder(transferEncoding) {
+    if (/base64/i.test(transferEncoding)) {
+      this.contentDecoder = new Base64Decoder();
+    } else if (/quoted-printable/i.test(transferEncoding)) {
+      this.contentDecoder = new QPDecoder({ decoder: getDecoder(this.contentType.parsed.params.charset) });
+    } else {
+      this.contentDecoder = new PassThroughDecoder();
+    }
+  }
+  async finalize() {
+    if (this.state === "finished") {
+      return;
+    }
+    if (this.state === "header") {
+      this.processHeaders();
+    }
+    let boundaries = this.postalMime.boundaries;
+    for (let i2 = boundaries.length - 1; i2 >= 0; i2--) {
+      let boundary = boundaries[i2];
+      if (boundary.node === this) {
+        boundaries.splice(i2, 1);
+        break;
+      }
+    }
+    await this.finalizeChildNodes();
+    this.content = this.contentDecoder ? await this.contentDecoder.finalize() : null;
+    this.state = "finished";
+  }
+  async finalizeChildNodes() {
+    for (let childNode of this.childNodes) {
+      await childNode.finalize();
+    }
+  }
+  // Strip RFC 822 comments (parenthesized text) from structured header values
+  stripComments(str) {
+    let result = "";
+    let depth = 0;
+    let escaped = false;
+    let inQuote = false;
+    for (let i2 = 0; i2 < str.length; i2++) {
+      const chr = str.charAt(i2);
+      if (escaped) {
+        if (depth === 0) {
+          result += chr;
+        }
+        escaped = false;
+        continue;
+      }
+      if (chr === "\\") {
+        escaped = true;
+        if (depth === 0) {
+          result += chr;
+        }
+        continue;
+      }
+      if (chr === '"' && depth === 0) {
+        inQuote = !inQuote;
+        result += chr;
+        continue;
+      }
+      if (!inQuote) {
+        if (chr === "(") {
+          depth++;
+          continue;
+        }
+        if (chr === ")" && depth > 0) {
+          depth--;
+          continue;
+        }
+      }
+      if (depth === 0) {
+        result += chr;
+      }
+    }
+    return result;
+  }
+  parseStructuredHeader(str) {
+    str = this.stripComments(str);
+    let response = {
+      value: false,
+      params: {}
+    };
+    let key = false;
+    let value = "";
+    let stage = "value";
+    let quote = false;
+    let escaped = false;
+    let chr;
+    for (let i2 = 0, len = str.length; i2 < len; i2++) {
+      chr = str.charAt(i2);
+      switch (stage) {
+        case "key":
+          if (chr === "=") {
+            key = value.trim().toLowerCase();
+            stage = "value";
+            value = "";
+            break;
+          }
+          value += chr;
+          break;
+        case "value":
+          if (escaped) {
+            value += chr;
+          } else if (chr === "\\") {
+            escaped = true;
+            continue;
+          } else if (quote && chr === quote) {
+            quote = false;
+          } else if (!quote && chr === '"') {
+            quote = chr;
+          } else if (!quote && chr === ";") {
+            if (key === false) {
+              response.value = value.trim();
+            } else {
+              response.params[key] = value.trim();
+            }
+            stage = "key";
+            value = "";
+          } else {
+            value += chr;
+          }
+          escaped = false;
+          break;
+      }
+    }
+    value = value.trim();
+    if (stage === "value") {
+      if (key === false) {
+        response.value = value;
+      } else {
+        response.params[key] = value;
+      }
+    } else if (value) {
+      response.params[value.toLowerCase()] = "";
+    }
+    if (response.value) {
+      response.value = response.value.toLowerCase();
+    }
+    decodeParameterValueContinuations(response);
+    return response;
+  }
+  decodeFlowedText(str, delSp) {
+    return str.split(/\r?\n/).reduce((previousValue, currentValue) => {
+      if (previousValue.endsWith(" ") && previousValue !== "-- " && !previousValue.endsWith("\n-- ")) {
+        if (delSp) {
+          return previousValue.slice(0, -1) + currentValue;
+        } else {
+          return previousValue + currentValue;
+        }
+      } else {
+        return previousValue + "\n" + currentValue;
+      }
+    }).replace(/^ /gm, "");
+  }
+  getTextContent() {
+    if (!this.content) {
+      return "";
+    }
+    let str = getDecoder(this.contentType.parsed.params.charset).decode(this.content);
+    if (/^flowed$/i.test(this.contentType.parsed.params.format)) {
+      str = this.decodeFlowedText(str, /^yes$/i.test(this.contentType.parsed.params.delsp));
+    }
+    return str;
+  }
+  processHeaders() {
+    for (let i2 = this.headerLines.length - 1; i2 >= 0; i2--) {
+      let line2 = this.headerLines[i2];
+      if (i2 && /^\s/.test(line2)) {
+        this.headerLines[i2 - 1] += "\n" + line2;
+        this.headerLines.splice(i2, 1);
+      }
+    }
+    this.rawHeaderLines = [];
+    for (let i2 = this.headerLines.length - 1; i2 >= 0; i2--) {
+      let rawLine = this.headerLines[i2];
+      let sep = rawLine.indexOf(":");
+      let rawKey = sep < 0 ? rawLine.trim() : rawLine.substr(0, sep).trim();
+      this.rawHeaderLines.push({
+        key: rawKey.toLowerCase(),
+        line: rawLine
+      });
+      let normalizedLine = rawLine.replace(/\s+/g, " ");
+      sep = normalizedLine.indexOf(":");
+      let key = sep < 0 ? normalizedLine.trim() : normalizedLine.substr(0, sep).trim();
+      let value = sep < 0 ? "" : normalizedLine.substr(sep + 1).trim();
+      this.headers.push({ key: key.toLowerCase(), originalKey: key, value });
+      switch (key.toLowerCase()) {
+        case "content-type":
+          if (this.contentType.default) {
+            this.contentType = { value, parsed: {} };
+          }
+          break;
+        case "content-transfer-encoding":
+          this.contentTransferEncoding = { value, parsed: {} };
+          break;
+        case "content-disposition":
+          this.contentDisposition = { value, parsed: {} };
+          break;
+        case "content-id":
+          this.contentId = value;
+          break;
+        case "content-description":
+          this.contentDescription = value;
+          break;
+      }
+    }
+    this.contentType.parsed = this.parseStructuredHeader(this.contentType.value);
+    this.contentType.multipart = /^multipart\//i.test(this.contentType.parsed.value) ? this.contentType.parsed.value.substr(this.contentType.parsed.value.indexOf("/") + 1) : false;
+    if (this.contentType.multipart && this.contentType.parsed.params.boundary) {
+      this.postalMime.boundaries.push({
+        value: textEncoder.encode(this.contentType.parsed.params.boundary),
+        node: this
+      });
+    }
+    this.contentDisposition.parsed = this.parseStructuredHeader(this.contentDisposition.value);
+    this.contentTransferEncoding.encoding = this.contentTransferEncoding.value.toLowerCase().split(/[^\w-]/).shift();
+    this.setupContentDecoder(this.contentTransferEncoding.encoding);
+  }
+  feed(line2) {
+    switch (this.state) {
+      case "header":
+        if (!line2.length) {
+          this.state = "body";
+          return this.processHeaders();
+        }
+        this.headerSize += line2.length;
+        if (this.headerSize > this.options.maxHeadersSize) {
+          let error = new Error(`Maximum header size of ${this.options.maxHeadersSize} bytes exceeded`);
+          throw error;
+        }
+        this.headerLines.push(defaultDecoder.decode(line2));
+        break;
+      case "body": {
+        this.contentDecoder.update(line2);
+      }
+    }
+  }
+};
+
+// ../../node_modules/.pnpm/postal-mime@2.7.4/node_modules/postal-mime/src/html-entities.js
+var htmlEntities = {
+  "&AElig": "\xC6",
+  "&AElig;": "\xC6",
+  "&AMP": "&",
+  "&AMP;": "&",
+  "&Aacute": "\xC1",
+  "&Aacute;": "\xC1",
+  "&Abreve;": "\u0102",
+  "&Acirc": "\xC2",
+  "&Acirc;": "\xC2",
+  "&Acy;": "\u0410",
+  "&Afr;": "\u{1D504}",
+  "&Agrave": "\xC0",
+  "&Agrave;": "\xC0",
+  "&Alpha;": "\u0391",
+  "&Amacr;": "\u0100",
+  "&And;": "\u2A53",
+  "&Aogon;": "\u0104",
+  "&Aopf;": "\u{1D538}",
+  "&ApplyFunction;": "\u2061",
+  "&Aring": "\xC5",
+  "&Aring;": "\xC5",
+  "&Ascr;": "\u{1D49C}",
+  "&Assign;": "\u2254",
+  "&Atilde": "\xC3",
+  "&Atilde;": "\xC3",
+  "&Auml": "\xC4",
+  "&Auml;": "\xC4",
+  "&Backslash;": "\u2216",
+  "&Barv;": "\u2AE7",
+  "&Barwed;": "\u2306",
+  "&Bcy;": "\u0411",
+  "&Because;": "\u2235",
+  "&Bernoullis;": "\u212C",
+  "&Beta;": "\u0392",
+  "&Bfr;": "\u{1D505}",
+  "&Bopf;": "\u{1D539}",
+  "&Breve;": "\u02D8",
+  "&Bscr;": "\u212C",
+  "&Bumpeq;": "\u224E",
+  "&CHcy;": "\u0427",
+  "&COPY": "\xA9",
+  "&COPY;": "\xA9",
+  "&Cacute;": "\u0106",
+  "&Cap;": "\u22D2",
+  "&CapitalDifferentialD;": "\u2145",
+  "&Cayleys;": "\u212D",
+  "&Ccaron;": "\u010C",
+  "&Ccedil": "\xC7",
+  "&Ccedil;": "\xC7",
+  "&Ccirc;": "\u0108",
+  "&Cconint;": "\u2230",
+  "&Cdot;": "\u010A",
+  "&Cedilla;": "\xB8",
+  "&CenterDot;": "\xB7",
+  "&Cfr;": "\u212D",
+  "&Chi;": "\u03A7",
+  "&CircleDot;": "\u2299",
+  "&CircleMinus;": "\u2296",
+  "&CirclePlus;": "\u2295",
+  "&CircleTimes;": "\u2297",
+  "&ClockwiseContourIntegral;": "\u2232",
+  "&CloseCurlyDoubleQuote;": "\u201D",
+  "&CloseCurlyQuote;": "\u2019",
+  "&Colon;": "\u2237",
+  "&Colone;": "\u2A74",
+  "&Congruent;": "\u2261",
+  "&Conint;": "\u222F",
+  "&ContourIntegral;": "\u222E",
+  "&Copf;": "\u2102",
+  "&Coproduct;": "\u2210",
+  "&CounterClockwiseContourIntegral;": "\u2233",
+  "&Cross;": "\u2A2F",
+  "&Cscr;": "\u{1D49E}",
+  "&Cup;": "\u22D3",
+  "&CupCap;": "\u224D",
+  "&DD;": "\u2145",
+  "&DDotrahd;": "\u2911",
+  "&DJcy;": "\u0402",
+  "&DScy;": "\u0405",
+  "&DZcy;": "\u040F",
+  "&Dagger;": "\u2021",
+  "&Darr;": "\u21A1",
+  "&Dashv;": "\u2AE4",
+  "&Dcaron;": "\u010E",
+  "&Dcy;": "\u0414",
+  "&Del;": "\u2207",
+  "&Delta;": "\u0394",
+  "&Dfr;": "\u{1D507}",
+  "&DiacriticalAcute;": "\xB4",
+  "&DiacriticalDot;": "\u02D9",
+  "&DiacriticalDoubleAcute;": "\u02DD",
+  "&DiacriticalGrave;": "`",
+  "&DiacriticalTilde;": "\u02DC",
+  "&Diamond;": "\u22C4",
+  "&DifferentialD;": "\u2146",
+  "&Dopf;": "\u{1D53B}",
+  "&Dot;": "\xA8",
+  "&DotDot;": "\u20DC",
+  "&DotEqual;": "\u2250",
+  "&DoubleContourIntegral;": "\u222F",
+  "&DoubleDot;": "\xA8",
+  "&DoubleDownArrow;": "\u21D3",
+  "&DoubleLeftArrow;": "\u21D0",
+  "&DoubleLeftRightArrow;": "\u21D4",
+  "&DoubleLeftTee;": "\u2AE4",
+  "&DoubleLongLeftArrow;": "\u27F8",
+  "&DoubleLongLeftRightArrow;": "\u27FA",
+  "&DoubleLongRightArrow;": "\u27F9",
+  "&DoubleRightArrow;": "\u21D2",
+  "&DoubleRightTee;": "\u22A8",
+  "&DoubleUpArrow;": "\u21D1",
+  "&DoubleUpDownArrow;": "\u21D5",
+  "&DoubleVerticalBar;": "\u2225",
+  "&DownArrow;": "\u2193",
+  "&DownArrowBar;": "\u2913",
+  "&DownArrowUpArrow;": "\u21F5",
+  "&DownBreve;": "\u0311",
+  "&DownLeftRightVector;": "\u2950",
+  "&DownLeftTeeVector;": "\u295E",
+  "&DownLeftVector;": "\u21BD",
+  "&DownLeftVectorBar;": "\u2956",
+  "&DownRightTeeVector;": "\u295F",
+  "&DownRightVector;": "\u21C1",
+  "&DownRightVectorBar;": "\u2957",
+  "&DownTee;": "\u22A4",
+  "&DownTeeArrow;": "\u21A7",
+  "&Downarrow;": "\u21D3",
+  "&Dscr;": "\u{1D49F}",
+  "&Dstrok;": "\u0110",
+  "&ENG;": "\u014A",
+  "&ETH": "\xD0",
+  "&ETH;": "\xD0",
+  "&Eacute": "\xC9",
+  "&Eacute;": "\xC9",
+  "&Ecaron;": "\u011A",
+  "&Ecirc": "\xCA",
+  "&Ecirc;": "\xCA",
+  "&Ecy;": "\u042D",
+  "&Edot;": "\u0116",
+  "&Efr;": "\u{1D508}",
+  "&Egrave": "\xC8",
+  "&Egrave;": "\xC8",
+  "&Element;": "\u2208",
+  "&Emacr;": "\u0112",
+  "&EmptySmallSquare;": "\u25FB",
+  "&EmptyVerySmallSquare;": "\u25AB",
+  "&Eogon;": "\u0118",
+  "&Eopf;": "\u{1D53C}",
+  "&Epsilon;": "\u0395",
+  "&Equal;": "\u2A75",
+  "&EqualTilde;": "\u2242",
+  "&Equilibrium;": "\u21CC",
+  "&Escr;": "\u2130",
+  "&Esim;": "\u2A73",
+  "&Eta;": "\u0397",
+  "&Euml": "\xCB",
+  "&Euml;": "\xCB",
+  "&Exists;": "\u2203",
+  "&ExponentialE;": "\u2147",
+  "&Fcy;": "\u0424",
+  "&Ffr;": "\u{1D509}",
+  "&FilledSmallSquare;": "\u25FC",
+  "&FilledVerySmallSquare;": "\u25AA",
+  "&Fopf;": "\u{1D53D}",
+  "&ForAll;": "\u2200",
+  "&Fouriertrf;": "\u2131",
+  "&Fscr;": "\u2131",
+  "&GJcy;": "\u0403",
+  "&GT": ">",
+  "&GT;": ">",
+  "&Gamma;": "\u0393",
+  "&Gammad;": "\u03DC",
+  "&Gbreve;": "\u011E",
+  "&Gcedil;": "\u0122",
+  "&Gcirc;": "\u011C",
+  "&Gcy;": "\u0413",
+  "&Gdot;": "\u0120",
+  "&Gfr;": "\u{1D50A}",
+  "&Gg;": "\u22D9",
+  "&Gopf;": "\u{1D53E}",
+  "&GreaterEqual;": "\u2265",
+  "&GreaterEqualLess;": "\u22DB",
+  "&GreaterFullEqual;": "\u2267",
+  "&GreaterGreater;": "\u2AA2",
+  "&GreaterLess;": "\u2277",
+  "&GreaterSlantEqual;": "\u2A7E",
+  "&GreaterTilde;": "\u2273",
+  "&Gscr;": "\u{1D4A2}",
+  "&Gt;": "\u226B",
+  "&HARDcy;": "\u042A",
+  "&Hacek;": "\u02C7",
+  "&Hat;": "^",
+  "&Hcirc;": "\u0124",
+  "&Hfr;": "\u210C",
+  "&HilbertSpace;": "\u210B",
+  "&Hopf;": "\u210D",
+  "&HorizontalLine;": "\u2500",
+  "&Hscr;": "\u210B",
+  "&Hstrok;": "\u0126",
+  "&HumpDownHump;": "\u224E",
+  "&HumpEqual;": "\u224F",
+  "&IEcy;": "\u0415",
+  "&IJlig;": "\u0132",
+  "&IOcy;": "\u0401",
+  "&Iacute": "\xCD",
+  "&Iacute;": "\xCD",
+  "&Icirc": "\xCE",
+  "&Icirc;": "\xCE",
+  "&Icy;": "\u0418",
+  "&Idot;": "\u0130",
+  "&Ifr;": "\u2111",
+  "&Igrave": "\xCC",
+  "&Igrave;": "\xCC",
+  "&Im;": "\u2111",
+  "&Imacr;": "\u012A",
+  "&ImaginaryI;": "\u2148",
+  "&Implies;": "\u21D2",
+  "&Int;": "\u222C",
+  "&Integral;": "\u222B",
+  "&Intersection;": "\u22C2",
+  "&InvisibleComma;": "\u2063",
+  "&InvisibleTimes;": "\u2062",
+  "&Iogon;": "\u012E",
+  "&Iopf;": "\u{1D540}",
+  "&Iota;": "\u0399",
+  "&Iscr;": "\u2110",
+  "&Itilde;": "\u0128",
+  "&Iukcy;": "\u0406",
+  "&Iuml": "\xCF",
+  "&Iuml;": "\xCF",
+  "&Jcirc;": "\u0134",
+  "&Jcy;": "\u0419",
+  "&Jfr;": "\u{1D50D}",
+  "&Jopf;": "\u{1D541}",
+  "&Jscr;": "\u{1D4A5}",
+  "&Jsercy;": "\u0408",
+  "&Jukcy;": "\u0404",
+  "&KHcy;": "\u0425",
+  "&KJcy;": "\u040C",
+  "&Kappa;": "\u039A",
+  "&Kcedil;": "\u0136",
+  "&Kcy;": "\u041A",
+  "&Kfr;": "\u{1D50E}",
+  "&Kopf;": "\u{1D542}",
+  "&Kscr;": "\u{1D4A6}",
+  "&LJcy;": "\u0409",
+  "&LT": "<",
+  "&LT;": "<",
+  "&Lacute;": "\u0139",
+  "&Lambda;": "\u039B",
+  "&Lang;": "\u27EA",
+  "&Laplacetrf;": "\u2112",
+  "&Larr;": "\u219E",
+  "&Lcaron;": "\u013D",
+  "&Lcedil;": "\u013B",
+  "&Lcy;": "\u041B",
+  "&LeftAngleBracket;": "\u27E8",
+  "&LeftArrow;": "\u2190",
+  "&LeftArrowBar;": "\u21E4",
+  "&LeftArrowRightArrow;": "\u21C6",
+  "&LeftCeiling;": "\u2308",
+  "&LeftDoubleBracket;": "\u27E6",
+  "&LeftDownTeeVector;": "\u2961",
+  "&LeftDownVector;": "\u21C3",
+  "&LeftDownVectorBar;": "\u2959",
+  "&LeftFloor;": "\u230A",
+  "&LeftRightArrow;": "\u2194",
+  "&LeftRightVector;": "\u294E",
+  "&LeftTee;": "\u22A3",
+  "&LeftTeeArrow;": "\u21A4",
+  "&LeftTeeVector;": "\u295A",
+  "&LeftTriangle;": "\u22B2",
+  "&LeftTriangleBar;": "\u29CF",
+  "&LeftTriangleEqual;": "\u22B4",
+  "&LeftUpDownVector;": "\u2951",
+  "&LeftUpTeeVector;": "\u2960",
+  "&LeftUpVector;": "\u21BF",
+  "&LeftUpVectorBar;": "\u2958",
+  "&LeftVector;": "\u21BC",
+  "&LeftVectorBar;": "\u2952",
+  "&Leftarrow;": "\u21D0",
+  "&Leftrightarrow;": "\u21D4",
+  "&LessEqualGreater;": "\u22DA",
+  "&LessFullEqual;": "\u2266",
+  "&LessGreater;": "\u2276",
+  "&LessLess;": "\u2AA1",
+  "&LessSlantEqual;": "\u2A7D",
+  "&LessTilde;": "\u2272",
+  "&Lfr;": "\u{1D50F}",
+  "&Ll;": "\u22D8",
+  "&Lleftarrow;": "\u21DA",
+  "&Lmidot;": "\u013F",
+  "&LongLeftArrow;": "\u27F5",
+  "&LongLeftRightArrow;": "\u27F7",
+  "&LongRightArrow;": "\u27F6",
+  "&Longleftarrow;": "\u27F8",
+  "&Longleftrightarrow;": "\u27FA",
+  "&Longrightarrow;": "\u27F9",
+  "&Lopf;": "\u{1D543}",
+  "&LowerLeftArrow;": "\u2199",
+  "&LowerRightArrow;": "\u2198",
+  "&Lscr;": "\u2112",
+  "&Lsh;": "\u21B0",
+  "&Lstrok;": "\u0141",
+  "&Lt;": "\u226A",
+  "&Map;": "\u2905",
+  "&Mcy;": "\u041C",
+  "&MediumSpace;": "\u205F",
+  "&Mellintrf;": "\u2133",
+  "&Mfr;": "\u{1D510}",
+  "&MinusPlus;": "\u2213",
+  "&Mopf;": "\u{1D544}",
+  "&Mscr;": "\u2133",
+  "&Mu;": "\u039C",
+  "&NJcy;": "\u040A",
+  "&Nacute;": "\u0143",
+  "&Ncaron;": "\u0147",
+  "&Ncedil;": "\u0145",
+  "&Ncy;": "\u041D",
+  "&NegativeMediumSpace;": "\u200B",
+  "&NegativeThickSpace;": "\u200B",
+  "&NegativeThinSpace;": "\u200B",
+  "&NegativeVeryThinSpace;": "\u200B",
+  "&NestedGreaterGreater;": "\u226B",
+  "&NestedLessLess;": "\u226A",
+  "&NewLine;": "\n",
+  "&Nfr;": "\u{1D511}",
+  "&NoBreak;": "\u2060",
+  "&NonBreakingSpace;": "\xA0",
+  "&Nopf;": "\u2115",
+  "&Not;": "\u2AEC",
+  "&NotCongruent;": "\u2262",
+  "&NotCupCap;": "\u226D",
+  "&NotDoubleVerticalBar;": "\u2226",
+  "&NotElement;": "\u2209",
+  "&NotEqual;": "\u2260",
+  "&NotEqualTilde;": "\u2242\u0338",
+  "&NotExists;": "\u2204",
+  "&NotGreater;": "\u226F",
+  "&NotGreaterEqual;": "\u2271",
+  "&NotGreaterFullEqual;": "\u2267\u0338",
+  "&NotGreaterGreater;": "\u226B\u0338",
+  "&NotGreaterLess;": "\u2279",
+  "&NotGreaterSlantEqual;": "\u2A7E\u0338",
+  "&NotGreaterTilde;": "\u2275",
+  "&NotHumpDownHump;": "\u224E\u0338",
+  "&NotHumpEqual;": "\u224F\u0338",
+  "&NotLeftTriangle;": "\u22EA",
+  "&NotLeftTriangleBar;": "\u29CF\u0338",
+  "&NotLeftTriangleEqual;": "\u22EC",
+  "&NotLess;": "\u226E",
+  "&NotLessEqual;": "\u2270",
+  "&NotLessGreater;": "\u2278",
+  "&NotLessLess;": "\u226A\u0338",
+  "&NotLessSlantEqual;": "\u2A7D\u0338",
+  "&NotLessTilde;": "\u2274",
+  "&NotNestedGreaterGreater;": "\u2AA2\u0338",
+  "&NotNestedLessLess;": "\u2AA1\u0338",
+  "&NotPrecedes;": "\u2280",
+  "&NotPrecedesEqual;": "\u2AAF\u0338",
+  "&NotPrecedesSlantEqual;": "\u22E0",
+  "&NotReverseElement;": "\u220C",
+  "&NotRightTriangle;": "\u22EB",
+  "&NotRightTriangleBar;": "\u29D0\u0338",
+  "&NotRightTriangleEqual;": "\u22ED",
+  "&NotSquareSubset;": "\u228F\u0338",
+  "&NotSquareSubsetEqual;": "\u22E2",
+  "&NotSquareSuperset;": "\u2290\u0338",
+  "&NotSquareSupersetEqual;": "\u22E3",
+  "&NotSubset;": "\u2282\u20D2",
+  "&NotSubsetEqual;": "\u2288",
+  "&NotSucceeds;": "\u2281",
+  "&NotSucceedsEqual;": "\u2AB0\u0338",
+  "&NotSucceedsSlantEqual;": "\u22E1",
+  "&NotSucceedsTilde;": "\u227F\u0338",
+  "&NotSuperset;": "\u2283\u20D2",
+  "&NotSupersetEqual;": "\u2289",
+  "&NotTilde;": "\u2241",
+  "&NotTildeEqual;": "\u2244",
+  "&NotTildeFullEqual;": "\u2247",
+  "&NotTildeTilde;": "\u2249",
+  "&NotVerticalBar;": "\u2224",
+  "&Nscr;": "\u{1D4A9}",
+  "&Ntilde": "\xD1",
+  "&Ntilde;": "\xD1",
+  "&Nu;": "\u039D",
+  "&OElig;": "\u0152",
+  "&Oacute": "\xD3",
+  "&Oacute;": "\xD3",
+  "&Ocirc": "\xD4",
+  "&Ocirc;": "\xD4",
+  "&Ocy;": "\u041E",
+  "&Odblac;": "\u0150",
+  "&Ofr;": "\u{1D512}",
+  "&Ograve": "\xD2",
+  "&Ograve;": "\xD2",
+  "&Omacr;": "\u014C",
+  "&Omega;": "\u03A9",
+  "&Omicron;": "\u039F",
+  "&Oopf;": "\u{1D546}",
+  "&OpenCurlyDoubleQuote;": "\u201C",
+  "&OpenCurlyQuote;": "\u2018",
+  "&Or;": "\u2A54",
+  "&Oscr;": "\u{1D4AA}",
+  "&Oslash": "\xD8",
+  "&Oslash;": "\xD8",
+  "&Otilde": "\xD5",
+  "&Otilde;": "\xD5",
+  "&Otimes;": "\u2A37",
+  "&Ouml": "\xD6",
+  "&Ouml;": "\xD6",
+  "&OverBar;": "\u203E",
+  "&OverBrace;": "\u23DE",
+  "&OverBracket;": "\u23B4",
+  "&OverParenthesis;": "\u23DC",
+  "&PartialD;": "\u2202",
+  "&Pcy;": "\u041F",
+  "&Pfr;": "\u{1D513}",
+  "&Phi;": "\u03A6",
+  "&Pi;": "\u03A0",
+  "&PlusMinus;": "\xB1",
+  "&Poincareplane;": "\u210C",
+  "&Popf;": "\u2119",
+  "&Pr;": "\u2ABB",
+  "&Precedes;": "\u227A",
+  "&PrecedesEqual;": "\u2AAF",
+  "&PrecedesSlantEqual;": "\u227C",
+  "&PrecedesTilde;": "\u227E",
+  "&Prime;": "\u2033",
+  "&Product;": "\u220F",
+  "&Proportion;": "\u2237",
+  "&Proportional;": "\u221D",
+  "&Pscr;": "\u{1D4AB}",
+  "&Psi;": "\u03A8",
+  "&QUOT": '"',
+  "&QUOT;": '"',
+  "&Qfr;": "\u{1D514}",
+  "&Qopf;": "\u211A",
+  "&Qscr;": "\u{1D4AC}",
+  "&RBarr;": "\u2910",
+  "&REG": "\xAE",
+  "&REG;": "\xAE",
+  "&Racute;": "\u0154",
+  "&Rang;": "\u27EB",
+  "&Rarr;": "\u21A0",
+  "&Rarrtl;": "\u2916",
+  "&Rcaron;": "\u0158",
+  "&Rcedil;": "\u0156",
+  "&Rcy;": "\u0420",
+  "&Re;": "\u211C",
+  "&ReverseElement;": "\u220B",
+  "&ReverseEquilibrium;": "\u21CB",
+  "&ReverseUpEquilibrium;": "\u296F",
+  "&Rfr;": "\u211C",
+  "&Rho;": "\u03A1",
+  "&RightAngleBracket;": "\u27E9",
+  "&RightArrow;": "\u2192",
+  "&RightArrowBar;": "\u21E5",
+  "&RightArrowLeftArrow;": "\u21C4",
+  "&RightCeiling;": "\u2309",
+  "&RightDoubleBracket;": "\u27E7",
+  "&RightDownTeeVector;": "\u295D",
+  "&RightDownVector;": "\u21C2",
+  "&RightDownVectorBar;": "\u2955",
+  "&RightFloor;": "\u230B",
+  "&RightTee;": "\u22A2",
+  "&RightTeeArrow;": "\u21A6",
+  "&RightTeeVector;": "\u295B",
+  "&RightTriangle;": "\u22B3",
+  "&RightTriangleBar;": "\u29D0",
+  "&RightTriangleEqual;": "\u22B5",
+  "&RightUpDownVector;": "\u294F",
+  "&RightUpTeeVector;": "\u295C",
+  "&RightUpVector;": "\u21BE",
+  "&RightUpVectorBar;": "\u2954",
+  "&RightVector;": "\u21C0",
+  "&RightVectorBar;": "\u2953",
+  "&Rightarrow;": "\u21D2",
+  "&Ropf;": "\u211D",
+  "&RoundImplies;": "\u2970",
+  "&Rrightarrow;": "\u21DB",
+  "&Rscr;": "\u211B",
+  "&Rsh;": "\u21B1",
+  "&RuleDelayed;": "\u29F4",
+  "&SHCHcy;": "\u0429",
+  "&SHcy;": "\u0428",
+  "&SOFTcy;": "\u042C",
+  "&Sacute;": "\u015A",
+  "&Sc;": "\u2ABC",
+  "&Scaron;": "\u0160",
+  "&Scedil;": "\u015E",
+  "&Scirc;": "\u015C",
+  "&Scy;": "\u0421",
+  "&Sfr;": "\u{1D516}",
+  "&ShortDownArrow;": "\u2193",
+  "&ShortLeftArrow;": "\u2190",
+  "&ShortRightArrow;": "\u2192",
+  "&ShortUpArrow;": "\u2191",
+  "&Sigma;": "\u03A3",
+  "&SmallCircle;": "\u2218",
+  "&Sopf;": "\u{1D54A}",
+  "&Sqrt;": "\u221A",
+  "&Square;": "\u25A1",
+  "&SquareIntersection;": "\u2293",
+  "&SquareSubset;": "\u228F",
+  "&SquareSubsetEqual;": "\u2291",
+  "&SquareSuperset;": "\u2290",
+  "&SquareSupersetEqual;": "\u2292",
+  "&SquareUnion;": "\u2294",
+  "&Sscr;": "\u{1D4AE}",
+  "&Star;": "\u22C6",
+  "&Sub;": "\u22D0",
+  "&Subset;": "\u22D0",
+  "&SubsetEqual;": "\u2286",
+  "&Succeeds;": "\u227B",
+  "&SucceedsEqual;": "\u2AB0",
+  "&SucceedsSlantEqual;": "\u227D",
+  "&SucceedsTilde;": "\u227F",
+  "&SuchThat;": "\u220B",
+  "&Sum;": "\u2211",
+  "&Sup;": "\u22D1",
+  "&Superset;": "\u2283",
+  "&SupersetEqual;": "\u2287",
+  "&Supset;": "\u22D1",
+  "&THORN": "\xDE",
+  "&THORN;": "\xDE",
+  "&TRADE;": "\u2122",
+  "&TSHcy;": "\u040B",
+  "&TScy;": "\u0426",
+  "&Tab;": "	",
+  "&Tau;": "\u03A4",
+  "&Tcaron;": "\u0164",
+  "&Tcedil;": "\u0162",
+  "&Tcy;": "\u0422",
+  "&Tfr;": "\u{1D517}",
+  "&Therefore;": "\u2234",
+  "&Theta;": "\u0398",
+  "&ThickSpace;": "\u205F\u200A",
+  "&ThinSpace;": "\u2009",
+  "&Tilde;": "\u223C",
+  "&TildeEqual;": "\u2243",
+  "&TildeFullEqual;": "\u2245",
+  "&TildeTilde;": "\u2248",
+  "&Topf;": "\u{1D54B}",
+  "&TripleDot;": "\u20DB",
+  "&Tscr;": "\u{1D4AF}",
+  "&Tstrok;": "\u0166",
+  "&Uacute": "\xDA",
+  "&Uacute;": "\xDA",
+  "&Uarr;": "\u219F",
+  "&Uarrocir;": "\u2949",
+  "&Ubrcy;": "\u040E",
+  "&Ubreve;": "\u016C",
+  "&Ucirc": "\xDB",
+  "&Ucirc;": "\xDB",
+  "&Ucy;": "\u0423",
+  "&Udblac;": "\u0170",
+  "&Ufr;": "\u{1D518}",
+  "&Ugrave": "\xD9",
+  "&Ugrave;": "\xD9",
+  "&Umacr;": "\u016A",
+  "&UnderBar;": "_",
+  "&UnderBrace;": "\u23DF",
+  "&UnderBracket;": "\u23B5",
+  "&UnderParenthesis;": "\u23DD",
+  "&Union;": "\u22C3",
+  "&UnionPlus;": "\u228E",
+  "&Uogon;": "\u0172",
+  "&Uopf;": "\u{1D54C}",
+  "&UpArrow;": "\u2191",
+  "&UpArrowBar;": "\u2912",
+  "&UpArrowDownArrow;": "\u21C5",
+  "&UpDownArrow;": "\u2195",
+  "&UpEquilibrium;": "\u296E",
+  "&UpTee;": "\u22A5",
+  "&UpTeeArrow;": "\u21A5",
+  "&Uparrow;": "\u21D1",
+  "&Updownarrow;": "\u21D5",
+  "&UpperLeftArrow;": "\u2196",
+  "&UpperRightArrow;": "\u2197",
+  "&Upsi;": "\u03D2",
+  "&Upsilon;": "\u03A5",
+  "&Uring;": "\u016E",
+  "&Uscr;": "\u{1D4B0}",
+  "&Utilde;": "\u0168",
+  "&Uuml": "\xDC",
+  "&Uuml;": "\xDC",
+  "&VDash;": "\u22AB",
+  "&Vbar;": "\u2AEB",
+  "&Vcy;": "\u0412",
+  "&Vdash;": "\u22A9",
+  "&Vdashl;": "\u2AE6",
+  "&Vee;": "\u22C1",
+  "&Verbar;": "\u2016",
+  "&Vert;": "\u2016",
+  "&VerticalBar;": "\u2223",
+  "&VerticalLine;": "|",
+  "&VerticalSeparator;": "\u2758",
+  "&VerticalTilde;": "\u2240",
+  "&VeryThinSpace;": "\u200A",
+  "&Vfr;": "\u{1D519}",
+  "&Vopf;": "\u{1D54D}",
+  "&Vscr;": "\u{1D4B1}",
+  "&Vvdash;": "\u22AA",
+  "&Wcirc;": "\u0174",
+  "&Wedge;": "\u22C0",
+  "&Wfr;": "\u{1D51A}",
+  "&Wopf;": "\u{1D54E}",
+  "&Wscr;": "\u{1D4B2}",
+  "&Xfr;": "\u{1D51B}",
+  "&Xi;": "\u039E",
+  "&Xopf;": "\u{1D54F}",
+  "&Xscr;": "\u{1D4B3}",
+  "&YAcy;": "\u042F",
+  "&YIcy;": "\u0407",
+  "&YUcy;": "\u042E",
+  "&Yacute": "\xDD",
+  "&Yacute;": "\xDD",
+  "&Ycirc;": "\u0176",
+  "&Ycy;": "\u042B",
+  "&Yfr;": "\u{1D51C}",
+  "&Yopf;": "\u{1D550}",
+  "&Yscr;": "\u{1D4B4}",
+  "&Yuml;": "\u0178",
+  "&ZHcy;": "\u0416",
+  "&Zacute;": "\u0179",
+  "&Zcaron;": "\u017D",
+  "&Zcy;": "\u0417",
+  "&Zdot;": "\u017B",
+  "&ZeroWidthSpace;": "\u200B",
+  "&Zeta;": "\u0396",
+  "&Zfr;": "\u2128",
+  "&Zopf;": "\u2124",
+  "&Zscr;": "\u{1D4B5}",
+  "&aacute": "\xE1",
+  "&aacute;": "\xE1",
+  "&abreve;": "\u0103",
+  "&ac;": "\u223E",
+  "&acE;": "\u223E\u0333",
+  "&acd;": "\u223F",
+  "&acirc": "\xE2",
+  "&acirc;": "\xE2",
+  "&acute": "\xB4",
+  "&acute;": "\xB4",
+  "&acy;": "\u0430",
+  "&aelig": "\xE6",
+  "&aelig;": "\xE6",
+  "&af;": "\u2061",
+  "&afr;": "\u{1D51E}",
+  "&agrave": "\xE0",
+  "&agrave;": "\xE0",
+  "&alefsym;": "\u2135",
+  "&aleph;": "\u2135",
+  "&alpha;": "\u03B1",
+  "&amacr;": "\u0101",
+  "&amalg;": "\u2A3F",
+  "&amp": "&",
+  "&amp;": "&",
+  "&and;": "\u2227",
+  "&andand;": "\u2A55",
+  "&andd;": "\u2A5C",
+  "&andslope;": "\u2A58",
+  "&andv;": "\u2A5A",
+  "&ang;": "\u2220",
+  "&ange;": "\u29A4",
+  "&angle;": "\u2220",
+  "&angmsd;": "\u2221",
+  "&angmsdaa;": "\u29A8",
+  "&angmsdab;": "\u29A9",
+  "&angmsdac;": "\u29AA",
+  "&angmsdad;": "\u29AB",
+  "&angmsdae;": "\u29AC",
+  "&angmsdaf;": "\u29AD",
+  "&angmsdag;": "\u29AE",
+  "&angmsdah;": "\u29AF",
+  "&angrt;": "\u221F",
+  "&angrtvb;": "\u22BE",
+  "&angrtvbd;": "\u299D",
+  "&angsph;": "\u2222",
+  "&angst;": "\xC5",
+  "&angzarr;": "\u237C",
+  "&aogon;": "\u0105",
+  "&aopf;": "\u{1D552}",
+  "&ap;": "\u2248",
+  "&apE;": "\u2A70",
+  "&apacir;": "\u2A6F",
+  "&ape;": "\u224A",
+  "&apid;": "\u224B",
+  "&apos;": "'",
+  "&approx;": "\u2248",
+  "&approxeq;": "\u224A",
+  "&aring": "\xE5",
+  "&aring;": "\xE5",
+  "&ascr;": "\u{1D4B6}",
+  "&ast;": "*",
+  "&asymp;": "\u2248",
+  "&asympeq;": "\u224D",
+  "&atilde": "\xE3",
+  "&atilde;": "\xE3",
+  "&auml": "\xE4",
+  "&auml;": "\xE4",
+  "&awconint;": "\u2233",
+  "&awint;": "\u2A11",
+  "&bNot;": "\u2AED",
+  "&backcong;": "\u224C",
+  "&backepsilon;": "\u03F6",
+  "&backprime;": "\u2035",
+  "&backsim;": "\u223D",
+  "&backsimeq;": "\u22CD",
+  "&barvee;": "\u22BD",
+  "&barwed;": "\u2305",
+  "&barwedge;": "\u2305",
+  "&bbrk;": "\u23B5",
+  "&bbrktbrk;": "\u23B6",
+  "&bcong;": "\u224C",
+  "&bcy;": "\u0431",
+  "&bdquo;": "\u201E",
+  "&becaus;": "\u2235",
+  "&because;": "\u2235",
+  "&bemptyv;": "\u29B0",
+  "&bepsi;": "\u03F6",
+  "&bernou;": "\u212C",
+  "&beta;": "\u03B2",
+  "&beth;": "\u2136",
+  "&between;": "\u226C",
+  "&bfr;": "\u{1D51F}",
+  "&bigcap;": "\u22C2",
+  "&bigcirc;": "\u25EF",
+  "&bigcup;": "\u22C3",
+  "&bigodot;": "\u2A00",
+  "&bigoplus;": "\u2A01",
+  "&bigotimes;": "\u2A02",
+  "&bigsqcup;": "\u2A06",
+  "&bigstar;": "\u2605",
+  "&bigtriangledown;": "\u25BD",
+  "&bigtriangleup;": "\u25B3",
+  "&biguplus;": "\u2A04",
+  "&bigvee;": "\u22C1",
+  "&bigwedge;": "\u22C0",
+  "&bkarow;": "\u290D",
+  "&blacklozenge;": "\u29EB",
+  "&blacksquare;": "\u25AA",
+  "&blacktriangle;": "\u25B4",
+  "&blacktriangledown;": "\u25BE",
+  "&blacktriangleleft;": "\u25C2",
+  "&blacktriangleright;": "\u25B8",
+  "&blank;": "\u2423",
+  "&blk12;": "\u2592",
+  "&blk14;": "\u2591",
+  "&blk34;": "\u2593",
+  "&block;": "\u2588",
+  "&bne;": "=\u20E5",
+  "&bnequiv;": "\u2261\u20E5",
+  "&bnot;": "\u2310",
+  "&bopf;": "\u{1D553}",
+  "&bot;": "\u22A5",
+  "&bottom;": "\u22A5",
+  "&bowtie;": "\u22C8",
+  "&boxDL;": "\u2557",
+  "&boxDR;": "\u2554",
+  "&boxDl;": "\u2556",
+  "&boxDr;": "\u2553",
+  "&boxH;": "\u2550",
+  "&boxHD;": "\u2566",
+  "&boxHU;": "\u2569",
+  "&boxHd;": "\u2564",
+  "&boxHu;": "\u2567",
+  "&boxUL;": "\u255D",
+  "&boxUR;": "\u255A",
+  "&boxUl;": "\u255C",
+  "&boxUr;": "\u2559",
+  "&boxV;": "\u2551",
+  "&boxVH;": "\u256C",
+  "&boxVL;": "\u2563",
+  "&boxVR;": "\u2560",
+  "&boxVh;": "\u256B",
+  "&boxVl;": "\u2562",
+  "&boxVr;": "\u255F",
+  "&boxbox;": "\u29C9",
+  "&boxdL;": "\u2555",
+  "&boxdR;": "\u2552",
+  "&boxdl;": "\u2510",
+  "&boxdr;": "\u250C",
+  "&boxh;": "\u2500",
+  "&boxhD;": "\u2565",
+  "&boxhU;": "\u2568",
+  "&boxhd;": "\u252C",
+  "&boxhu;": "\u2534",
+  "&boxminus;": "\u229F",
+  "&boxplus;": "\u229E",
+  "&boxtimes;": "\u22A0",
+  "&boxuL;": "\u255B",
+  "&boxuR;": "\u2558",
+  "&boxul;": "\u2518",
+  "&boxur;": "\u2514",
+  "&boxv;": "\u2502",
+  "&boxvH;": "\u256A",
+  "&boxvL;": "\u2561",
+  "&boxvR;": "\u255E",
+  "&boxvh;": "\u253C",
+  "&boxvl;": "\u2524",
+  "&boxvr;": "\u251C",
+  "&bprime;": "\u2035",
+  "&breve;": "\u02D8",
+  "&brvbar": "\xA6",
+  "&brvbar;": "\xA6",
+  "&bscr;": "\u{1D4B7}",
+  "&bsemi;": "\u204F",
+  "&bsim;": "\u223D",
+  "&bsime;": "\u22CD",
+  "&bsol;": "\\",
+  "&bsolb;": "\u29C5",
+  "&bsolhsub;": "\u27C8",
+  "&bull;": "\u2022",
+  "&bullet;": "\u2022",
+  "&bump;": "\u224E",
+  "&bumpE;": "\u2AAE",
+  "&bumpe;": "\u224F",
+  "&bumpeq;": "\u224F",
+  "&cacute;": "\u0107",
+  "&cap;": "\u2229",
+  "&capand;": "\u2A44",
+  "&capbrcup;": "\u2A49",
+  "&capcap;": "\u2A4B",
+  "&capcup;": "\u2A47",
+  "&capdot;": "\u2A40",
+  "&caps;": "\u2229\uFE00",
+  "&caret;": "\u2041",
+  "&caron;": "\u02C7",
+  "&ccaps;": "\u2A4D",
+  "&ccaron;": "\u010D",
+  "&ccedil": "\xE7",
+  "&ccedil;": "\xE7",
+  "&ccirc;": "\u0109",
+  "&ccups;": "\u2A4C",
+  "&ccupssm;": "\u2A50",
+  "&cdot;": "\u010B",
+  "&cedil": "\xB8",
+  "&cedil;": "\xB8",
+  "&cemptyv;": "\u29B2",
+  "&cent": "\xA2",
+  "&cent;": "\xA2",
+  "&centerdot;": "\xB7",
+  "&cfr;": "\u{1D520}",
+  "&chcy;": "\u0447",
+  "&check;": "\u2713",
+  "&checkmark;": "\u2713",
+  "&chi;": "\u03C7",
+  "&cir;": "\u25CB",
+  "&cirE;": "\u29C3",
+  "&circ;": "\u02C6",
+  "&circeq;": "\u2257",
+  "&circlearrowleft;": "\u21BA",
+  "&circlearrowright;": "\u21BB",
+  "&circledR;": "\xAE",
+  "&circledS;": "\u24C8",
+  "&circledast;": "\u229B",
+  "&circledcirc;": "\u229A",
+  "&circleddash;": "\u229D",
+  "&cire;": "\u2257",
+  "&cirfnint;": "\u2A10",
+  "&cirmid;": "\u2AEF",
+  "&cirscir;": "\u29C2",
+  "&clubs;": "\u2663",
+  "&clubsuit;": "\u2663",
+  "&colon;": ":",
+  "&colone;": "\u2254",
+  "&coloneq;": "\u2254",
+  "&comma;": ",",
+  "&commat;": "@",
+  "&comp;": "\u2201",
+  "&compfn;": "\u2218",
+  "&complement;": "\u2201",
+  "&complexes;": "\u2102",
+  "&cong;": "\u2245",
+  "&congdot;": "\u2A6D",
+  "&conint;": "\u222E",
+  "&copf;": "\u{1D554}",
+  "&coprod;": "\u2210",
+  "&copy": "\xA9",
+  "&copy;": "\xA9",
+  "&copysr;": "\u2117",
+  "&crarr;": "\u21B5",
+  "&cross;": "\u2717",
+  "&cscr;": "\u{1D4B8}",
+  "&csub;": "\u2ACF",
+  "&csube;": "\u2AD1",
+  "&csup;": "\u2AD0",
+  "&csupe;": "\u2AD2",
+  "&ctdot;": "\u22EF",
+  "&cudarrl;": "\u2938",
+  "&cudarrr;": "\u2935",
+  "&cuepr;": "\u22DE",
+  "&cuesc;": "\u22DF",
+  "&cularr;": "\u21B6",
+  "&cularrp;": "\u293D",
+  "&cup;": "\u222A",
+  "&cupbrcap;": "\u2A48",
+  "&cupcap;": "\u2A46",
+  "&cupcup;": "\u2A4A",
+  "&cupdot;": "\u228D",
+  "&cupor;": "\u2A45",
+  "&cups;": "\u222A\uFE00",
+  "&curarr;": "\u21B7",
+  "&curarrm;": "\u293C",
+  "&curlyeqprec;": "\u22DE",
+  "&curlyeqsucc;": "\u22DF",
+  "&curlyvee;": "\u22CE",
+  "&curlywedge;": "\u22CF",
+  "&curren": "\xA4",
+  "&curren;": "\xA4",
+  "&curvearrowleft;": "\u21B6",
+  "&curvearrowright;": "\u21B7",
+  "&cuvee;": "\u22CE",
+  "&cuwed;": "\u22CF",
+  "&cwconint;": "\u2232",
+  "&cwint;": "\u2231",
+  "&cylcty;": "\u232D",
+  "&dArr;": "\u21D3",
+  "&dHar;": "\u2965",
+  "&dagger;": "\u2020",
+  "&daleth;": "\u2138",
+  "&darr;": "\u2193",
+  "&dash;": "\u2010",
+  "&dashv;": "\u22A3",
+  "&dbkarow;": "\u290F",
+  "&dblac;": "\u02DD",
+  "&dcaron;": "\u010F",
+  "&dcy;": "\u0434",
+  "&dd;": "\u2146",
+  "&ddagger;": "\u2021",
+  "&ddarr;": "\u21CA",
+  "&ddotseq;": "\u2A77",
+  "&deg": "\xB0",
+  "&deg;": "\xB0",
+  "&delta;": "\u03B4",
+  "&demptyv;": "\u29B1",
+  "&dfisht;": "\u297F",
+  "&dfr;": "\u{1D521}",
+  "&dharl;": "\u21C3",
+  "&dharr;": "\u21C2",
+  "&diam;": "\u22C4",
+  "&diamond;": "\u22C4",
+  "&diamondsuit;": "\u2666",
+  "&diams;": "\u2666",
+  "&die;": "\xA8",
+  "&digamma;": "\u03DD",
+  "&disin;": "\u22F2",
+  "&div;": "\xF7",
+  "&divide": "\xF7",
+  "&divide;": "\xF7",
+  "&divideontimes;": "\u22C7",
+  "&divonx;": "\u22C7",
+  "&djcy;": "\u0452",
+  "&dlcorn;": "\u231E",
+  "&dlcrop;": "\u230D",
+  "&dollar;": "$",
+  "&dopf;": "\u{1D555}",
+  "&dot;": "\u02D9",
+  "&doteq;": "\u2250",
+  "&doteqdot;": "\u2251",
+  "&dotminus;": "\u2238",
+  "&dotplus;": "\u2214",
+  "&dotsquare;": "\u22A1",
+  "&doublebarwedge;": "\u2306",
+  "&downarrow;": "\u2193",
+  "&downdownarrows;": "\u21CA",
+  "&downharpoonleft;": "\u21C3",
+  "&downharpoonright;": "\u21C2",
+  "&drbkarow;": "\u2910",
+  "&drcorn;": "\u231F",
+  "&drcrop;": "\u230C",
+  "&dscr;": "\u{1D4B9}",
+  "&dscy;": "\u0455",
+  "&dsol;": "\u29F6",
+  "&dstrok;": "\u0111",
+  "&dtdot;": "\u22F1",
+  "&dtri;": "\u25BF",
+  "&dtrif;": "\u25BE",
+  "&duarr;": "\u21F5",
+  "&duhar;": "\u296F",
+  "&dwangle;": "\u29A6",
+  "&dzcy;": "\u045F",
+  "&dzigrarr;": "\u27FF",
+  "&eDDot;": "\u2A77",
+  "&eDot;": "\u2251",
+  "&eacute": "\xE9",
+  "&eacute;": "\xE9",
+  "&easter;": "\u2A6E",
+  "&ecaron;": "\u011B",
+  "&ecir;": "\u2256",
+  "&ecirc": "\xEA",
+  "&ecirc;": "\xEA",
+  "&ecolon;": "\u2255",
+  "&ecy;": "\u044D",
+  "&edot;": "\u0117",
+  "&ee;": "\u2147",
+  "&efDot;": "\u2252",
+  "&efr;": "\u{1D522}",
+  "&eg;": "\u2A9A",
+  "&egrave": "\xE8",
+  "&egrave;": "\xE8",
+  "&egs;": "\u2A96",
+  "&egsdot;": "\u2A98",
+  "&el;": "\u2A99",
+  "&elinters;": "\u23E7",
+  "&ell;": "\u2113",
+  "&els;": "\u2A95",
+  "&elsdot;": "\u2A97",
+  "&emacr;": "\u0113",
+  "&empty;": "\u2205",
+  "&emptyset;": "\u2205",
+  "&emptyv;": "\u2205",
+  "&emsp13;": "\u2004",
+  "&emsp14;": "\u2005",
+  "&emsp;": "\u2003",
+  "&eng;": "\u014B",
+  "&ensp;": "\u2002",
+  "&eogon;": "\u0119",
+  "&eopf;": "\u{1D556}",
+  "&epar;": "\u22D5",
+  "&eparsl;": "\u29E3",
+  "&eplus;": "\u2A71",
+  "&epsi;": "\u03B5",
+  "&epsilon;": "\u03B5",
+  "&epsiv;": "\u03F5",
+  "&eqcirc;": "\u2256",
+  "&eqcolon;": "\u2255",
+  "&eqsim;": "\u2242",
+  "&eqslantgtr;": "\u2A96",
+  "&eqslantless;": "\u2A95",
+  "&equals;": "=",
+  "&equest;": "\u225F",
+  "&equiv;": "\u2261",
+  "&equivDD;": "\u2A78",
+  "&eqvparsl;": "\u29E5",
+  "&erDot;": "\u2253",
+  "&erarr;": "\u2971",
+  "&escr;": "\u212F",
+  "&esdot;": "\u2250",
+  "&esim;": "\u2242",
+  "&eta;": "\u03B7",
+  "&eth": "\xF0",
+  "&eth;": "\xF0",
+  "&euml": "\xEB",
+  "&euml;": "\xEB",
+  "&euro;": "\u20AC",
+  "&excl;": "!",
+  "&exist;": "\u2203",
+  "&expectation;": "\u2130",
+  "&exponentiale;": "\u2147",
+  "&fallingdotseq;": "\u2252",
+  "&fcy;": "\u0444",
+  "&female;": "\u2640",
+  "&ffilig;": "\uFB03",
+  "&fflig;": "\uFB00",
+  "&ffllig;": "\uFB04",
+  "&ffr;": "\u{1D523}",
+  "&filig;": "\uFB01",
+  "&fjlig;": "fj",
+  "&flat;": "\u266D",
+  "&fllig;": "\uFB02",
+  "&fltns;": "\u25B1",
+  "&fnof;": "\u0192",
+  "&fopf;": "\u{1D557}",
+  "&forall;": "\u2200",
+  "&fork;": "\u22D4",
+  "&forkv;": "\u2AD9",
+  "&fpartint;": "\u2A0D",
+  "&frac12": "\xBD",
+  "&frac12;": "\xBD",
+  "&frac13;": "\u2153",
+  "&frac14": "\xBC",
+  "&frac14;": "\xBC",
+  "&frac15;": "\u2155",
+  "&frac16;": "\u2159",
+  "&frac18;": "\u215B",
+  "&frac23;": "\u2154",
+  "&frac25;": "\u2156",
+  "&frac34": "\xBE",
+  "&frac34;": "\xBE",
+  "&frac35;": "\u2157",
+  "&frac38;": "\u215C",
+  "&frac45;": "\u2158",
+  "&frac56;": "\u215A",
+  "&frac58;": "\u215D",
+  "&frac78;": "\u215E",
+  "&frasl;": "\u2044",
+  "&frown;": "\u2322",
+  "&fscr;": "\u{1D4BB}",
+  "&gE;": "\u2267",
+  "&gEl;": "\u2A8C",
+  "&gacute;": "\u01F5",
+  "&gamma;": "\u03B3",
+  "&gammad;": "\u03DD",
+  "&gap;": "\u2A86",
+  "&gbreve;": "\u011F",
+  "&gcirc;": "\u011D",
+  "&gcy;": "\u0433",
+  "&gdot;": "\u0121",
+  "&ge;": "\u2265",
+  "&gel;": "\u22DB",
+  "&geq;": "\u2265",
+  "&geqq;": "\u2267",
+  "&geqslant;": "\u2A7E",
+  "&ges;": "\u2A7E",
+  "&gescc;": "\u2AA9",
+  "&gesdot;": "\u2A80",
+  "&gesdoto;": "\u2A82",
+  "&gesdotol;": "\u2A84",
+  "&gesl;": "\u22DB\uFE00",
+  "&gesles;": "\u2A94",
+  "&gfr;": "\u{1D524}",
+  "&gg;": "\u226B",
+  "&ggg;": "\u22D9",
+  "&gimel;": "\u2137",
+  "&gjcy;": "\u0453",
+  "&gl;": "\u2277",
+  "&glE;": "\u2A92",
+  "&gla;": "\u2AA5",
+  "&glj;": "\u2AA4",
+  "&gnE;": "\u2269",
+  "&gnap;": "\u2A8A",
+  "&gnapprox;": "\u2A8A",
+  "&gne;": "\u2A88",
+  "&gneq;": "\u2A88",
+  "&gneqq;": "\u2269",
+  "&gnsim;": "\u22E7",
+  "&gopf;": "\u{1D558}",
+  "&grave;": "`",
+  "&gscr;": "\u210A",
+  "&gsim;": "\u2273",
+  "&gsime;": "\u2A8E",
+  "&gsiml;": "\u2A90",
+  "&gt": ">",
+  "&gt;": ">",
+  "&gtcc;": "\u2AA7",
+  "&gtcir;": "\u2A7A",
+  "&gtdot;": "\u22D7",
+  "&gtlPar;": "\u2995",
+  "&gtquest;": "\u2A7C",
+  "&gtrapprox;": "\u2A86",
+  "&gtrarr;": "\u2978",
+  "&gtrdot;": "\u22D7",
+  "&gtreqless;": "\u22DB",
+  "&gtreqqless;": "\u2A8C",
+  "&gtrless;": "\u2277",
+  "&gtrsim;": "\u2273",
+  "&gvertneqq;": "\u2269\uFE00",
+  "&gvnE;": "\u2269\uFE00",
+  "&hArr;": "\u21D4",
+  "&hairsp;": "\u200A",
+  "&half;": "\xBD",
+  "&hamilt;": "\u210B",
+  "&hardcy;": "\u044A",
+  "&harr;": "\u2194",
+  "&harrcir;": "\u2948",
+  "&harrw;": "\u21AD",
+  "&hbar;": "\u210F",
+  "&hcirc;": "\u0125",
+  "&hearts;": "\u2665",
+  "&heartsuit;": "\u2665",
+  "&hellip;": "\u2026",
+  "&hercon;": "\u22B9",
+  "&hfr;": "\u{1D525}",
+  "&hksearow;": "\u2925",
+  "&hkswarow;": "\u2926",
+  "&hoarr;": "\u21FF",
+  "&homtht;": "\u223B",
+  "&hookleftarrow;": "\u21A9",
+  "&hookrightarrow;": "\u21AA",
+  "&hopf;": "\u{1D559}",
+  "&horbar;": "\u2015",
+  "&hscr;": "\u{1D4BD}",
+  "&hslash;": "\u210F",
+  "&hstrok;": "\u0127",
+  "&hybull;": "\u2043",
+  "&hyphen;": "\u2010",
+  "&iacute": "\xED",
+  "&iacute;": "\xED",
+  "&ic;": "\u2063",
+  "&icirc": "\xEE",
+  "&icirc;": "\xEE",
+  "&icy;": "\u0438",
+  "&iecy;": "\u0435",
+  "&iexcl": "\xA1",
+  "&iexcl;": "\xA1",
+  "&iff;": "\u21D4",
+  "&ifr;": "\u{1D526}",
+  "&igrave": "\xEC",
+  "&igrave;": "\xEC",
+  "&ii;": "\u2148",
+  "&iiiint;": "\u2A0C",
+  "&iiint;": "\u222D",
+  "&iinfin;": "\u29DC",
+  "&iiota;": "\u2129",
+  "&ijlig;": "\u0133",
+  "&imacr;": "\u012B",
+  "&image;": "\u2111",
+  "&imagline;": "\u2110",
+  "&imagpart;": "\u2111",
+  "&imath;": "\u0131",
+  "&imof;": "\u22B7",
+  "&imped;": "\u01B5",
+  "&in;": "\u2208",
+  "&incare;": "\u2105",
+  "&infin;": "\u221E",
+  "&infintie;": "\u29DD",
+  "&inodot;": "\u0131",
+  "&int;": "\u222B",
+  "&intcal;": "\u22BA",
+  "&integers;": "\u2124",
+  "&intercal;": "\u22BA",
+  "&intlarhk;": "\u2A17",
+  "&intprod;": "\u2A3C",
+  "&iocy;": "\u0451",
+  "&iogon;": "\u012F",
+  "&iopf;": "\u{1D55A}",
+  "&iota;": "\u03B9",
+  "&iprod;": "\u2A3C",
+  "&iquest": "\xBF",
+  "&iquest;": "\xBF",
+  "&iscr;": "\u{1D4BE}",
+  "&isin;": "\u2208",
+  "&isinE;": "\u22F9",
+  "&isindot;": "\u22F5",
+  "&isins;": "\u22F4",
+  "&isinsv;": "\u22F3",
+  "&isinv;": "\u2208",
+  "&it;": "\u2062",
+  "&itilde;": "\u0129",
+  "&iukcy;": "\u0456",
+  "&iuml": "\xEF",
+  "&iuml;": "\xEF",
+  "&jcirc;": "\u0135",
+  "&jcy;": "\u0439",
+  "&jfr;": "\u{1D527}",
+  "&jmath;": "\u0237",
+  "&jopf;": "\u{1D55B}",
+  "&jscr;": "\u{1D4BF}",
+  "&jsercy;": "\u0458",
+  "&jukcy;": "\u0454",
+  "&kappa;": "\u03BA",
+  "&kappav;": "\u03F0",
+  "&kcedil;": "\u0137",
+  "&kcy;": "\u043A",
+  "&kfr;": "\u{1D528}",
+  "&kgreen;": "\u0138",
+  "&khcy;": "\u0445",
+  "&kjcy;": "\u045C",
+  "&kopf;": "\u{1D55C}",
+  "&kscr;": "\u{1D4C0}",
+  "&lAarr;": "\u21DA",
+  "&lArr;": "\u21D0",
+  "&lAtail;": "\u291B",
+  "&lBarr;": "\u290E",
+  "&lE;": "\u2266",
+  "&lEg;": "\u2A8B",
+  "&lHar;": "\u2962",
+  "&lacute;": "\u013A",
+  "&laemptyv;": "\u29B4",
+  "&lagran;": "\u2112",
+  "&lambda;": "\u03BB",
+  "&lang;": "\u27E8",
+  "&langd;": "\u2991",
+  "&langle;": "\u27E8",
+  "&lap;": "\u2A85",
+  "&laquo": "\xAB",
+  "&laquo;": "\xAB",
+  "&larr;": "\u2190",
+  "&larrb;": "\u21E4",
+  "&larrbfs;": "\u291F",
+  "&larrfs;": "\u291D",
+  "&larrhk;": "\u21A9",
+  "&larrlp;": "\u21AB",
+  "&larrpl;": "\u2939",
+  "&larrsim;": "\u2973",
+  "&larrtl;": "\u21A2",
+  "&lat;": "\u2AAB",
+  "&latail;": "\u2919",
+  "&late;": "\u2AAD",
+  "&lates;": "\u2AAD\uFE00",
+  "&lbarr;": "\u290C",
+  "&lbbrk;": "\u2772",
+  "&lbrace;": "{",
+  "&lbrack;": "[",
+  "&lbrke;": "\u298B",
+  "&lbrksld;": "\u298F",
+  "&lbrkslu;": "\u298D",
+  "&lcaron;": "\u013E",
+  "&lcedil;": "\u013C",
+  "&lceil;": "\u2308",
+  "&lcub;": "{",
+  "&lcy;": "\u043B",
+  "&ldca;": "\u2936",
+  "&ldquo;": "\u201C",
+  "&ldquor;": "\u201E",
+  "&ldrdhar;": "\u2967",
+  "&ldrushar;": "\u294B",
+  "&ldsh;": "\u21B2",
+  "&le;": "\u2264",
+  "&leftarrow;": "\u2190",
+  "&leftarrowtail;": "\u21A2",
+  "&leftharpoondown;": "\u21BD",
+  "&leftharpoonup;": "\u21BC",
+  "&leftleftarrows;": "\u21C7",
+  "&leftrightarrow;": "\u2194",
+  "&leftrightarrows;": "\u21C6",
+  "&leftrightharpoons;": "\u21CB",
+  "&leftrightsquigarrow;": "\u21AD",
+  "&leftthreetimes;": "\u22CB",
+  "&leg;": "\u22DA",
+  "&leq;": "\u2264",
+  "&leqq;": "\u2266",
+  "&leqslant;": "\u2A7D",
+  "&les;": "\u2A7D",
+  "&lescc;": "\u2AA8",
+  "&lesdot;": "\u2A7F",
+  "&lesdoto;": "\u2A81",
+  "&lesdotor;": "\u2A83",
+  "&lesg;": "\u22DA\uFE00",
+  "&lesges;": "\u2A93",
+  "&lessapprox;": "\u2A85",
+  "&lessdot;": "\u22D6",
+  "&lesseqgtr;": "\u22DA",
+  "&lesseqqgtr;": "\u2A8B",
+  "&lessgtr;": "\u2276",
+  "&lesssim;": "\u2272",
+  "&lfisht;": "\u297C",
+  "&lfloor;": "\u230A",
+  "&lfr;": "\u{1D529}",
+  "&lg;": "\u2276",
+  "&lgE;": "\u2A91",
+  "&lhard;": "\u21BD",
+  "&lharu;": "\u21BC",
+  "&lharul;": "\u296A",
+  "&lhblk;": "\u2584",
+  "&ljcy;": "\u0459",
+  "&ll;": "\u226A",
+  "&llarr;": "\u21C7",
+  "&llcorner;": "\u231E",
+  "&llhard;": "\u296B",
+  "&lltri;": "\u25FA",
+  "&lmidot;": "\u0140",
+  "&lmoust;": "\u23B0",
+  "&lmoustache;": "\u23B0",
+  "&lnE;": "\u2268",
+  "&lnap;": "\u2A89",
+  "&lnapprox;": "\u2A89",
+  "&lne;": "\u2A87",
+  "&lneq;": "\u2A87",
+  "&lneqq;": "\u2268",
+  "&lnsim;": "\u22E6",
+  "&loang;": "\u27EC",
+  "&loarr;": "\u21FD",
+  "&lobrk;": "\u27E6",
+  "&longleftarrow;": "\u27F5",
+  "&longleftrightarrow;": "\u27F7",
+  "&longmapsto;": "\u27FC",
+  "&longrightarrow;": "\u27F6",
+  "&looparrowleft;": "\u21AB",
+  "&looparrowright;": "\u21AC",
+  "&lopar;": "\u2985",
+  "&lopf;": "\u{1D55D}",
+  "&loplus;": "\u2A2D",
+  "&lotimes;": "\u2A34",
+  "&lowast;": "\u2217",
+  "&lowbar;": "_",
+  "&loz;": "\u25CA",
+  "&lozenge;": "\u25CA",
+  "&lozf;": "\u29EB",
+  "&lpar;": "(",
+  "&lparlt;": "\u2993",
+  "&lrarr;": "\u21C6",
+  "&lrcorner;": "\u231F",
+  "&lrhar;": "\u21CB",
+  "&lrhard;": "\u296D",
+  "&lrm;": "\u200E",
+  "&lrtri;": "\u22BF",
+  "&lsaquo;": "\u2039",
+  "&lscr;": "\u{1D4C1}",
+  "&lsh;": "\u21B0",
+  "&lsim;": "\u2272",
+  "&lsime;": "\u2A8D",
+  "&lsimg;": "\u2A8F",
+  "&lsqb;": "[",
+  "&lsquo;": "\u2018",
+  "&lsquor;": "\u201A",
+  "&lstrok;": "\u0142",
+  "&lt": "<",
+  "&lt;": "<",
+  "&ltcc;": "\u2AA6",
+  "&ltcir;": "\u2A79",
+  "&ltdot;": "\u22D6",
+  "&lthree;": "\u22CB",
+  "&ltimes;": "\u22C9",
+  "&ltlarr;": "\u2976",
+  "&ltquest;": "\u2A7B",
+  "&ltrPar;": "\u2996",
+  "&ltri;": "\u25C3",
+  "&ltrie;": "\u22B4",
+  "&ltrif;": "\u25C2",
+  "&lurdshar;": "\u294A",
+  "&luruhar;": "\u2966",
+  "&lvertneqq;": "\u2268\uFE00",
+  "&lvnE;": "\u2268\uFE00",
+  "&mDDot;": "\u223A",
+  "&macr": "\xAF",
+  "&macr;": "\xAF",
+  "&male;": "\u2642",
+  "&malt;": "\u2720",
+  "&maltese;": "\u2720",
+  "&map;": "\u21A6",
+  "&mapsto;": "\u21A6",
+  "&mapstodown;": "\u21A7",
+  "&mapstoleft;": "\u21A4",
+  "&mapstoup;": "\u21A5",
+  "&marker;": "\u25AE",
+  "&mcomma;": "\u2A29",
+  "&mcy;": "\u043C",
+  "&mdash;": "\u2014",
+  "&measuredangle;": "\u2221",
+  "&mfr;": "\u{1D52A}",
+  "&mho;": "\u2127",
+  "&micro": "\xB5",
+  "&micro;": "\xB5",
+  "&mid;": "\u2223",
+  "&midast;": "*",
+  "&midcir;": "\u2AF0",
+  "&middot": "\xB7",
+  "&middot;": "\xB7",
+  "&minus;": "\u2212",
+  "&minusb;": "\u229F",
+  "&minusd;": "\u2238",
+  "&minusdu;": "\u2A2A",
+  "&mlcp;": "\u2ADB",
+  "&mldr;": "\u2026",
+  "&mnplus;": "\u2213",
+  "&models;": "\u22A7",
+  "&mopf;": "\u{1D55E}",
+  "&mp;": "\u2213",
+  "&mscr;": "\u{1D4C2}",
+  "&mstpos;": "\u223E",
+  "&mu;": "\u03BC",
+  "&multimap;": "\u22B8",
+  "&mumap;": "\u22B8",
+  "&nGg;": "\u22D9\u0338",
+  "&nGt;": "\u226B\u20D2",
+  "&nGtv;": "\u226B\u0338",
+  "&nLeftarrow;": "\u21CD",
+  "&nLeftrightarrow;": "\u21CE",
+  "&nLl;": "\u22D8\u0338",
+  "&nLt;": "\u226A\u20D2",
+  "&nLtv;": "\u226A\u0338",
+  "&nRightarrow;": "\u21CF",
+  "&nVDash;": "\u22AF",
+  "&nVdash;": "\u22AE",
+  "&nabla;": "\u2207",
+  "&nacute;": "\u0144",
+  "&nang;": "\u2220\u20D2",
+  "&nap;": "\u2249",
+  "&napE;": "\u2A70\u0338",
+  "&napid;": "\u224B\u0338",
+  "&napos;": "\u0149",
+  "&napprox;": "\u2249",
+  "&natur;": "\u266E",
+  "&natural;": "\u266E",
+  "&naturals;": "\u2115",
+  "&nbsp": "\xA0",
+  "&nbsp;": "\xA0",
+  "&nbump;": "\u224E\u0338",
+  "&nbumpe;": "\u224F\u0338",
+  "&ncap;": "\u2A43",
+  "&ncaron;": "\u0148",
+  "&ncedil;": "\u0146",
+  "&ncong;": "\u2247",
+  "&ncongdot;": "\u2A6D\u0338",
+  "&ncup;": "\u2A42",
+  "&ncy;": "\u043D",
+  "&ndash;": "\u2013",
+  "&ne;": "\u2260",
+  "&neArr;": "\u21D7",
+  "&nearhk;": "\u2924",
+  "&nearr;": "\u2197",
+  "&nearrow;": "\u2197",
+  "&nedot;": "\u2250\u0338",
+  "&nequiv;": "\u2262",
+  "&nesear;": "\u2928",
+  "&nesim;": "\u2242\u0338",
+  "&nexist;": "\u2204",
+  "&nexists;": "\u2204",
+  "&nfr;": "\u{1D52B}",
+  "&ngE;": "\u2267\u0338",
+  "&nge;": "\u2271",
+  "&ngeq;": "\u2271",
+  "&ngeqq;": "\u2267\u0338",
+  "&ngeqslant;": "\u2A7E\u0338",
+  "&nges;": "\u2A7E\u0338",
+  "&ngsim;": "\u2275",
+  "&ngt;": "\u226F",
+  "&ngtr;": "\u226F",
+  "&nhArr;": "\u21CE",
+  "&nharr;": "\u21AE",
+  "&nhpar;": "\u2AF2",
+  "&ni;": "\u220B",
+  "&nis;": "\u22FC",
+  "&nisd;": "\u22FA",
+  "&niv;": "\u220B",
+  "&njcy;": "\u045A",
+  "&nlArr;": "\u21CD",
+  "&nlE;": "\u2266\u0338",
+  "&nlarr;": "\u219A",
+  "&nldr;": "\u2025",
+  "&nle;": "\u2270",
+  "&nleftarrow;": "\u219A",
+  "&nleftrightarrow;": "\u21AE",
+  "&nleq;": "\u2270",
+  "&nleqq;": "\u2266\u0338",
+  "&nleqslant;": "\u2A7D\u0338",
+  "&nles;": "\u2A7D\u0338",
+  "&nless;": "\u226E",
+  "&nlsim;": "\u2274",
+  "&nlt;": "\u226E",
+  "&nltri;": "\u22EA",
+  "&nltrie;": "\u22EC",
+  "&nmid;": "\u2224",
+  "&nopf;": "\u{1D55F}",
+  "&not": "\xAC",
+  "&not;": "\xAC",
+  "&notin;": "\u2209",
+  "&notinE;": "\u22F9\u0338",
+  "&notindot;": "\u22F5\u0338",
+  "&notinva;": "\u2209",
+  "&notinvb;": "\u22F7",
+  "&notinvc;": "\u22F6",
+  "&notni;": "\u220C",
+  "&notniva;": "\u220C",
+  "&notnivb;": "\u22FE",
+  "&notnivc;": "\u22FD",
+  "&npar;": "\u2226",
+  "&nparallel;": "\u2226",
+  "&nparsl;": "\u2AFD\u20E5",
+  "&npart;": "\u2202\u0338",
+  "&npolint;": "\u2A14",
+  "&npr;": "\u2280",
+  "&nprcue;": "\u22E0",
+  "&npre;": "\u2AAF\u0338",
+  "&nprec;": "\u2280",
+  "&npreceq;": "\u2AAF\u0338",
+  "&nrArr;": "\u21CF",
+  "&nrarr;": "\u219B",
+  "&nrarrc;": "\u2933\u0338",
+  "&nrarrw;": "\u219D\u0338",
+  "&nrightarrow;": "\u219B",
+  "&nrtri;": "\u22EB",
+  "&nrtrie;": "\u22ED",
+  "&nsc;": "\u2281",
+  "&nsccue;": "\u22E1",
+  "&nsce;": "\u2AB0\u0338",
+  "&nscr;": "\u{1D4C3}",
+  "&nshortmid;": "\u2224",
+  "&nshortparallel;": "\u2226",
+  "&nsim;": "\u2241",
+  "&nsime;": "\u2244",
+  "&nsimeq;": "\u2244",
+  "&nsmid;": "\u2224",
+  "&nspar;": "\u2226",
+  "&nsqsube;": "\u22E2",
+  "&nsqsupe;": "\u22E3",
+  "&nsub;": "\u2284",
+  "&nsubE;": "\u2AC5\u0338",
+  "&nsube;": "\u2288",
+  "&nsubset;": "\u2282\u20D2",
+  "&nsubseteq;": "\u2288",
+  "&nsubseteqq;": "\u2AC5\u0338",
+  "&nsucc;": "\u2281",
+  "&nsucceq;": "\u2AB0\u0338",
+  "&nsup;": "\u2285",
+  "&nsupE;": "\u2AC6\u0338",
+  "&nsupe;": "\u2289",
+  "&nsupset;": "\u2283\u20D2",
+  "&nsupseteq;": "\u2289",
+  "&nsupseteqq;": "\u2AC6\u0338",
+  "&ntgl;": "\u2279",
+  "&ntilde": "\xF1",
+  "&ntilde;": "\xF1",
+  "&ntlg;": "\u2278",
+  "&ntriangleleft;": "\u22EA",
+  "&ntrianglelefteq;": "\u22EC",
+  "&ntriangleright;": "\u22EB",
+  "&ntrianglerighteq;": "\u22ED",
+  "&nu;": "\u03BD",
+  "&num;": "#",
+  "&numero;": "\u2116",
+  "&numsp;": "\u2007",
+  "&nvDash;": "\u22AD",
+  "&nvHarr;": "\u2904",
+  "&nvap;": "\u224D\u20D2",
+  "&nvdash;": "\u22AC",
+  "&nvge;": "\u2265\u20D2",
+  "&nvgt;": ">\u20D2",
+  "&nvinfin;": "\u29DE",
+  "&nvlArr;": "\u2902",
+  "&nvle;": "\u2264\u20D2",
+  "&nvlt;": "<\u20D2",
+  "&nvltrie;": "\u22B4\u20D2",
+  "&nvrArr;": "\u2903",
+  "&nvrtrie;": "\u22B5\u20D2",
+  "&nvsim;": "\u223C\u20D2",
+  "&nwArr;": "\u21D6",
+  "&nwarhk;": "\u2923",
+  "&nwarr;": "\u2196",
+  "&nwarrow;": "\u2196",
+  "&nwnear;": "\u2927",
+  "&oS;": "\u24C8",
+  "&oacute": "\xF3",
+  "&oacute;": "\xF3",
+  "&oast;": "\u229B",
+  "&ocir;": "\u229A",
+  "&ocirc": "\xF4",
+  "&ocirc;": "\xF4",
+  "&ocy;": "\u043E",
+  "&odash;": "\u229D",
+  "&odblac;": "\u0151",
+  "&odiv;": "\u2A38",
+  "&odot;": "\u2299",
+  "&odsold;": "\u29BC",
+  "&oelig;": "\u0153",
+  "&ofcir;": "\u29BF",
+  "&ofr;": "\u{1D52C}",
+  "&ogon;": "\u02DB",
+  "&ograve": "\xF2",
+  "&ograve;": "\xF2",
+  "&ogt;": "\u29C1",
+  "&ohbar;": "\u29B5",
+  "&ohm;": "\u03A9",
+  "&oint;": "\u222E",
+  "&olarr;": "\u21BA",
+  "&olcir;": "\u29BE",
+  "&olcross;": "\u29BB",
+  "&oline;": "\u203E",
+  "&olt;": "\u29C0",
+  "&omacr;": "\u014D",
+  "&omega;": "\u03C9",
+  "&omicron;": "\u03BF",
+  "&omid;": "\u29B6",
+  "&ominus;": "\u2296",
+  "&oopf;": "\u{1D560}",
+  "&opar;": "\u29B7",
+  "&operp;": "\u29B9",
+  "&oplus;": "\u2295",
+  "&or;": "\u2228",
+  "&orarr;": "\u21BB",
+  "&ord;": "\u2A5D",
+  "&order;": "\u2134",
+  "&orderof;": "\u2134",
+  "&ordf": "\xAA",
+  "&ordf;": "\xAA",
+  "&ordm": "\xBA",
+  "&ordm;": "\xBA",
+  "&origof;": "\u22B6",
+  "&oror;": "\u2A56",
+  "&orslope;": "\u2A57",
+  "&orv;": "\u2A5B",
+  "&oscr;": "\u2134",
+  "&oslash": "\xF8",
+  "&oslash;": "\xF8",
+  "&osol;": "\u2298",
+  "&otilde": "\xF5",
+  "&otilde;": "\xF5",
+  "&otimes;": "\u2297",
+  "&otimesas;": "\u2A36",
+  "&ouml": "\xF6",
+  "&ouml;": "\xF6",
+  "&ovbar;": "\u233D",
+  "&par;": "\u2225",
+  "&para": "\xB6",
+  "&para;": "\xB6",
+  "&parallel;": "\u2225",
+  "&parsim;": "\u2AF3",
+  "&parsl;": "\u2AFD",
+  "&part;": "\u2202",
+  "&pcy;": "\u043F",
+  "&percnt;": "%",
+  "&period;": ".",
+  "&permil;": "\u2030",
+  "&perp;": "\u22A5",
+  "&pertenk;": "\u2031",
+  "&pfr;": "\u{1D52D}",
+  "&phi;": "\u03C6",
+  "&phiv;": "\u03D5",
+  "&phmmat;": "\u2133",
+  "&phone;": "\u260E",
+  "&pi;": "\u03C0",
+  "&pitchfork;": "\u22D4",
+  "&piv;": "\u03D6",
+  "&planck;": "\u210F",
+  "&planckh;": "\u210E",
+  "&plankv;": "\u210F",
+  "&plus;": "+",
+  "&plusacir;": "\u2A23",
+  "&plusb;": "\u229E",
+  "&pluscir;": "\u2A22",
+  "&plusdo;": "\u2214",
+  "&plusdu;": "\u2A25",
+  "&pluse;": "\u2A72",
+  "&plusmn": "\xB1",
+  "&plusmn;": "\xB1",
+  "&plussim;": "\u2A26",
+  "&plustwo;": "\u2A27",
+  "&pm;": "\xB1",
+  "&pointint;": "\u2A15",
+  "&popf;": "\u{1D561}",
+  "&pound": "\xA3",
+  "&pound;": "\xA3",
+  "&pr;": "\u227A",
+  "&prE;": "\u2AB3",
+  "&prap;": "\u2AB7",
+  "&prcue;": "\u227C",
+  "&pre;": "\u2AAF",
+  "&prec;": "\u227A",
+  "&precapprox;": "\u2AB7",
+  "&preccurlyeq;": "\u227C",
+  "&preceq;": "\u2AAF",
+  "&precnapprox;": "\u2AB9",
+  "&precneqq;": "\u2AB5",
+  "&precnsim;": "\u22E8",
+  "&precsim;": "\u227E",
+  "&prime;": "\u2032",
+  "&primes;": "\u2119",
+  "&prnE;": "\u2AB5",
+  "&prnap;": "\u2AB9",
+  "&prnsim;": "\u22E8",
+  "&prod;": "\u220F",
+  "&profalar;": "\u232E",
+  "&profline;": "\u2312",
+  "&profsurf;": "\u2313",
+  "&prop;": "\u221D",
+  "&propto;": "\u221D",
+  "&prsim;": "\u227E",
+  "&prurel;": "\u22B0",
+  "&pscr;": "\u{1D4C5}",
+  "&psi;": "\u03C8",
+  "&puncsp;": "\u2008",
+  "&qfr;": "\u{1D52E}",
+  "&qint;": "\u2A0C",
+  "&qopf;": "\u{1D562}",
+  "&qprime;": "\u2057",
+  "&qscr;": "\u{1D4C6}",
+  "&quaternions;": "\u210D",
+  "&quatint;": "\u2A16",
+  "&quest;": "?",
+  "&questeq;": "\u225F",
+  "&quot": '"',
+  "&quot;": '"',
+  "&rAarr;": "\u21DB",
+  "&rArr;": "\u21D2",
+  "&rAtail;": "\u291C",
+  "&rBarr;": "\u290F",
+  "&rHar;": "\u2964",
+  "&race;": "\u223D\u0331",
+  "&racute;": "\u0155",
+  "&radic;": "\u221A",
+  "&raemptyv;": "\u29B3",
+  "&rang;": "\u27E9",
+  "&rangd;": "\u2992",
+  "&range;": "\u29A5",
+  "&rangle;": "\u27E9",
+  "&raquo": "\xBB",
+  "&raquo;": "\xBB",
+  "&rarr;": "\u2192",
+  "&rarrap;": "\u2975",
+  "&rarrb;": "\u21E5",
+  "&rarrbfs;": "\u2920",
+  "&rarrc;": "\u2933",
+  "&rarrfs;": "\u291E",
+  "&rarrhk;": "\u21AA",
+  "&rarrlp;": "\u21AC",
+  "&rarrpl;": "\u2945",
+  "&rarrsim;": "\u2974",
+  "&rarrtl;": "\u21A3",
+  "&rarrw;": "\u219D",
+  "&ratail;": "\u291A",
+  "&ratio;": "\u2236",
+  "&rationals;": "\u211A",
+  "&rbarr;": "\u290D",
+  "&rbbrk;": "\u2773",
+  "&rbrace;": "}",
+  "&rbrack;": "]",
+  "&rbrke;": "\u298C",
+  "&rbrksld;": "\u298E",
+  "&rbrkslu;": "\u2990",
+  "&rcaron;": "\u0159",
+  "&rcedil;": "\u0157",
+  "&rceil;": "\u2309",
+  "&rcub;": "}",
+  "&rcy;": "\u0440",
+  "&rdca;": "\u2937",
+  "&rdldhar;": "\u2969",
+  "&rdquo;": "\u201D",
+  "&rdquor;": "\u201D",
+  "&rdsh;": "\u21B3",
+  "&real;": "\u211C",
+  "&realine;": "\u211B",
+  "&realpart;": "\u211C",
+  "&reals;": "\u211D",
+  "&rect;": "\u25AD",
+  "&reg": "\xAE",
+  "&reg;": "\xAE",
+  "&rfisht;": "\u297D",
+  "&rfloor;": "\u230B",
+  "&rfr;": "\u{1D52F}",
+  "&rhard;": "\u21C1",
+  "&rharu;": "\u21C0",
+  "&rharul;": "\u296C",
+  "&rho;": "\u03C1",
+  "&rhov;": "\u03F1",
+  "&rightarrow;": "\u2192",
+  "&rightarrowtail;": "\u21A3",
+  "&rightharpoondown;": "\u21C1",
+  "&rightharpoonup;": "\u21C0",
+  "&rightleftarrows;": "\u21C4",
+  "&rightleftharpoons;": "\u21CC",
+  "&rightrightarrows;": "\u21C9",
+  "&rightsquigarrow;": "\u219D",
+  "&rightthreetimes;": "\u22CC",
+  "&ring;": "\u02DA",
+  "&risingdotseq;": "\u2253",
+  "&rlarr;": "\u21C4",
+  "&rlhar;": "\u21CC",
+  "&rlm;": "\u200F",
+  "&rmoust;": "\u23B1",
+  "&rmoustache;": "\u23B1",
+  "&rnmid;": "\u2AEE",
+  "&roang;": "\u27ED",
+  "&roarr;": "\u21FE",
+  "&robrk;": "\u27E7",
+  "&ropar;": "\u2986",
+  "&ropf;": "\u{1D563}",
+  "&roplus;": "\u2A2E",
+  "&rotimes;": "\u2A35",
+  "&rpar;": ")",
+  "&rpargt;": "\u2994",
+  "&rppolint;": "\u2A12",
+  "&rrarr;": "\u21C9",
+  "&rsaquo;": "\u203A",
+  "&rscr;": "\u{1D4C7}",
+  "&rsh;": "\u21B1",
+  "&rsqb;": "]",
+  "&rsquo;": "\u2019",
+  "&rsquor;": "\u2019",
+  "&rthree;": "\u22CC",
+  "&rtimes;": "\u22CA",
+  "&rtri;": "\u25B9",
+  "&rtrie;": "\u22B5",
+  "&rtrif;": "\u25B8",
+  "&rtriltri;": "\u29CE",
+  "&ruluhar;": "\u2968",
+  "&rx;": "\u211E",
+  "&sacute;": "\u015B",
+  "&sbquo;": "\u201A",
+  "&sc;": "\u227B",
+  "&scE;": "\u2AB4",
+  "&scap;": "\u2AB8",
+  "&scaron;": "\u0161",
+  "&sccue;": "\u227D",
+  "&sce;": "\u2AB0",
+  "&scedil;": "\u015F",
+  "&scirc;": "\u015D",
+  "&scnE;": "\u2AB6",
+  "&scnap;": "\u2ABA",
+  "&scnsim;": "\u22E9",
+  "&scpolint;": "\u2A13",
+  "&scsim;": "\u227F",
+  "&scy;": "\u0441",
+  "&sdot;": "\u22C5",
+  "&sdotb;": "\u22A1",
+  "&sdote;": "\u2A66",
+  "&seArr;": "\u21D8",
+  "&searhk;": "\u2925",
+  "&searr;": "\u2198",
+  "&searrow;": "\u2198",
+  "&sect": "\xA7",
+  "&sect;": "\xA7",
+  "&semi;": ";",
+  "&seswar;": "\u2929",
+  "&setminus;": "\u2216",
+  "&setmn;": "\u2216",
+  "&sext;": "\u2736",
+  "&sfr;": "\u{1D530}",
+  "&sfrown;": "\u2322",
+  "&sharp;": "\u266F",
+  "&shchcy;": "\u0449",
+  "&shcy;": "\u0448",
+  "&shortmid;": "\u2223",
+  "&shortparallel;": "\u2225",
+  "&shy": "\xAD",
+  "&shy;": "\xAD",
+  "&sigma;": "\u03C3",
+  "&sigmaf;": "\u03C2",
+  "&sigmav;": "\u03C2",
+  "&sim;": "\u223C",
+  "&simdot;": "\u2A6A",
+  "&sime;": "\u2243",
+  "&simeq;": "\u2243",
+  "&simg;": "\u2A9E",
+  "&simgE;": "\u2AA0",
+  "&siml;": "\u2A9D",
+  "&simlE;": "\u2A9F",
+  "&simne;": "\u2246",
+  "&simplus;": "\u2A24",
+  "&simrarr;": "\u2972",
+  "&slarr;": "\u2190",
+  "&smallsetminus;": "\u2216",
+  "&smashp;": "\u2A33",
+  "&smeparsl;": "\u29E4",
+  "&smid;": "\u2223",
+  "&smile;": "\u2323",
+  "&smt;": "\u2AAA",
+  "&smte;": "\u2AAC",
+  "&smtes;": "\u2AAC\uFE00",
+  "&softcy;": "\u044C",
+  "&sol;": "/",
+  "&solb;": "\u29C4",
+  "&solbar;": "\u233F",
+  "&sopf;": "\u{1D564}",
+  "&spades;": "\u2660",
+  "&spadesuit;": "\u2660",
+  "&spar;": "\u2225",
+  "&sqcap;": "\u2293",
+  "&sqcaps;": "\u2293\uFE00",
+  "&sqcup;": "\u2294",
+  "&sqcups;": "\u2294\uFE00",
+  "&sqsub;": "\u228F",
+  "&sqsube;": "\u2291",
+  "&sqsubset;": "\u228F",
+  "&sqsubseteq;": "\u2291",
+  "&sqsup;": "\u2290",
+  "&sqsupe;": "\u2292",
+  "&sqsupset;": "\u2290",
+  "&sqsupseteq;": "\u2292",
+  "&squ;": "\u25A1",
+  "&square;": "\u25A1",
+  "&squarf;": "\u25AA",
+  "&squf;": "\u25AA",
+  "&srarr;": "\u2192",
+  "&sscr;": "\u{1D4C8}",
+  "&ssetmn;": "\u2216",
+  "&ssmile;": "\u2323",
+  "&sstarf;": "\u22C6",
+  "&star;": "\u2606",
+  "&starf;": "\u2605",
+  "&straightepsilon;": "\u03F5",
+  "&straightphi;": "\u03D5",
+  "&strns;": "\xAF",
+  "&sub;": "\u2282",
+  "&subE;": "\u2AC5",
+  "&subdot;": "\u2ABD",
+  "&sube;": "\u2286",
+  "&subedot;": "\u2AC3",
+  "&submult;": "\u2AC1",
+  "&subnE;": "\u2ACB",
+  "&subne;": "\u228A",
+  "&subplus;": "\u2ABF",
+  "&subrarr;": "\u2979",
+  "&subset;": "\u2282",
+  "&subseteq;": "\u2286",
+  "&subseteqq;": "\u2AC5",
+  "&subsetneq;": "\u228A",
+  "&subsetneqq;": "\u2ACB",
+  "&subsim;": "\u2AC7",
+  "&subsub;": "\u2AD5",
+  "&subsup;": "\u2AD3",
+  "&succ;": "\u227B",
+  "&succapprox;": "\u2AB8",
+  "&succcurlyeq;": "\u227D",
+  "&succeq;": "\u2AB0",
+  "&succnapprox;": "\u2ABA",
+  "&succneqq;": "\u2AB6",
+  "&succnsim;": "\u22E9",
+  "&succsim;": "\u227F",
+  "&sum;": "\u2211",
+  "&sung;": "\u266A",
+  "&sup1": "\xB9",
+  "&sup1;": "\xB9",
+  "&sup2": "\xB2",
+  "&sup2;": "\xB2",
+  "&sup3": "\xB3",
+  "&sup3;": "\xB3",
+  "&sup;": "\u2283",
+  "&supE;": "\u2AC6",
+  "&supdot;": "\u2ABE",
+  "&supdsub;": "\u2AD8",
+  "&supe;": "\u2287",
+  "&supedot;": "\u2AC4",
+  "&suphsol;": "\u27C9",
+  "&suphsub;": "\u2AD7",
+  "&suplarr;": "\u297B",
+  "&supmult;": "\u2AC2",
+  "&supnE;": "\u2ACC",
+  "&supne;": "\u228B",
+  "&supplus;": "\u2AC0",
+  "&supset;": "\u2283",
+  "&supseteq;": "\u2287",
+  "&supseteqq;": "\u2AC6",
+  "&supsetneq;": "\u228B",
+  "&supsetneqq;": "\u2ACC",
+  "&supsim;": "\u2AC8",
+  "&supsub;": "\u2AD4",
+  "&supsup;": "\u2AD6",
+  "&swArr;": "\u21D9",
+  "&swarhk;": "\u2926",
+  "&swarr;": "\u2199",
+  "&swarrow;": "\u2199",
+  "&swnwar;": "\u292A",
+  "&szlig": "\xDF",
+  "&szlig;": "\xDF",
+  "&target;": "\u2316",
+  "&tau;": "\u03C4",
+  "&tbrk;": "\u23B4",
+  "&tcaron;": "\u0165",
+  "&tcedil;": "\u0163",
+  "&tcy;": "\u0442",
+  "&tdot;": "\u20DB",
+  "&telrec;": "\u2315",
+  "&tfr;": "\u{1D531}",
+  "&there4;": "\u2234",
+  "&therefore;": "\u2234",
+  "&theta;": "\u03B8",
+  "&thetasym;": "\u03D1",
+  "&thetav;": "\u03D1",
+  "&thickapprox;": "\u2248",
+  "&thicksim;": "\u223C",
+  "&thinsp;": "\u2009",
+  "&thkap;": "\u2248",
+  "&thksim;": "\u223C",
+  "&thorn": "\xFE",
+  "&thorn;": "\xFE",
+  "&tilde;": "\u02DC",
+  "&times": "\xD7",
+  "&times;": "\xD7",
+  "&timesb;": "\u22A0",
+  "&timesbar;": "\u2A31",
+  "&timesd;": "\u2A30",
+  "&tint;": "\u222D",
+  "&toea;": "\u2928",
+  "&top;": "\u22A4",
+  "&topbot;": "\u2336",
+  "&topcir;": "\u2AF1",
+  "&topf;": "\u{1D565}",
+  "&topfork;": "\u2ADA",
+  "&tosa;": "\u2929",
+  "&tprime;": "\u2034",
+  "&trade;": "\u2122",
+  "&triangle;": "\u25B5",
+  "&triangledown;": "\u25BF",
+  "&triangleleft;": "\u25C3",
+  "&trianglelefteq;": "\u22B4",
+  "&triangleq;": "\u225C",
+  "&triangleright;": "\u25B9",
+  "&trianglerighteq;": "\u22B5",
+  "&tridot;": "\u25EC",
+  "&trie;": "\u225C",
+  "&triminus;": "\u2A3A",
+  "&triplus;": "\u2A39",
+  "&trisb;": "\u29CD",
+  "&tritime;": "\u2A3B",
+  "&trpezium;": "\u23E2",
+  "&tscr;": "\u{1D4C9}",
+  "&tscy;": "\u0446",
+  "&tshcy;": "\u045B",
+  "&tstrok;": "\u0167",
+  "&twixt;": "\u226C",
+  "&twoheadleftarrow;": "\u219E",
+  "&twoheadrightarrow;": "\u21A0",
+  "&uArr;": "\u21D1",
+  "&uHar;": "\u2963",
+  "&uacute": "\xFA",
+  "&uacute;": "\xFA",
+  "&uarr;": "\u2191",
+  "&ubrcy;": "\u045E",
+  "&ubreve;": "\u016D",
+  "&ucirc": "\xFB",
+  "&ucirc;": "\xFB",
+  "&ucy;": "\u0443",
+  "&udarr;": "\u21C5",
+  "&udblac;": "\u0171",
+  "&udhar;": "\u296E",
+  "&ufisht;": "\u297E",
+  "&ufr;": "\u{1D532}",
+  "&ugrave": "\xF9",
+  "&ugrave;": "\xF9",
+  "&uharl;": "\u21BF",
+  "&uharr;": "\u21BE",
+  "&uhblk;": "\u2580",
+  "&ulcorn;": "\u231C",
+  "&ulcorner;": "\u231C",
+  "&ulcrop;": "\u230F",
+  "&ultri;": "\u25F8",
+  "&umacr;": "\u016B",
+  "&uml": "\xA8",
+  "&uml;": "\xA8",
+  "&uogon;": "\u0173",
+  "&uopf;": "\u{1D566}",
+  "&uparrow;": "\u2191",
+  "&updownarrow;": "\u2195",
+  "&upharpoonleft;": "\u21BF",
+  "&upharpoonright;": "\u21BE",
+  "&uplus;": "\u228E",
+  "&upsi;": "\u03C5",
+  "&upsih;": "\u03D2",
+  "&upsilon;": "\u03C5",
+  "&upuparrows;": "\u21C8",
+  "&urcorn;": "\u231D",
+  "&urcorner;": "\u231D",
+  "&urcrop;": "\u230E",
+  "&uring;": "\u016F",
+  "&urtri;": "\u25F9",
+  "&uscr;": "\u{1D4CA}",
+  "&utdot;": "\u22F0",
+  "&utilde;": "\u0169",
+  "&utri;": "\u25B5",
+  "&utrif;": "\u25B4",
+  "&uuarr;": "\u21C8",
+  "&uuml": "\xFC",
+  "&uuml;": "\xFC",
+  "&uwangle;": "\u29A7",
+  "&vArr;": "\u21D5",
+  "&vBar;": "\u2AE8",
+  "&vBarv;": "\u2AE9",
+  "&vDash;": "\u22A8",
+  "&vangrt;": "\u299C",
+  "&varepsilon;": "\u03F5",
+  "&varkappa;": "\u03F0",
+  "&varnothing;": "\u2205",
+  "&varphi;": "\u03D5",
+  "&varpi;": "\u03D6",
+  "&varpropto;": "\u221D",
+  "&varr;": "\u2195",
+  "&varrho;": "\u03F1",
+  "&varsigma;": "\u03C2",
+  "&varsubsetneq;": "\u228A\uFE00",
+  "&varsubsetneqq;": "\u2ACB\uFE00",
+  "&varsupsetneq;": "\u228B\uFE00",
+  "&varsupsetneqq;": "\u2ACC\uFE00",
+  "&vartheta;": "\u03D1",
+  "&vartriangleleft;": "\u22B2",
+  "&vartriangleright;": "\u22B3",
+  "&vcy;": "\u0432",
+  "&vdash;": "\u22A2",
+  "&vee;": "\u2228",
+  "&veebar;": "\u22BB",
+  "&veeeq;": "\u225A",
+  "&vellip;": "\u22EE",
+  "&verbar;": "|",
+  "&vert;": "|",
+  "&vfr;": "\u{1D533}",
+  "&vltri;": "\u22B2",
+  "&vnsub;": "\u2282\u20D2",
+  "&vnsup;": "\u2283\u20D2",
+  "&vopf;": "\u{1D567}",
+  "&vprop;": "\u221D",
+  "&vrtri;": "\u22B3",
+  "&vscr;": "\u{1D4CB}",
+  "&vsubnE;": "\u2ACB\uFE00",
+  "&vsubne;": "\u228A\uFE00",
+  "&vsupnE;": "\u2ACC\uFE00",
+  "&vsupne;": "\u228B\uFE00",
+  "&vzigzag;": "\u299A",
+  "&wcirc;": "\u0175",
+  "&wedbar;": "\u2A5F",
+  "&wedge;": "\u2227",
+  "&wedgeq;": "\u2259",
+  "&weierp;": "\u2118",
+  "&wfr;": "\u{1D534}",
+  "&wopf;": "\u{1D568}",
+  "&wp;": "\u2118",
+  "&wr;": "\u2240",
+  "&wreath;": "\u2240",
+  "&wscr;": "\u{1D4CC}",
+  "&xcap;": "\u22C2",
+  "&xcirc;": "\u25EF",
+  "&xcup;": "\u22C3",
+  "&xdtri;": "\u25BD",
+  "&xfr;": "\u{1D535}",
+  "&xhArr;": "\u27FA",
+  "&xharr;": "\u27F7",
+  "&xi;": "\u03BE",
+  "&xlArr;": "\u27F8",
+  "&xlarr;": "\u27F5",
+  "&xmap;": "\u27FC",
+  "&xnis;": "\u22FB",
+  "&xodot;": "\u2A00",
+  "&xopf;": "\u{1D569}",
+  "&xoplus;": "\u2A01",
+  "&xotime;": "\u2A02",
+  "&xrArr;": "\u27F9",
+  "&xrarr;": "\u27F6",
+  "&xscr;": "\u{1D4CD}",
+  "&xsqcup;": "\u2A06",
+  "&xuplus;": "\u2A04",
+  "&xutri;": "\u25B3",
+  "&xvee;": "\u22C1",
+  "&xwedge;": "\u22C0",
+  "&yacute": "\xFD",
+  "&yacute;": "\xFD",
+  "&yacy;": "\u044F",
+  "&ycirc;": "\u0177",
+  "&ycy;": "\u044B",
+  "&yen": "\xA5",
+  "&yen;": "\xA5",
+  "&yfr;": "\u{1D536}",
+  "&yicy;": "\u0457",
+  "&yopf;": "\u{1D56A}",
+  "&yscr;": "\u{1D4CE}",
+  "&yucy;": "\u044E",
+  "&yuml": "\xFF",
+  "&yuml;": "\xFF",
+  "&zacute;": "\u017A",
+  "&zcaron;": "\u017E",
+  "&zcy;": "\u0437",
+  "&zdot;": "\u017C",
+  "&zeetrf;": "\u2128",
+  "&zeta;": "\u03B6",
+  "&zfr;": "\u{1D537}",
+  "&zhcy;": "\u0436",
+  "&zigrarr;": "\u21DD",
+  "&zopf;": "\u{1D56B}",
+  "&zscr;": "\u{1D4CF}",
+  "&zwj;": "\u200D",
+  "&zwnj;": "\u200C"
+};
+var html_entities_default = htmlEntities;
+
+// ../../node_modules/.pnpm/postal-mime@2.7.4/node_modules/postal-mime/src/text-format.js
+function decodeHTMLEntities(str) {
+  return str.replace(/&(#\d+|#x[a-f0-9]+|[a-z]+\d*);?/gi, (match, entity) => {
+    if (typeof html_entities_default[match] === "string") {
+      return html_entities_default[match];
+    }
+    if (entity.charAt(0) !== "#" || match.charAt(match.length - 1) !== ";") {
+      return match;
+    }
+    let codePoint;
+    if (entity.charAt(1) === "x") {
+      codePoint = parseInt(entity.substr(2), 16);
+    } else {
+      codePoint = parseInt(entity.substr(1), 10);
+    }
+    let output = "";
+    if (codePoint >= 55296 && codePoint <= 57343 || codePoint > 1114111) {
+      return "\uFFFD";
+    }
+    if (codePoint > 65535) {
+      codePoint -= 65536;
+      output += String.fromCharCode(codePoint >>> 10 & 1023 | 55296);
+      codePoint = 56320 | codePoint & 1023;
+    }
+    output += String.fromCharCode(codePoint);
+    return output;
+  });
+}
+function escapeHtml(str) {
+  return str.trim().replace(/[<>"'?&]/g, (c2) => {
+    let hex = c2.charCodeAt(0).toString(16);
+    if (hex.length < 2) {
+      hex = "0" + hex;
+    }
+    return "&#x" + hex.toUpperCase() + ";";
+  });
+}
+function textToHtml(str) {
+  let html = escapeHtml(str).replace(/\n/g, "<br />");
+  return "<div>" + html + "</div>";
+}
+function htmlToText(str) {
+  str = str.replace(/\r?\n/g, "").replace(/<\!\-\-.*?\-\->/gi, " ").replace(/<br\b[^>]*>/gi, "\n").replace(/<\/?(p|div|table|tr|td|th)\b[^>]*>/gi, "\n\n").replace(/<script\b[^>]*>.*?<\/script\b[^>]*>/gi, " ").replace(/^.*<body\b[^>]*>/i, "").replace(/^.*<\/head\b[^>]*>/i, "").replace(/^.*<\!doctype\b[^>]*>/i, "").replace(/<\/body\b[^>]*>.*$/i, "").replace(/<\/html\b[^>]*>.*$/i, "").replace(/<a\b[^>]*href\s*=\s*["']?([^\s"']+)[^>]*>/gi, " ($1) ").replace(/<\/?(span|em|i|strong|b|u|a)\b[^>]*>/gi, "").replace(/<li\b[^>]*>[\n\u0001\s]*/gi, "* ").replace(/<hr\b[^>]*>/g, "\n-------------\n").replace(/<[^>]*>/g, " ").replace(/\u0001/g, "\n").replace(/[ \t]+/g, " ").replace(/^\s+$/gm, "").replace(/\n\n+/g, "\n\n").replace(/^\n+/, "\n").replace(/\n+$/, "\n");
+  str = decodeHTMLEntities(str);
+  return str;
+}
+function formatTextAddress(address) {
+  return [].concat(address.name || []).concat(address.name ? `<${address.address}>` : address.address).join(" ");
+}
+function formatTextAddresses(addresses) {
+  let parts = [];
+  let processAddress = (address, partCounter) => {
+    if (partCounter) {
+      parts.push(", ");
+    }
+    if (address.group) {
+      let groupStart = `${address.name}:`;
+      let groupEnd = `;`;
+      parts.push(groupStart);
+      address.group.forEach(processAddress);
+      parts.push(groupEnd);
+    } else {
+      parts.push(formatTextAddress(address));
+    }
+  };
+  addresses.forEach(processAddress);
+  return parts.join("");
+}
+function formatHtmlAddress(address) {
+  return `<a href="mailto:${escapeHtml(address.address)}" class="postal-email-address">${escapeHtml(address.name || `<${address.address}>`)}</a>`;
+}
+function formatHtmlAddresses(addresses) {
+  let parts = [];
+  let processAddress = (address, partCounter) => {
+    if (partCounter) {
+      parts.push('<span class="postal-email-address-separator">, </span>');
+    }
+    if (address.group) {
+      let groupStart = `<span class="postal-email-address-group">${escapeHtml(address.name)}:</span>`;
+      let groupEnd = `<span class="postal-email-address-group">;</span>`;
+      parts.push(groupStart);
+      address.group.forEach(processAddress);
+      parts.push(groupEnd);
+    } else {
+      parts.push(formatHtmlAddress(address));
+    }
+  };
+  addresses.forEach(processAddress);
+  return parts.join(" ");
+}
+function foldLines(str, lineLength, afterSpace) {
+  str = (str || "").toString();
+  lineLength = lineLength || 76;
+  let pos = 0, len = str.length, result = "", line2, match;
+  while (pos < len) {
+    line2 = str.substr(pos, lineLength);
+    if (line2.length < lineLength) {
+      result += line2;
+      break;
+    }
+    if (match = line2.match(/^[^\n\r]*(\r?\n|\r)/)) {
+      line2 = match[0];
+      result += line2;
+      pos += line2.length;
+      continue;
+    } else if ((match = line2.match(/(\s+)[^\s]*$/)) && match[0].length - (afterSpace ? (match[1] || "").length : 0) < line2.length) {
+      line2 = line2.substr(0, line2.length - (match[0].length - (afterSpace ? (match[1] || "").length : 0)));
+    } else if (match = str.substr(pos + line2.length).match(/^[^\s]+(\s*)/)) {
+      line2 = line2 + match[0].substr(0, match[0].length - (!afterSpace ? (match[1] || "").length : 0));
+    }
+    result += line2;
+    pos += line2.length;
+    if (pos < len) {
+      result += "\r\n";
+    }
+  }
+  return result;
+}
+function formatTextHeader(message) {
+  let rows = [];
+  if (message.from) {
+    rows.push({ key: "From", val: formatTextAddress(message.from) });
+  }
+  if (message.subject) {
+    rows.push({ key: "Subject", val: message.subject });
+  }
+  if (message.date) {
+    let dateOptions = {
+      year: "numeric",
+      month: "numeric",
+      day: "numeric",
+      hour: "numeric",
+      minute: "numeric",
+      second: "numeric",
+      hour12: false
+    };
+    let dateStr = typeof Intl === "undefined" ? message.date : new Intl.DateTimeFormat("default", dateOptions).format(new Date(message.date));
+    rows.push({ key: "Date", val: dateStr });
+  }
+  if (message.to && message.to.length) {
+    rows.push({ key: "To", val: formatTextAddresses(message.to) });
+  }
+  if (message.cc && message.cc.length) {
+    rows.push({ key: "Cc", val: formatTextAddresses(message.cc) });
+  }
+  if (message.bcc && message.bcc.length) {
+    rows.push({ key: "Bcc", val: formatTextAddresses(message.bcc) });
+  }
+  let maxKeyLength = rows.map((r3) => r3.key.length).reduce((acc, cur) => {
+    return cur > acc ? cur : acc;
+  }, 0);
+  rows = rows.flatMap((row) => {
+    let sepLen = maxKeyLength - row.key.length;
+    let prefix = `${row.key}: ${" ".repeat(sepLen)}`;
+    let emptyPrefix = `${" ".repeat(row.key.length + 1)} ${" ".repeat(sepLen)}`;
+    let foldedLines = foldLines(row.val, 80, true).split(/\r?\n/).map((line2) => line2.trim());
+    return foldedLines.map((line2, i2) => `${i2 ? emptyPrefix : prefix}${line2}`);
+  });
+  let maxLineLength = rows.map((r3) => r3.length).reduce((acc, cur) => {
+    return cur > acc ? cur : acc;
+  }, 0);
+  let lineMarker = "-".repeat(maxLineLength);
+  let template = `
+${lineMarker}
+${rows.join("\n")}
+${lineMarker}
+`;
+  return template;
+}
+function formatHtmlHeader(message) {
+  let rows = [];
+  if (message.from) {
+    rows.push(
+      `<div class="postal-email-header-key">From</div><div class="postal-email-header-value">${formatHtmlAddress(message.from)}</div>`
+    );
+  }
+  if (message.subject) {
+    rows.push(
+      `<div class="postal-email-header-key">Subject</div><div class="postal-email-header-value postal-email-header-subject">${escapeHtml(
+        message.subject
+      )}</div>`
+    );
+  }
+  if (message.date) {
+    let dateOptions = {
+      year: "numeric",
+      month: "numeric",
+      day: "numeric",
+      hour: "numeric",
+      minute: "numeric",
+      second: "numeric",
+      hour12: false
+    };
+    let dateStr = typeof Intl === "undefined" ? message.date : new Intl.DateTimeFormat("default", dateOptions).format(new Date(message.date));
+    rows.push(
+      `<div class="postal-email-header-key">Date</div><div class="postal-email-header-value postal-email-header-date" data-date="${escapeHtml(
+        message.date
+      )}">${escapeHtml(dateStr)}</div>`
+    );
+  }
+  if (message.to && message.to.length) {
+    rows.push(
+      `<div class="postal-email-header-key">To</div><div class="postal-email-header-value">${formatHtmlAddresses(message.to)}</div>`
+    );
+  }
+  if (message.cc && message.cc.length) {
+    rows.push(
+      `<div class="postal-email-header-key">Cc</div><div class="postal-email-header-value">${formatHtmlAddresses(message.cc)}</div>`
+    );
+  }
+  if (message.bcc && message.bcc.length) {
+    rows.push(
+      `<div class="postal-email-header-key">Bcc</div><div class="postal-email-header-value">${formatHtmlAddresses(message.bcc)}</div>`
+    );
+  }
+  let template = `<div class="postal-email-header">${rows.length ? '<div class="postal-email-header-row">' : ""}${rows.join(
+    '</div>\n<div class="postal-email-header-row">'
+  )}${rows.length ? "</div>" : ""}</div>`;
+  return template;
+}
+
+// ../../node_modules/.pnpm/postal-mime@2.7.4/node_modules/postal-mime/src/address-parser.js
+function _handleAddress(tokens, depth) {
+  let isGroup = false;
+  let state = "text";
+  let address;
+  let addresses = [];
+  let data = {
+    address: [],
+    comment: [],
+    group: [],
+    text: [],
+    textWasQuoted: []
+    // Track which text tokens came from inside quotes
+  };
+  let i2;
+  let len;
+  let insideQuotes = false;
+  for (i2 = 0, len = tokens.length; i2 < len; i2++) {
+    let token2 = tokens[i2];
+    let prevToken = i2 ? tokens[i2 - 1] : null;
+    if (token2.type === "operator") {
+      switch (token2.value) {
+        case "<":
+          state = "address";
+          insideQuotes = false;
+          break;
+        case "(":
+          state = "comment";
+          insideQuotes = false;
+          break;
+        case ":":
+          state = "group";
+          isGroup = true;
+          insideQuotes = false;
+          break;
+        case '"':
+          insideQuotes = !insideQuotes;
+          state = "text";
+          break;
+        default:
+          state = "text";
+          insideQuotes = false;
+          break;
+      }
+    } else if (token2.value) {
+      if (state === "address") {
+        token2.value = token2.value.replace(/^[^<]*<\s*/, "");
+      }
+      if (prevToken && prevToken.noBreak && data[state].length) {
+        data[state][data[state].length - 1] += token2.value;
+        if (state === "text" && insideQuotes) {
+          data.textWasQuoted[data.textWasQuoted.length - 1] = true;
+        }
+      } else {
+        data[state].push(token2.value);
+        if (state === "text") {
+          data.textWasQuoted.push(insideQuotes);
+        }
+      }
+    }
+  }
+  if (!data.text.length && data.comment.length) {
+    data.text = data.comment;
+    data.comment = [];
+  }
+  if (isGroup) {
+    data.text = data.text.join(" ");
+    let groupMembers = [];
+    if (data.group.length) {
+      let parsedGroup = addressParser(data.group.join(","), { _depth: depth + 1 });
+      parsedGroup.forEach((member) => {
+        if (member.group) {
+          groupMembers = groupMembers.concat(member.group);
+        } else {
+          groupMembers.push(member);
+        }
+      });
+    }
+    addresses.push({
+      name: decodeWords(data.text || address && address.name),
+      group: groupMembers
+    });
+  } else {
+    if (!data.address.length && data.text.length) {
+      for (i2 = data.text.length - 1; i2 >= 0; i2--) {
+        if (!data.textWasQuoted[i2] && data.text[i2].match(/^[^@\s]+@[^@\s]+$/)) {
+          data.address = data.text.splice(i2, 1);
+          data.textWasQuoted.splice(i2, 1);
+          break;
+        }
+      }
+      let _regexHandler = function(address2) {
+        if (!data.address.length) {
+          data.address = [address2.trim()];
+          return " ";
+        } else {
+          return address2;
+        }
+      };
+      if (!data.address.length) {
+        for (i2 = data.text.length - 1; i2 >= 0; i2--) {
+          if (!data.textWasQuoted[i2]) {
+            data.text[i2] = data.text[i2].replace(/\s*\b[^@\s]+@[^\s]+\b\s*/, _regexHandler).trim();
+            if (data.address.length) {
+              break;
+            }
+          }
+        }
+      }
+    }
+    if (!data.text.length && data.comment.length) {
+      data.text = data.comment;
+      data.comment = [];
+    }
+    if (data.address.length > 1) {
+      data.text = data.text.concat(data.address.splice(1));
+    }
+    data.text = data.text.join(" ");
+    data.address = data.address.join(" ");
+    if (!data.address && /^=\?[^=]+?=$/.test(data.text.trim())) {
+      const decodedText = decodeWords(data.text);
+      if (/<[^<>]+@[^<>]+>/.test(decodedText)) {
+        const parsedSubAddresses = addressParser(decodedText);
+        if (parsedSubAddresses && parsedSubAddresses.length) {
+          return parsedSubAddresses;
+        }
+      }
+      return [{ address: "", name: decodedText }];
+    }
+    address = {
+      address: data.address || data.text || "",
+      name: decodeWords(data.text || data.address || "")
+    };
+    if (address.address === address.name) {
+      if ((address.address || "").match(/@/)) {
+        address.name = "";
+      } else {
+        address.address = "";
+      }
+    }
+    addresses.push(address);
+  }
+  return addresses;
+}
+var Tokenizer = class {
+  constructor(str) {
+    this.str = (str || "").toString();
+    this.operatorCurrent = "";
+    this.operatorExpecting = "";
+    this.node = null;
+    this.escaped = false;
+    this.list = [];
+    this.operators = {
+      '"': '"',
+      "(": ")",
+      "<": ">",
+      ",": "",
+      ":": ";",
+      // Semicolons are not a legal delimiter per the RFC2822 grammar other
+      // than for terminating a group, but they are also not valid for any
+      // other use in this context.  Given that some mail clients have
+      // historically allowed the semicolon as a delimiter equivalent to the
+      // comma in their UI, it makes sense to treat them the same as a comma
+      // when used outside of a group.
+      ";": ""
+    };
+  }
+  /**
+   * Tokenizes the original input string
+   *
+   * @return {Array} An array of operator|text tokens
+   */
+  tokenize() {
+    let list = [];
+    for (let i2 = 0, len = this.str.length; i2 < len; i2++) {
+      let chr = this.str.charAt(i2);
+      let nextChr = i2 < len - 1 ? this.str.charAt(i2 + 1) : null;
+      this.checkChar(chr, nextChr);
+    }
+    this.list.forEach((node) => {
+      node.value = (node.value || "").toString().trim();
+      if (node.value) {
+        list.push(node);
+      }
+    });
+    return list;
+  }
+  /**
+   * Checks if a character is an operator or text and acts accordingly
+   *
+   * @param {String} chr Character from the address field
+   */
+  checkChar(chr, nextChr) {
+    if (this.escaped) {
+    } else if (chr === this.operatorExpecting) {
+      this.node = {
+        type: "operator",
+        value: chr
+      };
+      if (nextChr && ![" ", "	", "\r", "\n", ",", ";"].includes(nextChr)) {
+        this.node.noBreak = true;
+      }
+      this.list.push(this.node);
+      this.node = null;
+      this.operatorExpecting = "";
+      this.escaped = false;
+      return;
+    } else if (!this.operatorExpecting && chr in this.operators) {
+      this.node = {
+        type: "operator",
+        value: chr
+      };
+      this.list.push(this.node);
+      this.node = null;
+      this.operatorExpecting = this.operators[chr];
+      this.escaped = false;
+      return;
+    } else if (this.operatorExpecting === '"' && chr === "\\") {
+      this.escaped = true;
+      return;
+    }
+    if (!this.node) {
+      this.node = {
+        type: "text",
+        value: ""
+      };
+      this.list.push(this.node);
+    }
+    if (chr === "\n") {
+      chr = " ";
+    }
+    if (chr.charCodeAt(0) >= 33 || [" ", "	"].includes(chr)) {
+      this.node.value += chr;
+    }
+    this.escaped = false;
+  }
+};
+var MAX_NESTED_GROUP_DEPTH = 50;
+function addressParser(str, options) {
+  options = options || {};
+  let depth = options._depth || 0;
+  if (depth > MAX_NESTED_GROUP_DEPTH) {
+    return [];
+  }
+  let tokenizer = new Tokenizer(str);
+  let tokens = tokenizer.tokenize();
+  let addresses = [];
+  let address = [];
+  let parsedAddresses = [];
+  tokens.forEach((token2) => {
+    if (token2.type === "operator" && (token2.value === "," || token2.value === ";")) {
+      if (address.length) {
+        addresses.push(address);
+      }
+      address = [];
+    } else {
+      address.push(token2);
+    }
+  });
+  if (address.length) {
+    addresses.push(address);
+  }
+  addresses.forEach((address2) => {
+    address2 = _handleAddress(address2, depth);
+    if (address2.length) {
+      parsedAddresses = parsedAddresses.concat(address2);
+    }
+  });
+  if (options.flatten) {
+    let addresses2 = [];
+    let walkAddressList = (list) => {
+      list.forEach((address2) => {
+        if (address2.group) {
+          return walkAddressList(address2.group);
+        } else {
+          addresses2.push(address2);
+        }
+      });
+    };
+    walkAddressList(parsedAddresses);
+    return addresses2;
+  }
+  return parsedAddresses;
+}
+var address_parser_default = addressParser;
+
+// ../../node_modules/.pnpm/postal-mime@2.7.4/node_modules/postal-mime/src/base64-encoder.js
+function base64ArrayBuffer(arrayBuffer) {
+  var base64 = "";
+  var encodings = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+  var bytes = new Uint8Array(arrayBuffer);
+  var byteLength = bytes.byteLength;
+  var byteRemainder = byteLength % 3;
+  var mainLength = byteLength - byteRemainder;
+  var a, b3, c2, d;
+  var chunk;
+  for (var i2 = 0; i2 < mainLength; i2 = i2 + 3) {
+    chunk = bytes[i2] << 16 | bytes[i2 + 1] << 8 | bytes[i2 + 2];
+    a = (chunk & 16515072) >> 18;
+    b3 = (chunk & 258048) >> 12;
+    c2 = (chunk & 4032) >> 6;
+    d = chunk & 63;
+    base64 += encodings[a] + encodings[b3] + encodings[c2] + encodings[d];
+  }
+  if (byteRemainder == 1) {
+    chunk = bytes[mainLength];
+    a = (chunk & 252) >> 2;
+    b3 = (chunk & 3) << 4;
+    base64 += encodings[a] + encodings[b3] + "==";
+  } else if (byteRemainder == 2) {
+    chunk = bytes[mainLength] << 8 | bytes[mainLength + 1];
+    a = (chunk & 64512) >> 10;
+    b3 = (chunk & 1008) >> 4;
+    c2 = (chunk & 15) << 2;
+    base64 += encodings[a] + encodings[b3] + encodings[c2] + "=";
+  }
+  return base64;
+}
+
+// ../../node_modules/.pnpm/postal-mime@2.7.4/node_modules/postal-mime/src/postal-mime.js
+var MAX_NESTING_DEPTH = 256;
+var MAX_HEADERS_SIZE = 2 * 1024 * 1024;
+function toCamelCase2(key) {
+  return key.replace(/-(.)/g, (o2, c2) => c2.toUpperCase());
+}
+var PostalMime = class _PostalMime {
+  static parse(buf, options) {
+    const parser = new _PostalMime(options);
+    return parser.parse(buf);
+  }
+  constructor(options) {
+    this.options = options || {};
+    this.mimeOptions = {
+      maxNestingDepth: this.options.maxNestingDepth || MAX_NESTING_DEPTH,
+      maxHeadersSize: this.options.maxHeadersSize || MAX_HEADERS_SIZE
+    };
+    this.root = this.currentNode = new MimeNode({
+      postalMime: this,
+      ...this.mimeOptions
+    });
+    this.boundaries = [];
+    this.textContent = {};
+    this.attachments = [];
+    this.attachmentEncoding = (this.options.attachmentEncoding || "").toString().replace(/[-_\s]/g, "").trim().toLowerCase() || "arraybuffer";
+    this.started = false;
+  }
+  async finalize() {
+    await this.root.finalize();
+  }
+  async processLine(line2, isFinal) {
+    let boundaries = this.boundaries;
+    if (boundaries.length && line2.length > 2 && line2[0] === 45 && line2[1] === 45) {
+      for (let i2 = boundaries.length - 1; i2 >= 0; i2--) {
+        let boundary = boundaries[i2];
+        if (line2.length < boundary.value.length + 2) {
+          continue;
+        }
+        let boundaryMatches = true;
+        for (let j3 = 0; j3 < boundary.value.length; j3++) {
+          if (line2[j3 + 2] !== boundary.value[j3]) {
+            boundaryMatches = false;
+            break;
+          }
+        }
+        if (!boundaryMatches) {
+          continue;
+        }
+        let boundaryEnd = boundary.value.length + 2;
+        let isTerminator = false;
+        if (line2.length >= boundary.value.length + 4 && line2[boundary.value.length + 2] === 45 && line2[boundary.value.length + 3] === 45) {
+          isTerminator = true;
+          boundaryEnd = boundary.value.length + 4;
+        }
+        let hasValidTrailing = true;
+        for (let j3 = boundaryEnd; j3 < line2.length; j3++) {
+          if (line2[j3] !== 32 && line2[j3] !== 9) {
+            hasValidTrailing = false;
+            break;
+          }
+        }
+        if (!hasValidTrailing) {
+          continue;
+        }
+        if (isTerminator) {
+          await boundary.node.finalize();
+          this.currentNode = boundary.node.parentNode || this.root;
+        } else {
+          await boundary.node.finalizeChildNodes();
+          this.currentNode = new MimeNode({
+            postalMime: this,
+            parentNode: boundary.node,
+            parentMultipartType: boundary.node.contentType.multipart,
+            ...this.mimeOptions
+          });
+        }
+        if (isFinal) {
+          return this.finalize();
+        }
+        return;
+      }
+    }
+    this.currentNode.feed(line2);
+    if (isFinal) {
+      return this.finalize();
+    }
+  }
+  readLine() {
+    let startPos = this.readPos;
+    let endPos = this.readPos;
+    while (this.readPos < this.av.length) {
+      const c2 = this.av[this.readPos++];
+      if (c2 !== 13 && c2 !== 10) {
+        endPos = this.readPos;
+      }
+      if (c2 === 10) {
+        return {
+          bytes: new Uint8Array(this.buf, startPos, endPos - startPos),
+          done: this.readPos >= this.av.length
+        };
+      }
+    }
+    return {
+      bytes: new Uint8Array(this.buf, startPos, endPos - startPos),
+      done: this.readPos >= this.av.length
+    };
+  }
+  async processNodeTree() {
+    let textContent2 = {};
+    let textTypes = /* @__PURE__ */ new Set();
+    let textMap = this.textMap = /* @__PURE__ */ new Map();
+    let forceRfc822Attachments = this.forceRfc822Attachments();
+    let walk = async (node, alternative, related) => {
+      alternative = alternative || false;
+      related = related || false;
+      if (!node.contentType.multipart) {
+        if (this.isInlineMessageRfc822(node) && !forceRfc822Attachments) {
+          const subParser = new _PostalMime();
+          node.subMessage = await subParser.parse(node.content);
+          if (!textMap.has(node)) {
+            textMap.set(node, {});
+          }
+          let textEntry = textMap.get(node);
+          if (node.subMessage.text || !node.subMessage.html) {
+            textEntry.plain = textEntry.plain || [];
+            textEntry.plain.push({ type: "subMessage", value: node.subMessage });
+            textTypes.add("plain");
+          }
+          if (node.subMessage.html) {
+            textEntry.html = textEntry.html || [];
+            textEntry.html.push({ type: "subMessage", value: node.subMessage });
+            textTypes.add("html");
+          }
+          if (subParser.textMap) {
+            subParser.textMap.forEach((subTextEntry, subTextNode) => {
+              textMap.set(subTextNode, subTextEntry);
+            });
+          }
+          for (let attachment of node.subMessage.attachments || []) {
+            this.attachments.push(attachment);
+          }
+        } else if (this.isInlineTextNode(node)) {
+          let textType = node.contentType.parsed.value.substr(node.contentType.parsed.value.indexOf("/") + 1);
+          let selectorNode = alternative || node;
+          if (!textMap.has(selectorNode)) {
+            textMap.set(selectorNode, {});
+          }
+          let textEntry = textMap.get(selectorNode);
+          textEntry[textType] = textEntry[textType] || [];
+          textEntry[textType].push({ type: "text", value: node.getTextContent() });
+          textTypes.add(textType);
+        } else if (node.content) {
+          const filename = node.contentDisposition?.parsed?.params?.filename || node.contentType.parsed.params.name || null;
+          const attachment = {
+            filename: filename ? decodeWords(filename) : null,
+            mimeType: node.contentType.parsed.value,
+            disposition: node.contentDisposition?.parsed?.value || null
+          };
+          if (related && node.contentId) {
+            attachment.related = true;
+          }
+          if (node.contentDescription) {
+            attachment.description = node.contentDescription;
+          }
+          if (node.contentId) {
+            attachment.contentId = node.contentId;
+          }
+          switch (node.contentType.parsed.value) {
+            // Special handling for calendar events
+            case "text/calendar":
+            case "application/ics": {
+              if (node.contentType.parsed.params.method) {
+                attachment.method = node.contentType.parsed.params.method.toString().toUpperCase().trim();
+              }
+              const decodedText = node.getTextContent().replace(/\r?\n/g, "\n").replace(/\n*$/, "\n");
+              attachment.content = textEncoder.encode(decodedText);
+              break;
+            }
+            // Regular attachments
+            default:
+              attachment.content = node.content;
+          }
+          this.attachments.push(attachment);
+        }
+      } else if (node.contentType.multipart === "alternative") {
+        alternative = node;
+      } else if (node.contentType.multipart === "related") {
+        related = node;
+      }
+      for (let childNode of node.childNodes) {
+        await walk(childNode, alternative, related);
+      }
+    };
+    await walk(this.root, false, false);
+    textMap.forEach((mapEntry) => {
+      textTypes.forEach((textType) => {
+        if (!textContent2[textType]) {
+          textContent2[textType] = [];
+        }
+        if (mapEntry[textType]) {
+          mapEntry[textType].forEach((textEntry) => {
+            switch (textEntry.type) {
+              case "text":
+                textContent2[textType].push(textEntry.value);
+                break;
+              case "subMessage":
+                {
+                  switch (textType) {
+                    case "html":
+                      textContent2[textType].push(formatHtmlHeader(textEntry.value));
+                      break;
+                    case "plain":
+                      textContent2[textType].push(formatTextHeader(textEntry.value));
+                      break;
+                  }
+                }
+                break;
+            }
+          });
+        } else {
+          let alternativeType;
+          switch (textType) {
+            case "html":
+              alternativeType = "plain";
+              break;
+            case "plain":
+              alternativeType = "html";
+              break;
+          }
+          (mapEntry[alternativeType] || []).forEach((textEntry) => {
+            switch (textEntry.type) {
+              case "text":
+                switch (textType) {
+                  case "html":
+                    textContent2[textType].push(textToHtml(textEntry.value));
+                    break;
+                  case "plain":
+                    textContent2[textType].push(htmlToText(textEntry.value));
+                    break;
+                }
+                break;
+              case "subMessage":
+                {
+                  switch (textType) {
+                    case "html":
+                      textContent2[textType].push(formatHtmlHeader(textEntry.value));
+                      break;
+                    case "plain":
+                      textContent2[textType].push(formatTextHeader(textEntry.value));
+                      break;
+                  }
+                }
+                break;
+            }
+          });
+        }
+      });
+    });
+    Object.keys(textContent2).forEach((textType) => {
+      textContent2[textType] = textContent2[textType].join("\n");
+    });
+    this.textContent = textContent2;
+  }
+  isInlineTextNode(node) {
+    if (node.contentDisposition?.parsed?.value === "attachment") {
+      return false;
+    }
+    switch (node.contentType.parsed?.value) {
+      case "text/html":
+      case "text/plain":
+        return true;
+      case "text/calendar":
+      case "text/csv":
+      default:
+        return false;
+    }
+  }
+  isInlineMessageRfc822(node) {
+    if (node.contentType.parsed?.value !== "message/rfc822") {
+      return false;
+    }
+    let disposition = node.contentDisposition?.parsed?.value || (this.options.rfc822Attachments ? "attachment" : "inline");
+    return disposition === "inline";
+  }
+  // Check if this is a specially crafted report email where message/rfc822 content should not be inlined
+  forceRfc822Attachments() {
+    if (this.options.forceRfc822Attachments) {
+      return true;
+    }
+    let forceRfc822Attachments = false;
+    let walk = (node) => {
+      if (!node.contentType.multipart) {
+        if (node.contentType.parsed && ["message/delivery-status", "message/feedback-report"].includes(node.contentType.parsed.value)) {
+          forceRfc822Attachments = true;
+        }
+      }
+      for (let childNode of node.childNodes) {
+        walk(childNode);
+      }
+    };
+    walk(this.root);
+    return forceRfc822Attachments;
+  }
+  async resolveStream(stream) {
+    let chunkLen = 0;
+    let chunks = [];
+    const reader = stream.getReader();
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) {
+        break;
+      }
+      chunks.push(value);
+      chunkLen += value.length;
+    }
+    const result = new Uint8Array(chunkLen);
+    let chunkPointer = 0;
+    for (let chunk of chunks) {
+      result.set(chunk, chunkPointer);
+      chunkPointer += chunk.length;
+    }
+    return result;
+  }
+  async parse(buf) {
+    if (this.started) {
+      throw new Error("Can not reuse parser, create a new PostalMime object");
+    }
+    this.started = true;
+    if (buf && typeof buf.getReader === "function") {
+      buf = await this.resolveStream(buf);
+    }
+    buf = buf || new ArrayBuffer(0);
+    if (typeof buf === "string") {
+      buf = textEncoder.encode(buf);
+    }
+    if (buf instanceof Blob || Object.prototype.toString.call(buf) === "[object Blob]") {
+      buf = await blobToArrayBuffer(buf);
+    }
+    if (buf.buffer instanceof ArrayBuffer) {
+      buf = new Uint8Array(buf).buffer;
+    }
+    this.buf = buf;
+    this.av = new Uint8Array(buf);
+    this.readPos = 0;
+    while (this.readPos < this.av.length) {
+      const line2 = this.readLine();
+      await this.processLine(line2.bytes, line2.done);
+    }
+    await this.processNodeTree();
+    const message = {
+      headers: this.root.headers.map((entry) => ({ key: entry.key, originalKey: entry.originalKey, value: entry.value })).reverse()
+    };
+    for (const key of ["from", "sender"]) {
+      const addressHeader = this.root.headers.find((line2) => line2.key === key);
+      if (addressHeader && addressHeader.value) {
+        const addresses = address_parser_default(addressHeader.value);
+        if (addresses && addresses.length) {
+          message[key] = addresses[0];
+        }
+      }
+    }
+    for (const key of ["delivered-to", "return-path"]) {
+      const addressHeader = this.root.headers.find((line2) => line2.key === key);
+      if (addressHeader && addressHeader.value) {
+        const addresses = address_parser_default(addressHeader.value);
+        if (addresses && addresses.length && addresses[0].address) {
+          const camelKey = toCamelCase2(key);
+          message[camelKey] = addresses[0].address;
+        }
+      }
+    }
+    for (const key of ["to", "cc", "bcc", "reply-to"]) {
+      const addressHeaders = this.root.headers.filter((line2) => line2.key === key);
+      let addresses = [];
+      addressHeaders.filter((entry) => entry && entry.value).map((entry) => address_parser_default(entry.value)).forEach((parsed) => addresses = addresses.concat(parsed || []));
+      if (addresses && addresses.length) {
+        const camelKey = toCamelCase2(key);
+        message[camelKey] = addresses;
+      }
+    }
+    for (const key of ["subject", "message-id", "in-reply-to", "references"]) {
+      const header = this.root.headers.find((line2) => line2.key === key);
+      if (header && header.value) {
+        const camelKey = toCamelCase2(key);
+        message[camelKey] = decodeWords(header.value);
+      }
+    }
+    let dateHeader = this.root.headers.find((line2) => line2.key === "date");
+    if (dateHeader) {
+      let date2 = new Date(dateHeader.value);
+      if (date2.toString() === "Invalid Date") {
+        date2 = dateHeader.value;
+      } else {
+        date2 = date2.toISOString();
+      }
+      message.date = date2;
+    }
+    if (this.textContent?.html) {
+      message.html = this.textContent.html;
+    }
+    if (this.textContent?.plain) {
+      message.text = this.textContent.plain;
+    }
+    message.attachments = this.attachments;
+    message.headerLines = (this.root.rawHeaderLines || []).slice().reverse();
+    switch (this.attachmentEncoding) {
+      case "arraybuffer":
+        break;
+      case "base64":
+        for (let attachment of message.attachments || []) {
+          if (attachment?.content) {
+            attachment.content = base64ArrayBuffer(attachment.content);
+            attachment.encoding = "base64";
+          }
+        }
+        break;
+      case "utf8":
+        let attachmentDecoder = new TextDecoder("utf8");
+        for (let attachment of message.attachments || []) {
+          if (attachment?.content) {
+            attachment.content = attachmentDecoder.decode(attachment.content);
+            attachment.encoding = "utf8";
+          }
+        }
+        break;
+      default:
+        throw new Error("Unknown attachment encoding");
+    }
+    return message;
+  }
+};
+
+// ../../node_modules/.pnpm/resend@6.12.3_@react-email+render@1.1.2_react-dom@19.1.0_react@19.1.0__react@19.1.0_/node_modules/resend/dist/index.mjs
+var import_svix = __toESM(require_dist10(), 1);
+var version3 = "6.12.3";
+function buildPaginationQuery(options) {
+  const searchParams = new URLSearchParams();
+  if (options.limit !== void 0) searchParams.set("limit", options.limit.toString());
+  if ("after" in options && options.after !== void 0) searchParams.set("after", options.after);
+  if ("before" in options && options.before !== void 0) searchParams.set("before", options.before);
+  return searchParams.toString();
+}
+var ApiKeys = class {
+  constructor(resend) {
+    this.resend = resend;
+  }
+  async create(payload, options = {}) {
+    return await this.resend.post("/api-keys", payload, options);
+  }
+  async list(options = {}) {
+    const queryString = buildPaginationQuery(options);
+    const url2 = queryString ? `/api-keys?${queryString}` : "/api-keys";
+    return await this.resend.get(url2);
+  }
+  async remove(id) {
+    return await this.resend.delete(`/api-keys/${id}`);
+  }
+};
+var AutomationRuns = class {
+  constructor(resend) {
+    this.resend = resend;
+  }
+  async get(options) {
+    return await this.resend.get(`/automations/${options.automationId}/runs/${options.runId}`);
+  }
+  async list(options) {
+    const queryString = buildPaginationQuery(options);
+    const searchParams = new URLSearchParams(queryString);
+    if (options.status) {
+      const statusValue = Array.isArray(options.status) ? options.status.join(",") : options.status;
+      searchParams.set("status", statusValue);
+    }
+    const qs2 = searchParams.toString();
+    const url2 = qs2 ? `/automations/${options.automationId}/runs?${qs2}` : `/automations/${options.automationId}/runs`;
+    return await this.resend.get(url2);
+  }
+};
+function parseStepConfig(step) {
+  switch (step.type) {
+    case "trigger":
+      return {
+        key: step.key,
+        type: step.type,
+        config: { event_name: step.config.eventName }
+      };
+    case "delay":
+      return {
+        key: step.key,
+        type: step.type,
+        config: step.config
+      };
+    case "send_email":
+      return {
+        key: step.key,
+        type: step.type,
+        config: {
+          template: step.config.template,
+          subject: step.config.subject,
+          from: step.config.from,
+          reply_to: step.config.replyTo
+        }
+      };
+    case "wait_for_event":
+      return {
+        key: step.key,
+        type: step.type,
+        config: {
+          event_name: step.config.eventName,
+          timeout: step.config.timeout,
+          filter_rule: step.config.filterRule
+        }
+      };
+    case "condition":
+      return {
+        key: step.key,
+        type: step.type,
+        config: step.config
+      };
+    case "contact_update":
+      return {
+        key: step.key,
+        type: step.type,
+        config: {
+          first_name: step.config.firstName,
+          last_name: step.config.lastName,
+          unsubscribed: step.config.unsubscribed,
+          properties: step.config.properties
+        }
+      };
+    case "contact_delete":
+      return {
+        key: step.key,
+        type: step.type,
+        config: step.config
+      };
+    case "add_to_segment":
+      return {
+        key: step.key,
+        type: step.type,
+        config: { segment_id: step.config.segmentId }
+      };
+  }
+}
+function parseConnection(connection) {
+  return {
+    from: connection.from,
+    to: connection.to,
+    type: connection.type
+  };
+}
+function parseAutomationToApiOptions(automation) {
+  return {
+    name: automation.name,
+    status: automation.status,
+    steps: automation.steps.map(parseStepConfig),
+    connections: automation.connections.map(parseConnection)
+  };
+}
+function parseEventToApiOptions(event) {
+  return {
+    event: event.event,
+    contact_id: event.contactId,
+    email: event.email,
+    payload: event.payload
+  };
+}
+var Automations = class {
+  constructor(resend) {
+    this.resend = resend;
+    this.runs = new AutomationRuns(this.resend);
+  }
+  async create(payload) {
+    return await this.resend.post("/automations", parseAutomationToApiOptions(payload));
+  }
+  async list(options = {}) {
+    const params = [buildPaginationQuery(options)];
+    if (options.status) params.push(`status=${encodeURIComponent(options.status)}`);
+    const qs2 = params.filter(Boolean).join("&");
+    const url2 = qs2 ? `/automations?${qs2}` : "/automations";
+    return await this.resend.get(url2);
+  }
+  async get(id) {
+    return await this.resend.get(`/automations/${id}`);
+  }
+  async remove(id) {
+    return await this.resend.delete(`/automations/${id}`);
+  }
+  async update(id, payload) {
+    const apiPayload = {};
+    if (payload.name !== void 0) apiPayload.name = payload.name;
+    if (payload.status !== void 0) apiPayload.status = payload.status;
+    if (payload.steps !== void 0) apiPayload.steps = payload.steps.map(parseStepConfig);
+    if (payload.connections !== void 0) apiPayload.connections = payload.connections.map(parseConnection);
+    return await this.resend.patch(`/automations/${id}`, apiPayload);
+  }
+  async stop(id) {
+    return await this.resend.post(`/automations/${id}/stop`);
+  }
+};
+function parseAttachments(attachments) {
+  return attachments?.map((attachment) => ({
+    content: attachment.content,
+    filename: attachment.filename,
+    path: attachment.path,
+    content_type: attachment.contentType,
+    content_id: attachment.contentId
+  }));
+}
+function parseEmailToApiOptions(email) {
+  return {
+    attachments: parseAttachments(email.attachments),
+    bcc: email.bcc,
+    cc: email.cc,
+    from: email.from,
+    headers: email.headers,
+    html: email.html,
+    reply_to: email.replyTo,
+    scheduled_at: email.scheduledAt,
+    subject: email.subject,
+    tags: email.tags,
+    text: email.text,
+    to: email.to,
+    template: email.template ? {
+      id: email.template.id,
+      variables: email.template.variables
+    } : void 0,
+    topic_id: email.topicId
+  };
+}
+async function render3(node) {
+  let render4;
+  try {
+    ({ render: render4 } = await Promise.resolve().then(() => (init_node2(), node_exports)));
+  } catch {
+    throw new Error("Failed to render React component. Make sure to install `@react-email/render` or `@react-email/components`.");
+  }
+  return render4(node);
+}
+var Batch = class {
+  constructor(resend) {
+    this.resend = resend;
+  }
+  async send(payload, options) {
+    return this.create(payload, options);
+  }
+  async create(payload, options) {
+    const emails = [];
+    for (const email of payload) {
+      if (email.react) {
+        email.html = await render3(email.react);
+        email.react = void 0;
+      }
+      emails.push(parseEmailToApiOptions(email));
+    }
+    return await this.resend.post("/emails/batch", emails, {
+      ...options,
+      headers: {
+        "x-batch-validation": options?.batchValidation ?? "strict",
+        ...options?.headers
+      }
+    });
+  }
+};
+var Broadcasts = class {
+  constructor(resend) {
+    this.resend = resend;
+  }
+  async create(payload, options = {}) {
+    if (payload.react) payload.html = await render3(payload.react);
+    return await this.resend.post("/broadcasts", {
+      name: payload.name,
+      segment_id: payload.segmentId,
+      audience_id: payload.audienceId,
+      preview_text: payload.previewText,
+      from: payload.from,
+      html: payload.html,
+      reply_to: payload.replyTo,
+      subject: payload.subject,
+      text: payload.text,
+      topic_id: payload.topicId,
+      send: payload.send,
+      scheduled_at: payload.scheduledAt
+    }, options);
+  }
+  async send(id, payload) {
+    return await this.resend.post(`/broadcasts/${id}/send`, { scheduled_at: payload?.scheduledAt });
+  }
+  async list(options = {}) {
+    const queryString = buildPaginationQuery(options);
+    const url2 = queryString ? `/broadcasts?${queryString}` : "/broadcasts";
+    return await this.resend.get(url2);
+  }
+  async get(id) {
+    return await this.resend.get(`/broadcasts/${id}`);
+  }
+  async remove(id) {
+    return await this.resend.delete(`/broadcasts/${id}`);
+  }
+  async update(id, payload) {
+    if (payload.react) payload.html = await render3(payload.react);
+    return await this.resend.patch(`/broadcasts/${id}`, {
+      name: payload.name,
+      segment_id: payload.segmentId,
+      audience_id: payload.audienceId,
+      from: payload.from,
+      html: payload.html,
+      text: payload.text,
+      subject: payload.subject,
+      reply_to: payload.replyTo,
+      preview_text: payload.previewText,
+      topic_id: payload.topicId
+    });
+  }
+};
+function parseContactPropertyFromApi(contactProperty) {
+  return {
+    id: contactProperty.id,
+    key: contactProperty.key,
+    createdAt: contactProperty.created_at,
+    type: contactProperty.type,
+    fallbackValue: contactProperty.fallback_value
+  };
+}
+function parseContactPropertyToApiOptions(contactProperty) {
+  if ("key" in contactProperty) return {
+    key: contactProperty.key,
+    type: contactProperty.type,
+    fallback_value: contactProperty.fallbackValue
+  };
+  return { fallback_value: contactProperty.fallbackValue };
+}
+var ContactProperties = class {
+  constructor(resend) {
+    this.resend = resend;
+  }
+  async create(options) {
+    const apiOptions = parseContactPropertyToApiOptions(options);
+    return await this.resend.post("/contact-properties", apiOptions);
+  }
+  async list(options = {}) {
+    const queryString = buildPaginationQuery(options);
+    const url2 = queryString ? `/contact-properties?${queryString}` : "/contact-properties";
+    const response = await this.resend.get(url2);
+    if (response.data) return {
+      data: {
+        ...response.data,
+        data: response.data.data.map((apiContactProperty) => parseContactPropertyFromApi(apiContactProperty))
+      },
+      headers: response.headers,
+      error: null
+    };
+    return response;
+  }
+  async get(id) {
+    if (!id) return {
+      data: null,
+      headers: null,
+      error: {
+        message: "Missing `id` field.",
+        statusCode: null,
+        name: "missing_required_field"
+      }
+    };
+    const response = await this.resend.get(`/contact-properties/${id}`);
+    if (response.data) return {
+      data: {
+        object: "contact_property",
+        ...parseContactPropertyFromApi(response.data)
+      },
+      headers: response.headers,
+      error: null
+    };
+    return response;
+  }
+  async update(payload) {
+    if (!payload.id) return {
+      data: null,
+      headers: null,
+      error: {
+        message: "Missing `id` field.",
+        statusCode: null,
+        name: "missing_required_field"
+      }
+    };
+    const apiOptions = parseContactPropertyToApiOptions(payload);
+    return await this.resend.patch(`/contact-properties/${payload.id}`, apiOptions);
+  }
+  async remove(id) {
+    if (!id) return {
+      data: null,
+      headers: null,
+      error: {
+        message: "Missing `id` field.",
+        statusCode: null,
+        name: "missing_required_field"
+      }
+    };
+    return await this.resend.delete(`/contact-properties/${id}`);
+  }
+};
+var ContactSegments = class {
+  constructor(resend) {
+    this.resend = resend;
+  }
+  async list(options) {
+    if (!options.contactId && !options.email) return {
+      data: null,
+      headers: null,
+      error: {
+        message: "Missing `id` or `email` field.",
+        statusCode: null,
+        name: "missing_required_field"
+      }
+    };
+    const identifier = options.email ? options.email : options.contactId;
+    const queryString = buildPaginationQuery(options);
+    const url2 = queryString ? `/contacts/${identifier}/segments?${queryString}` : `/contacts/${identifier}/segments`;
+    return await this.resend.get(url2);
+  }
+  async add(options) {
+    if (!options.contactId && !options.email) return {
+      data: null,
+      headers: null,
+      error: {
+        message: "Missing `id` or `email` field.",
+        statusCode: null,
+        name: "missing_required_field"
+      }
+    };
+    const identifier = options.email ? options.email : options.contactId;
+    return this.resend.post(`/contacts/${identifier}/segments/${options.segmentId}`);
+  }
+  async remove(options) {
+    if (!options.contactId && !options.email) return {
+      data: null,
+      headers: null,
+      error: {
+        message: "Missing `id` or `email` field.",
+        statusCode: null,
+        name: "missing_required_field"
+      }
+    };
+    const identifier = options.email ? options.email : options.contactId;
+    return this.resend.delete(`/contacts/${identifier}/segments/${options.segmentId}`);
+  }
+};
+var ContactTopics = class {
+  constructor(resend) {
+    this.resend = resend;
+  }
+  async update(payload) {
+    if (!payload.id && !payload.email) return {
+      data: null,
+      headers: null,
+      error: {
+        message: "Missing `id` or `email` field.",
+        statusCode: null,
+        name: "missing_required_field"
+      }
+    };
+    const identifier = payload.email ? payload.email : payload.id;
+    return this.resend.patch(`/contacts/${identifier}/topics`, payload.topics);
+  }
+  async list(options) {
+    if (!options.id && !options.email) return {
+      data: null,
+      headers: null,
+      error: {
+        message: "Missing `id` or `email` field.",
+        statusCode: null,
+        name: "missing_required_field"
+      }
+    };
+    const identifier = options.email ? options.email : options.id;
+    const queryString = buildPaginationQuery(options);
+    const url2 = queryString ? `/contacts/${identifier}/topics?${queryString}` : `/contacts/${identifier}/topics`;
+    return this.resend.get(url2);
+  }
+};
+var Contacts = class {
+  constructor(resend) {
+    this.resend = resend;
+    this.topics = new ContactTopics(this.resend);
+    this.segments = new ContactSegments(this.resend);
+  }
+  async create(payload, options = {}) {
+    if ("audienceId" in payload) {
+      if ("segments" in payload || "topics" in payload) return {
+        data: null,
+        headers: null,
+        error: {
+          message: "`audienceId` is deprecated, and cannot be used together with `segments` or `topics`. Use `segments` instead to add one or more segments to the new contact.",
+          statusCode: null,
+          name: "invalid_parameter"
+        }
+      };
+      return await this.resend.post(`/audiences/${payload.audienceId}/contacts`, {
+        unsubscribed: payload.unsubscribed,
+        email: payload.email,
+        first_name: payload.firstName,
+        last_name: payload.lastName,
+        properties: payload.properties
+      }, options);
+    }
+    return await this.resend.post("/contacts", {
+      unsubscribed: payload.unsubscribed,
+      email: payload.email,
+      first_name: payload.firstName,
+      last_name: payload.lastName,
+      properties: payload.properties,
+      segments: payload.segments,
+      topics: payload.topics
+    }, options);
+  }
+  async list(options = {}) {
+    const segmentId = options.segmentId ?? options.audienceId;
+    if (!segmentId) {
+      const queryString2 = buildPaginationQuery(options);
+      const url3 = queryString2 ? `/contacts?${queryString2}` : "/contacts";
+      return await this.resend.get(url3);
+    }
+    const queryString = buildPaginationQuery(options);
+    const url2 = queryString ? `/segments/${segmentId}/contacts?${queryString}` : `/segments/${segmentId}/contacts`;
+    return await this.resend.get(url2);
+  }
+  async get(options) {
+    if (typeof options === "string") return this.resend.get(`/contacts/${options}`);
+    if (!options.id && !options.email) return {
+      data: null,
+      headers: null,
+      error: {
+        message: "Missing `id` or `email` field.",
+        statusCode: null,
+        name: "missing_required_field"
+      }
+    };
+    if (!options.audienceId) return this.resend.get(`/contacts/${options?.email ? options?.email : options?.id}`);
+    return this.resend.get(`/audiences/${options.audienceId}/contacts/${options?.email ? options?.email : options?.id}`);
+  }
+  async update(options) {
+    if (!options.id && !options.email) return {
+      data: null,
+      headers: null,
+      error: {
+        message: "Missing `id` or `email` field.",
+        statusCode: null,
+        name: "missing_required_field"
+      }
+    };
+    if (!options.audienceId) return await this.resend.patch(`/contacts/${options?.email ? options?.email : options?.id}`, {
+      unsubscribed: options.unsubscribed,
+      first_name: options.firstName,
+      last_name: options.lastName,
+      properties: options.properties
+    });
+    return await this.resend.patch(`/audiences/${options.audienceId}/contacts/${options?.email ? options?.email : options?.id}`, {
+      unsubscribed: options.unsubscribed,
+      first_name: options.firstName,
+      last_name: options.lastName,
+      properties: options.properties
+    });
+  }
+  async remove(payload) {
+    if (typeof payload === "string") return this.resend.delete(`/contacts/${payload}`);
+    if (!payload.id && !payload.email) return {
+      data: null,
+      headers: null,
+      error: {
+        message: "Missing `id` or `email` field.",
+        statusCode: null,
+        name: "missing_required_field"
+      }
+    };
+    if (!payload.audienceId) return this.resend.delete(`/contacts/${payload?.email ? payload?.email : payload?.id}`);
+    return this.resend.delete(`/audiences/${payload.audienceId}/contacts/${payload?.email ? payload?.email : payload?.id}`);
+  }
+};
+function parseDomainToApiOptions(domain) {
+  return {
+    name: domain.name,
+    region: domain.region,
+    custom_return_path: domain.customReturnPath,
+    capabilities: domain.capabilities,
+    open_tracking: domain.openTracking,
+    click_tracking: domain.clickTracking,
+    tls: domain.tls,
+    tracking_subdomain: domain.trackingSubdomain
+  };
+}
+var Domains = class {
+  constructor(resend) {
+    this.resend = resend;
+  }
+  async create(payload, options = {}) {
+    return await this.resend.post("/domains", parseDomainToApiOptions(payload), options);
+  }
+  async list(options = {}) {
+    const queryString = buildPaginationQuery(options);
+    const url2 = queryString ? `/domains?${queryString}` : "/domains";
+    return await this.resend.get(url2);
+  }
+  async get(id) {
+    return await this.resend.get(`/domains/${id}`);
+  }
+  async update(payload) {
+    return await this.resend.patch(`/domains/${payload.id}`, {
+      click_tracking: payload.clickTracking,
+      open_tracking: payload.openTracking,
+      tls: payload.tls,
+      capabilities: payload.capabilities,
+      tracking_subdomain: payload.trackingSubdomain
+    });
+  }
+  async remove(id) {
+    return await this.resend.delete(`/domains/${id}`);
+  }
+  async verify(id) {
+    return await this.resend.post(`/domains/${id}/verify`);
+  }
+};
+var Attachments$1 = class {
+  constructor(resend) {
+    this.resend = resend;
+  }
+  async get(options) {
+    const { emailId, id } = options;
+    return await this.resend.get(`/emails/${emailId}/attachments/${id}`);
+  }
+  async list(options) {
+    const { emailId } = options;
+    const queryString = buildPaginationQuery(options);
+    const url2 = queryString ? `/emails/${emailId}/attachments?${queryString}` : `/emails/${emailId}/attachments`;
+    return await this.resend.get(url2);
+  }
+};
+var Attachments = class {
+  constructor(resend) {
+    this.resend = resend;
+  }
+  async get(options) {
+    const { emailId, id } = options;
+    return await this.resend.get(`/emails/receiving/${emailId}/attachments/${id}`);
+  }
+  async list(options) {
+    const { emailId } = options;
+    const queryString = buildPaginationQuery(options);
+    const url2 = queryString ? `/emails/receiving/${emailId}/attachments?${queryString}` : `/emails/receiving/${emailId}/attachments`;
+    return await this.resend.get(url2);
+  }
+};
+var Receiving = class {
+  constructor(resend) {
+    this.resend = resend;
+    this.attachments = new Attachments(resend);
+  }
+  async get(id) {
+    return await this.resend.get(`/emails/receiving/${id}`);
+  }
+  async list(options = {}) {
+    const queryString = buildPaginationQuery(options);
+    const url2 = queryString ? `/emails/receiving?${queryString}` : "/emails/receiving";
+    return await this.resend.get(url2);
+  }
+  async forward(options) {
+    const { emailId, to: to3, from } = options;
+    const passthrough = options.passthrough !== false;
+    const emailResponse = await this.get(emailId);
+    if (emailResponse.error) return {
+      data: null,
+      error: emailResponse.error,
+      headers: emailResponse.headers
+    };
+    const email = emailResponse.data;
+    const originalSubject = email.subject || "(no subject)";
+    if (passthrough) return this.forwardPassthrough(email, {
+      to: to3,
+      from,
+      subject: originalSubject
+    });
+    const forwardSubject = originalSubject.startsWith("Fwd:") ? originalSubject : `Fwd: ${originalSubject}`;
+    return this.forwardWrapped(email, {
+      to: to3,
+      from,
+      subject: forwardSubject,
+      text: "text" in options ? options.text : void 0,
+      html: "html" in options ? options.html : void 0
+    });
+  }
+  async forwardPassthrough(email, options) {
+    const { to: to3, from, subject } = options;
+    if (!email.raw?.download_url) return {
+      data: null,
+      error: {
+        name: "validation_error",
+        message: "Raw email content is not available for this email",
+        statusCode: 400
+      },
+      headers: null
+    };
+    const rawResponse = await fetch(email.raw.download_url);
+    if (!rawResponse.ok) return {
+      data: null,
+      error: {
+        name: "application_error",
+        message: "Failed to download raw email content",
+        statusCode: rawResponse.status
+      },
+      headers: null
+    };
+    const rawEmailContent = await rawResponse.text();
+    const parsed = await PostalMime.parse(rawEmailContent, { attachmentEncoding: "base64" });
+    const attachments = parsed.attachments.map((attachment) => {
+      const contentId = attachment.contentId ? attachment.contentId.replace(/^<|>$/g, "") : void 0;
+      return {
+        filename: attachment.filename,
+        content: attachment.content.toString(),
+        content_type: attachment.mimeType,
+        content_id: contentId || void 0
+      };
+    });
+    return await this.resend.post("/emails", {
+      from,
+      to: to3,
+      subject,
+      text: parsed.text || void 0,
+      html: parsed.html || void 0,
+      attachments: attachments.length > 0 ? attachments : void 0
+    });
+  }
+  async forwardWrapped(email, options) {
+    const { to: to3, from, subject, text: text2, html } = options;
+    if (!email.raw?.download_url) return {
+      data: null,
+      error: {
+        name: "validation_error",
+        message: "Raw email content is not available for this email",
+        statusCode: 400
+      },
+      headers: null
+    };
+    const rawResponse = await fetch(email.raw.download_url);
+    if (!rawResponse.ok) return {
+      data: null,
+      error: {
+        name: "application_error",
+        message: "Failed to download raw email content",
+        statusCode: rawResponse.status
+      },
+      headers: null
+    };
+    const rawEmailContent = await rawResponse.text();
+    return await this.resend.post("/emails", {
+      from,
+      to: to3,
+      subject,
+      text: text2,
+      html,
+      attachments: [{
+        filename: "forwarded_message.eml",
+        content: Buffer.from(rawEmailContent).toString("base64"),
+        content_type: "message/rfc822"
+      }]
+    });
+  }
+};
+var Emails = class {
+  constructor(resend) {
+    this.resend = resend;
+    this.attachments = new Attachments$1(resend);
+    this.receiving = new Receiving(resend);
+  }
+  async send(payload, options = {}) {
+    return this.create(payload, options);
+  }
+  async create(payload, options = {}) {
+    if (payload.react) payload.html = await render3(payload.react);
+    return await this.resend.post("/emails", parseEmailToApiOptions(payload), options);
+  }
+  async get(id) {
+    return await this.resend.get(`/emails/${id}`);
+  }
+  async list(options = {}) {
+    const queryString = buildPaginationQuery(options);
+    const url2 = queryString ? `/emails?${queryString}` : "/emails";
+    return await this.resend.get(url2);
+  }
+  async update(payload) {
+    return await this.resend.patch(`/emails/${payload.id}`, { scheduled_at: payload.scheduledAt });
+  }
+  async cancel(id) {
+    return await this.resend.post(`/emails/${id}/cancel`);
+  }
+};
+var Events = class {
+  constructor(resend) {
+    this.resend = resend;
+  }
+  async send(payload) {
+    return await this.resend.post("/events/send", parseEventToApiOptions(payload));
+  }
+  async create(payload) {
+    return await this.resend.post("/events", payload);
+  }
+  async get(identifier) {
+    return await this.resend.get(`/events/${encodeURIComponent(identifier)}`);
+  }
+  async list(options = {}) {
+    const queryString = buildPaginationQuery(options);
+    const url2 = queryString ? `/events?${queryString}` : "/events";
+    return await this.resend.get(url2);
+  }
+  async update(identifier, payload) {
+    return await this.resend.patch(`/events/${encodeURIComponent(identifier)}`, payload);
+  }
+  async remove(identifier) {
+    return await this.resend.delete(`/events/${encodeURIComponent(identifier)}`);
+  }
+};
+var Logs = class {
+  constructor(resend) {
+    this.resend = resend;
+  }
+  async list(options = {}) {
+    const queryString = buildPaginationQuery(options);
+    const url2 = queryString ? `/logs?${queryString}` : "/logs";
+    return await this.resend.get(url2);
+  }
+  async get(id) {
+    return await this.resend.get(`/logs/${id}`);
+  }
+};
+var Segments = class {
+  constructor(resend) {
+    this.resend = resend;
+  }
+  async create(payload, options = {}) {
+    return await this.resend.post("/segments", payload, options);
+  }
+  async list(options = {}) {
+    const queryString = buildPaginationQuery(options);
+    const url2 = queryString ? `/segments?${queryString}` : "/segments";
+    return await this.resend.get(url2);
+  }
+  async get(id) {
+    return await this.resend.get(`/segments/${id}`);
+  }
+  async remove(id) {
+    return await this.resend.delete(`/segments/${id}`);
+  }
+};
+function getPaginationQueryProperties(options = {}) {
+  const query = new URLSearchParams();
+  if (options.before) query.set("before", options.before);
+  if (options.after) query.set("after", options.after);
+  if (options.limit) query.set("limit", options.limit.toString());
+  return query.size > 0 ? `?${query.toString()}` : "";
+}
+function parseVariables(variables) {
+  return variables?.map((variable) => ({
+    key: variable.key,
+    type: variable.type,
+    fallback_value: variable.fallbackValue
+  }));
+}
+function parseTemplateToApiOptions(template) {
+  return {
+    name: "name" in template ? template.name : void 0,
+    subject: template.subject,
+    html: template.html,
+    text: template.text,
+    alias: template.alias,
+    from: template.from,
+    reply_to: template.replyTo,
+    variables: parseVariables(template.variables)
+  };
+}
+var ChainableTemplateResult = class {
+  constructor(promise, publishFn) {
+    this.promise = promise;
+    this.publishFn = publishFn;
+  }
+  then(onfulfilled, onrejected) {
+    return this.promise.then(onfulfilled, onrejected);
+  }
+  async publish() {
+    const { data, error } = await this.promise;
+    if (error) return {
+      data: null,
+      headers: null,
+      error
+    };
+    return this.publishFn(data.id);
+  }
+};
+var Templates = class {
+  constructor(resend) {
+    this.resend = resend;
+  }
+  create(payload) {
+    return new ChainableTemplateResult(this.performCreate(payload), this.publish.bind(this));
+  }
+  async performCreate(payload) {
+    if (payload.react) {
+      if (!this.renderAsync) try {
+        const { renderAsync: renderAsync2 } = await Promise.resolve().then(() => (init_node2(), node_exports));
+        this.renderAsync = renderAsync2;
+      } catch {
+        throw new Error("Failed to render React component. Make sure to install `@react-email/render`");
+      }
+      payload.html = await this.renderAsync(payload.react);
+    }
+    return this.resend.post("/templates", parseTemplateToApiOptions(payload));
+  }
+  async remove(identifier) {
+    return await this.resend.delete(`/templates/${identifier}`);
+  }
+  async get(identifier) {
+    return await this.resend.get(`/templates/${identifier}`);
+  }
+  async list(options = {}) {
+    return this.resend.get(`/templates${getPaginationQueryProperties(options)}`);
+  }
+  duplicate(identifier) {
+    return new ChainableTemplateResult(this.resend.post(`/templates/${identifier}/duplicate`), this.publish.bind(this));
+  }
+  async publish(identifier) {
+    return await this.resend.post(`/templates/${identifier}/publish`);
+  }
+  async update(identifier, payload) {
+    return await this.resend.patch(`/templates/${identifier}`, parseTemplateToApiOptions(payload));
+  }
+};
+var Topics = class {
+  constructor(resend) {
+    this.resend = resend;
+  }
+  async create(payload) {
+    const { defaultSubscription, ...body } = payload;
+    return await this.resend.post("/topics", {
+      ...body,
+      default_subscription: defaultSubscription
+    });
+  }
+  async list() {
+    return await this.resend.get("/topics");
+  }
+  async get(id) {
+    if (!id) return {
+      data: null,
+      headers: null,
+      error: {
+        message: "Missing `id` field.",
+        statusCode: null,
+        name: "missing_required_field"
+      }
+    };
+    return await this.resend.get(`/topics/${id}`);
+  }
+  async update(payload) {
+    if (!payload.id) return {
+      data: null,
+      headers: null,
+      error: {
+        message: "Missing `id` field.",
+        statusCode: null,
+        name: "missing_required_field"
+      }
+    };
+    return await this.resend.patch(`/topics/${payload.id}`, payload);
+  }
+  async remove(id) {
+    if (!id) return {
+      data: null,
+      headers: null,
+      error: {
+        message: "Missing `id` field.",
+        statusCode: null,
+        name: "missing_required_field"
+      }
+    };
+    return await this.resend.delete(`/topics/${id}`);
+  }
+};
+var Webhooks = class {
+  constructor(resend) {
+    this.resend = resend;
+  }
+  async create(payload, options = {}) {
+    return await this.resend.post("/webhooks", payload, options);
+  }
+  async get(id) {
+    return await this.resend.get(`/webhooks/${id}`);
+  }
+  async list(options = {}) {
+    const queryString = buildPaginationQuery(options);
+    const url2 = queryString ? `/webhooks?${queryString}` : "/webhooks";
+    return await this.resend.get(url2);
+  }
+  async update(id, payload) {
+    return await this.resend.patch(`/webhooks/${id}`, payload);
+  }
+  async remove(id) {
+    return await this.resend.delete(`/webhooks/${id}`);
+  }
+  verify(payload) {
+    return new import_svix.Webhook(payload.webhookSecret).verify(payload.payload, {
+      "svix-id": payload.headers.id,
+      "svix-timestamp": payload.headers.timestamp,
+      "svix-signature": payload.headers.signature
+    });
+  }
+};
+var defaultBaseUrl = "https://api.resend.com";
+var defaultUserAgent = `resend-node:${version3}`;
+var baseUrl = typeof process !== "undefined" && process.env ? process.env.RESEND_BASE_URL || defaultBaseUrl : defaultBaseUrl;
+var userAgent = typeof process !== "undefined" && process.env ? process.env.RESEND_USER_AGENT || defaultUserAgent : defaultUserAgent;
+var Resend = class {
+  constructor(key) {
+    this.key = key;
+    this.segments = new Segments(this);
+    this.apiKeys = new ApiKeys(this);
+    this.audiences = this.segments;
+    this.automations = new Automations(this);
+    this.batch = new Batch(this);
+    this.broadcasts = new Broadcasts(this);
+    this.contactProperties = new ContactProperties(this);
+    this.contacts = new Contacts(this);
+    this.domains = new Domains(this);
+    this.emails = new Emails(this);
+    this.events = new Events(this);
+    this.logs = new Logs(this);
+    this.templates = new Templates(this);
+    this.topics = new Topics(this);
+    this.webhooks = new Webhooks(this);
+    if (!key) {
+      if (typeof process !== "undefined" && process.env) this.key = process.env.RESEND_API_KEY;
+      if (!this.key) throw new Error('Missing API key. Pass it to the constructor `new Resend("re_123")`');
+    }
+    this.headers = new Headers({
+      Authorization: `Bearer ${this.key}`,
+      "User-Agent": userAgent,
+      "Content-Type": "application/json"
+    });
+  }
+  async fetchRequest(path6, options = {}) {
+    try {
+      const response = await fetch(`${baseUrl}${path6}`, options);
+      if (!response.ok) try {
+        const rawError = await response.text();
+        return {
+          data: null,
+          error: JSON.parse(rawError),
+          headers: Object.fromEntries(response.headers.entries())
+        };
+      } catch (err) {
+        if (err instanceof SyntaxError) return {
+          data: null,
+          error: {
+            name: "application_error",
+            statusCode: response.status,
+            message: "Internal server error. We are unable to process your request right now, please try again later."
+          },
+          headers: Object.fromEntries(response.headers.entries())
+        };
+        const error = {
+          message: response.statusText,
+          statusCode: response.status,
+          name: "application_error"
+        };
+        if (err instanceof Error) return {
+          data: null,
+          error: {
+            ...error,
+            message: err.message
+          },
+          headers: Object.fromEntries(response.headers.entries())
+        };
+        return {
+          data: null,
+          error,
+          headers: Object.fromEntries(response.headers.entries())
+        };
+      }
+      return {
+        data: await response.json(),
+        error: null,
+        headers: Object.fromEntries(response.headers.entries())
+      };
+    } catch {
+      return {
+        data: null,
+        error: {
+          name: "application_error",
+          statusCode: null,
+          message: "Unable to fetch data. The request could not be resolved."
+        },
+        headers: null
+      };
+    }
+  }
+  async post(path6, entity, options = {}) {
+    const headers = new Headers(this.headers);
+    if (options.headers) for (const [key, value] of new Headers(options.headers).entries()) headers.set(key, value);
+    if (options.idempotencyKey) headers.set("Idempotency-Key", options.idempotencyKey);
+    const requestOptions = {
+      method: "POST",
+      body: JSON.stringify(entity),
+      ...options,
+      headers
+    };
+    return this.fetchRequest(path6, requestOptions);
+  }
+  async get(path6, options = {}) {
+    const headers = new Headers(this.headers);
+    if (options.headers) for (const [key, value] of new Headers(options.headers).entries()) headers.set(key, value);
+    const requestOptions = {
+      method: "GET",
+      ...options,
+      headers
+    };
+    return this.fetchRequest(path6, requestOptions);
+  }
+  async put(path6, entity, options = {}) {
+    const headers = new Headers(this.headers);
+    if (options.headers) for (const [key, value] of new Headers(options.headers).entries()) headers.set(key, value);
+    const requestOptions = {
+      method: "PUT",
+      body: JSON.stringify(entity),
+      ...options,
+      headers
+    };
+    return this.fetchRequest(path6, requestOptions);
+  }
+  async patch(path6, entity, options = {}) {
+    const headers = new Headers(this.headers);
+    if (options.headers) for (const [key, value] of new Headers(options.headers).entries()) headers.set(key, value);
+    const requestOptions = {
+      method: "PATCH",
+      body: JSON.stringify(entity),
+      ...options,
+      headers
+    };
+    return this.fetchRequest(path6, requestOptions);
+  }
+  async delete(path6, query) {
+    const requestOptions = {
+      method: "DELETE",
+      body: JSON.stringify(query),
+      headers: this.headers
+    };
+    return this.fetchRequest(path6, requestOptions);
+  }
+};
+
+// src/lib/email-router/adapters/resend.ts
+var resendAdapter = {
+  slug: "resend",
+  name: "Resend",
+  async send(payload, config) {
+    if (!config.apiKey) throw new Error("Resend: apiKey manquante");
+    const client = new Resend(config.apiKey);
+    let response;
+    try {
+      response = await client.emails.send({
+        from: payload.from,
+        to: [payload.to],
+        subject: payload.subject,
+        html: payload.html,
+        text: payload.text
+      }, payload.idempotencyKey ? { idempotencyKey: payload.idempotencyKey } : void 0);
+    } catch (cause) {
+      throw new ProviderSendError("Resend: erreur r\xE9seau", {
+        kind: "ambiguous",
+        cause
+      });
+    }
+    const { data, error } = response;
+    if (error) {
+      const status = error.statusCode;
+      const code = error.name;
+      const temporaryCodes = /* @__PURE__ */ new Set([
+        "monthly_quota_exceeded",
+        "daily_quota_exceeded",
+        "rate_limit_exceeded",
+        "application_error",
+        "internal_server_error",
+        "concurrent_idempotent_requests",
+        "invalid_api_key",
+        "restricted_api_key"
+      ]);
+      const kind = status === 429 || status != null && status >= 500 || temporaryCodes.has(code ?? "") ? "temporary" : "definitive";
+      throw new ProviderSendError(`Resend${status ? ` HTTP ${status}` : ""}: ${error.message}`, {
+        kind,
+        status,
+        code
+      });
+    }
+    return { messageId: data?.id ?? "resend-unknown" };
+  },
+  async healthCheck(config) {
+    if (!config.apiKey) return { healthy: false, latencyMs: 0, detail: "apiKey manquante" };
+    const start2 = Date.now();
+    try {
+      const client = new Resend(config.apiKey);
+      await client.domains.list();
+      return { healthy: true, latencyMs: Date.now() - start2 };
+    } catch (err) {
+      return { healthy: false, latencyMs: Date.now() - start2, detail: String(err) };
+    }
+  }
+};
+
+// src/lib/email-router/adapters/ses.ts
+var import_crypto7 = require("crypto");
+function hmac(key, data) {
+  return (0, import_crypto7.createHmac)("sha256", key).update(data).digest();
+}
+function sha256hex(data) {
+  return (0, import_crypto7.createHash)("sha256").update(data).digest("hex");
+}
+function getSigningKey(secret, date2, region) {
+  const k1 = hmac("AWS4" + secret, date2);
+  const k22 = hmac(k1, region);
+  const k3 = hmac(k22, "ses");
+  return hmac(k3, "aws4_request");
+}
+async function sesRequest(region, accessKey, secretKey, body) {
+  const host = `email.${region}.amazonaws.com`;
+  const service = "ses";
+  const endpoint = `https://${host}/v2/email/outbound-emails`;
+  const now = /* @__PURE__ */ new Date();
+  const amzDate = now.toISOString().replace(/[:-]|\.\d{3}/g, "").slice(0, 15) + "Z";
+  const dateStamp = amzDate.slice(0, 8);
+  const payloadHash = sha256hex(body);
+  const signedHeaders = "content-type;host;x-amz-date";
+  const canonicalHeaders = `content-type:application/json
+host:${host}
+x-amz-date:${amzDate}
+`;
+  const canonicalRequest = [
+    "POST",
+    "/v2/email/outbound-emails",
+    "",
+    canonicalHeaders,
+    signedHeaders,
+    payloadHash
+  ].join("\n");
+  const credentialScope = `${dateStamp}/${region}/${service}/aws4_request`;
+  const stringToSign = [
+    "AWS4-HMAC-SHA256",
+    amzDate,
+    credentialScope,
+    sha256hex(canonicalRequest)
+  ].join("\n");
+  const signingKey = getSigningKey(secretKey, dateStamp, region);
+  const signature = hmac(signingKey, stringToSign).toString("hex");
+  const authorization = `AWS4-HMAC-SHA256 Credential=${accessKey}/${credentialScope}, SignedHeaders=${signedHeaders}, Signature=${signature}`;
+  return fetch(endpoint, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-amz-date": amzDate,
+      "Authorization": authorization
+    },
+    body
+  });
+}
+var sesAdapter = {
+  slug: "ses",
+  name: "Amazon SES",
+  async send(payload, config) {
+    if (!config.apiKey || !config.apiSecret) throw new Error("SES: Access Key ID et Secret Key requis");
+    const region = config.region ?? "us-east-1";
+    const body = JSON.stringify({
+      FromEmailAddress: payload.from,
+      Destination: { ToAddresses: [payload.to] },
+      Content: {
+        Simple: {
+          Subject: { Data: payload.subject, Charset: "UTF-8" },
+          Body: {
+            Html: { Data: payload.html, Charset: "UTF-8" },
+            ...payload.text ? { Text: { Data: payload.text, Charset: "UTF-8" } } : {}
+          }
+        }
+      }
+    });
+    const res = await sesRequest(region, config.apiKey, config.apiSecret, body);
+    const json2 = await res.json();
+    if (!res.ok) throw new Error(`SES HTTP ${res.status}: ${json2.message ?? res.statusText}`);
+    return { messageId: json2.MessageId ?? "ses-unknown" };
+  },
+  async healthCheck(config) {
+    if (!config.apiKey || !config.apiSecret) return { healthy: false, latencyMs: 0, detail: "credentials manquants" };
+    const region = config.region ?? "us-east-1";
+    const start2 = Date.now();
+    try {
+      const endpoint = `https://email.${region}.amazonaws.com/v2/email/account`;
+      const host = `email.${region}.amazonaws.com`;
+      const now = /* @__PURE__ */ new Date();
+      const amzDate = now.toISOString().replace(/[:-]|\.\d{3}/g, "").slice(0, 15) + "Z";
+      const dateStamp = amzDate.slice(0, 8);
+      const payloadHash = sha256hex("");
+      const signedHeaders = "host;x-amz-date";
+      const canonicalHeaders = `host:${host}
+x-amz-date:${amzDate}
+`;
+      const canonicalRequest = ["GET", "/v2/email/account", "", canonicalHeaders, signedHeaders, payloadHash].join("\n");
+      const credScope = `${dateStamp}/${region}/ses/aws4_request`;
+      const stringToSign = ["AWS4-HMAC-SHA256", amzDate, credScope, sha256hex(canonicalRequest)].join("\n");
+      const sigKey = getSigningKey(config.apiSecret, dateStamp, region);
+      const sig = hmac(sigKey, stringToSign).toString("hex");
+      const auth = `AWS4-HMAC-SHA256 Credential=${config.apiKey}/${credScope}, SignedHeaders=${signedHeaders}, Signature=${sig}`;
+      const res = await fetch(endpoint, { headers: { "x-amz-date": amzDate, Authorization: auth } });
+      return { healthy: res.ok || res.status === 403, latencyMs: Date.now() - start2 };
+    } catch (err) {
+      return { healthy: false, latencyMs: Date.now() - start2, detail: String(err) };
+    }
+  }
+};
+
+// src/lib/email-router/adapters/postmark.ts
+var BASE = "https://api.postmarkapp.com";
+var postmarkAdapter = {
+  slug: "postmark",
+  name: "Postmark",
+  async send(payload, config) {
+    if (!config.apiKey) throw new Error("Postmark: apiKey manquante");
+    const res = await fetch(`${BASE}/email`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+        "X-Postmark-Server-Token": config.apiKey
+      },
+      body: JSON.stringify({
+        From: payload.from,
+        To: payload.to,
+        Subject: payload.subject,
+        HtmlBody: payload.html,
+        TextBody: payload.text,
+        MessageStream: "outbound"
+      })
+    });
+    const body = await res.json();
+    if (!res.ok || body.ErrorCode) throw new Error(`Postmark HTTP ${res.status}: ${body.Message ?? res.statusText}`);
+    return { messageId: body.MessageID ?? "postmark-unknown" };
+  },
+  async healthCheck(config) {
+    if (!config.apiKey) return { healthy: false, latencyMs: 0, detail: "apiKey manquante" };
+    const start2 = Date.now();
+    try {
+      const res = await fetch(`${BASE}/server`, {
+        headers: { "X-Postmark-Account-Token": config.apiKey, "Accept": "application/json" }
+      });
+      return { healthy: res.ok, latencyMs: Date.now() - start2, detail: res.ok ? void 0 : String(res.status) };
+    } catch (err) {
+      return { healthy: false, latencyMs: Date.now() - start2, detail: String(err) };
+    }
+  }
+};
+
+// src/lib/email-router/adapters/mailgun.ts
+var mailgunAdapter = {
+  slug: "mailgun",
+  name: "Mailgun",
+  async send(payload, config) {
+    if (!config.apiKey) throw new Error("Mailgun: apiKey manquante");
+    if (!config.domain) throw new Error("Mailgun: domain manquant");
+    const region = config.region === "eu" ? "api.eu.mailgun.net" : "api.mailgun.net";
+    const url2 = `https://${region}/v3/${config.domain}/messages`;
+    const form = new URLSearchParams({
+      from: payload.from,
+      to: payload.to,
+      subject: payload.subject,
+      html: payload.html,
+      ...payload.text ? { text: payload.text } : {}
+    });
+    const res = await fetch(url2, {
+      method: "POST",
+      headers: {
+        Authorization: "Basic " + Buffer.from(`api:${config.apiKey}`).toString("base64"),
+        "Content-Type": "application/x-www-form-urlencoded"
+      },
+      body: form
+    });
+    const body = await res.json();
+    if (!res.ok) throw new Error(`Mailgun HTTP ${res.status}: ${body.message ?? res.statusText}`);
+    return { messageId: body.id ?? "mailgun-unknown" };
+  },
+  async healthCheck(config) {
+    if (!config.apiKey || !config.domain) return { healthy: false, latencyMs: 0, detail: "apiKey/domain manquant" };
+    const start2 = Date.now();
+    const region = config.region === "eu" ? "api.eu.mailgun.net" : "api.mailgun.net";
+    try {
+      const res = await fetch(`https://${region}/v3/domains/${config.domain}`, {
+        headers: { Authorization: "Basic " + Buffer.from(`api:${config.apiKey}`).toString("base64") }
+      });
+      return { healthy: res.ok, latencyMs: Date.now() - start2, detail: res.ok ? void 0 : String(res.status) };
+    } catch (err) {
+      return { healthy: false, latencyMs: Date.now() - start2, detail: String(err) };
+    }
+  }
+};
+
+// src/lib/email-router/adapters/sendgrid.ts
+var BASE2 = "https://api.sendgrid.com/v3";
+var sendgridAdapter = {
+  slug: "sendgrid",
+  name: "SendGrid",
+  async send(payload, config) {
+    if (!config.apiKey) throw new Error("SendGrid: apiKey manquante");
+    const res = await fetch(`${BASE2}/mail/send`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${config.apiKey}`
+      },
+      body: JSON.stringify({
+        personalizations: [{ to: [{ email: payload.to }] }],
+        from: { email: payload.from },
+        subject: payload.subject,
+        content: [
+          { type: "text/html", value: payload.html },
+          ...payload.text ? [{ type: "text/plain", value: payload.text }] : []
+        ]
+      })
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(`SendGrid HTTP ${res.status}: ${body.errors?.[0]?.message ?? res.statusText}`);
+    }
+    const msgId = res.headers.get("X-Message-Id") ?? "sendgrid-unknown";
+    return { messageId: msgId };
+  },
+  async healthCheck(config) {
+    if (!config.apiKey) return { healthy: false, latencyMs: 0, detail: "apiKey manquante" };
+    const start2 = Date.now();
+    try {
+      const res = await fetch(`${BASE2}/user/profile`, {
+        headers: { Authorization: `Bearer ${config.apiKey}` }
+      });
+      return { healthy: res.ok, latencyMs: Date.now() - start2, detail: res.ok ? void 0 : String(res.status) };
+    } catch (err) {
+      return { healthy: false, latencyMs: Date.now() - start2, detail: String(err) };
+    }
+  }
+};
+
+// src/lib/email-router/adapters/brevo.ts
+var BASE3 = "https://api.brevo.com/v3";
+function parseSender(from) {
+  const value = from?.trim() ?? "";
+  const named = value.match(/^(.*?)\s*<([^<>]+)>$/);
+  if (named) {
+    const name3 = named[1].trim();
+    return name3 ? { email: named[2].trim(), name: name3 } : { email: named[2].trim() };
+  }
+  return { email: value };
+}
+var brevoAdapter = {
+  slug: "brevo",
+  name: "Brevo (Sendinblue)",
+  async send(payload, config) {
+    if (!config.apiKey) throw new Error("Brevo: apiKey manquante");
+    const sender = parseSender(payload.from);
+    if (!sender.email) throw new Error("Brevo: adresse exp\xE9diteur manquante");
+    let res;
+    try {
+      res = await fetch(`${BASE3}/smtp/email`, {
+        method: "POST",
+        headers: {
+          "accept": "application/json",
+          "content-type": "application/json",
+          "api-key": config.apiKey,
+          ...payload.idempotencyKey ? { "Idempotency-Key": payload.idempotencyKey } : {}
+        },
+        body: JSON.stringify({
+          sender,
+          to: [{ email: payload.to }],
+          subject: payload.subject,
+          htmlContent: payload.html,
+          textContent: payload.text
+        })
+      });
+    } catch (error) {
+      const code = error.cause?.code ?? error.code;
+      const definitelyNotSent = (/* @__PURE__ */ new Set([
+        "ENOTFOUND",
+        "EAI_AGAIN",
+        "ECONNREFUSED",
+        "UND_ERR_CONNECT_TIMEOUT"
+      ])).has(code ?? "");
+      throw new ProviderSendError("Brevo: erreur r\xE9seau", {
+        kind: definitelyNotSent ? "temporary" : "ambiguous",
+        code,
+        cause: error
+      });
+    }
+    const responseText = await res.text();
+    let body = {};
+    try {
+      body = JSON.parse(responseText);
+    } catch {
+    }
+    if (!res.ok) {
+      const detail = body.message ?? (responseText.slice(0, 300) || res.statusText);
+      const kind = res.status === 429 || res.status >= 500 || res.status === 401 || res.status === 403 ? "temporary" : "definitive";
+      throw new ProviderSendError(`Brevo HTTP ${res.status}: ${detail}`, {
+        kind,
+        status: res.status
+      });
+    }
+    return { messageId: body.messageId ?? "brevo-unknown" };
+  },
+  async healthCheck(config) {
+    if (!config.apiKey) return { healthy: false, latencyMs: 0, detail: "apiKey manquante" };
+    const start2 = Date.now();
+    try {
+      const res = await fetch(`${BASE3}/account`, {
+        headers: { "api-key": config.apiKey }
+      });
+      return { healthy: res.ok, latencyMs: Date.now() - start2, detail: res.ok ? void 0 : String(res.status) };
+    } catch (err) {
+      return { healthy: false, latencyMs: Date.now() - start2, detail: String(err) };
+    }
+  }
+};
+
+// src/lib/email-router/adapters/mailjet.ts
+var BASE4 = "https://api.mailjet.com/v3.1";
+var mailjetAdapter = {
+  slug: "mailjet",
+  name: "Mailjet",
+  async send(payload, config) {
+    if (!config.apiKey || !config.apiSecret) throw new Error("Mailjet: apiKey et apiSecret requis");
+    const auth = Buffer.from(`${config.apiKey}:${config.apiSecret}`).toString("base64");
+    const res = await fetch(`${BASE4}/send`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Basic ${auth}` },
+      body: JSON.stringify({
+        Messages: [{
+          From: { Email: payload.from },
+          To: [{ Email: payload.to }],
+          Subject: payload.subject,
+          HTMLPart: payload.html,
+          TextPart: payload.text
+        }]
+      })
+    });
+    const body = await res.json();
+    if (!res.ok || body.Messages?.[0]?.Status !== "success") {
+      throw new Error(`Mailjet HTTP ${res.status}: ${body.ErrorMessage ?? res.statusText}`);
+    }
+    return { messageId: String(body.Messages?.[0]?.To?.[0]?.MessageID ?? "mailjet-unknown") };
+  },
+  async healthCheck(config) {
+    if (!config.apiKey || !config.apiSecret) return { healthy: false, latencyMs: 0, detail: "apiKey/apiSecret manquant" };
+    const start2 = Date.now();
+    const auth = Buffer.from(`${config.apiKey}:${config.apiSecret}`).toString("base64");
+    try {
+      const res = await fetch("https://api.mailjet.com/v3/REST/apikey", {
+        headers: { Authorization: `Basic ${auth}` }
+      });
+      return { healthy: res.ok, latencyMs: Date.now() - start2, detail: res.ok ? void 0 : String(res.status) };
+    } catch (err) {
+      return { healthy: false, latencyMs: Date.now() - start2, detail: String(err) };
+    }
+  }
+};
+
+// src/lib/email-router/adapters/sparkpost.ts
+var BASE5 = "https://api.sparkpost.com/api/v1";
+var sparkpostAdapter = {
+  slug: "sparkpost",
+  name: "SparkPost",
+  async send(payload, config) {
+    if (!config.apiKey) throw new Error("SparkPost: apiKey manquante");
+    const res = await fetch(`${BASE5}/transmissions`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: config.apiKey },
+      body: JSON.stringify({
+        recipients: [{ address: { email: payload.to } }],
+        content: {
+          from: payload.from,
+          subject: payload.subject,
+          html: payload.html,
+          text: payload.text
+        }
+      })
+    });
+    const body = await res.json();
+    if (!res.ok) throw new Error(`SparkPost HTTP ${res.status}: ${body.errors?.[0]?.message ?? res.statusText}`);
+    return { messageId: body.results?.id ?? "sparkpost-unknown" };
+  },
+  async healthCheck(config) {
+    if (!config.apiKey) return { healthy: false, latencyMs: 0, detail: "apiKey manquante" };
+    const start2 = Date.now();
+    try {
+      const res = await fetch(`${BASE5}/account`, {
+        headers: { Authorization: config.apiKey }
+      });
+      return { healthy: res.ok, latencyMs: Date.now() - start2, detail: res.ok ? void 0 : String(res.status) };
+    } catch (err) {
+      return { healthy: false, latencyMs: Date.now() - start2, detail: String(err) };
+    }
+  }
+};
+
+// src/lib/email-router/adapters/zeptomail.ts
+var BASE6 = "https://api.zeptomail.com/v1.1";
+var zeptomailAdapter = {
+  slug: "zeptomail",
+  name: "ZeptoMail",
+  async send(payload, config) {
+    if (!config.apiKey) throw new Error("ZeptoMail: apiKey manquante");
+    const res = await fetch(`${BASE6}/email`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Zoho-enczapikey ${config.apiKey}`
+      },
+      body: JSON.stringify({
+        from: { address: payload.from },
+        to: [{ email_address: { address: payload.to } }],
+        subject: payload.subject,
+        htmlbody: payload.html,
+        textbody: payload.text
+      })
+    });
+    const body = await res.json();
+    if (!res.ok) throw new Error(`ZeptoMail HTTP ${res.status}: ${body.message ?? res.statusText}`);
+    return { messageId: body.data?.[0]?.message_id ?? "zeptomail-unknown" };
+  },
+  async healthCheck(config) {
+    if (!config.apiKey) return { healthy: false, latencyMs: 0, detail: "apiKey manquante" };
+    const start2 = Date.now();
+    try {
+      const res = await fetch(`${BASE6}/email`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Zoho-enczapikey ${config.apiKey}` },
+        body: JSON.stringify({})
+      });
+      const healthy = res.status !== 401;
+      return { healthy, latencyMs: Date.now() - start2, detail: healthy ? void 0 : "Cl\xE9 API invalide" };
+    } catch (err) {
+      return { healthy: false, latencyMs: Date.now() - start2, detail: String(err) };
+    }
+  }
+};
+
+// src/lib/email-router/adapters/elasticemail.ts
+var BASE7 = "https://api.elasticemail.com/v4";
+var elasticemailAdapter = {
+  slug: "elasticemail",
+  name: "Elastic Email",
+  async send(payload, config) {
+    if (!config.apiKey) throw new Error("Elastic Email: apiKey manquante");
+    const res = await fetch(`${BASE7}/emails/transactional`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-ElasticEmail-ApiKey": config.apiKey
+      },
+      body: JSON.stringify({
+        Recipients: { To: [payload.to] },
+        Content: {
+          From: payload.from,
+          Subject: payload.subject,
+          Body: [
+            { ContentType: "HTML", Content: payload.html },
+            ...payload.text ? [{ ContentType: "PlainText", Content: payload.text }] : []
+          ]
+        }
+      })
+    });
+    const body = await res.json();
+    if (!res.ok) throw new Error(`Elastic Email HTTP ${res.status}: ${body.Error ?? res.statusText}`);
+    return { messageId: body.TransactionID ?? "elasticemail-unknown" };
+  },
+  async healthCheck(config) {
+    if (!config.apiKey) return { healthy: false, latencyMs: 0, detail: "apiKey manquante" };
+    const start2 = Date.now();
+    try {
+      const res = await fetch(`${BASE7}/accounts`, {
+        headers: { "X-ElasticEmail-ApiKey": config.apiKey }
+      });
+      return { healthy: res.ok, latencyMs: Date.now() - start2, detail: res.ok ? void 0 : String(res.status) };
+    } catch (err) {
+      return { healthy: false, latencyMs: Date.now() - start2, detail: String(err) };
+    }
+  }
+};
+
 // src/lib/email-router/manager.ts
-init_resend();
-init_ses();
-init_postmark();
-init_mailgun();
-init_sendgrid();
-init_brevo();
-init_mailjet();
-init_sparkpost();
-init_zeptomail();
-init_elasticemail();
 var ADAPTERS = {
   resend: resendAdapter,
   ses: sesAdapter,
@@ -155337,6 +155223,27 @@ var ADAPTERS = {
   elasticemail: elasticemailAdapter
 };
 var QUOTA_RETRY_DELAY_MS = 15 * 6e4;
+var PROVIDER_ROLE_ORDER = { brevo: 1, resend: 2 };
+function getProviderSender(slug) {
+  if (slug === "brevo") {
+    return {
+      email: process.env["BREVO_SENDER_EMAIL"]?.trim() || null,
+      name: process.env["BREVO_SENDER_NAME"]?.trim() || null
+    };
+  }
+  if (slug === "resend") {
+    return {
+      email: process.env["RESEND_SENDER_EMAIL"]?.trim() || null,
+      name: process.env["RESEND_SENDER_NAME"]?.trim() || null
+    };
+  }
+  return { email: null, name: null };
+}
+function payloadForProvider(payload, provider) {
+  if (!provider.senderEmail) return payload;
+  const from = provider.senderName ? `${provider.senderName.replace(/[<>]/g, "").trim()} <${provider.senderEmail}>` : provider.senderEmail;
+  return { ...payload, from };
+}
 function isQuotaOrRateLimitError(error) {
   const message = (error instanceof Error ? error.message : String(error)).toLowerCase();
   return [
@@ -155417,20 +155324,27 @@ var EmailProviderManager = class {
   async loadProviders() {
     if (Date.now() - this.cacheTs < this.CACHE_TTL) return this.cache;
     const rows = await db.select().from(emailProvidersTable).where(eq(emailProvidersTable.active, true)).orderBy(asc(emailProvidersTable.priority));
-    this.cache = rows.map((r3) => ({
-      id: r3.id,
-      name: r3.name,
-      slug: r3.slug,
-      priority: r3.priority,
-      active: r3.active,
-      apiKey: r3.apiKeyEnc ? decrypt(r3.apiKeyEnc) : null,
-      apiSecret: r3.apiSecretEnc ? decrypt(r3.apiSecretEnc) : null,
-      domain: r3.domain,
-      region: r3.region,
-      config: r3.config,
-      healthStatus: r3.healthStatus,
-      consecutiveErrors: r3.consecutiveErrors
-    }));
+    this.cache = rows.map((r3) => {
+      const sender = getProviderSender(r3.slug);
+      return {
+        id: r3.id,
+        name: r3.name,
+        slug: r3.slug,
+        priority: r3.priority,
+        active: r3.active,
+        apiKey: r3.apiKeyEnc ? decrypt(r3.apiKeyEnc) : null,
+        apiSecret: r3.apiSecretEnc ? decrypt(r3.apiSecretEnc) : null,
+        domain: r3.domain,
+        region: r3.region,
+        config: r3.config,
+        senderEmail: sender.email,
+        senderName: sender.name,
+        healthStatus: r3.healthStatus,
+        consecutiveErrors: r3.consecutiveErrors
+      };
+    }).sort(
+      (a, b3) => (PROVIDER_ROLE_ORDER[a.slug] ?? 100) - (PROVIDER_ROLE_ORDER[b3.slug] ?? 100) || a.priority - b3.priority
+    );
     this.cacheTs = Date.now();
     if (this.cache.length === 0 && !this.seeding) {
       await this.seedResendFromSettings();
@@ -155453,7 +155367,7 @@ var EmailProviderManager = class {
       await db.insert(emailProvidersTable).values({
         name: "Resend",
         slug: "resend",
-        priority: 1,
+        priority: 2,
         active: true,
         apiKeyEnc: encrypt(apiKey)
       });
@@ -155471,18 +155385,41 @@ var EmailProviderManager = class {
     return (0, import_crypto8.createHash)("sha256").update(`${payload.to}|${payload.subject}|${ts2}`).digest("hex").slice(0, 32);
   }
   // ── Envoi principal avec failover ─────────────────────────────
-  async send(payload) {
+  async send(payload, options = {}) {
     const idempotencyKey = payload.idempotencyKey ?? this.makeIdempotencyKey(payload);
     const existing = await db.select().from(emailQueueTable).where(eq(emailQueueTable.idempotencyKey, idempotencyKey)).limit(1);
     if (existing[0]?.status === "sent") {
       await updateCampaignRecipient(payload, "sent");
       return { success: true, cached: true, queueId: existing[0].id, provider: existing[0].providerId ?? void 0 };
     }
+    if (existing[0] && ["failed", "cancelled"].includes(existing[0].status)) {
+      return {
+        success: false,
+        cached: true,
+        queueId: existing[0].id,
+        error: existing[0].error ?? "Cet envoi a d\xE9j\xE0 \xE9chou\xE9 d\xE9finitivement"
+      };
+    }
     let queueId;
     if (existing[0]) {
       queueId = existing[0].id;
+      if (!options.alreadyClaimed) {
+        const claimed = await db.update(emailQueueTable).set({ status: "processing" }).where(and(
+          eq(emailQueueTable.id, queueId),
+          eq(emailQueueTable.status, "pending")
+        )).returning({ id: emailQueueTable.id });
+        if (claimed.length === 0) {
+          return {
+            success: false,
+            cached: true,
+            queued: true,
+            queueId,
+            error: "Email d\xE9j\xE0 en cours de traitement"
+          };
+        }
+      }
     } else {
-      const [row] = await db.insert(emailQueueTable).values({
+      const inserted = await db.insert(emailQueueTable).values({
         idempotencyKey,
         toEmail: payload.to,
         fromEmail: payload.from ?? "",
@@ -155490,15 +155427,30 @@ var EmailProviderManager = class {
         html: payload.html,
         textContent: payload.text,
         metadata: payload.metadata,
-        status: "pending",
+        status: "processing",
         maxAttempts: 5,
         retryable: false
-      }).returning({ id: emailQueueTable.id });
-      queueId = row.id;
+      }).onConflictDoNothing({ target: emailQueueTable.idempotencyKey }).returning({ id: emailQueueTable.id });
+      if (inserted.length === 0) {
+        const [concurrent] = await db.select().from(emailQueueTable).where(eq(emailQueueTable.idempotencyKey, idempotencyKey)).limit(1);
+        return {
+          success: concurrent?.status === "sent",
+          cached: true,
+          queued: concurrent?.status !== "sent",
+          queueId: concurrent?.id,
+          error: concurrent?.status === "sent" ? void 0 : "Email d\xE9j\xE0 pris en charge"
+        };
+      }
+      queueId = inserted[0].id;
     }
-    const providers = await this.loadProviders();
+    const activeProviders = await this.loadProviders();
+    const ambiguousProviderId = existing[0]?.providerId ?? null;
+    const providers = ambiguousProviderId ? activeProviders.filter((provider) => provider.id === ambiguousProviderId) : activeProviders;
     if (providers.length === 0) {
-      logger.warn("[email-router] Aucun fournisseur actif configur\xE9");
+      logger.warn(
+        { ambiguousProviderId: ambiguousProviderId ?? void 0 },
+        ambiguousProviderId ? "[email-router] Fournisseur du r\xE9sultat ambigu indisponible \u2014 aucun fallback crois\xE9" : "[email-router] Aucun fournisseur actif configur\xE9"
+      );
       const retryable2 = canWaitIndefinitelyForQuota(payload);
       const attempts2 = (existing[0]?.attempts ?? 0) + 1;
       const remainsPending2 = retryable2 || attempts2 < 5;
@@ -155518,6 +155470,12 @@ var EmailProviderManager = class {
       };
     }
     let quotaOrRateLimitDetected = false;
+    let temporaryFailureDetected = false;
+    let ambiguousFailureDetected = false;
+    let ambiguousFailureProviderId = null;
+    let definitiveFailureDetected = false;
+    let lastError = "";
+    let attemptedProviders = 0;
     for (const provider of providers) {
       const hasBetterAlternative = providers.some(
         (p) => p.id !== provider.id && p.healthStatus !== "down"
@@ -155527,8 +155485,10 @@ var EmailProviderManager = class {
       if (!adapter) continue;
       const start2 = Date.now();
       try {
+        attemptedProviders += 1;
+        const providerPayload = payloadForProvider({ ...payload, idempotencyKey }, provider);
         const result = await Promise.race([
-          adapter.send(payload, {
+          adapter.send(providerPayload, {
             apiKey: provider.apiKey ?? void 0,
             apiSecret: provider.apiSecret ?? void 0,
             domain: provider.domain ?? void 0,
@@ -155536,7 +155496,10 @@ var EmailProviderManager = class {
             config: provider.config ?? void 0
           }),
           new Promise(
-            (_3, reject) => setTimeout(() => reject(new Error("Timeout")), SEND_TIMEOUT_MS)
+            (_3, reject) => setTimeout(() => reject(new ProviderSendError(
+              `${provider.name}: d\xE9lai de r\xE9ponse d\xE9pass\xE9`,
+              { kind: "ambiguous", code: "RESPONSE_TIMEOUT" }
+            )), SEND_TIMEOUT_MS)
           )
         ]);
         const latencyMs = Date.now() - start2;
@@ -155573,9 +155536,18 @@ var EmailProviderManager = class {
       } catch (err) {
         const latencyMs = Date.now() - start2;
         const errMsg = err instanceof Error ? err.message : String(err);
+        lastError = errMsg;
+        const failureKind = err instanceof ProviderSendError ? err.kind : "ambiguous";
         const quotaOrRateLimit = isQuotaOrRateLimitError(err);
         quotaOrRateLimitDetected ||= quotaOrRateLimit;
-        logger.warn({ provider: provider.slug, to: payload.to, err: errMsg, latencyMs }, "[email-router] Fournisseur \xE9chou\xE9 \u2014 tentative suivante");
+        temporaryFailureDetected ||= failureKind === "temporary";
+        ambiguousFailureDetected ||= failureKind === "ambiguous";
+        if (failureKind === "ambiguous") ambiguousFailureProviderId = provider.id;
+        definitiveFailureDetected ||= failureKind === "definitive";
+        logger.warn(
+          { provider: provider.slug, to: payload.to, err: errMsg, latencyMs, failureKind },
+          failureKind === "temporary" ? "[email-router] \xC9chec temporaire \u2014 tentative du fournisseur de secours" : "[email-router] \xC9chec sans fallback automatique"
+        );
         const newConsec = quotaOrRateLimit ? provider.consecutiveErrors : provider.consecutiveErrors + 1;
         const newHealth = quotaOrRateLimit ? provider.healthStatus : newConsec >= CONSECUTIVE_ERROR_THRESHOLD ? "down" : newConsec >= CONSECUTIVE_ERROR_DEGRADED ? "degraded" : provider.healthStatus;
         await Promise.all([
@@ -155595,14 +155567,16 @@ var EmailProviderManager = class {
           }).where(eq(emailProvidersTable.id, provider.id))
         ]);
         this.invalidateCache();
+        if (failureKind !== "temporary") break;
       }
     }
-    const attempts = (existing[0]?.attempts ?? 0) + providers.length;
+    const attempts = (existing[0]?.attempts ?? 0) + attemptedProviders;
     const retryable = quotaOrRateLimitDetected && canWaitIndefinitelyForQuota(payload);
-    const remainsPending = retryable || attempts < 5;
-    const queueError = quotaOrRateLimitDetected ? retryable ? "Quota ou limite d'envoi atteint \u2014 nouvelle tentative automatique programm\xE9e" : "Quota ou limite d'envoi atteint pour un email \xE0 dur\xE9e de validit\xE9 limit\xE9e" : "Tous les fournisseurs ont \xE9chou\xE9";
+    const remainsPending = !definitiveFailureDetected && (retryable || attempts < 5);
+    const queueError = ambiguousFailureDetected ? "R\xE9sultat fournisseur incertain \u2014 nouvelle tentative idempotente programm\xE9e sans fallback imm\xE9diat" : definitiveFailureDetected ? lastError || "Email refus\xE9 d\xE9finitivement" : quotaOrRateLimitDetected ? retryable ? "Quota ou limite d'envoi atteint \u2014 nouvelle tentative automatique programm\xE9e" : "Quota ou limite d'envoi atteint pour un email \xE0 dur\xE9e de validit\xE9 limit\xE9e" : temporaryFailureDetected ? "Tous les fournisseurs disponibles ont \xE9chou\xE9 temporairement" : "Tous les fournisseurs ont \xE9chou\xE9";
     await db.update(emailQueueTable).set({
       status: remainsPending ? "pending" : "failed",
+      providerId: ambiguousFailureProviderId ?? ambiguousProviderId,
       attempts,
       retryable,
       error: queueError,
@@ -155618,6 +155592,36 @@ var EmailProviderManager = class {
       error: remainsPending ? "Email conserv\xE9 en file d'attente pour une nouvelle tentative automatique" : queueError,
       queueId
     };
+  }
+  async testProvider(providerId, payload) {
+    const [row] = await db.select().from(emailProvidersTable).where(eq(emailProvidersTable.id, providerId)).limit(1);
+    if (!row) throw new Error("Fournisseur introuvable");
+    const adapter = ADAPTERS[row.slug];
+    if (!adapter) throw new Error(`Adaptateur "${row.slug}" introuvable`);
+    const sender = getProviderSender(row.slug);
+    const resolved = {
+      id: row.id,
+      name: row.name,
+      slug: row.slug,
+      priority: row.priority,
+      active: row.active,
+      apiKey: row.apiKeyEnc ? decrypt(row.apiKeyEnc) : null,
+      apiSecret: row.apiSecretEnc ? decrypt(row.apiSecretEnc) : null,
+      domain: row.domain,
+      region: row.region,
+      config: row.config,
+      senderEmail: sender.email,
+      senderName: sender.name,
+      healthStatus: row.healthStatus,
+      consecutiveErrors: row.consecutiveErrors
+    };
+    return adapter.send(payloadForProvider(payload, resolved), {
+      apiKey: resolved.apiKey ?? void 0,
+      apiSecret: resolved.apiSecret ?? void 0,
+      domain: resolved.domain ?? void 0,
+      region: resolved.region ?? void 0,
+      config: resolved.config ?? void 0
+    });
   }
   // ── Worker de retry (toutes les 2 min) ───────────────────────
   async processRetryQueue() {
@@ -155652,7 +155656,7 @@ var EmailProviderManager = class {
             text: item.textContent ?? void 0,
             idempotencyKey: item.idempotencyKey,
             metadata: item.metadata
-          });
+          }, { alreadyClaimed: true });
         } catch (err) {
           logger.warn({ err, id: item.id }, "[email-router] Retry interrompu \u2014 remise en attente");
           await db.update(emailQueueTable).set({
@@ -155751,8 +155755,30 @@ function getEmailManager() {
   return _manager;
 }
 
-// src/lib/email-router/index.ts
-init_crypto();
+// src/lib/email-service.ts
+var emailService = {
+  send(payload) {
+    return getEmailManager().send(payload);
+  },
+  testProvider(providerId, payload) {
+    return getEmailManager().testProvider(providerId, payload);
+  },
+  invalidateCache() {
+    getEmailManager().invalidateCache();
+  },
+  runHealthChecks() {
+    return getEmailManager().runHealthChecks();
+  },
+  processRetryQueue() {
+    return getEmailManager().processRetryQueue();
+  },
+  startBackgroundWorkers() {
+    getEmailManager().startBackgroundWorkers();
+  },
+  getStats() {
+    return getEmailManager().getStats();
+  }
+};
 
 // src/lib/email-from.ts
 init_src();
@@ -156013,8 +156039,7 @@ function getDepositConfirmationHtml(data) {
 }
 async function sendDepositConfirmationEmail(data) {
   const from = await getFromEmail();
-  const manager = getEmailManager();
-  const result = await manager.send({
+  const result = await emailService.send({
     to: data.userEmail,
     from,
     subject: `\u2705 Rechargement de ${data.amount.toLocaleString("fr-FR")} FCFA confirm\xE9 \u2014 Simix`,
@@ -156026,10 +156051,9 @@ async function sendDepositConfirmationEmail(data) {
     logger.warn({ err: result.error, to: data.userEmail }, "[email] D\xE9p\xF4t confirmation en file d'attente");
   }
 }
-async function sendPasswordResetEmail(to3, code, fullName) {
+async function sendPasswordResetEmail(to3, code, fullName, issuanceId) {
   const from = await getFromEmail();
-  const manager = getEmailManager();
-  const result = await manager.send({
+  const result = await emailService.send({
     to: to3,
     from,
     subject: "R\xE9initialisation de votre mot de passe Simix",
@@ -156043,17 +156067,17 @@ async function sendPasswordResetEmail(to3, code, fullName) {
       firstName: fullName.split(" ")[0] ?? fullName,
       footerText: "Si vous n'\xEAtes pas \xE0 l'origine de cette demande, ignorez cet email. Votre mot de passe actuel reste inchang\xE9."
     }),
+    idempotencyKey: `password-reset-${issuanceId}`,
     metadata: { type: "password_reset" }
   });
   if (!result.success && !result.cached) {
     throw new Error(`\xC9chec envoi email reset: ${result.error}`);
   }
 }
-async function sendOtpEmail(to3, code, purpose, fullName = "Utilisateur") {
+async function sendOtpEmail(to3, code, purpose, fullName, issuanceId) {
   const from = await getFromEmail();
   const subject = purpose === "inactivity" ? "\u{1F510} V\xE9rification de s\xE9curit\xE9 \u2014 Simix" : "\u2709\uFE0F Confirmez votre adresse email \u2014 Simix";
-  const manager = getEmailManager();
-  const result = await manager.send({
+  const result = await emailService.send({
     to: to3,
     from,
     subject,
@@ -156067,6 +156091,7 @@ async function sendOtpEmail(to3, code, purpose, fullName = "Utilisateur") {
       firstName: fullName.split(" ")[0] ?? fullName,
       footerText: purpose === "inactivity" ? "Si vous n'\xEAtes pas \xE0 l'origine de cette connexion, contactez imm\xE9diatement le support Simix." : "Si vous n'avez pas cr\xE9\xE9 de compte Simix, vous pouvez ignorer cet email."
     }),
+    idempotencyKey: `otp-${issuanceId}`,
     metadata: { type: "otp", purpose }
   });
   if (!result.success && !result.cached) {
@@ -156433,8 +156458,8 @@ router3.post("/auth/register", requireTurnstile, async (req, res) => {
     return;
   }
   try {
-    const otpCode = await createOtp(user.id, "email_verification");
-    await sendOtpEmail(safeEmail, otpCode, "register", user.fullName);
+    const { code: otpCode, issuanceId } = await createOtp(user.id, "email_verification");
+    await sendOtpEmail(safeEmail, otpCode, "register", user.fullName, issuanceId);
   } catch (emailErr) {
     logger.error({ err: emailErr }, "[auth] registration OTP email error");
   }
@@ -156532,8 +156557,8 @@ router3.post("/auth/login", requireTurnstile, async (req, res) => {
       return;
     }
     try {
-      const otpCode = await createOtp(user.id, "email_verification");
-      await sendOtpEmail(user.email, otpCode, "register", user.fullName);
+      const { code: otpCode, issuanceId } = await createOtp(user.id, "email_verification");
+      await sendOtpEmail(user.email, otpCode, "register", user.fullName, issuanceId);
     } catch (emailErr) {
       logger.error({ err: emailErr }, "[auth] email verification OTP error");
     }
@@ -156542,8 +156567,8 @@ router3.post("/auth/login", requireTurnstile, async (req, res) => {
   }
   if (otpEnabled && isUserInactive(user.lastLoginAt ?? null)) {
     try {
-      const otpCode = await createOtp(user.id, "inactivity_check");
-      await sendOtpEmail(user.email, otpCode, "inactivity", user.fullName);
+      const { code: otpCode, issuanceId } = await createOtp(user.id, "inactivity_check");
+      await sendOtpEmail(user.email, otpCode, "inactivity", user.fullName, issuanceId);
     } catch (emailErr) {
       logger.error({ err: emailErr }, "[auth] inactivity OTP email error");
     }
@@ -163515,7 +163540,6 @@ var import_express15 = __toESM(require_express2(), 1);
 init_drizzle_orm();
 init_src();
 init_logger2();
-init_crypto();
 var router14 = (0, import_express15.Router)();
 router14.use(requireAdminJwt);
 function requireAdmin3(req, res, next) {
@@ -164316,7 +164340,6 @@ router17.post("/admin/emails/send", requireAdmin5, async (req, res) => {
   }
   const finalHtml = htmlContent?.trim() || buildEmailHtml(subject, body.replace(/\n/g, "<br>"), templateType);
   const from = await getFromEmail();
-  const emailManager = getEmailManager();
   function isRealEmail(email) {
     if (!email || !email.includes("@")) return false;
     const trimmed = email.trim().toLowerCase();
@@ -164361,7 +164384,7 @@ router17.post("/admin/emails/send", requireAdmin5, async (req, res) => {
     if (batch.length === 0) continue;
     await Promise.all(batch.map(async (recipient) => {
       try {
-        const result = await emailManager.send({
+        const result = await emailService.send({
           from,
           to: recipient.email,
           subject: subject.trim(),
@@ -164449,7 +164472,7 @@ router17.post("/admin/emails/test", requireAdmin5, async (req, res) => {
   }
   const start2 = Date.now();
   try {
-    const result = await getEmailManager().send({
+    const result = await emailService.send({
       from: await getFromEmail(),
       to: email,
       subject: "Test de configuration email \u2014 Simix Admin",
@@ -165438,17 +165461,109 @@ init_drizzle_orm();
 init_src();
 init_src();
 init_logger2();
-init_crypto();
+
+// src/lib/seed-providers.ts
+init_src();
+init_drizzle_orm();
+init_logger2();
+async function seedProvidersFromEnv() {
+  const fivesimKey = process.env.FIVESIM_API_KEY;
+  if (!fivesimKey) {
+    logger.debug("[seed-providers] FIVESIM_API_KEY not set \u2014 skipping 5sim provider seed");
+    return;
+  }
+  try {
+    const [existing] = await db.select({ id: apiProvidersTable.id, apiKey: apiProvidersTable.apiKey, active: apiProvidersTable.active }).from(apiProvidersTable).where(eq(apiProvidersTable.slug, "5sim")).limit(1);
+    if (existing) {
+      if (existing.apiKey === fivesimKey && existing.active) {
+        logger.info("[seed-providers] 5sim provider already configured and active \u2014 nothing to do");
+        return;
+      }
+      await db.update(apiProvidersTable).set({ apiKey: fivesimKey, active: true }).where(eq(apiProvidersTable.id, existing.id));
+      logger.info("[seed-providers] 5sim provider updated from FIVESIM_API_KEY env var");
+    } else {
+      await db.insert(apiProvidersTable).values({
+        name: "5sim",
+        slug: "5sim",
+        apiKey: fivesimKey,
+        baseUrl: "https://5sim.net/v1",
+        active: true,
+        priority: 1,
+        markup: 400
+      });
+      logger.info("[seed-providers] 5sim provider created from FIVESIM_API_KEY env var");
+    }
+  } catch (err) {
+    logger.error({ err }, "[seed-providers] Failed to seed 5sim provider \u2014 continuing startup");
+  }
+}
+async function seedEmailProvidersFromEnv() {
+  const providers = [
+    { slug: "brevo", name: "Brevo", envKey: "BREVO_API_KEY", priority: 1 },
+    { slug: "resend", name: "Resend", envKey: "RESEND_API_KEY", priority: 2 }
+  ];
+  for (const provider of providers) {
+    const apiKey = process.env[provider.envKey]?.trim();
+    if (!apiKey) {
+      logger.debug({ provider: provider.slug }, "[seed-email-providers] API key not set \u2014 skipping provider bootstrap");
+      continue;
+    }
+    try {
+      const [existing] = await db.select({
+        id: emailProvidersTable.id,
+        apiKeyEnc: emailProvidersTable.apiKeyEnc
+      }).from(emailProvidersTable).where(eq(emailProvidersTable.slug, provider.slug)).limit(1);
+      if (existing) {
+        const existingKey = existing.apiKeyEnc ? decrypt(existing.apiKeyEnc) : "";
+        if (existingKey) {
+          logger.info({ provider: provider.slug }, "[seed-email-providers] Provider already has a usable key \u2014 nothing to do");
+          continue;
+        }
+        await db.update(emailProvidersTable).set({ apiKeyEnc: encrypt(apiKey) }).where(eq(emailProvidersTable.id, existing.id));
+        logger.info({ provider: provider.slug }, "[seed-email-providers] Missing provider key restored from environment");
+        continue;
+      }
+      await db.insert(emailProvidersTable).values({
+        name: provider.name,
+        slug: provider.slug,
+        priority: provider.priority,
+        active: true,
+        apiKeyEnc: encrypt(apiKey)
+      });
+      logger.info({ provider: provider.slug }, "[seed-email-providers] Provider created from environment");
+    } catch (err) {
+      logger.error({ err, provider: provider.slug }, "[seed-email-providers] Failed to bootstrap provider \u2014 continuing startup");
+    }
+  }
+}
+
+// src/routes/admin-email-providers.ts
 var router20 = (0, import_express21.Router)();
 router20.use(requireAdminJwt);
 function safeProvider(r3) {
+  const envApiKey = r3.slug === "brevo" ? process.env["BREVO_API_KEY"]?.trim() : r3.slug === "resend" ? process.env["RESEND_API_KEY"]?.trim() : void 0;
+  const senderEmail = r3.slug === "brevo" ? process.env["BREVO_SENDER_EMAIL"]?.trim() || null : r3.slug === "resend" ? process.env["RESEND_SENDER_EMAIL"]?.trim() || null : null;
+  const senderName = r3.slug === "brevo" ? process.env["BREVO_SENDER_NAME"]?.trim() || null : r3.slug === "resend" ? process.env["RESEND_SENDER_NAME"]?.trim() || null : null;
+  let apiKeyMasked = null;
+  if (r3.apiKeyEnc) {
+    try {
+      apiKeyMasked = maskApiKey(decrypt(r3.apiKeyEnc));
+    } catch {
+    }
+  }
+  if (!apiKeyMasked && envApiKey) apiKeyMasked = maskApiKey(envApiKey);
+  const role = r3.slug === "brevo" ? "primary" : r3.slug === "resend" ? "fallback" : null;
   return {
     id: r3.id,
     name: r3.name,
     slug: r3.slug,
     priority: r3.priority,
     active: r3.active,
-    apiKeyMasked: r3.apiKeyEnc ? maskApiKey(decrypt(r3.apiKeyEnc)) : null,
+    apiKeyMasked,
+    apiKeySource: r3.apiKeyEnc ? "database" : envApiKey ? "environment" : "none",
+    senderEmail,
+    senderName,
+    role,
     hasApiSecret: !!r3.apiSecretEnc,
     domain: r3.domain,
     region: r3.region,
@@ -165466,7 +165581,16 @@ function safeProvider(r3) {
   };
 }
 router20.get("/admin/email-providers", async (_req, res) => {
+  try {
+    await seedEmailProvidersFromEnv();
+  } catch (err) {
+    logger.warn({ err }, "[admin] Bootstrap email depuis environnement ignor\xE9");
+  }
   const rows = await db.select().from(emailProvidersTable).orderBy(asc(emailProvidersTable.priority));
+  rows.sort((a, b3) => {
+    const role = (slug) => slug === "brevo" ? 1 : slug === "resend" ? 2 : 100;
+    return role(a.slug) - role(b3.slug) || a.priority - b3.priority;
+  });
   res.json({ providers: rows.map(safeProvider), supported: SUPPORTED_PROVIDERS });
 });
 router20.post("/admin/email-providers", async (req, res) => {
@@ -165490,7 +165614,7 @@ router20.post("/admin/email-providers", async (req, res) => {
     region: region ?? null,
     config: config ?? null
   }).returning();
-  getEmailManager().invalidateCache();
+  emailService.invalidateCache();
   logger.info({ slug, name: name3 }, "[admin] Fournisseur email cr\xE9\xE9");
   res.status(201).json({ provider: safeProvider(row) });
 });
@@ -165526,14 +165650,14 @@ router20.put("/admin/email-providers/:id", async (req, res) => {
     res.status(404).json({ error: "Fournisseur introuvable" });
     return;
   }
-  getEmailManager().invalidateCache();
+  emailService.invalidateCache();
   logger.info({ id, slug: row.slug }, "[admin] Fournisseur email modifi\xE9");
   res.json({ provider: safeProvider(row) });
 });
 router20.delete("/admin/email-providers/:id", async (req, res) => {
   const { id } = req.params;
   await db.delete(emailProvidersTable).where(eq(emailProvidersTable.id, id));
-  getEmailManager().invalidateCache();
+  emailService.invalidateCache();
   logger.info({ id }, "[admin] Fournisseur email supprim\xE9");
   res.json({ success: true });
 });
@@ -165552,11 +165676,11 @@ router20.post("/admin/email-providers/:id/toggle", async (req, res) => {
     return;
   }
   const [row] = await db.update(emailProvidersTable).set({ active: !current.active }).where(eq(emailProvidersTable.id, id)).returning();
-  getEmailManager().invalidateCache();
+  emailService.invalidateCache();
   res.json({ provider: safeProvider(row) });
 });
 router20.post("/admin/email-providers/:id/test", async (req, res) => {
-  const { id } = req.params;
+  const id = String(req.params.id);
   const { email } = req.body;
   if (!email) {
     res.status(400).json({ error: "email requis" });
@@ -165567,41 +165691,17 @@ router20.post("/admin/email-providers/:id/test", async (req, res) => {
     res.status(404).json({ error: "Fournisseur introuvable" });
     return;
   }
-  const { decrypt: dec } = await Promise.resolve().then(() => (init_crypto(), crypto_exports));
-  const adaptersMap = {
-    resend: (await Promise.resolve().then(() => (init_resend(), resend_exports))).resendAdapter,
-    ses: (await Promise.resolve().then(() => (init_ses(), ses_exports))).sesAdapter,
-    postmark: (await Promise.resolve().then(() => (init_postmark(), postmark_exports))).postmarkAdapter,
-    mailgun: (await Promise.resolve().then(() => (init_mailgun(), mailgun_exports))).mailgunAdapter,
-    sendgrid: (await Promise.resolve().then(() => (init_sendgrid(), sendgrid_exports))).sendgridAdapter,
-    brevo: (await Promise.resolve().then(() => (init_brevo(), brevo_exports))).brevoAdapter,
-    mailjet: (await Promise.resolve().then(() => (init_mailjet(), mailjet_exports))).mailjetAdapter,
-    sparkpost: (await Promise.resolve().then(() => (init_sparkpost(), sparkpost_exports))).sparkpostAdapter,
-    zeptomail: (await Promise.resolve().then(() => (init_zeptomail(), zeptomail_exports))).zeptomailAdapter,
-    elasticemail: (await Promise.resolve().then(() => (init_elasticemail(), elasticemail_exports))).elasticemailAdapter
-  };
-  const adapter = adaptersMap[row.slug];
-  if (!adapter) {
-    res.status(400).json({ error: `Adaptateur "${row.slug}" introuvable` });
-    return;
-  }
   const from = await getFromEmail();
   const start2 = Date.now();
   try {
-    const result = await adapter.send(
+    const result = await emailService.testProvider(
+      id,
       {
         to: email,
         from,
         subject: `\u{1F9EA} Test ${row.name} \u2014 Simix Admin`,
         html: buildTestEmailHtml(row.name, email),
         idempotencyKey: `test-${id}-${Date.now()}`
-      },
-      {
-        apiKey: row.apiKeyEnc ? dec(row.apiKeyEnc) : void 0,
-        apiSecret: row.apiSecretEnc ? dec(row.apiSecretEnc) : void 0,
-        domain: row.domain ?? void 0,
-        region: row.region ?? void 0,
-        config: row.config ?? void 0
       }
     );
     const latencyMs = Date.now() - start2;
@@ -165615,7 +165715,7 @@ router20.post("/admin/email-providers/:id/test", async (req, res) => {
   }
 });
 router20.post("/admin/email-providers/health-check", async (_req, res) => {
-  await getEmailManager().runHealthChecks();
+  await emailService.runHealthChecks();
   res.json({ success: true, message: "Health check termin\xE9" });
 });
 router20.post("/admin/email-providers/retry-pending", async (_req, res) => {
@@ -165631,7 +165731,7 @@ router20.post("/admin/email-providers/retry-pending", async (_req, res) => {
     eq(emailQueueTable.status, "pending"),
     lte(emailQueueTable.nextRetryAt, /* @__PURE__ */ new Date())
   ));
-  await getEmailManager().processRetryQueue();
+  await emailService.processRetryQueue();
   const [{ after }] = await db.select({ after: count() }).from(emailQueueTable).where(and(
     eq(emailQueueTable.status, "pending"),
     lte(emailQueueTable.nextRetryAt, /* @__PURE__ */ new Date())
@@ -165649,7 +165749,7 @@ router20.get("/admin/email-providers/stats", async (_req, res) => {
   const [totalPending] = await db.select({ c: count() }).from(emailQueueTable).where(eq(emailQueueTable.status, "pending"));
   const [totalFailed] = await db.select({ c: count() }).from(emailQueueTable).where(eq(emailQueueTable.status, "failed"));
   const [totalLogs] = await db.select({ c: count() }).from(emailSendLogsTable);
-  const providerStats = await getEmailManager().getStats();
+  const providerStats = await emailService.getStats();
   res.json({
     queue: {
       sent: Number(totalSent.c),
@@ -167464,7 +167564,6 @@ var GoogleGenerativeAI = class {
 // src/routes/support.ts
 init_logger2();
 init_settings();
-init_crypto();
 var router25 = (0, import_express26.Router)();
 function remainingHeader(headers, ...names) {
   for (const name3 of names) {
@@ -168424,8 +168523,8 @@ router27.post("/auth/otp/send", requireAuth, async (req, res) => {
     return;
   }
   try {
-    const code = await createOtp(user.id, purpose);
-    await sendOtpEmail(user.email, code, purpose === "email_verification" ? "register" : "inactivity", user.fullName);
+    const { code, issuanceId } = await createOtp(user.id, purpose);
+    await sendOtpEmail(user.email, code, purpose === "email_verification" ? "register" : "inactivity", user.fullName, issuanceId);
     res.json({ success: true, message: `Code envoy\xE9 \xE0 ${user.email}` });
   } catch (err) {
     logger.error({ err }, "[otp] send error");
@@ -168469,8 +168568,8 @@ router27.post("/auth/otp/resend", requireAuth, async (req, res) => {
   }
   try {
     const purpose = user.emailVerified ? "inactivity_check" : "email_verification";
-    const code = await createOtp(user.id, purpose);
-    await sendOtpEmail(user.email, code, purpose === "email_verification" ? "register" : "inactivity", user.fullName);
+    const { code, issuanceId } = await createOtp(user.id, purpose);
+    await sendOtpEmail(user.email, code, purpose === "email_verification" ? "register" : "inactivity", user.fullName, issuanceId);
     res.json({ success: true, message: `Nouveau code envoy\xE9 \xE0 ${user.email}` });
   } catch (err) {
     logger.error({ err }, "[otp] resend error");
@@ -168524,8 +168623,8 @@ router28.post("/auth/forgot-password", requireTurnstile, async (req, res) => {
     return;
   }
   try {
-    const code = await createOtp(user.id, "password_reset");
-    await sendPasswordResetEmail(user.email, code, user.fullName);
+    const { code, issuanceId } = await createOtp(user.id, "password_reset");
+    await sendPasswordResetEmail(user.email, code, user.fullName, issuanceId);
   } catch (err) {
     logger.error({ err }, "[forgot-password] send email error");
   }
@@ -168594,8 +168693,8 @@ router28.post("/auth/forgot-password/resend", async (req, res) => {
     return;
   }
   try {
-    const code = await createOtp(user.id, "password_reset");
-    await sendPasswordResetEmail(user.email, code, user.fullName);
+    const { code, issuanceId } = await createOtp(user.id, "password_reset");
+    await sendPasswordResetEmail(user.email, code, user.fullName, issuanceId);
     res.json({ success: true });
   } catch (err) {
     logger.error({ err }, "[forgot-password] resend email error");
@@ -169851,82 +169950,6 @@ async function seedPaymentMethods() {
   }
 }
 
-// src/lib/seed-providers.ts
-init_src();
-init_drizzle_orm();
-init_logger2();
-init_crypto();
-async function seedProvidersFromEnv() {
-  const fivesimKey = process.env.FIVESIM_API_KEY;
-  if (!fivesimKey) {
-    logger.debug("[seed-providers] FIVESIM_API_KEY not set \u2014 skipping 5sim provider seed");
-    return;
-  }
-  try {
-    const [existing] = await db.select({ id: apiProvidersTable.id, apiKey: apiProvidersTable.apiKey, active: apiProvidersTable.active }).from(apiProvidersTable).where(eq(apiProvidersTable.slug, "5sim")).limit(1);
-    if (existing) {
-      if (existing.apiKey === fivesimKey && existing.active) {
-        logger.info("[seed-providers] 5sim provider already configured and active \u2014 nothing to do");
-        return;
-      }
-      await db.update(apiProvidersTable).set({ apiKey: fivesimKey, active: true }).where(eq(apiProvidersTable.id, existing.id));
-      logger.info("[seed-providers] 5sim provider updated from FIVESIM_API_KEY env var");
-    } else {
-      await db.insert(apiProvidersTable).values({
-        name: "5sim",
-        slug: "5sim",
-        apiKey: fivesimKey,
-        baseUrl: "https://5sim.net/v1",
-        active: true,
-        priority: 1,
-        markup: 400
-      });
-      logger.info("[seed-providers] 5sim provider created from FIVESIM_API_KEY env var");
-    }
-  } catch (err) {
-    logger.error({ err }, "[seed-providers] Failed to seed 5sim provider \u2014 continuing startup");
-  }
-}
-async function seedEmailProvidersFromEnv() {
-  const providers = [
-    { slug: "resend", name: "Resend", envKey: "RESEND_API_KEY", priority: 1 },
-    { slug: "brevo", name: "Brevo", envKey: "BREVO_API_KEY", priority: 2 }
-  ];
-  for (const provider of providers) {
-    const apiKey = process.env[provider.envKey]?.trim();
-    if (!apiKey) {
-      logger.debug({ provider: provider.slug }, "[seed-email-providers] API key not set \u2014 skipping provider bootstrap");
-      continue;
-    }
-    try {
-      const [existing] = await db.select({
-        id: emailProvidersTable.id,
-        apiKeyEnc: emailProvidersTable.apiKeyEnc
-      }).from(emailProvidersTable).where(eq(emailProvidersTable.slug, provider.slug)).limit(1);
-      if (existing) {
-        const existingKey = existing.apiKeyEnc ? decrypt(existing.apiKeyEnc) : "";
-        if (existingKey) {
-          logger.info({ provider: provider.slug }, "[seed-email-providers] Provider already has a usable key \u2014 nothing to do");
-          continue;
-        }
-        await db.update(emailProvidersTable).set({ apiKeyEnc: encrypt(apiKey) }).where(eq(emailProvidersTable.id, existing.id));
-        logger.info({ provider: provider.slug }, "[seed-email-providers] Missing provider key restored from environment");
-        continue;
-      }
-      await db.insert(emailProvidersTable).values({
-        name: provider.name,
-        slug: provider.slug,
-        priority: provider.priority,
-        active: true,
-        apiKeyEnc: encrypt(apiKey)
-      });
-      logger.info({ provider: provider.slug }, "[seed-email-providers] Provider created from environment");
-    } catch (err) {
-      logger.error({ err, provider: provider.slug }, "[seed-email-providers] Failed to bootstrap provider \u2014 continuing startup");
-    }
-  }
-}
-
 // src/lib/seed-routing.ts
 init_src();
 init_drizzle_orm();
@@ -170573,7 +170596,7 @@ async function start() {
         startFiveSimSyncScheduler();
         startClapayReconciliation();
         startPawaPayReconciliation();
-        getEmailManager().startBackgroundWorkers();
+        emailService.startBackgroundWorkers();
         void (async () => {
           try {
             const result = await syncFiveSimCountries();

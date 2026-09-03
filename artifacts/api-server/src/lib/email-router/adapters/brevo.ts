@@ -1,4 +1,11 @@
-import type { ProviderAdapter, AdapterConfig, EmailPayload, AdapterSendResult, HealthCheckResult } from "../types";
+import {
+  ProviderSendError,
+  type ProviderAdapter,
+  type AdapterConfig,
+  type EmailPayload,
+  type AdapterSendResult,
+  type HealthCheckResult,
+} from "../types";
 
 const BASE = "https://api.brevo.com/v3";
 
@@ -21,20 +28,36 @@ export const brevoAdapter: ProviderAdapter = {
     const sender = parseSender(payload.from);
     if (!sender.email) throw new Error("Brevo: adresse expéditeur manquante");
 
-    const res = await fetch(`${BASE}/smtp/email`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "api-key":       config.apiKey,
-      },
-      body: JSON.stringify({
-        sender,
-        to:       [{ email: payload.to }],
-        subject:  payload.subject,
-        htmlContent: payload.html,
-        textContent: payload.text,
-      }),
-    });
+    let res: Response;
+    try {
+      res = await fetch(`${BASE}/smtp/email`, {
+        method: "POST",
+        headers: {
+          "accept": "application/json",
+          "content-type": "application/json",
+          "api-key": config.apiKey,
+          ...(payload.idempotencyKey ? { "Idempotency-Key": payload.idempotencyKey } : {}),
+        },
+        body: JSON.stringify({
+          sender,
+          to: [{ email: payload.to }],
+          subject: payload.subject,
+          htmlContent: payload.html,
+          textContent: payload.text,
+        }),
+      });
+    } catch (error) {
+      const code = (error as { cause?: { code?: string }; code?: string }).cause?.code
+        ?? (error as { code?: string }).code;
+      const definitelyNotSent = new Set([
+        "ENOTFOUND", "EAI_AGAIN", "ECONNREFUSED", "UND_ERR_CONNECT_TIMEOUT",
+      ]).has(code ?? "");
+      throw new ProviderSendError("Brevo: erreur réseau", {
+        kind: definitelyNotSent ? "temporary" : "ambiguous",
+        code,
+        cause: error,
+      });
+    }
 
     const responseText = await res.text();
     let body: { messageId?: string; message?: string } = {};
@@ -45,7 +68,14 @@ export const brevoAdapter: ProviderAdapter = {
     }
 
     if (!res.ok) {
-      throw new Error(`Brevo HTTP ${res.status}: ${body.message ?? responseText.slice(0, 300) || res.statusText}`);
+      const detail = body.message ?? (responseText.slice(0, 300) || res.statusText);
+      const kind = res.status === 429 || res.status >= 500 || res.status === 401 || res.status === 403
+        ? "temporary"
+        : "definitive";
+      throw new ProviderSendError(`Brevo HTTP ${res.status}: ${detail}`, {
+        kind,
+        status: res.status,
+      });
     }
     return { messageId: body.messageId ?? "brevo-unknown" };
   },

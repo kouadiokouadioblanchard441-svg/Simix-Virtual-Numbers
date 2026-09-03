@@ -25,6 +25,7 @@ import {
   CONSECUTIVE_ERROR_THRESHOLD,
   CONSECUTIVE_ERROR_DEGRADED,
   retryDelayMs,
+  ProviderSendError,
   type EmailPayload,
   type SendResult,
   type ResolvedProvider,
@@ -58,6 +59,31 @@ const ADAPTERS: Record<string, ProviderAdapter> = {
 };
 
 const QUOTA_RETRY_DELAY_MS = 15 * 60_000;
+const PROVIDER_ROLE_ORDER: Record<string, number> = { brevo: 1, resend: 2 };
+
+function getProviderSender(slug: string): { email: string | null; name: string | null } {
+  if (slug === "brevo") {
+    return {
+      email: process.env["BREVO_SENDER_EMAIL"]?.trim() || null,
+      name: process.env["BREVO_SENDER_NAME"]?.trim() || null,
+    };
+  }
+  if (slug === "resend") {
+    return {
+      email: process.env["RESEND_SENDER_EMAIL"]?.trim() || null,
+      name: process.env["RESEND_SENDER_NAME"]?.trim() || null,
+    };
+  }
+  return { email: null, name: null };
+}
+
+function payloadForProvider(payload: EmailPayload, provider: ResolvedProvider): EmailPayload {
+  if (!provider.senderEmail) return payload;
+  const from = provider.senderName
+    ? `${provider.senderName.replace(/[<>]/g, "").trim()} <${provider.senderEmail}>`
+    : provider.senderEmail;
+  return { ...payload, from };
+}
 
 function isQuotaOrRateLimitError(error: unknown): boolean {
   const message = (error instanceof Error ? error.message : String(error)).toLowerCase();
@@ -167,7 +193,9 @@ class EmailProviderManager {
       .where(eq(emailProvidersTable.active, true))
       .orderBy(asc(emailProvidersTable.priority));
 
-    this.cache = rows.map(r => ({
+    this.cache = rows.map(r => {
+      const sender = getProviderSender(r.slug);
+      return {
       id:               r.id,
       name:             r.name,
       slug:             r.slug,
@@ -178,9 +206,15 @@ class EmailProviderManager {
       domain:           r.domain,
       region:           r.region,
       config:           r.config as Record<string, string> | null,
+      senderEmail:      sender.email,
+      senderName:       sender.name,
       healthStatus:     r.healthStatus,
       consecutiveErrors: r.consecutiveErrors,
-    }));
+      };
+    }).sort((a, b) =>
+      (PROVIDER_ROLE_ORDER[a.slug] ?? 100) - (PROVIDER_ROLE_ORDER[b.slug] ?? 100)
+      || a.priority - b.priority
+    );
     this.cacheTs = Date.now();
 
     // Auto-seed Resend si aucun fournisseur configuré
@@ -211,7 +245,7 @@ class EmailProviderManager {
       await db.insert(emailProvidersTable).values({
         name:      "Resend",
         slug:      "resend",
-        priority:  1,
+        priority:  2,
         active:    true,
         apiKeyEnc: encrypt(apiKey),
       });
@@ -235,7 +269,7 @@ class EmailProviderManager {
   }
 
   // ── Envoi principal avec failover ─────────────────────────────
-  async send(payload: EmailPayload): Promise<SendResult> {
+  async send(payload: EmailPayload, options: { alreadyClaimed?: boolean } = {}): Promise<SendResult> {
     const idempotencyKey = payload.idempotencyKey ?? this.makeIdempotencyKey(payload);
 
     // ── Déduplication ─────────────────────────────────────────
@@ -248,13 +282,39 @@ class EmailProviderManager {
       await updateCampaignRecipient(payload, "sent");
       return { success: true, cached: true, queueId: existing[0].id, provider: existing[0].providerId ?? undefined };
     }
+    if (existing[0] && ["failed", "cancelled"].includes(existing[0].status)) {
+      return {
+        success: false,
+        cached: true,
+        queueId: existing[0].id,
+        error: existing[0].error ?? "Cet envoi a déjà échoué définitivement",
+      };
+    }
 
     // ── Créer ou récupérer l'entrée en file ───────────────────
     let queueId: string;
     if (existing[0]) {
       queueId = existing[0].id;
+      if (!options.alreadyClaimed) {
+        const claimed = await db.update(emailQueueTable)
+          .set({ status: "processing" })
+          .where(and(
+            eq(emailQueueTable.id, queueId),
+            eq(emailQueueTable.status, "pending"),
+          ))
+          .returning({ id: emailQueueTable.id });
+        if (claimed.length === 0) {
+          return {
+            success: false,
+            cached: true,
+            queued: true,
+            queueId,
+            error: "Email déjà en cours de traitement",
+          };
+        }
+      }
     } else {
-      const [row] = await db.insert(emailQueueTable).values({
+      const inserted = await db.insert(emailQueueTable).values({
         idempotencyKey,
         toEmail:    payload.to,
         fromEmail:  payload.from ?? "",
@@ -262,17 +322,43 @@ class EmailProviderManager {
         html:       payload.html,
         textContent: payload.text,
         metadata:   payload.metadata,
-        status:     "pending",
+        status:     "processing",
         maxAttempts: 5,
         retryable:  false,
-      }).returning({ id: emailQueueTable.id });
-      queueId = row.id;
+      }).onConflictDoNothing({ target: emailQueueTable.idempotencyKey })
+        .returning({ id: emailQueueTable.id });
+      if (inserted.length === 0) {
+        const [concurrent] = await db.select()
+          .from(emailQueueTable)
+          .where(eq(emailQueueTable.idempotencyKey, idempotencyKey))
+          .limit(1);
+        return {
+          success: concurrent?.status === "sent",
+          cached: true,
+          queued: concurrent?.status !== "sent",
+          queueId: concurrent?.id,
+          error: concurrent?.status === "sent" ? undefined : "Email déjà pris en charge",
+        };
+      }
+      queueId = inserted[0].id;
     }
 
     // ── Tentatives par ordre de priorité ──────────────────────
-    const providers = await this.loadProviders();
+    const activeProviders = await this.loadProviders();
+    // Un providerId sur un élément non envoyé signifie qu'un résultat antérieur
+    // était ambigu. Le retry reste alors verrouillé sur ce fournisseur pour
+    // éviter qu'un message potentiellement accepté par Brevo parte aussi via Resend.
+    const ambiguousProviderId = existing[0]?.providerId ?? null;
+    const providers = ambiguousProviderId
+      ? activeProviders.filter(provider => provider.id === ambiguousProviderId)
+      : activeProviders;
     if (providers.length === 0) {
-      logger.warn("[email-router] Aucun fournisseur actif configuré");
+      logger.warn(
+        { ambiguousProviderId: ambiguousProviderId ?? undefined },
+        ambiguousProviderId
+          ? "[email-router] Fournisseur du résultat ambigu indisponible — aucun fallback croisé"
+          : "[email-router] Aucun fournisseur actif configuré",
+      );
       const retryable = canWaitIndefinitelyForQuota(payload);
       const attempts = (existing[0]?.attempts ?? 0) + 1;
       const remainsPending = retryable || attempts < 5;
@@ -297,6 +383,12 @@ class EmailProviderManager {
     }
 
     let quotaOrRateLimitDetected = false;
+    let temporaryFailureDetected = false;
+    let ambiguousFailureDetected = false;
+    let ambiguousFailureProviderId: string | null = null;
+    let definitiveFailureDetected = false;
+    let lastError = "";
+    let attemptedProviders = 0;
     for (const provider of providers) {
       // Ne saute un fournisseur "down" que s'il existe une alternative moins dégradée —
       // sinon (cas mono-fournisseur), on retente quand même : rester bloqué "down" pour
@@ -311,8 +403,10 @@ class EmailProviderManager {
 
       const start = Date.now();
       try {
+        attemptedProviders += 1;
+        const providerPayload = payloadForProvider({ ...payload, idempotencyKey }, provider);
         const result = await Promise.race([
-          adapter.send(payload, {
+          adapter.send(providerPayload, {
             apiKey:    provider.apiKey   ?? undefined,
             apiSecret: provider.apiSecret ?? undefined,
             domain:    provider.domain   ?? undefined,
@@ -320,7 +414,10 @@ class EmailProviderManager {
             config:    provider.config   ?? undefined,
           }),
           new Promise<never>((_, reject) =>
-            setTimeout(() => reject(new Error("Timeout")), SEND_TIMEOUT_MS)
+            setTimeout(() => reject(new ProviderSendError(
+              `${provider.name}: délai de réponse dépassé`,
+              { kind: "ambiguous", code: "RESPONSE_TIMEOUT" },
+            )), SEND_TIMEOUT_MS)
           ),
         ]);
 
@@ -357,9 +454,20 @@ class EmailProviderManager {
       } catch (err) {
         const latencyMs = Date.now() - start;
         const errMsg    = err instanceof Error ? err.message : String(err);
+        lastError = errMsg;
+        const failureKind = err instanceof ProviderSendError ? err.kind : "ambiguous";
         const quotaOrRateLimit = isQuotaOrRateLimitError(err);
         quotaOrRateLimitDetected ||= quotaOrRateLimit;
-        logger.warn({ provider: provider.slug, to: payload.to, err: errMsg, latencyMs }, "[email-router] Fournisseur échoué — tentative suivante");
+        temporaryFailureDetected ||= failureKind === "temporary";
+        ambiguousFailureDetected ||= failureKind === "ambiguous";
+        if (failureKind === "ambiguous") ambiguousFailureProviderId = provider.id;
+        definitiveFailureDetected ||= failureKind === "definitive";
+        logger.warn(
+          { provider: provider.slug, to: payload.to, err: errMsg, latencyMs, failureKind },
+          failureKind === "temporary"
+            ? "[email-router] Échec temporaire — tentative du fournisseur de secours"
+            : "[email-router] Échec sans fallback automatique",
+        );
 
         const newConsec = quotaOrRateLimit ? provider.consecutiveErrors : provider.consecutiveErrors + 1;
         const newHealth = quotaOrRateLimit
@@ -382,21 +490,29 @@ class EmailProviderManager {
           }).where(eq(emailProvidersTable.id, provider.id)),
         ]);
         this.invalidateCache();
-        // Continuer avec le prochain fournisseur
+        // Une erreur définitive ne doit pas être répétée chez un autre fournisseur.
+        // Une réponse ambiguë (timeout après émission possible) est d'abord retentée
+        // chez le même fournisseur avec la même clé d'idempotence.
+        if (failureKind !== "temporary") break;
       }
     }
 
     // ── Tous les fournisseurs ont échoué — planifier retry ────
-    const attempts = (existing[0]?.attempts ?? 0) + providers.length;
+    const attempts = (existing[0]?.attempts ?? 0) + attemptedProviders;
     const retryable = quotaOrRateLimitDetected && canWaitIndefinitelyForQuota(payload);
-    const remainsPending = retryable || attempts < 5;
-    const queueError = quotaOrRateLimitDetected
+    const remainsPending = !definitiveFailureDetected && (retryable || attempts < 5);
+    const queueError = ambiguousFailureDetected
+      ? "Résultat fournisseur incertain — nouvelle tentative idempotente programmée sans fallback immédiat"
+      : definitiveFailureDetected
+        ? lastError || "Email refusé définitivement"
+        : quotaOrRateLimitDetected
       ? retryable
         ? "Quota ou limite d'envoi atteint — nouvelle tentative automatique programmée"
         : "Quota ou limite d'envoi atteint pour un email à durée de validité limitée"
-      : "Tous les fournisseurs ont échoué";
+      : temporaryFailureDetected ? "Tous les fournisseurs disponibles ont échoué temporairement" : "Tous les fournisseurs ont échoué";
     await db.update(emailQueueTable).set({
       status:      remainsPending ? "pending" : "failed",
+      providerId:  ambiguousFailureProviderId ?? ambiguousProviderId,
       attempts,
       retryable,
       error:       queueError,
@@ -418,6 +534,31 @@ class EmailProviderManager {
         : queueError,
       queueId,
     };
+  }
+
+  async testProvider(providerId: string, payload: EmailPayload): Promise<AdapterSendResult> {
+    const [row] = await db.select().from(emailProvidersTable)
+      .where(eq(emailProvidersTable.id, providerId)).limit(1);
+    if (!row) throw new Error("Fournisseur introuvable");
+    const adapter = ADAPTERS[row.slug];
+    if (!adapter) throw new Error(`Adaptateur "${row.slug}" introuvable`);
+    const sender = getProviderSender(row.slug);
+    const resolved: ResolvedProvider = {
+      id: row.id, name: row.name, slug: row.slug, priority: row.priority, active: row.active,
+      apiKey: row.apiKeyEnc ? decrypt(row.apiKeyEnc) : null,
+      apiSecret: row.apiSecretEnc ? decrypt(row.apiSecretEnc) : null,
+      domain: row.domain, region: row.region,
+      config: row.config as Record<string, string> | null,
+      senderEmail: sender.email, senderName: sender.name,
+      healthStatus: row.healthStatus, consecutiveErrors: row.consecutiveErrors,
+    };
+    return adapter.send(payloadForProvider(payload, resolved), {
+      apiKey: resolved.apiKey ?? undefined,
+      apiSecret: resolved.apiSecret ?? undefined,
+      domain: resolved.domain ?? undefined,
+      region: resolved.region ?? undefined,
+      config: resolved.config ?? undefined,
+    });
   }
 
   // ── Worker de retry (toutes les 2 min) ───────────────────────
@@ -465,7 +606,7 @@ class EmailProviderManager {
             text:            item.textContent ?? undefined,
             idempotencyKey:  item.idempotencyKey,
             metadata:        item.metadata as Record<string, unknown> | undefined,
-          });
+          }, { alreadyClaimed: true });
         } catch (err) {
           logger.warn({ err, id: item.id }, "[email-router] Retry interrompu — remise en attente");
           await db.update(emailQueueTable)

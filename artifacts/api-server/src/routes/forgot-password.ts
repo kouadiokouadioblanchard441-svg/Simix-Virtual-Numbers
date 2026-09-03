@@ -51,8 +51,8 @@ router.post("/auth/forgot-password", requireTurnstile, async (req, res): Promise
   }
 
   try {
-    const code = await createOtp(user.id, "password_reset");
-    await sendPasswordResetEmail(user.email, code, user.fullName);
+    const { code, issuanceId } = await createOtp(user.id, "password_reset");
+    await sendPasswordResetEmail(user.email, code, user.fullName, issuanceId);
   } catch (err) {
     logger.error({ err }, "[forgot-password] send email error");
   }
@@ -154,8 +154,8 @@ router.post("/auth/forgot-password/resend", async (req, res): Promise<void> => {
   }
 
   try {
-    const code = await createOtp(user.id, "password_reset");
-    await sendPasswordResetEmail(user.email, code, user.fullName);
+    const { code, issuanceId } = await createOtp(user.id, "password_reset");
+    await sendPasswordResetEmail(user.email, code, user.fullName, issuanceId);
     res.json({ success: true });
   } catch (err) {
     logger.error({ err }, "[forgot-password] resend email error");

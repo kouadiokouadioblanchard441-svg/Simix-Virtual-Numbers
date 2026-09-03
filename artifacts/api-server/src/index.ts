@@ -4,7 +4,7 @@ import app from "./app";
 import { db, systemSettingsTable } from "@workspace/db";
 import { logger } from "./lib/logger";
 import { startFiveSimPoller } from "./lib/fivesim-poller";
-import { getEmailManager } from "./lib/email-router";
+import { emailService } from "./lib/email-service";
 import { startFiveSimSyncScheduler, syncFiveSimCountries, syncFiveSimProducts } from "./lib/fivesim-sync";
 import { startClapayReconciliation } from "./lib/clapay-reconciliation";
 import { startPawaPayReconciliation } from "./lib/pawapay-reconciliation";
@@ -110,7 +110,7 @@ async function start(): Promise<void> {
         startFiveSimSyncScheduler();
         startClapayReconciliation();
         startPawaPayReconciliation();
-        getEmailManager().startBackgroundWorkers();
+        emailService.startBackgroundWorkers();
 
         void (async () => {
           try {

@@ -1,6 +1,6 @@
 import { getAppUrl } from "./app-url";
 import { logger } from "./logger";
-import { getEmailManager } from "./email-router";
+import { emailService } from "./email-service";
 import { getFromEmail } from "./email-from";
 
 /* ─────────────────────────────────────────────────────────────────
@@ -500,8 +500,7 @@ function getDepositConfirmationHtml(data: DepositEmailData): string {
 
 export async function sendDepositConfirmationEmail(data: DepositEmailData): Promise<void> {
   const from    = await getFromEmail();
-  const manager = getEmailManager();
-  const result  = await manager.send({
+  const result  = await emailService.send({
     to:      data.userEmail,
     from,
     subject: `✅ Rechargement de ${data.amount.toLocaleString("fr-FR")} FCFA confirmé — Simix`,
@@ -518,10 +517,10 @@ export async function sendPasswordResetEmail(
   to: string,
   code: string,
   fullName: string,
+  issuanceId: string,
 ): Promise<void> {
   const from    = await getFromEmail();
-  const manager = getEmailManager();
-  const result  = await manager.send({
+  const result  = await emailService.send({
     to,
     from,
     subject: "Réinitialisation de votre mot de passe Simix",
@@ -535,6 +534,7 @@ export async function sendPasswordResetEmail(
       firstName: fullName.split(" ")[0] ?? fullName,
       footerText: "Si vous n'êtes pas à l'origine de cette demande, ignorez cet email. Votre mot de passe actuel reste inchangé.",
     }),
+    idempotencyKey: `password-reset-${issuanceId}`,
     metadata: { type: "password_reset" },
   });
   if (!result.success && !result.cached) {
@@ -546,14 +546,14 @@ export async function sendOtpEmail(
   to: string,
   code: string,
   purpose: "register" | "inactivity",
-  fullName = "Utilisateur",
+  fullName: string,
+  issuanceId: string,
 ): Promise<void> {
   const from    = await getFromEmail();
   const subject = purpose === "inactivity"
     ? "🔐 Vérification de sécurité — Simix"
     : "✉️ Confirmez votre adresse email — Simix";
-  const manager = getEmailManager();
-  const result  = await manager.send({
+  const result  = await emailService.send({
     to,
     from,
     subject,
@@ -573,6 +573,7 @@ export async function sendOtpEmail(
         ? "Si vous n'êtes pas à l'origine de cette connexion, contactez immédiatement le support Simix."
         : "Si vous n'avez pas créé de compte Simix, vous pouvez ignorer cet email.",
     }),
+    idempotencyKey: `otp-${issuanceId}`,
     metadata: { type: "otp", purpose },
   });
   if (!result.success && !result.cached) {

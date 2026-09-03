@@ -133,8 +133,8 @@ router.post("/auth/register", requireTurnstile, async (req, res): Promise<void> 
   }
 
   try {
-    const otpCode = await createOtp(user.id, "email_verification");
-    await sendOtpEmail(safeEmail, otpCode, "register", user.fullName);
+    const { code: otpCode, issuanceId } = await createOtp(user.id, "email_verification");
+    await sendOtpEmail(safeEmail, otpCode, "register", user.fullName, issuanceId);
   } catch (emailErr) {
     logger.error({ err: emailErr }, "[auth] registration OTP email error");
   }
@@ -258,8 +258,8 @@ router.post("/auth/login", requireTurnstile, async (req, res): Promise<void> => 
       return;
     }
     try {
-      const otpCode = await createOtp(user.id, "email_verification");
-      await sendOtpEmail(user.email, otpCode, "register", user.fullName);
+      const { code: otpCode, issuanceId } = await createOtp(user.id, "email_verification");
+      await sendOtpEmail(user.email, otpCode, "register", user.fullName, issuanceId);
     } catch (emailErr) {
       logger.error({ err: emailErr }, "[auth] email verification OTP error");
     }
@@ -270,8 +270,8 @@ router.post("/auth/login", requireTurnstile, async (req, res): Promise<void> => 
   /* Check inactivity (10+ days) — also skip if OTP disabled */
   if (otpEnabled && isUserInactive(user.lastLoginAt ?? null)) {
     try {
-      const otpCode = await createOtp(user.id, "inactivity_check");
-      await sendOtpEmail(user.email, otpCode, "inactivity", user.fullName);
+      const { code: otpCode, issuanceId } = await createOtp(user.id, "inactivity_check");
+      await sendOtpEmail(user.email, otpCode, "inactivity", user.fullName, issuanceId);
     } catch (emailErr) {
       logger.error({ err: emailErr }, "[auth] inactivity OTP email error");
     }

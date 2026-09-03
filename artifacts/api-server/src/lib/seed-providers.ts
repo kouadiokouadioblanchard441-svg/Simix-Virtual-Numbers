@@ -63,8 +63,8 @@ export async function seedProvidersFromEnv(): Promise<void> {
  */
 export async function seedEmailProvidersFromEnv(): Promise<void> {
   const providers = [
-    { slug: "resend", name: "Resend", envKey: "RESEND_API_KEY", priority: 1 },
-    { slug: "brevo", name: "Brevo", envKey: "BREVO_API_KEY", priority: 2 },
+    { slug: "brevo", name: "Brevo", envKey: "BREVO_API_KEY", priority: 1 },
+    { slug: "resend", name: "Resend", envKey: "RESEND_API_KEY", priority: 2 },
   ] as const;
 
   for (const provider of providers) {

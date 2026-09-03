@@ -33,6 +33,8 @@ interface Provider {
   id: string; name: string; slug: string; priority: number; active: boolean;
   apiKeyMasked: string | null; hasApiSecret: boolean; domain: string | null;
   region: string | null; config: Record<string,string> | null;
+  apiKeySource?: "database" | "environment" | "none"; senderEmail: string | null;
+  senderName: string | null; role: "primary" | "fallback" | null;
   healthStatus: string; lastHealthCheck: string | null;
   consecutiveErrors: number; totalSent: number; totalFailed: number;
   successRate: number; lastError: string | null; lastErrorAt: string | null;
@@ -78,6 +80,7 @@ export default function AdminEmailProviders() {
   const [testEmail, setTestEmail]     = useState("");
   const [testingId, setTestingId]     = useState<string | null>(null);
   const [healthChecking, setHealthChecking] = useState(false);
+  const [retrying, setRetrying] = useState(false);
   const [expandedId, setExpandedId]   = useState<string | null>(null);
   const { toast } = useToast();
 
@@ -196,6 +199,20 @@ export default function AdminEmailProviders() {
     } finally { setHealthChecking(false); }
   };
 
+  const handleRetryPending = async () => {
+    setRetrying(true);
+    try {
+      const r = await api<{ processed: number; dueAfter: number; message: string }>(
+        "POST", "/admin/email-providers/retry-pending",
+      );
+      toast({ title: "File email traitée", description: `${r.processed} email(s) traité(s). ${r.message}` });
+      await load();
+      if (tab === "queue") await loadQueue();
+    } catch (e) {
+      toast({ title: "Reprise impossible", description: (e as Error).message, variant: "destructive" });
+    } finally { setRetrying(false); }
+  };
+
   const handlePriorityChange = async (p: Provider, dir: "up" | "down") => {
     const delta = dir === "up" ? -1 : 1;
     try {
@@ -228,6 +245,11 @@ export default function AdminEmailProviders() {
               className="flex items-center gap-2 px-3 py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-sm font-medium border border-zinc-700 transition-colors disabled:opacity-50">
               {healthChecking ? <Loader2 className="w-4 h-4 animate-spin"/> : <Activity className="w-4 h-4"/>}
               Health check
+            </button>
+            <button onClick={handleRetryPending} disabled={retrying}
+              className="flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 text-sm font-medium border border-amber-500/30 transition-colors disabled:opacity-50">
+              {retrying ? <Loader2 className="w-4 h-4 animate-spin"/> : <RefreshCw className="w-4 h-4"/>}
+              Reprendre la file
             </button>
             <button onClick={openCreate}
               className="flex items-center gap-2 px-4 py-2 rounded-lg bg-violet-600 hover:bg-violet-500 text-white text-sm font-medium transition-colors">
@@ -289,9 +311,11 @@ export default function AdminEmailProviders() {
                         <Mail className="w-4 h-4 text-violet-400"/>
                       </div>
                       <div>
-                        <div className="flex items-center gap-2">
+                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="font-semibold text-white text-sm">{p.name}</span>
                           <code className="text-xs bg-zinc-800 px-1.5 py-0.5 rounded text-zinc-400">{p.slug}</code>
+                           {p.role === "primary" && <span className="text-[10px] px-2 py-0.5 rounded-full bg-violet-500/15 text-violet-300 border border-violet-500/30 font-semibold">Principal</span>}
+                           {p.role === "fallback" && <span className="text-[10px] px-2 py-0.5 rounded-full bg-sky-500/15 text-sky-300 border border-sky-500/30 font-semibold">Secours</span>}
                         </div>
                         <div className="flex items-center gap-2 mt-1">
                           <HealthBadge status={p.healthStatus}/>
@@ -310,9 +334,10 @@ export default function AdminEmailProviders() {
                         {testingId === p.id ? <Loader2 className="w-3.5 h-3.5 animate-spin"/> : <Send className="w-3.5 h-3.5"/>}
                         Tester
                       </button>
-                      <button onClick={() => handleToggle(p.id)} title={p.active ? "Désactiver" : "Activer"}
-                        className={`p-2 rounded-lg border transition-colors ${p.active ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400 hover:bg-red-500/10 hover:border-red-500/30 hover:text-red-400" : "bg-zinc-800 border-zinc-700 text-zinc-500 hover:bg-emerald-500/10 hover:border-emerald-500/30 hover:text-emerald-400"}`}>
+                       <button onClick={() => handleToggle(p.id)} title={p.active ? "Désactiver" : "Activer"}
+                         className={`flex items-center gap-1.5 px-2 py-1.5 rounded-lg border transition-colors text-xs font-medium ${p.active ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400 hover:bg-red-500/10 hover:border-red-500/30 hover:text-red-400" : "bg-zinc-800 border-zinc-700 text-zinc-500 hover:bg-emerald-500/10 hover:border-emerald-500/30 hover:text-emerald-400"}`}>
                         {p.active ? <ToggleRight className="w-4 h-4"/> : <ToggleLeft className="w-4 h-4"/>}
+                         <span>{p.active ? "Désactiver" : "Activer"}</span>
                       </button>
                       <button onClick={() => openEdit(p)} className="p-2 rounded-lg bg-zinc-800 border border-zinc-700 text-zinc-400 hover:text-white transition-colors">
                         <Pencil className="w-4 h-4"/>
@@ -331,7 +356,8 @@ export default function AdminEmailProviders() {
                     {expandedId === p.id && (
                       <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }}
                         className="mt-4 pt-4 border-t border-zinc-800 grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
-                        <div><p className="text-zinc-500 text-xs mb-0.5">Clé API</p><p className="text-zinc-300 font-mono text-xs">{p.apiKeyMasked ?? "—"}</p></div>
+                         <div><p className="text-zinc-500 text-xs mb-0.5">Clé API</p><p className="text-zinc-300 font-mono text-xs">{p.apiKeyMasked ?? "—"}{p.apiKeySource === "environment" && <span className="ml-1 text-emerald-400">(Plesk)</span>}</p></div>
+                         <div><p className="text-zinc-500 text-xs mb-0.5">Expéditeur</p><p className="text-zinc-300 text-xs">{p.senderName ? `${p.senderName} — ` : ""}{p.senderEmail ?? "—"}</p></div>
                         <div><p className="text-zinc-500 text-xs mb-0.5">Secret</p><p className="text-zinc-300 text-xs">{p.hasApiSecret ? "✓ configuré" : "—"}</p></div>
                         <div><p className="text-zinc-500 text-xs mb-0.5">Domaine</p><p className="text-zinc-300 text-xs">{p.domain ?? "—"}</p></div>
                         <div><p className="text-zinc-500 text-xs mb-0.5">Région</p><p className="text-zinc-300 text-xs">{p.region ?? "—"}</p></div>

@@ -107,12 +107,6 @@ const SETTINGS_SCHEMA = [
     ],
   },
   {
-    group: "Resend — Emails",
-    fields: [
-      { key: "resend_api_key", label: "Clé API Resend", placeholder: "re_...", type: "password", hint: "Obtenez votre clé sur resend.com — utilisée pour les emails OTP, réinitialisation et confirmations de dépôt" },
-    ],
-  },
-  {
     group: "PawaPay — Mobile Money",
     fields: [
       { key: "pawapay_api_token", label: "Token API PawaPay", placeholder: "eyJ...", type: "password", hint: "Obtenez votre token sur le portail PawaPay" },
@@ -532,13 +526,10 @@ function ClapaySimulator() {
 function EmailOtpSection({
   otpEnabled,
   onToggle,
-  resendApiKey,
 }: {
   otpEnabled: boolean;
   onToggle: (val: boolean) => void;
-  resendApiKey?: string;
 }) {
-  const resendConfigured = !!(resendApiKey && resendApiKey.trim().length > 5);
   const { toast } = useToast();
   const [testEmail, setTestEmail] = useState("");
   const [testResult, setTestResult] = useState<{ success: boolean; message: string; latencyMs?: number } | null>(null);
@@ -563,7 +554,7 @@ function EmailOtpSection({
           <Mail className="w-3 h-3 text-violet-400" />
         </div>
         <h2 className="text-sm font-semibold text-white">Vérification Email (OTP)</h2>
-        <span className="ml-2 text-[10px] px-2 py-0.5 rounded-full bg-violet-500/15 text-violet-400 border border-violet-500/20 font-medium">Resend</span>
+        <span className="ml-2 text-[10px] px-2 py-0.5 rounded-full bg-violet-500/15 text-violet-400 border border-violet-500/20 font-medium">Brevo → Resend</span>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -618,9 +609,9 @@ function EmailOtpSection({
 
         {/* Test email */}
         <div>
-          <label className="text-xs text-zinc-400 mb-2 block font-medium">Tester l'envoi d'email via Resend</label>
+          <label className="text-xs text-zinc-400 mb-2 block font-medium">Tester l'infrastructure transactionnelle</label>
           <p className="text-xs text-zinc-600 mb-3 leading-relaxed">
-            Envoie un vrai email de démonstration OTP à l'adresse saisie pour vérifier que Resend fonctionne correctement.
+            Envoie un vrai email via le service central : Brevo en principal, puis Resend uniquement si le fallback est éligible.
           </p>
 
           <div className="flex gap-2">
@@ -657,7 +648,7 @@ function EmailOtpSection({
                 </p>
                 {testResult.latencyMs !== undefined && (
                   <p className="text-[11px] text-zinc-500 mt-0.5">
-                    Latence Resend : <span className="font-mono text-zinc-400">{testResult.latencyMs}ms</span>
+                    Latence totale : <span className="font-mono text-zinc-400">{testResult.latencyMs}ms</span>
                   </p>
                 )}
               </div>
@@ -665,19 +656,16 @@ function EmailOtpSection({
           )}
 
           <div className="mt-4 p-3 bg-zinc-800/60 border border-zinc-700/40 rounded-lg space-y-1.5">
-            <p className="text-[11px] text-zinc-500 font-medium uppercase tracking-wide">Configuration Resend</p>
+            <p className="text-[11px] text-zinc-500 font-medium uppercase tracking-wide">Configuration des fournisseurs</p>
             <div className="flex items-center gap-2">
-              <div className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-              <span className="text-xs text-zinc-400">From : <code className="text-violet-400">noreply@simix.app</code></span>
+              <div className="w-1.5 h-1.5 rounded-full bg-violet-400" />
+              <span className="text-xs text-zinc-400">Ordre : <code className="text-violet-400">Brevo principal → Resend secours</code></span>
             </div>
             <div className="flex items-center gap-2">
-              <div className={`w-1.5 h-1.5 rounded-full ${resendConfigured ? "bg-emerald-400" : "bg-red-400"}`} />
+              <div className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
               <span className="text-xs text-zinc-400">
-                Clé API Resend :{" "}
-                {resendConfigured
-                  ? <code className="text-emerald-400">configurée ✓</code>
-                  : <code className="text-red-400">non configurée — ajoutez-la dans la section Resend ci-dessous</code>
-                }
+                Clés, expéditeurs, tests, activation et file :{" "}
+                <a href="/admin/email-providers" className="text-emerald-400 hover:underline">ouvrir Fournisseurs Email</a>
               </span>
             </div>
             <div className="flex items-center gap-2">
@@ -1073,7 +1061,6 @@ function SettingsContent() {
         <EmailOtpSection
           otpEnabled={values["email_otp_enabled"] !== "false"}
           onToggle={(val) => set("email_otp_enabled", val ? "true" : "false")}
-          resendApiKey={values["resend_api_key"]}
         />
 
         {/* ── Dedicated maintenance section (full width) ── */}
@@ -1089,7 +1076,6 @@ function SettingsContent() {
           const isPawaPay = group === "PawaPay — Mobile Money";
           const isClapay  = group === "Clapay — Mobile Money";
           const isGateway = group === "Passerelle de paiement";
-          const isResend  = group === "Resend — Emails";
 
           return (
             <div
@@ -1098,7 +1084,6 @@ function SettingsContent() {
                 isPawaPay ? "border-orange-500/30 lg:col-span-2" :
                 isClapay  ? "border-blue-500/30 lg:col-span-2"  :
                 isGateway ? "border-emerald-500/30"              :
-                isResend  ? "border-violet-500/30"               :
                 "border-zinc-800"
               }`}
             >
@@ -1109,11 +1094,6 @@ function SettingsContent() {
                 {isClapay && (
                   <div className="w-5 h-5 rounded-full bg-blue-500/20 border border-blue-500/40 flex items-center justify-center text-blue-400 text-[10px] font-bold">C</div>
                 )}
-                {isResend && (
-                  <div className="w-5 h-5 rounded-full bg-violet-500/20 border border-violet-500/40 flex items-center justify-center">
-                    <Mail className="w-3 h-3 text-violet-400" />
-                  </div>
-                )}
                 <h2 className="text-sm font-semibold text-white">{group}</h2>
                 {isPawaPay && (
                   <span className="ml-2 text-[10px] px-2 py-0.5 rounded-full bg-orange-500/15 text-orange-400 border border-orange-500/20 font-medium">Agrégateur de dépôts</span>
@@ -1123,9 +1103,6 @@ function SettingsContent() {
                 )}
                 {isGateway && (
                   <span className="ml-2 text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/20 font-medium">Routage</span>
-                )}
-                {isResend && (
-                  <span className="ml-2 text-[10px] px-2 py-0.5 rounded-full bg-violet-500/15 text-violet-400 border border-violet-500/20 font-medium">Emails transactionnels</span>
                 )}
               </div>
 

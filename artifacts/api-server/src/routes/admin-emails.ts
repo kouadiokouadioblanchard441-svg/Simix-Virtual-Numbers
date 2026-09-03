@@ -11,7 +11,7 @@ import { db, emailCampaignsTable, emailLogsTable, usersTable, emailProvidersTabl
 import { requireAdminJwt } from "../lib/admin-jwt-middleware";
 import { logger } from "../lib/logger";
 import { getAppUrl } from "../lib/app-url";
-import { getEmailManager } from "../lib/email-router";
+import { emailService } from "../lib/email-service";
 import { refreshCampaignProgress } from "../lib/email-router/manager";
 import { getFromEmail } from "../lib/email-from";
 
@@ -156,7 +156,6 @@ router.post("/admin/emails/send", requireAdmin, async (req: Request, res: Respon
 
   const finalHtml = htmlContent?.trim() || buildEmailHtml(subject, body!.replace(/\n/g, "<br>"), templateType);
   const from = await getFromEmail();
-  const emailManager = getEmailManager();
 
   /* ── Filtre des emails réels (exclure les placeholders @simix.site) ── */
   function isRealEmail(email: string | null | undefined): boolean {
@@ -224,7 +223,7 @@ router.post("/admin/emails/send", requireAdmin, async (req: Request, res: Respon
        clés du panneau, priorité, failover et file d'attente inclus. */
     await Promise.all(batch.map(async (recipient) => {
       try {
-        const result = await emailManager.send({
+        const result = await emailService.send({
           from,
           to: recipient.email as string,
           subject: subject.trim(),
@@ -356,7 +355,7 @@ router.post("/admin/emails/test", requireAdmin, async (req: Request, res: Respon
 
   const start = Date.now();
   try {
-    const result = await getEmailManager().send({
+    const result = await emailService.send({
       from: await getFromEmail(),
       to: email,
       subject: "Test de configuration email — Simix Admin",
