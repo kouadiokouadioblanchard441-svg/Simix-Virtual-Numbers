@@ -13,7 +13,13 @@ export const resendAdapter: ProviderAdapter = {
   name: "Resend",
 
   async send(payload: EmailPayload, config: AdapterConfig): Promise<AdapterSendResult> {
-    if (!config.apiKey) throw new Error("Resend: apiKey manquante");
+    if (!config.apiKey) {
+      throw new ProviderSendError("Resend: apiKey manquante ou indéchiffrable", {
+        // La requête n'a pas quitté le serveur : le fallback est sans risque.
+        kind: "definitive",
+        code: "MISSING_API_KEY",
+      });
+    }
     const client = new Resend(config.apiKey);
     let response: Awaited<ReturnType<typeof client.emails.send>>;
     try {

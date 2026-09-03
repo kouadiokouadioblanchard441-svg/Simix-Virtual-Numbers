@@ -24,7 +24,13 @@ export const brevoAdapter: ProviderAdapter = {
   name: "Brevo (Sendinblue)",
 
   async send(payload: EmailPayload, config: AdapterConfig): Promise<AdapterSendResult> {
-    if (!config.apiKey) throw new Error("Brevo: apiKey manquante");
+    if (!config.apiKey) {
+      throw new ProviderSendError("Brevo: apiKey manquante ou indéchiffrable", {
+        // La requête n'a pas quitté le serveur : le fallback est sans risque.
+        kind: "definitive",
+        code: "MISSING_API_KEY",
+      });
+    }
     const sender = parseSender(payload.from);
     if (!sender.email) throw new Error("Brevo: adresse expéditeur manquante");
 

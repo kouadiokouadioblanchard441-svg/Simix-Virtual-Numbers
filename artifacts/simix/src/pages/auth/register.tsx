@@ -145,9 +145,16 @@ export default function Register() {
           ...(referralCode.trim() ? { referralCode: referralCode.trim() } : {}),
           "cf-turnstile-response": turnstileToken,
         } as any
-      }) as { requiresEmailVerification?: boolean };
+      }) as { requiresEmailVerification?: boolean; emailDeliveryFailed?: boolean };
       queryClient.invalidateQueries({ queryKey: getGetMeQueryKey() });
       if (result?.requiresEmailVerification) {
+        if (result.emailDeliveryFailed) {
+          toast({
+            title: "Compte créé, mais email non envoyé",
+            description: "Le fournisseur email est momentanément indisponible. Utilisez « Renvoyer le code » après sa remise en service.",
+            variant: "destructive",
+          });
+        }
         setLocation("/verify-email");
       } else {
         setLocation("/bienvenue");

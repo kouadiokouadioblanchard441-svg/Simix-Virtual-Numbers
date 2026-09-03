@@ -154675,7 +154675,13 @@ var resendAdapter = {
   slug: "resend",
   name: "Resend",
   async send(payload, config) {
-    if (!config.apiKey) throw new Error("Resend: apiKey manquante");
+    if (!config.apiKey) {
+      throw new ProviderSendError("Resend: apiKey manquante ou ind\xE9chiffrable", {
+        // La requête n'a pas quitté le serveur : le fallback est sans risque.
+        kind: "definitive",
+        code: "MISSING_API_KEY"
+      });
+    }
     const client = new Resend(config.apiKey);
     let response;
     try {
@@ -154990,7 +154996,13 @@ var brevoAdapter = {
   slug: "brevo",
   name: "Brevo (Sendinblue)",
   async send(payload, config) {
-    if (!config.apiKey) throw new Error("Brevo: apiKey manquante");
+    if (!config.apiKey) {
+      throw new ProviderSendError("Brevo: apiKey manquante ou ind\xE9chiffrable", {
+        // La requête n'a pas quitté le serveur : le fallback est sans risque.
+        kind: "definitive",
+        code: "MISSING_API_KEY"
+      });
+    }
     const sender = parseSender(payload.from);
     if (!sender.email) throw new Error("Brevo: adresse exp\xE9diteur manquante");
     let res;
@@ -156469,10 +156481,12 @@ router3.post("/auth/register", requireTurnstile, async (req, res) => {
     res.json({ user: { ...toUser(user), emailVerified: true }, token: session.id });
     return;
   }
+  let emailDeliveryFailed = false;
   try {
     const { code: otpCode, issuanceId } = await createOtp(user.id, "email_verification");
     await sendOtpEmail(safeEmail, otpCode, "register", user.fullName, issuanceId);
   } catch (emailErr) {
+    emailDeliveryFailed = true;
     logger.error({ err: emailErr }, "[auth] registration OTP email error");
   }
   void (async () => {
@@ -156490,7 +156504,12 @@ router3.post("/auth/register", requireTurnstile, async (req, res) => {
     } catch {
     }
   })();
-  res.json({ user: toUser(user), token: session.id, requiresEmailVerification: true });
+  res.json({
+    user: toUser(user),
+    token: session.id,
+    requiresEmailVerification: true,
+    emailDeliveryFailed
+  });
 });
 router3.post("/auth/login", requireTurnstile, async (req, res) => {
   const ip = req.ip ?? "unknown";
@@ -156568,13 +156587,20 @@ router3.post("/auth/login", requireTurnstile, async (req, res) => {
       res.json({ user: { ...toUser(user), emailVerified: true }, token: session.id });
       return;
     }
+    let emailDeliveryFailed = false;
     try {
       const { code: otpCode, issuanceId } = await createOtp(user.id, "email_verification");
       await sendOtpEmail(user.email, otpCode, "register", user.fullName, issuanceId);
     } catch (emailErr) {
+      emailDeliveryFailed = true;
       logger.error({ err: emailErr }, "[auth] email verification OTP error");
     }
-    res.json({ user: toUser(user), token: session.id, requiresEmailVerification: true });
+    res.json({
+      user: toUser(user),
+      token: session.id,
+      requiresEmailVerification: true,
+      emailDeliveryFailed
+    });
     return;
   }
   if (otpEnabled && isUserInactive(user.lastLoginAt ?? null)) {
@@ -165604,7 +165630,7 @@ function safeProvider(r3, role, defaultFrom) {
     senderEmail,
     senderName,
     role,
-    hasApiSecret: !!r3.apiSecretEnc,
+    hasApiSecret: !!databaseApiSecret,
     domain: r3.domain,
     region: r3.region,
     config: maskConfig(r3.config),
@@ -165679,7 +165705,7 @@ router20.put("/admin/email-providers/:id", async (req, res) => {
     res.status(404).json({ error: "Fournisseur introuvable" });
     return;
   }
-  const resultingHasApiKey = apiKey === void 0 ? !!current.apiKeyEnc : !!apiKey.trim();
+  const resultingHasApiKey = apiKey === void 0 ? !!(current.apiKeyEnc && decrypt(current.apiKeyEnc).trim()) : !!apiKey.trim();
   const resultingActive = active === void 0 ? current.active : active;
   if (resultingActive && !resultingHasApiKey) {
     res.status(400).json({ error: "Une cl\xE9 API est requise pour activer ce fournisseur" });
@@ -165720,8 +165746,9 @@ router20.post("/admin/email-providers/:id/toggle", async (req, res) => {
     res.status(404).json({ error: "Fournisseur introuvable" });
     return;
   }
-  if (!current.active && !current.apiKeyEnc) {
-    res.status(400).json({ error: "Ajoutez une cl\xE9 API avant d'activer ce fournisseur" });
+  const hasUsableApiKey = !!(current.apiKeyEnc && decrypt(current.apiKeyEnc).trim());
+  if (!current.active && !hasUsableApiKey) {
+    res.status(400).json({ error: "Ajoutez ou remplacez la cl\xE9 API avant d'activer ce fournisseur" });
     return;
   }
   const [row] = await db.update(emailProvidersTable).set({ active: !current.active }).where(eq(emailProvidersTable.id, id)).returning();

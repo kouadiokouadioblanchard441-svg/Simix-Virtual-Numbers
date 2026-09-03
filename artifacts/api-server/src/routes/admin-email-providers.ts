@@ -90,7 +90,7 @@ function safeProvider(
     senderEmail,
     senderName,
     role,
-    hasApiSecret:     !!r.apiSecretEnc,
+    hasApiSecret:     !!databaseApiSecret,
     domain:           r.domain,
     region:           r.region,
     config:           maskConfig(r.config as Record<string, string> | null),
@@ -176,7 +176,9 @@ router.put("/admin/email-providers/:id", async (req: Request, res: Response): Pr
   }).from(emailProvidersTable).where(eq(emailProvidersTable.id, id)).limit(1);
   if (!current) { res.status(404).json({ error: "Fournisseur introuvable" }); return; }
 
-  const resultingHasApiKey = apiKey === undefined ? !!current.apiKeyEnc : !!apiKey.trim();
+  const resultingHasApiKey = apiKey === undefined
+    ? !!(current.apiKeyEnc && decrypt(current.apiKeyEnc).trim())
+    : !!apiKey.trim();
   const resultingActive = active === undefined ? current.active : active;
   if (resultingActive && !resultingHasApiKey) {
     res.status(400).json({ error: "Une clé API est requise pour activer ce fournisseur" });
@@ -219,8 +221,9 @@ router.post("/admin/email-providers/:id/toggle", async (req: Request, res: Respo
   })
     .from(emailProvidersTable).where(eq(emailProvidersTable.id, id)).limit(1);
   if (!current) { res.status(404).json({ error: "Fournisseur introuvable" }); return; }
-  if (!current.active && !current.apiKeyEnc) {
-    res.status(400).json({ error: "Ajoutez une clé API avant d'activer ce fournisseur" });
+  const hasUsableApiKey = !!(current.apiKeyEnc && decrypt(current.apiKeyEnc).trim());
+  if (!current.active && !hasUsableApiKey) {
+    res.status(400).json({ error: "Ajoutez ou remplacez la clé API avant d'activer ce fournisseur" });
     return;
   }
 

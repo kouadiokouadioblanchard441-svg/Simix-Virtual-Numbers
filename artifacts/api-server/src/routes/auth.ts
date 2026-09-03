@@ -132,10 +132,12 @@ router.post("/auth/register", requireTurnstile, async (req, res): Promise<void> 
     return;
   }
 
+  let emailDeliveryFailed = false;
   try {
     const { code: otpCode, issuanceId } = await createOtp(user.id, "email_verification");
     await sendOtpEmail(safeEmail, otpCode, "register", user.fullName, issuanceId);
   } catch (emailErr) {
+    emailDeliveryFailed = true;
     logger.error({ err: emailErr }, "[auth] registration OTP email error");
   }
 
@@ -155,7 +157,12 @@ router.post("/auth/register", requireTurnstile, async (req, res): Promise<void> 
     } catch { /* non-fatal */ }
   })();
 
-  res.json({ user: toUser(user), token: session.id, requiresEmailVerification: true });
+  res.json({
+    user: toUser(user),
+    token: session.id,
+    requiresEmailVerification: true,
+    emailDeliveryFailed,
+  });
 });
 
 router.post("/auth/login", requireTurnstile, async (req, res): Promise<void> => {
@@ -257,13 +264,20 @@ router.post("/auth/login", requireTurnstile, async (req, res): Promise<void> => 
       res.json({ user: { ...toUser(user), emailVerified: true }, token: session.id });
       return;
     }
+    let emailDeliveryFailed = false;
     try {
       const { code: otpCode, issuanceId } = await createOtp(user.id, "email_verification");
       await sendOtpEmail(user.email, otpCode, "register", user.fullName, issuanceId);
     } catch (emailErr) {
+      emailDeliveryFailed = true;
       logger.error({ err: emailErr }, "[auth] email verification OTP error");
     }
-    res.json({ user: toUser(user), token: session.id, requiresEmailVerification: true });
+    res.json({
+      user: toUser(user),
+      token: session.id,
+      requiresEmailVerification: true,
+      emailDeliveryFailed,
+    });
     return;
   }
 
