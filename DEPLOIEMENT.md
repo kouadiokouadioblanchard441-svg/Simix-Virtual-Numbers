@@ -40,6 +40,7 @@ DATABASE_URL=postgresql://user:password@host:5432/simix
 SESSION_SECRET=<64 octets aléatoires en base64>
 ADMIN_ACCESS_TOKEN=<48 octets hex — clé d'accès à l'URL admin>
 ADMIN_JWT_SECRET=<64 octets hex — signature des sessions admin>
+ENCRYPTION_KEY=<clé stable identique à celle de Replit pour chiffrer les identifiants fournisseurs>
 ```
 
 #### Fournisseur de numéros
@@ -64,6 +65,12 @@ MOBILE_MONEY_GATEWAY=pawapay
 RESEND_API_KEY=<votre clé Resend>
 EMAIL_FROM=noreply@votredomaine.com
 ```
+
+> La base Supabase est la source de vérité pour les identifiants, l'activation et
+> la priorité des fournisseurs email. `RESEND_API_KEY`/`BREVO_API_KEY` dans Plesk
+> servent uniquement d'amorçage si la ligne correspondante n'a pas encore de clé
+> en base. Tous les environnements qui partagent la base doivent utiliser la même
+> `ENCRYPTION_KEY`.
 
 #### Application
 

@@ -61,6 +61,14 @@ pnpm --filter @workspace/api-spec run codegen
 
 Workflows are managed by Replit and serve the artifacts on a single shared proxy.
 
+## Production Plesk
+
+- Simix production runs on `https://simix.site` from the Plesk server.
+- Production changes must be validated with the complete root build: `pnpm run build`.
+- The Plesk deployment uses `startup.js`; it rebuilds `dist/` and the root `public/` frontend when source files are newer.
+- The shared Supabase `email_providers` table is the source of truth for email credentials, activation, and priority. Plesk environment provider keys are bootstrap-only and must not overwrite database credentials.
+- Every environment that shares this database must use the same dedicated `ENCRYPTION_KEY`; never rely on an environment-specific `SESSION_SECRET` for provider encryption.
+
 ## Replit setup
 
 The `Start application` workflow runs `bash start-replit.sh` and serves the combined

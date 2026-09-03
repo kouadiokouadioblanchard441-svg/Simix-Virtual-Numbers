@@ -23,6 +23,7 @@ const REQUIRED_ENV = [
   { key: "DATABASE_URL",     label: "URL de la base de données PostgreSQL",  example: "postgresql://<host>:5432/<database>" },
   { key: "SESSION_SECRET",   label: "Clé secrète pour les sessions",          example: "une-longue-chaine-aleatoire-de-32-caracteres" },
   { key: "ADMIN_JWT_SECRET", label: "Clé secrète JWT pour l'admin",           example: "une-autre-longue-chaine-aleatoire" },
+  { key: "ENCRYPTION_KEY",    label: "Clé stable de chiffrement des identifiants fournisseurs", example: "une-longue-chaine-stable-partagee-avec-Replit" },
 ];
 
 /* SUPABASE_DATABASE_URL est accepté comme alternative à DATABASE_URL */
