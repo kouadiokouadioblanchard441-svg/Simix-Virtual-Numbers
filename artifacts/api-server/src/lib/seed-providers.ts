@@ -87,7 +87,19 @@ export async function seedEmailProvidersFromEnv(): Promise<void> {
         .limit(1);
 
       if (existing) {
-        const existingKey = existing.apiKeyEnc ? decrypt(existing.apiKeyEnc) : "";
+        let existingKey = "";
+        if (existing.apiKeyEnc) {
+          try {
+            existingKey = decrypt(existing.apiKeyEnc).trim();
+          } catch (err) {
+            // Une clé chiffrée avec une ancienne SESSION_SECRET doit être
+            // remplacée par la clé Plesk, sans empêcher le démarrage.
+            logger.warn(
+              { provider: provider.slug, err },
+              "[seed-email-providers] Existing provider key could not be decrypted — replacing from environment",
+            );
+          }
+        }
         if (existingKey) {
           logger.info({ provider: provider.slug }, "[seed-email-providers] Provider already has a usable key — nothing to do");
           continue;

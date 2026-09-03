@@ -240,7 +240,7 @@ class EmailProviderManager {
       await db.insert(emailProvidersTable).values({
         name:      "Resend",
         slug:      "resend",
-        priority:  2,
+        priority:  1,
         active:    true,
         apiKeyEnc: encrypt(apiKey),
       });
@@ -341,12 +341,21 @@ class EmailProviderManager {
     // ── Tentatives par ordre de priorité ──────────────────────
     const activeProviders = await this.loadProviders();
     // Un providerId sur un élément non envoyé signifie qu'un résultat antérieur
-    // était ambigu. Le retry reste alors verrouillé sur ce fournisseur pour
-    // éviter qu'un message potentiellement accepté par Brevo parte aussi via Resend.
+    // était ambigu. Le retry commence par ce fournisseur pour
+    // éviter qu'un message potentiellement accepté parte aussi via le secours.
     const ambiguousProviderId = existing[0]?.providerId ?? null;
-    const providers = ambiguousProviderId
-      ? activeProviders.filter(provider => provider.id === ambiguousProviderId)
-      : activeProviders;
+    const pinnedProvider = ambiguousProviderId
+      ? activeProviders.find(provider => provider.id === ambiguousProviderId) ?? null
+      : null;
+    // Après un timeout, le fournisseur concerné est essayé en premier. S'il
+    // confirme ensuite le refus (temporary/definitive), le secours redevient
+    // disponible. Cela évite de bloquer la file indéfiniment tout en
+    // interdisant le fallback pendant que le résultat reste ambigu.
+    const providers = pinnedProvider
+      ? [pinnedProvider, ...activeProviders.filter(provider => provider.id !== pinnedProvider.id)]
+      : ambiguousProviderId
+        ? []
+        : activeProviders;
     if (providers.length === 0) {
       logger.warn(
         { ambiguousProviderId: ambiguousProviderId ?? undefined },
@@ -384,7 +393,7 @@ class EmailProviderManager {
     let definitiveFailureDetected = false;
     let lastError = "";
     let attemptedProviders = 0;
-    for (const provider of providers) {
+    for (const [providerIndex, provider] of providers.entries()) {
       // Ne saute un fournisseur "down" que s'il existe une alternative moins dégradée —
       // sinon (cas mono-fournisseur), on retente quand même : rester bloqué "down" pour
       // toujours (aucun succès n'est possible pour se réhabiliter) créait une panne totale
@@ -392,7 +401,10 @@ class EmailProviderManager {
       const hasBetterAlternative = providers.some(
         p => p.id !== provider.id && p.healthStatus !== "down",
       );
-      if (provider.healthStatus === "down" && hasBetterAlternative) continue;
+      // Un fournisseur épinglé après un timeout doit être réessayé, même si
+      // son health check l'a marqué down : l'API peut avoir accepté l'envoi
+      // précédent et est la seule qui puisse dédupliquer la même clé.
+      if (provider.healthStatus === "down" && hasBetterAlternative && !(pinnedProvider && providerIndex === 0)) continue;
       const adapter = ADAPTERS[provider.slug];
       if (!adapter) continue;
 
@@ -508,7 +520,10 @@ class EmailProviderManager {
       : temporaryFailureDetected ? "Tous les fournisseurs disponibles ont échoué temporairement" : "Tous les fournisseurs ont échoué";
     await db.update(emailQueueTable).set({
       status:      remainsPending ? "pending" : "failed",
-      providerId:  ambiguousFailureProviderId ?? ambiguousProviderId,
+      // L'affinité ne reste persistante que si la dernière tentative est
+      // ambiguë. Un refus confirmé autorise le prochain retry à repartir
+      // selon l'ordre normal des fournisseurs.
+      providerId:  ambiguousFailureProviderId,
       attempts,
       retryable,
       error:       queueError,

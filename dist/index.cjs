@@ -154687,8 +154687,19 @@ var resendAdapter = {
         text: payload.text
       }, payload.idempotencyKey ? { idempotencyKey: payload.idempotencyKey } : void 0);
     } catch (cause) {
+      const code = cause.cause?.code ?? cause.code;
+      const definitelyNotSent = (/* @__PURE__ */ new Set([
+        "ENOTFOUND",
+        "EAI_AGAIN",
+        "ECONNREFUSED",
+        "UND_ERR_CONNECT_TIMEOUT"
+      ])).has(code ?? "");
       throw new ProviderSendError("Resend: erreur r\xE9seau", {
-        kind: "ambiguous",
+        // Une panne de résolution/connexion n'a jamais atteint l'API :
+        // le fallback est sûr. Un autre échec réseau reste ambigu car la
+        // requête a pu être acceptée avant la coupure.
+        kind: definitelyNotSent ? "temporary" : "ambiguous",
+        code,
         cause
       });
     }
@@ -155364,7 +155375,7 @@ var EmailProviderManager = class {
       await db.insert(emailProvidersTable).values({
         name: "Resend",
         slug: "resend",
-        priority: 2,
+        priority: 1,
         active: true,
         apiKeyEnc: encrypt(apiKey)
       });
@@ -155442,7 +155453,8 @@ var EmailProviderManager = class {
     }
     const activeProviders = await this.loadProviders();
     const ambiguousProviderId = existing[0]?.providerId ?? null;
-    const providers = ambiguousProviderId ? activeProviders.filter((provider) => provider.id === ambiguousProviderId) : activeProviders;
+    const pinnedProvider = ambiguousProviderId ? activeProviders.find((provider) => provider.id === ambiguousProviderId) ?? null : null;
+    const providers = pinnedProvider ? [pinnedProvider, ...activeProviders.filter((provider) => provider.id !== pinnedProvider.id)] : ambiguousProviderId ? [] : activeProviders;
     if (providers.length === 0) {
       logger.warn(
         { ambiguousProviderId: ambiguousProviderId ?? void 0 },
@@ -155473,11 +155485,11 @@ var EmailProviderManager = class {
     let definitiveFailureDetected = false;
     let lastError = "";
     let attemptedProviders = 0;
-    for (const provider of providers) {
+    for (const [providerIndex, provider] of providers.entries()) {
       const hasBetterAlternative = providers.some(
         (p) => p.id !== provider.id && p.healthStatus !== "down"
       );
-      if (provider.healthStatus === "down" && hasBetterAlternative) continue;
+      if (provider.healthStatus === "down" && hasBetterAlternative && !(pinnedProvider && providerIndex === 0)) continue;
       const adapter = ADAPTERS[provider.slug];
       if (!adapter) continue;
       const start2 = Date.now();
@@ -155573,7 +155585,10 @@ var EmailProviderManager = class {
     const queueError = ambiguousFailureDetected ? "R\xE9sultat fournisseur incertain \u2014 nouvelle tentative idempotente programm\xE9e sans fallback imm\xE9diat" : definitiveFailureDetected ? lastError || "Email refus\xE9 d\xE9finitivement" : quotaOrRateLimitDetected ? retryable ? "Quota ou limite d'envoi atteint \u2014 nouvelle tentative automatique programm\xE9e" : "Quota ou limite d'envoi atteint pour un email \xE0 dur\xE9e de validit\xE9 limit\xE9e" : temporaryFailureDetected ? "Tous les fournisseurs disponibles ont \xE9chou\xE9 temporairement" : "Tous les fournisseurs ont \xE9chou\xE9";
     await db.update(emailQueueTable).set({
       status: remainsPending ? "pending" : "failed",
-      providerId: ambiguousFailureProviderId ?? ambiguousProviderId,
+      // L'affinité ne reste persistante que si la dernière tentative est
+      // ambiguë. Un refus confirmé autorise le prochain retry à repartir
+      // selon l'ordre normal des fournisseurs.
+      providerId: ambiguousFailureProviderId,
       attempts,
       retryable,
       error: queueError,
@@ -165513,7 +165528,17 @@ async function seedEmailProvidersFromEnv() {
         apiKeyEnc: emailProvidersTable.apiKeyEnc
       }).from(emailProvidersTable).where(eq(emailProvidersTable.slug, provider.slug)).limit(1);
       if (existing) {
-        const existingKey = existing.apiKeyEnc ? decrypt(existing.apiKeyEnc) : "";
+        let existingKey = "";
+        if (existing.apiKeyEnc) {
+          try {
+            existingKey = decrypt(existing.apiKeyEnc).trim();
+          } catch (err) {
+            logger.warn(
+              { provider: provider.slug, err },
+              "[seed-email-providers] Existing provider key could not be decrypted \u2014 replacing from environment"
+            );
+          }
+        }
         if (existingKey) {
           logger.info({ provider: provider.slug }, "[seed-email-providers] Provider already has a usable key \u2014 nothing to do");
           continue;

@@ -25,8 +25,17 @@ export const resendAdapter: ProviderAdapter = {
         text:    payload.text,
       }, payload.idempotencyKey ? { idempotencyKey: payload.idempotencyKey } : undefined);
     } catch (cause) {
+      const code = (cause as { cause?: { code?: string }; code?: string }).cause?.code
+        ?? (cause as { code?: string }).code;
+      const definitelyNotSent = new Set([
+        "ENOTFOUND", "EAI_AGAIN", "ECONNREFUSED", "UND_ERR_CONNECT_TIMEOUT",
+      ]).has(code ?? "");
       throw new ProviderSendError("Resend: erreur réseau", {
-        kind: "ambiguous",
+        // Une panne de résolution/connexion n'a jamais atteint l'API :
+        // le fallback est sûr. Un autre échec réseau reste ambigu car la
+        // requête a pu être acceptée avant la coupure.
+        kind: definitelyNotSent ? "temporary" : "ambiguous",
+        code,
         cause,
       });
     }
