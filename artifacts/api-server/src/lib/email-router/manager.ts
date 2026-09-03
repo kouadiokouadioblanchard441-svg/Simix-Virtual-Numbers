@@ -59,8 +59,6 @@ const ADAPTERS: Record<string, ProviderAdapter> = {
 };
 
 const QUOTA_RETRY_DELAY_MS = 15 * 60_000;
-const PROVIDER_ROLE_ORDER: Record<string, number> = { brevo: 1, resend: 2 };
-
 function getProviderSender(slug: string): { email: string | null; name: string | null } {
   if (slug === "brevo") {
     return {
@@ -211,10 +209,7 @@ class EmailProviderManager {
       healthStatus:     r.healthStatus,
       consecutiveErrors: r.consecutiveErrors,
       };
-    }).sort((a, b) =>
-      (PROVIDER_ROLE_ORDER[a.slug] ?? 100) - (PROVIDER_ROLE_ORDER[b.slug] ?? 100)
-      || a.priority - b.priority
-    );
+    }).sort((a, b) => a.priority - b.priority);
     this.cacheTs = Date.now();
 
     // Auto-seed Resend si aucun fournisseur configuré

@@ -32,28 +32,40 @@ const router: IRouter = Router();
 router.use(requireAdminJwt);
 
 /* ── Serialise un fournisseur sans exposer les clés ─────────── */
-function safeProvider(r: typeof emailProvidersTable.$inferSelect) {
+function parseSender(value: string): { email: string | null; name: string | null } {
+  const named = value.trim().match(/^(.*?)\s*<([^<>]+)>$/);
+  if (named) return { name: named[1].trim() || null, email: named[2].trim() || null };
+  return { name: null, email: value.trim() || null };
+}
+
+function safeProvider(
+  r: typeof emailProvidersTable.$inferSelect,
+  role: "primary" | "fallback" | null,
+  defaultFrom: string,
+) {
   const envApiKey = r.slug === "brevo"
     ? process.env["BREVO_API_KEY"]?.trim()
     : r.slug === "resend"
       ? process.env["RESEND_API_KEY"]?.trim()
       : undefined;
-  const senderEmail = r.slug === "brevo"
+  const configuredSenderEmail = r.slug === "brevo"
     ? process.env["BREVO_SENDER_EMAIL"]?.trim() || null
     : r.slug === "resend"
       ? process.env["RESEND_SENDER_EMAIL"]?.trim() || null
       : null;
-  const senderName = r.slug === "brevo"
+  const configuredSenderName = r.slug === "brevo"
     ? process.env["BREVO_SENDER_NAME"]?.trim() || null
     : r.slug === "resend"
       ? process.env["RESEND_SENDER_NAME"]?.trim() || null
       : null;
+  const fallbackSender = parseSender(defaultFrom);
+  const senderEmail = configuredSenderEmail ?? fallbackSender.email;
+  const senderName = configuredSenderName ?? fallbackSender.name;
   let apiKeyMasked: string | null = null;
   if (r.apiKeyEnc) {
     try { apiKeyMasked = maskApiKey(decrypt(r.apiKeyEnc)); } catch { /* clé chiffrée avec une ancienne clé */ }
   }
   if (!apiKeyMasked && envApiKey) apiKeyMasked = maskApiKey(envApiKey);
-  const role = r.slug === "brevo" ? "primary" : r.slug === "resend" ? "fallback" : null;
   return {
     id:               r.id,
     name:             r.name,
@@ -89,12 +101,21 @@ router.get("/admin/email-providers", async (_req: Request, res: Response): Promi
   // Resend dès que les variables Plesk sont présentes, sans exposer les clés.
   try { await seedEmailProvidersFromEnv(); }
   catch (err) { logger.warn({ err }, "[admin] Bootstrap email depuis environnement ignoré"); }
-  const rows = await db.select().from(emailProvidersTable).orderBy(asc(emailProvidersTable.priority));
+  const rows = await db.select().from(emailProvidersTable);
   rows.sort((a, b) => {
-    const role = (slug: string) => slug === "brevo" ? 1 : slug === "resend" ? 2 : 100;
-    return role(a.slug) - role(b.slug) || a.priority - b.priority;
+    if (a.active !== b.active) return a.active ? -1 : 1;
+    return a.priority - b.priority || a.name.localeCompare(b.name);
   });
-  res.json({ providers: rows.map(safeProvider), supported: SUPPORTED_PROVIDERS });
+  const activeIds = rows.filter(row => row.active).map(row => row.id);
+  const defaultFrom = await getFromEmail();
+  res.json({
+    providers: rows.map(row => safeProvider(
+      row,
+      !row.active ? null : row.id === activeIds[0] ? "primary" : "fallback",
+      defaultFrom,
+    )),
+    supported: SUPPORTED_PROVIDERS,
+  });
 });
 
 /* ── POST /admin/email-providers ────────────────────────────── */
@@ -123,7 +144,7 @@ router.post("/admin/email-providers", async (req: Request, res: Response): Promi
 
   emailService.invalidateCache();
   logger.info({ slug, name }, "[admin] Fournisseur email créé");
-  res.status(201).json({ provider: safeProvider(row) });
+  res.status(201).json({ provider: safeProvider(row, active ? "primary" : null, await getFromEmail()) });
 });
 
 /* ── PUT /admin/email-providers/:id ─────────────────────────── */
@@ -164,7 +185,7 @@ router.put("/admin/email-providers/:id", async (req: Request, res: Response): Pr
 
   emailService.invalidateCache();
   logger.info({ id, slug: row.slug }, "[admin] Fournisseur email modifié");
-  res.json({ provider: safeProvider(row) });
+  res.json({ provider: safeProvider(row, row.active ? "primary" : null, await getFromEmail()) });
 });
 
 /* ── DELETE /admin/email-providers/:id ──────────────────────── */
@@ -195,7 +216,7 @@ router.post("/admin/email-providers/:id/toggle", async (req: Request, res: Respo
     .where(eq(emailProvidersTable.id, id)).returning();
 
   emailService.invalidateCache();
-  res.json({ provider: safeProvider(row) });
+  res.json({ provider: safeProvider(row, row.active ? "primary" : null, await getFromEmail()) });
 });
 
 /* ── POST /admin/email-providers/:id/test ───────────────────── */

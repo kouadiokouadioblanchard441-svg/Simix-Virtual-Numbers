@@ -26,6 +26,12 @@ description: Multi-provider email system with failover, retry queue, health chec
 
 **How to apply:** Resolve the shared sender address, pass a stable idempotency key, and record feature-specific success/failure after the manager returns.
 
+**Provider order is admin-controlled.** Brevo priority 1 and Resend priority 2 are bootstrap defaults only. Runtime routing must honor the active providers' database priorities, and the panel derives Principal/Secours from that live order.
+
+**Why:** Operators must be able to switch temporarily to Resend or Brevo without code changes, and the badges must reflect the actual routing order rather than a hardcoded provider role.
+
+**How to apply:** Keep provider activation and priority editable, show no role badge on disabled providers, and never sort runtime providers by a fixed slug preference.
+
 **Quota exhaustion is not a final failure.** Durable emails blocked by quota/rate limits stay in the persistent queue and retry indefinitely; OTP and password-reset emails keep bounded retries because delayed codes expire.
 
 **Why:** Promotions must resume after provider quotas reset without losing recipients, while stale authentication codes must never arrive later and confuse users.

@@ -155223,7 +155223,6 @@ var ADAPTERS = {
   elasticemail: elasticemailAdapter
 };
 var QUOTA_RETRY_DELAY_MS = 15 * 6e4;
-var PROVIDER_ROLE_ORDER = { brevo: 1, resend: 2 };
 function getProviderSender(slug) {
   if (slug === "brevo") {
     return {
@@ -155342,9 +155341,7 @@ var EmailProviderManager = class {
         healthStatus: r3.healthStatus,
         consecutiveErrors: r3.consecutiveErrors
       };
-    }).sort(
-      (a, b3) => (PROVIDER_ROLE_ORDER[a.slug] ?? 100) - (PROVIDER_ROLE_ORDER[b3.slug] ?? 100) || a.priority - b3.priority
-    );
+    }).sort((a, b3) => a.priority - b3.priority);
     this.cacheTs = Date.now();
     if (this.cache.length === 0 && !this.seeding) {
       await this.seedResendFromSettings();
@@ -165540,10 +165537,18 @@ async function seedEmailProvidersFromEnv() {
 // src/routes/admin-email-providers.ts
 var router20 = (0, import_express21.Router)();
 router20.use(requireAdminJwt);
-function safeProvider(r3) {
+function parseSender2(value) {
+  const named = value.trim().match(/^(.*?)\s*<([^<>]+)>$/);
+  if (named) return { name: named[1].trim() || null, email: named[2].trim() || null };
+  return { name: null, email: value.trim() || null };
+}
+function safeProvider(r3, role, defaultFrom) {
   const envApiKey = r3.slug === "brevo" ? process.env["BREVO_API_KEY"]?.trim() : r3.slug === "resend" ? process.env["RESEND_API_KEY"]?.trim() : void 0;
-  const senderEmail = r3.slug === "brevo" ? process.env["BREVO_SENDER_EMAIL"]?.trim() || null : r3.slug === "resend" ? process.env["RESEND_SENDER_EMAIL"]?.trim() || null : null;
-  const senderName = r3.slug === "brevo" ? process.env["BREVO_SENDER_NAME"]?.trim() || null : r3.slug === "resend" ? process.env["RESEND_SENDER_NAME"]?.trim() || null : null;
+  const configuredSenderEmail = r3.slug === "brevo" ? process.env["BREVO_SENDER_EMAIL"]?.trim() || null : r3.slug === "resend" ? process.env["RESEND_SENDER_EMAIL"]?.trim() || null : null;
+  const configuredSenderName = r3.slug === "brevo" ? process.env["BREVO_SENDER_NAME"]?.trim() || null : r3.slug === "resend" ? process.env["RESEND_SENDER_NAME"]?.trim() || null : null;
+  const fallbackSender = parseSender2(defaultFrom);
+  const senderEmail = configuredSenderEmail ?? fallbackSender.email;
+  const senderName = configuredSenderName ?? fallbackSender.name;
   let apiKeyMasked = null;
   if (r3.apiKeyEnc) {
     try {
@@ -165552,7 +165557,6 @@ function safeProvider(r3) {
     }
   }
   if (!apiKeyMasked && envApiKey) apiKeyMasked = maskApiKey(envApiKey);
-  const role = r3.slug === "brevo" ? "primary" : r3.slug === "resend" ? "fallback" : null;
   return {
     id: r3.id,
     name: r3.name,
@@ -165586,12 +165590,21 @@ router20.get("/admin/email-providers", async (_req, res) => {
   } catch (err) {
     logger.warn({ err }, "[admin] Bootstrap email depuis environnement ignor\xE9");
   }
-  const rows = await db.select().from(emailProvidersTable).orderBy(asc(emailProvidersTable.priority));
+  const rows = await db.select().from(emailProvidersTable);
   rows.sort((a, b3) => {
-    const role = (slug) => slug === "brevo" ? 1 : slug === "resend" ? 2 : 100;
-    return role(a.slug) - role(b3.slug) || a.priority - b3.priority;
+    if (a.active !== b3.active) return a.active ? -1 : 1;
+    return a.priority - b3.priority || a.name.localeCompare(b3.name);
   });
-  res.json({ providers: rows.map(safeProvider), supported: SUPPORTED_PROVIDERS });
+  const activeIds = rows.filter((row) => row.active).map((row) => row.id);
+  const defaultFrom = await getFromEmail();
+  res.json({
+    providers: rows.map((row) => safeProvider(
+      row,
+      !row.active ? null : row.id === activeIds[0] ? "primary" : "fallback",
+      defaultFrom
+    )),
+    supported: SUPPORTED_PROVIDERS
+  });
 });
 router20.post("/admin/email-providers", async (req, res) => {
   const { name: name3, slug, priority, active, apiKey, apiSecret, domain, region, config } = req.body;
@@ -165616,7 +165629,7 @@ router20.post("/admin/email-providers", async (req, res) => {
   }).returning();
   emailService.invalidateCache();
   logger.info({ slug, name: name3 }, "[admin] Fournisseur email cr\xE9\xE9");
-  res.status(201).json({ provider: safeProvider(row) });
+  res.status(201).json({ provider: safeProvider(row, active ? "primary" : null, await getFromEmail()) });
 });
 router20.put("/admin/email-providers/:id", async (req, res) => {
   const { id } = req.params;
@@ -165652,7 +165665,7 @@ router20.put("/admin/email-providers/:id", async (req, res) => {
   }
   emailService.invalidateCache();
   logger.info({ id, slug: row.slug }, "[admin] Fournisseur email modifi\xE9");
-  res.json({ provider: safeProvider(row) });
+  res.json({ provider: safeProvider(row, row.active ? "primary" : null, await getFromEmail()) });
 });
 router20.delete("/admin/email-providers/:id", async (req, res) => {
   const { id } = req.params;
@@ -165677,7 +165690,7 @@ router20.post("/admin/email-providers/:id/toggle", async (req, res) => {
   }
   const [row] = await db.update(emailProvidersTable).set({ active: !current.active }).where(eq(emailProvidersTable.id, id)).returning();
   emailService.invalidateCache();
-  res.json({ provider: safeProvider(row) });
+  res.json({ provider: safeProvider(row, row.active ? "primary" : null, await getFromEmail()) });
 });
 router20.post("/admin/email-providers/:id/test", async (req, res) => {
   const id = String(req.params.id);
