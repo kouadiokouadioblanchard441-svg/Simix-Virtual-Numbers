@@ -38,16 +38,6 @@ export function buildBrandedCampaignEmailHtml(subject: string, body: string, tem
   const appUrl = getAppUrl();
   const safeSubject = escapeCampaignHtml(subject);
   const safeBody = escapeCampaignHtml(body).replace(/\r?\n/g, "<br>");
-  const accentColor = templateType === "security" ? "#ef4444"
-    : templateType === "promotion" ? "#f59e0b"
-    : templateType === "bonus" ? "#059669"
-    : "#7c3aed";
-  const badgeLabel = templateType === "security" ? "Sécurité"
-    : templateType === "promotion" ? "Promotion"
-    : templateType === "bonus" ? "Bonus"
-    : templateType === "system" ? "Système"
-    : templateType === "announcement" ? "Annonce"
-    : "Information";
 
   return `<!DOCTYPE html>
 <html lang="fr">
@@ -58,57 +48,38 @@ export function buildBrandedCampaignEmailHtml(subject: string, body: string, tem
   <title>${safeSubject} — Simix</title>
   <style>
     @media only screen and (max-width:620px) {
-      .email-shell { padding:16px 0 !important; }
-      .email-card { border-left:0 !important;border-right:0 !important;border-radius:0 !important; }
-      .email-content { padding:30px 24px 26px !important; }
-      .email-title { font-size:24px !important; }
+      .email-shell { padding:0 !important; }
+      .email-card { border-radius:0 !important; }
+      .email-content { padding:30px 18px 34px !important; }
+      .email-title { font-size:27px !important; }
     }
   </style>
 </head>
-<body style="margin:0;padding:0;background:#f1f1f3;font-family:Arial,Helvetica,sans-serif;color:#17171c;">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f1f1f3;">
+<body style="margin:0;padding:0;background:#f1f1f1;font-family:Arial,Helvetica,sans-serif;color:#202124;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f1f1f1;">
     <tr>
-      <td align="center" class="email-shell" style="padding:28px 16px 40px;">
+      <td align="center" class="email-shell" style="padding:16px 0 32px;">
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;">
           <tr>
-            <td style="background:#17151f;border-radius:14px 14px 0 0;padding:22px 24px;text-align:center;">
-              <a href="${appUrl}" style="text-decoration:none;">
-                <img src="${appUrl}/simix-icon.png" alt="" width="30" height="30" style="display:inline-block;vertical-align:middle;width:30px;height:30px;border:0;border-radius:8px;margin-right:8px;">
-                <span style="display:inline-block;vertical-align:middle;color:#ffffff;font-family:Arial,Helvetica,sans-serif;font-size:20px;line-height:30px;font-weight:700;letter-spacing:1.8px;">SIMIX</span>
-              </a>
+            <td style="padding:0 18px 14px;">
+              <a href="${appUrl}" style="font-family:Arial,Helvetica,sans-serif;color:#3977c7;font-size:14px;line-height:20px;font-weight:700;text-decoration:none;">simix</a>
             </td>
           </tr>
           <tr>
-            <td class="email-card" style="background:#ffffff;border:1px solid #e3e3e7;border-top:0;border-radius:0 0 14px 14px;overflow:hidden;">
+            <td class="email-card" style="background:#ffffff;border-radius:18px;overflow:hidden;">
               <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
                 <tr>
-                  <td class="email-content" style="padding:32px 42px 30px;">
-                    <p style="margin:0 0 10px;font-size:12px;line-height:1.4;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:${accentColor};">${badgeLabel} Simix</p>
-                    <h1 class="email-title" style="margin:0 0 22px;font-family:Arial,Helvetica,sans-serif;font-size:26px;line-height:1.25;font-weight:700;letter-spacing:-0.3px;color:#111114;">${safeSubject}</h1>
-                    <div style="font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:1.7;color:#24242a;">${safeBody}</div>
-                    <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:26px auto 0;">
-                      <tr>
-                        <td style="background:#7c3aed;border-radius:4px;">
-                          <a href="${appUrl}" style="display:block;padding:13px 28px;color:#ffffff;font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:700;text-decoration:none;">Accéder à Simix</a>
-                        </td>
-                      </tr>
-                    </table>
-                  </td>
-                </tr>
-              </table>
-              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
-                <tr>
-                  <td style="padding:15px 24px;background:#fbfbfc;border-top:1px solid #eeeef2;text-align:center;">
-                    <p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:1.6;color:#6b6b75;">Vous recevez cet email parce que vous êtes inscrit sur Simix.</p>
+                  <td class="email-content" style="padding:34px 42px 38px;">
+                    <h1 class="email-title" style="margin:0 0 24px;font-family:Arial,Helvetica,sans-serif;font-size:30px;line-height:1.2;font-weight:700;letter-spacing:-0.6px;color:#111111;">${safeSubject}</h1>
+                    <div style="font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:1.55;color:#202124;">${safeBody}</div>
                   </td>
                 </tr>
               </table>
             </td>
           </tr>
           <tr>
-            <td align="center" style="padding:22px 12px 0;">
-              <p style="margin:0 0 5px;font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:1.5;color:#8b8b93;">© ${new Date().getFullYear()} Simix · <a href="mailto:simixsupport@gmail.com" style="color:#7c3aed;text-decoration:none;">Support</a></p>
-              <p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:11px;line-height:1.5;color:#a1a1aa;">Ceci est un message automatique, veuillez ne pas y répondre.</p>
+            <td style="padding:18px 18px 0;">
+              <p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:1.5;color:#737373;">L'équipe Simix</p>
             </td>
           </tr>
         </table>
