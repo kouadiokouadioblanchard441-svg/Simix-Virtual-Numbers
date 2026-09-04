@@ -93,7 +93,16 @@ export const brevoAdapter: ProviderAdapter = {
       const res = await fetch(`${BASE}/account`, {
         headers: { "api-key": config.apiKey },
       });
-      return { healthy: res.ok, latencyMs: Date.now() - start, detail: res.ok ? undefined : String(res.status) };
+      if (res.ok) return { healthy: true, latencyMs: Date.now() - start };
+      const responseText = await res.text();
+      let detail = `Brevo HTTP ${res.status}`;
+      try {
+        const body = JSON.parse(responseText) as { message?: string; code?: string };
+        if (body.message) detail = `${detail}: ${body.message}`;
+      } catch {
+        if (responseText.trim()) detail = `${detail}: ${responseText.trim().slice(0, 240)}`;
+      }
+      return { healthy: false, latencyMs: Date.now() - start, detail };
     } catch (err) {
       return { healthy: false, latencyMs: Date.now() - start, detail: String(err) };
     }

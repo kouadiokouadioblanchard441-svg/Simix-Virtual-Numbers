@@ -59,17 +59,22 @@ const ADAPTERS: Record<string, ProviderAdapter> = {
 };
 
 const QUOTA_RETRY_DELAY_MS = 15 * 60_000;
-function getProviderSender(slug: string): { email: string | null; name: string | null } {
+function getProviderSender(
+  slug: string,
+  config?: Record<string, string> | null,
+): { email: string | null; name: string | null } {
+  const configuredEmail = config?.senderEmail?.trim() || null;
+  const configuredName = config?.senderName?.trim() || null;
   if (slug === "brevo") {
     return {
-      email: process.env["BREVO_SENDER_EMAIL"]?.trim() || null,
-      name: process.env["BREVO_SENDER_NAME"]?.trim() || null,
+      email: configuredEmail ?? process.env["BREVO_SENDER_EMAIL"]?.trim() ?? null,
+      name: configuredName ?? process.env["BREVO_SENDER_NAME"]?.trim() ?? null,
     };
   }
   if (slug === "resend") {
     return {
-      email: process.env["RESEND_SENDER_EMAIL"]?.trim() || null,
-      name: process.env["RESEND_SENDER_NAME"]?.trim() || null,
+      email: configuredEmail ?? process.env["RESEND_SENDER_EMAIL"]?.trim() ?? null,
+      name: configuredName ?? process.env["RESEND_SENDER_NAME"]?.trim() ?? null,
     };
   }
   return { email: null, name: null };
@@ -184,7 +189,7 @@ class EmailProviderManager {
       .orderBy(asc(emailProvidersTable.priority));
 
     this.cache = rows.map(r => {
-      const sender = getProviderSender(r.slug);
+      const sender = getProviderSender(r.slug, r.config as Record<string, string> | null);
       return {
       id:               r.id,
       name:             r.name,
@@ -545,7 +550,7 @@ class EmailProviderManager {
     if (!row) throw new Error("Fournisseur introuvable");
     const adapter = ADAPTERS[row.slug];
     if (!adapter) throw new Error(`Adaptateur "${row.slug}" introuvable`);
-    const sender = getProviderSender(row.slug);
+    const sender = getProviderSender(row.slug, row.config as Record<string, string> | null);
     const resolved: ResolvedProvider = {
       id: row.id, name: row.name, slug: row.slug, priority: row.priority, active: row.active,
       apiKey: row.apiKeyEnc ? decrypt(row.apiKeyEnc) : null,
@@ -693,7 +698,8 @@ class EmailProviderManager {
   async getStats(): Promise<ProviderStats[]> {
     const rows = await db.select().from(emailProvidersTable)
       .orderBy(asc(emailProvidersTable.priority));
-    return rows.map(r => ({
+    const allowedSlugs = new Set(SUPPORTED_PROVIDERS.map(provider => provider.slug));
+    return rows.filter(r => allowedSlugs.has(r.slug)).map(r => ({
       id:             r.id,
       name:           r.name,
       slug:           r.slug,

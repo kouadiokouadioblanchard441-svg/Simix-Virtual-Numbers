@@ -62,7 +62,7 @@ function HealthBadge({ status }: { status: string }) {
   );
 }
 
-const EMPTY_FORM = { name: "", slug: "", priority: 10, active: false, apiKey: "", apiSecret: "", domain: "", region: "", config: "" };
+const EMPTY_FORM = { name: "", slug: "", priority: 10, active: false, apiKey: "", apiSecret: "", senderEmail: "", senderName: "", domain: "", region: "", config: "" };
 
 /* ════════════════════════════════════════════════════════════ */
 export default function AdminEmailProviders() {
@@ -126,7 +126,7 @@ export default function AdminEmailProviders() {
     setEditProvider(p);
     // La configuration renvoyée par l'API est masquée pour les champs sensibles.
     // Ne jamais la renvoyer telle quelle lors d'une simple modification.
-    setForm({ name: p.name, slug: p.slug, priority: p.priority, active: p.active, apiKey: "", apiSecret: "", domain: p.domain ?? "", region: p.region ?? "", config: "" });
+    setForm({ name: p.name, slug: p.slug, priority: p.priority, active: p.active, apiKey: "", apiSecret: "", senderEmail: p.senderEmail ?? "", senderName: p.senderName ?? "", domain: p.domain ?? "", region: p.region ?? "", config: "" });
     setShowKey(false);
     setShowModal(true);
   };
@@ -137,6 +137,7 @@ export default function AdminEmailProviders() {
     try {
       const payload: Record<string, unknown> = {
         name: form.name, slug: form.slug, priority: form.priority, active: form.active,
+        senderEmail: form.senderEmail || undefined, senderName: form.senderName || undefined,
         domain: form.domain || undefined, region: form.region || undefined,
         ...(form.apiKey    ? { apiKey:    form.apiKey    } : {}),
         ...(form.apiSecret ? { apiSecret: form.apiSecret } : {}),
@@ -242,7 +243,7 @@ export default function AdminEmailProviders() {
             </div>
             <div>
               <h1 className="text-xl font-bold text-white">Fournisseurs Email</h1>
-              <p className="text-xs text-zinc-500">Catalogue complet des fournisseurs email, priorités, failover, santé, file d'attente et journaux</p>
+              <p className="text-xs text-zinc-500">Resend et Brevo uniquement · configuration complète, priorités, failover, santé, tests, file d'attente et journaux</p>
             </div>
           </div>
           <div className="flex gap-2 flex-wrap">
@@ -595,6 +596,21 @@ export default function AdminEmailProviders() {
                       className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-white font-mono focus:outline-none focus:border-violet-500"/>
                      {editProvider && <p className="text-[11px] text-zinc-600 mt-1">Pour remplacer la clé, saisis uniquement la nouvelle valeur. La clé existante n’est jamais relue ni affichée en clair.</p>}
                   </div>
+
+                   <div className="grid grid-cols-2 gap-4">
+                     <div>
+                       <label className="text-xs text-zinc-400 mb-1 block">Email expéditeur</label>
+                       <input type="email" value={form.senderEmail} onChange={e => setForm(f => ({ ...f, senderEmail: e.target.value }))}
+                         placeholder="noreply@simix.site"
+                         className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-white focus:outline-none focus:border-violet-500"/>
+                     </div>
+                     <div>
+                       <label className="text-xs text-zinc-400 mb-1 block">Nom expéditeur</label>
+                       <input value={form.senderName} onChange={e => setForm(f => ({ ...f, senderName: e.target.value }))}
+                         placeholder="Simix"
+                         className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-white focus:outline-none focus:border-violet-500"/>
+                     </div>
+                   </div>
 
                   <div>
                     <label className="text-xs text-zinc-400 mb-1 block">Secret (Mailjet, SES…)</label>

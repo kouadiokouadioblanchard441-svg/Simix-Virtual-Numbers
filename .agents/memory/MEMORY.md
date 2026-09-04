@@ -19,4 +19,5 @@
 - [Transactional email visual style](transactional-email-style.md) — auth emails use one inline-styled, Gmail/mobile-safe template with clean sans-serif typography and blue verification accents.
 - [Email fallback idempotency](email-fallback-idempotency.md) — ambiguous provider outcomes must stay affined to that provider; never cross-fallback until non-delivery is certain.
 - [Shared email encryption key](shared-email-encryption-key.md) — API environments sharing email_providers must share ENCRYPTION_KEY; ciphertext presence does not prove decryptability.
+- [Brevo authorized IPs](brevo-authorized-ips.md) — Brevo API keys can be valid but return 401 until each server egress IP is added to Brevo's authorized IP list.
 - [Plesk admin JWT isolation](plesk-admin-jwt-isolation.md) — Replit's admin signing secret cannot authenticate against production; live admin checks require a real Plesk session.

@@ -155060,7 +155060,16 @@ var brevoAdapter = {
       const res = await fetch(`${BASE3}/account`, {
         headers: { "api-key": config.apiKey }
       });
-      return { healthy: res.ok, latencyMs: Date.now() - start2, detail: res.ok ? void 0 : String(res.status) };
+      if (res.ok) return { healthy: true, latencyMs: Date.now() - start2 };
+      const responseText = await res.text();
+      let detail = `Brevo HTTP ${res.status}`;
+      try {
+        const body = JSON.parse(responseText);
+        if (body.message) detail = `${detail}: ${body.message}`;
+      } catch {
+        if (responseText.trim()) detail = `${detail}: ${responseText.trim().slice(0, 240)}`;
+      }
+      return { healthy: false, latencyMs: Date.now() - start2, detail };
     } catch (err) {
       return { healthy: false, latencyMs: Date.now() - start2, detail: String(err) };
     }
@@ -155246,17 +155255,19 @@ var ADAPTERS = {
   elasticemail: elasticemailAdapter
 };
 var QUOTA_RETRY_DELAY_MS = 15 * 6e4;
-function getProviderSender(slug) {
+function getProviderSender(slug, config) {
+  const configuredEmail = config?.senderEmail?.trim() || null;
+  const configuredName = config?.senderName?.trim() || null;
   if (slug === "brevo") {
     return {
-      email: process.env["BREVO_SENDER_EMAIL"]?.trim() || null,
-      name: process.env["BREVO_SENDER_NAME"]?.trim() || null
+      email: configuredEmail ?? process.env["BREVO_SENDER_EMAIL"]?.trim() ?? null,
+      name: configuredName ?? process.env["BREVO_SENDER_NAME"]?.trim() ?? null
     };
   }
   if (slug === "resend") {
     return {
-      email: process.env["RESEND_SENDER_EMAIL"]?.trim() || null,
-      name: process.env["RESEND_SENDER_NAME"]?.trim() || null
+      email: configuredEmail ?? process.env["RESEND_SENDER_EMAIL"]?.trim() ?? null,
+      name: configuredName ?? process.env["RESEND_SENDER_NAME"]?.trim() ?? null
     };
   }
   return { email: null, name: null };
@@ -155339,7 +155350,7 @@ var EmailProviderManager = class {
     if (Date.now() - this.cacheTs < this.CACHE_TTL) return this.cache;
     const rows = await db.select().from(emailProvidersTable).where(eq(emailProvidersTable.active, true)).orderBy(asc(emailProvidersTable.priority));
     this.cache = rows.map((r3) => {
-      const sender = getProviderSender(r3.slug);
+      const sender = getProviderSender(r3.slug, r3.config);
       return {
         id: r3.id,
         name: r3.name,
@@ -155614,7 +155625,7 @@ var EmailProviderManager = class {
     if (!row) throw new Error("Fournisseur introuvable");
     const adapter = ADAPTERS[row.slug];
     if (!adapter) throw new Error(`Adaptateur "${row.slug}" introuvable`);
-    const sender = getProviderSender(row.slug);
+    const sender = getProviderSender(row.slug, row.config);
     const resolved = {
       id: row.id,
       name: row.name,
@@ -155749,7 +155760,8 @@ var EmailProviderManager = class {
   // ── Statistiques ─────────────────────────────────────────────
   async getStats() {
     const rows = await db.select().from(emailProvidersTable).orderBy(asc(emailProvidersTable.priority));
-    return rows.map((r3) => ({
+    const allowedSlugs = new Set(SUPPORTED_PROVIDERS.map((provider) => provider.slug));
+    return rows.filter((r3) => allowedSlugs.has(r3.slug)).map((r3) => ({
       id: r3.id,
       name: r3.name,
       slug: r3.slug,
@@ -165540,8 +165552,9 @@ function safeProvider(r3, role, defaultFrom) {
   const configuredSenderEmail = r3.slug === "brevo" ? process.env["BREVO_SENDER_EMAIL"]?.trim() || null : r3.slug === "resend" ? process.env["RESEND_SENDER_EMAIL"]?.trim() || null : null;
   const configuredSenderName = r3.slug === "brevo" ? process.env["BREVO_SENDER_NAME"]?.trim() || null : r3.slug === "resend" ? process.env["RESEND_SENDER_NAME"]?.trim() || null : null;
   const fallbackSender = parseSender2(defaultFrom);
-  const senderEmail = configuredSenderEmail ?? fallbackSender.email;
-  const senderName = configuredSenderName ?? fallbackSender.name;
+  const providerConfig = r3.config;
+  const senderEmail = providerConfig?.senderEmail?.trim() || configuredSenderEmail || fallbackSender.email;
+  const senderName = providerConfig?.senderName?.trim() || configuredSenderName || fallbackSender.name;
   const databaseApiKey = r3.apiKeyEnc ? decrypt(r3.apiKeyEnc) : "";
   const databaseApiSecret = r3.apiSecretEnc ? decrypt(r3.apiSecretEnc) : "";
   let apiKeyMasked = null;
@@ -165598,7 +165611,7 @@ router20.get("/admin/email-providers", async (_req, res) => {
   });
 });
 router20.post("/admin/email-providers", async (req, res) => {
-  const { name: name3, slug, priority, active, apiKey, apiSecret, domain, region, config } = req.body;
+  const { name: name3, slug, priority, active, apiKey, apiSecret, domain, region, config, senderEmail, senderName } = req.body;
   if (!name3 || !slug) {
     res.status(400).json({ error: "name et slug sont requis" });
     return;
@@ -165611,6 +165624,9 @@ router20.post("/admin/email-providers", async (req, res) => {
     res.status(400).json({ error: "Une cl\xE9 API est requise pour activer ce fournisseur" });
     return;
   }
+  const providerConfig = { ...config ?? {} };
+  if (senderEmail?.trim()) providerConfig.senderEmail = senderEmail.trim();
+  if (senderName?.trim()) providerConfig.senderName = senderName.trim();
   const [row] = await db.insert(emailProvidersTable).values({
     name: name3,
     slug,
@@ -165620,7 +165636,7 @@ router20.post("/admin/email-providers", async (req, res) => {
     apiSecretEnc: apiSecret ? encrypt(apiSecret) : null,
     domain: domain ?? null,
     region: region ?? null,
-    config: config ?? null
+    config: Object.keys(providerConfig).length > 0 ? providerConfig : null
   }).returning();
   emailService.invalidateCache();
   logger.info({ slug, name: name3 }, "[admin] Fournisseur email cr\xE9\xE9");
@@ -165628,11 +165644,12 @@ router20.post("/admin/email-providers", async (req, res) => {
 });
 router20.put("/admin/email-providers/:id", async (req, res) => {
   const { id } = req.params;
-  const { name: name3, slug, priority, active, apiKey, apiSecret, domain, region, config } = req.body;
+  const { name: name3, slug, priority, active, apiKey, apiSecret, domain, region, config, senderEmail, senderName } = req.body;
   const updates = {};
   const [current] = await db.select({
     active: emailProvidersTable.active,
-    apiKeyEnc: emailProvidersTable.apiKeyEnc
+    apiKeyEnc: emailProvidersTable.apiKeyEnc,
+    config: emailProvidersTable.config
   }).from(emailProvidersTable).where(eq(emailProvidersTable.id, id)).limit(1);
   if (!current) {
     res.status(404).json({ error: "Fournisseur introuvable" });
@@ -165656,7 +165673,19 @@ router20.put("/admin/email-providers/:id", async (req, res) => {
   if (apiSecret !== void 0) updates.apiSecretEnc = apiSecret ? encrypt(apiSecret) : null;
   if (domain !== void 0) updates.domain = domain;
   if (region !== void 0) updates.region = region;
-  if (config !== void 0) updates.config = config;
+  const currentConfig = current.config ?? {};
+  const nextConfig = config !== void 0 ? { ...config } : { ...currentConfig };
+  if (senderEmail !== void 0) {
+    if (senderEmail.trim()) nextConfig.senderEmail = senderEmail.trim();
+    else delete nextConfig.senderEmail;
+  }
+  if (senderName !== void 0) {
+    if (senderName.trim()) nextConfig.senderName = senderName.trim();
+    else delete nextConfig.senderName;
+  }
+  if (config !== void 0 || senderEmail !== void 0 || senderName !== void 0) {
+    updates.config = Object.keys(nextConfig).length > 0 ? nextConfig : null;
+  }
   const [row] = await db.update(emailProvidersTable).set(updates).where(eq(emailProvidersTable.id, id)).returning();
   if (!row) {
     res.status(404).json({ error: "Fournisseur introuvable" });

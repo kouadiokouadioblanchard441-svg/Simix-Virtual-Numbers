@@ -66,8 +66,9 @@ function safeProvider(
       ? process.env["RESEND_SENDER_NAME"]?.trim() || null
       : null;
   const fallbackSender = parseSender(defaultFrom);
-  const senderEmail = configuredSenderEmail ?? fallbackSender.email;
-  const senderName = configuredSenderName ?? fallbackSender.name;
+  const providerConfig = r.config as Record<string, string> | null;
+  const senderEmail = providerConfig?.senderEmail?.trim() || configuredSenderEmail || fallbackSender.email;
+  const senderName = providerConfig?.senderName?.trim() || configuredSenderName || fallbackSender.name;
   const databaseApiKey = r.apiKeyEnc ? decrypt(r.apiKeyEnc) : "";
   const databaseApiSecret = r.apiSecretEnc ? decrypt(r.apiSecretEnc) : "";
   let apiKeyMasked: string | null = null;
@@ -129,10 +130,10 @@ router.get("/admin/email-providers", async (_req: Request, res: Response): Promi
 
 /* ── POST /admin/email-providers ────────────────────────────── */
 router.post("/admin/email-providers", async (req: Request, res: Response): Promise<void> => {
-  const { name, slug, priority, active, apiKey, apiSecret, domain, region, config } = req.body as {
+  const { name, slug, priority, active, apiKey, apiSecret, domain, region, config, senderEmail, senderName } = req.body as {
     name: string; slug: string; priority?: number; active?: boolean;
     apiKey?: string; apiSecret?: string; domain?: string; region?: string;
-    config?: Record<string, string>;
+    config?: Record<string, string>; senderEmail?: string; senderName?: string;
   };
   if (!name || !slug) { res.status(400).json({ error: "name et slug sont requis" }); return; }
   if (!ALLOWED_PROVIDER_SLUGS.has(slug)) {
@@ -144,6 +145,9 @@ router.post("/admin/email-providers", async (req: Request, res: Response): Promi
     return;
   }
 
+  const providerConfig = { ...(config ?? {}) };
+  if (senderEmail?.trim()) providerConfig.senderEmail = senderEmail.trim();
+  if (senderName?.trim()) providerConfig.senderName = senderName.trim();
   const [row] = await db.insert(emailProvidersTable).values({
     name, slug,
     priority:    priority  ?? 100,
@@ -152,7 +156,7 @@ router.post("/admin/email-providers", async (req: Request, res: Response): Promi
     apiSecretEnc: apiSecret ? encrypt(apiSecret) : null,
     domain:      domain    ?? null,
     region:      region    ?? null,
-    config:      config    ?? null,
+    config:      Object.keys(providerConfig).length > 0 ? providerConfig : null,
   }).returning();
 
   emailService.invalidateCache();
@@ -163,16 +167,17 @@ router.post("/admin/email-providers", async (req: Request, res: Response): Promi
 /* ── PUT /admin/email-providers/:id ─────────────────────────── */
 router.put("/admin/email-providers/:id", async (req: Request, res: Response): Promise<void> => {
   const { id } = req.params;
-  const { name, slug, priority, active, apiKey, apiSecret, domain, region, config } = req.body as {
+  const { name, slug, priority, active, apiKey, apiSecret, domain, region, config, senderEmail, senderName } = req.body as {
     name?: string; slug?: string; priority?: number; active?: boolean;
     apiKey?: string; apiSecret?: string; domain?: string; region?: string;
-    config?: Record<string, string>;
+    config?: Record<string, string>; senderEmail?: string; senderName?: string;
   };
 
   const updates: Partial<typeof emailProvidersTable.$inferInsert> = {};
   const [current] = await db.select({
     active: emailProvidersTable.active,
     apiKeyEnc: emailProvidersTable.apiKeyEnc,
+    config: emailProvidersTable.config,
   }).from(emailProvidersTable).where(eq(emailProvidersTable.id, id)).limit(1);
   if (!current) { res.status(404).json({ error: "Fournisseur introuvable" }); return; }
   if (slug !== undefined && !ALLOWED_PROVIDER_SLUGS.has(slug)) {
@@ -196,7 +201,19 @@ router.put("/admin/email-providers/:id", async (req: Request, res: Response): Pr
   if (apiSecret !== undefined) updates.apiSecretEnc = apiSecret ? encrypt(apiSecret) : null;
   if (domain   !== undefined) updates.domain    = domain;
   if (region   !== undefined) updates.region    = region;
-  if (config   !== undefined) updates.config    = config;
+  const currentConfig = (current.config as Record<string, string> | null) ?? {};
+  const nextConfig = config !== undefined ? { ...config } : { ...currentConfig };
+  if (senderEmail !== undefined) {
+    if (senderEmail.trim()) nextConfig.senderEmail = senderEmail.trim();
+    else delete nextConfig.senderEmail;
+  }
+  if (senderName !== undefined) {
+    if (senderName.trim()) nextConfig.senderName = senderName.trim();
+    else delete nextConfig.senderName;
+  }
+  if (config !== undefined || senderEmail !== undefined || senderName !== undefined) {
+    updates.config = Object.keys(nextConfig).length > 0 ? nextConfig : null;
+  }
 
   const [row] = await db.update(emailProvidersTable).set(updates)
     .where(eq(emailProvidersTable.id, id)).returning();
