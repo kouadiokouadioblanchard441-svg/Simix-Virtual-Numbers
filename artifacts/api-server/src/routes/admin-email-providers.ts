@@ -30,6 +30,7 @@ import { seedEmailProvidersFromEnv } from "../lib/seed-providers";
 
 const router: IRouter = Router();
 router.use(requireAdminJwt);
+const ALLOWED_PROVIDER_SLUGS = new Set(SUPPORTED_PROVIDERS.map(provider => provider.slug));
 
 /* ── Serialise un fournisseur sans exposer les clés ─────────── */
 function parseSender(value: string): { email: string | null; name: string | null } {
@@ -108,7 +109,8 @@ router.get("/admin/email-providers", async (_req: Request, res: Response): Promi
   // Resend dès que les variables Plesk sont présentes, sans exposer les clés.
   try { await seedEmailProvidersFromEnv(); }
   catch (err) { logger.warn({ err }, "[admin] Bootstrap email depuis environnement ignoré"); }
-  const rows = await db.select().from(emailProvidersTable);
+  const rows = (await db.select().from(emailProvidersTable))
+    .filter(row => ALLOWED_PROVIDER_SLUGS.has(row.slug));
   rows.sort((a, b) => {
     if (a.active !== b.active) return a.active ? -1 : 1;
     return a.priority - b.priority || a.name.localeCompare(b.name);
@@ -133,6 +135,10 @@ router.post("/admin/email-providers", async (req: Request, res: Response): Promi
     config?: Record<string, string>;
   };
   if (!name || !slug) { res.status(400).json({ error: "name et slug sont requis" }); return; }
+  if (!ALLOWED_PROVIDER_SLUGS.has(slug)) {
+    res.status(400).json({ error: "Seuls Resend et Brevo sont autorisés" });
+    return;
+  }
   if (active && !apiKey?.trim()) {
     res.status(400).json({ error: "Une clé API est requise pour activer ce fournisseur" });
     return;
@@ -169,6 +175,10 @@ router.put("/admin/email-providers/:id", async (req: Request, res: Response): Pr
     apiKeyEnc: emailProvidersTable.apiKeyEnc,
   }).from(emailProvidersTable).where(eq(emailProvidersTable.id, id)).limit(1);
   if (!current) { res.status(404).json({ error: "Fournisseur introuvable" }); return; }
+  if (slug !== undefined && !ALLOWED_PROVIDER_SLUGS.has(slug)) {
+    res.status(400).json({ error: "Seuls Resend et Brevo sont autorisés" });
+    return;
+  }
 
   const resultingHasApiKey = apiKey === undefined
     ? !!(current.apiKeyEnc && decrypt(current.apiKeyEnc).trim())

@@ -162,15 +162,7 @@ async function updateCampaignRecipient(
 
 export const SUPPORTED_PROVIDERS = [
   { slug: "resend",       name: "Resend",             requiresSecret: false, requiresDomain: false },
-  { slug: "ses",          name: "Amazon SES",         requiresSecret: true,  requiresDomain: false },
-  { slug: "postmark",     name: "Postmark",           requiresSecret: false, requiresDomain: false },
-  { slug: "mailgun",      name: "Mailgun",            requiresSecret: false, requiresDomain: true  },
-  { slug: "sendgrid",     name: "SendGrid",           requiresSecret: false, requiresDomain: false },
   { slug: "brevo",        name: "Brevo (Sendinblue)", requiresSecret: false, requiresDomain: false },
-  { slug: "mailjet",      name: "Mailjet",            requiresSecret: true,  requiresDomain: false },
-  { slug: "sparkpost",    name: "SparkPost",          requiresSecret: false, requiresDomain: false },
-  { slug: "zeptomail",    name: "ZeptoMail",          requiresSecret: false, requiresDomain: false },
-  { slug: "elasticemail", name: "Elastic Email",      requiresSecret: false, requiresDomain: false },
 ];
 
 // ─────────────────────────────────────────────────────────────────
