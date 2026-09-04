@@ -663,7 +663,8 @@ class EmailProviderManager {
         await db.update(emailProvidersTable).set({
           healthStatus:    status,
           lastHealthCheck: new Date(),
-          ...(!result.healthy ? { lastError: result.detail ?? "Health check failed" } : {}),
+          lastError:       result.healthy ? null : (result.detail ?? "Health check failed"),
+          lastErrorAt:     result.healthy ? null : new Date(),
         }).where(eq(emailProvidersTable.id, row.id));
       }));
       this.invalidateCache();
