@@ -113,9 +113,11 @@ export default function AdminEmailProviders() {
     if (tab === "logs")  void loadLogs();
   }, [tab, loadQueue, loadLogs]);
 
-  const openCreate = () => {
+  const openCreate = (template?: SupportedProvider) => {
     setEditProvider(null);
-    setForm(EMPTY_FORM);
+    setForm(template
+      ? { ...EMPTY_FORM, name: template.name, slug: template.slug }
+      : EMPTY_FORM);
     setShowKey(false);
     setShowModal(true);
   };
@@ -240,7 +242,7 @@ export default function AdminEmailProviders() {
             </div>
             <div>
               <h1 className="text-xl font-bold text-white">Fournisseurs Email</h1>
-              <p className="text-xs text-zinc-500">Deux fournisseurs actifs possibles : priorité 1, puis secours automatique en cas d’échec confirmé</p>
+              <p className="text-xs text-zinc-500">Catalogue complet des fournisseurs email, priorités, failover, santé, file d'attente et journaux</p>
             </div>
           </div>
           <div className="flex gap-2 flex-wrap">
@@ -254,7 +256,7 @@ export default function AdminEmailProviders() {
               {retrying ? <Loader2 className="w-4 h-4 animate-spin"/> : <RefreshCw className="w-4 h-4"/>}
               Reprendre la file
             </button>
-            <button onClick={openCreate}
+             <button onClick={() => openCreate()}
               className="flex items-center gap-2 px-4 py-2 rounded-lg bg-violet-600 hover:bg-violet-500 text-white text-sm font-medium transition-colors">
               <Plus className="w-4 h-4"/> Ajouter
             </button>
@@ -292,13 +294,69 @@ export default function AdminEmailProviders() {
         {tab === "providers" && (
           <div className="space-y-3">
             {loading && <div className="flex justify-center py-12"><Loader2 className="w-8 h-8 animate-spin text-violet-400"/></div>}
+             {!loading && (
+               <section className="rounded-xl border border-violet-500/20 bg-violet-500/[0.04] p-4 sm:p-5">
+                 <div className="flex items-start justify-between gap-4 flex-wrap mb-4">
+                   <div>
+                     <h2 className="text-sm font-semibold text-white">Tous les fournisseurs disponibles</h2>
+                     <p className="text-xs text-zinc-500 mt-1">
+                       Les fournisseurs non configurés sont visibles ici, mais restent inactifs jusqu'à l'ajout d'une clé.
+                     </p>
+                   </div>
+                   <span className="text-xs text-violet-300 bg-violet-500/10 border border-violet-500/20 rounded-full px-2.5 py-1">
+                     {supported.length} adaptateurs disponibles
+                   </span>
+                 </div>
+                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+                   {supported.map(s => {
+                     const configured = providers.find(p => p.slug === s.slug);
+                     return (
+                       <div key={s.slug} className="flex items-center justify-between gap-3 rounded-lg bg-zinc-950/50 border border-zinc-800/80 px-3 py-3">
+                         <div className="min-w-0">
+                           <div className="flex items-center gap-2">
+                             <Mail className="w-3.5 h-3.5 text-violet-400 shrink-0" />
+                             <span className="text-sm font-medium text-zinc-200 truncate">{s.name}</span>
+                           </div>
+                           <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                             <code className="text-[10px] text-zinc-600">{s.slug}</code>
+                             {s.requiresSecret && <span className="text-[10px] text-amber-400/80">secret requis</span>}
+                             {s.requiresDomain && <span className="text-[10px] text-sky-400/80">domaine requis</span>}
+                           </div>
+                         </div>
+                         {configured ? (
+                           <span className={`shrink-0 text-[10px] px-2 py-1 rounded-full border font-semibold ${
+                             configured.active
+                               ? "text-emerald-400 bg-emerald-500/10 border-emerald-500/20"
+                               : "text-zinc-400 bg-zinc-800 border-zinc-700"
+                           }`}>
+                             {configured.active ? "Actif" : "Configuré"}
+                           </span>
+                         ) : (
+                           <button onClick={() => openCreate(s)}
+                             className="shrink-0 text-[11px] px-2.5 py-1.5 rounded-lg bg-violet-600/15 hover:bg-violet-600/30 border border-violet-500/30 text-violet-300 font-medium transition-colors">
+                             Configurer
+                           </button>
+                         )}
+                       </div>
+                     );
+                   })}
+                 </div>
+               </section>
+             )}
             {!loading && providers.length === 0 && (
               <div className="text-center py-16 text-zinc-500">
                 <Mail className="w-12 h-12 mx-auto mb-3 opacity-30"/>
-                <p className="font-medium">Aucun fournisseur configuré</p>
-                <p className="text-sm mt-1">Ajoutez Resend, SES ou tout autre fournisseur pour commencer.</p>
+                 <p className="font-medium">Aucun fournisseur configuré</p>
+                 <p className="text-sm mt-1">Choisissez « Configurer » dans le catalogue ci-dessus pour commencer.</p>
               </div>
             )}
+             {!loading && providers.length > 0 && (
+               <div className="flex items-center gap-2 pt-2">
+                 <div className="h-px flex-1 bg-zinc-800" />
+                 <span className="text-[10px] uppercase tracking-wider text-zinc-600">Fournisseurs configurés</span>
+                 <div className="h-px flex-1 bg-zinc-800" />
+               </div>
+             )}
             {providers.map((p) => (
               <motion.div key={p.id} layout initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
                 className="bg-zinc-900/60 border border-zinc-800 rounded-xl overflow-hidden">
