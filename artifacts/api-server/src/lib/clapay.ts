@@ -112,12 +112,12 @@ export interface ClapayCountry {
 
 export interface ClapayOperator {
   name: string;
-  codeoperator: string;               // Short identifier (e.g. "MTN", "OM") — for display/matching only
+  codeoperator: string;               // Short identifier sent in operators_code (e.g. "MTN", "OM")
   logo: string;
-  code: {
-    MERCHANT: string;                 // ← use this in operators_code[] for MERCHANT payments
-    CASHIN: string;
-    CASHOUT: string;
+  code?: {
+    MERCHANT?: string | null;
+    CASHIN?: string | null;
+    CASHOUT?: string | null;
   };
   startwith: string[];
   otpstarter: {
@@ -136,6 +136,24 @@ export interface ClapayOperator {
 
 export function clapayOperatorRequiresOtp(operator: ClapayOperator): boolean {
   return operator.otpstarter?.MERCHANT === true;
+}
+
+/**
+ * The live catalogue may omit legacy long-code metadata entirely. The API
+ * uses codeoperator, not code.MERCHANT/CASHIN, for initiation. Missing metadata
+ * is not a denial; explicit disabled metadata and inactive operators still
+ * block submission. The provider remains authoritative for payment outcome.
+ */
+export function clapayOperatorSupportsMethod(
+  operator: ClapayOperator,
+  method: "MERCHANT" | "CASHIN" | "CASHOUT",
+): boolean {
+  if (!operator.active || !operator.codeoperator?.trim()) return false;
+  if (!operator.code || !Object.hasOwn(operator.code, method)) return true;
+  const capability = operator.code[method];
+  return typeof capability === "string"
+    && capability.trim().length > 0
+    && capability.trim().toLowerCase() !== "none";
 }
 
 export interface ClapayFees {
@@ -494,7 +512,7 @@ export class ClapayClient {
   /**
    * Resolve the correct operator code for a given method slug and country.
    * Dynamically fetches operators from Clapay for the country and finds
-   * the matching one by name/codeoperator. Falls back to hardcoded mapping.
+    * the matching one by name/codeoperator. Never invents a fallback code.
    *
    * @param country  ISO alpha-2 country code (e.g. "CI", "CM")
    * @param methodSlug  e.g. "orange", "mtn", "wave"
@@ -503,12 +521,7 @@ export class ClapayClient {
     const operators = await this.getOperators(country);
     const normalize = (value: string) => value.toLowerCase().replace(/[^a-z0-9]/g, "");
     const slug = normalize(methodSlug);
-    const eligible = operators.filter(op =>
-      op.active &&
-      Boolean(op.codeoperator) &&
-      Boolean(op.code?.MERCHANT) &&
-      op.code.MERCHANT.toLowerCase() !== "none",
-    );
+    const eligible = operators.filter(op => clapayOperatorSupportsMethod(op, "MERCHANT"));
 
     return eligible.find(op => normalize(op.codeoperator) === slug)
       ?? eligible.find(op => {

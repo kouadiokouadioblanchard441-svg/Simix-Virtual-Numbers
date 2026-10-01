@@ -18,6 +18,7 @@ import {
 } from "./pawapay";
 import {
   ClapayClient,
+  clapayOperatorSupportsMethod,
   formatClapayPhone,
   type ClapayCashoutResponse,
 } from "./clapay";
@@ -428,8 +429,7 @@ export async function resolveClapayReferralPayout(countryCode: string, operatorS
   const wanted = normalize(operatorSlug);
   if (!wanted) throw new PayoutValidationError("Opérateur invalide", 422);
   const operators = await client.getOperators(country);
-  const eligible = operators.filter(op => op.active && Boolean(op.codeoperator) &&
-    Boolean(op.code?.CASHIN) && op.code.CASHIN.toLowerCase() !== "none");
+  const eligible = operators.filter(op => clapayOperatorSupportsMethod(op, "CASHIN"));
   const operator = eligible.find(op => normalize(op.codeoperator) === wanted) ??
     eligible.find(op => {
       const code = normalize(op.codeoperator);
@@ -437,7 +437,7 @@ export async function resolveClapayReferralPayout(countryCode: string, operatorS
       return wanted === name || wanted.includes(name) || name.includes(wanted) ||
         (code.length > 2 && (wanted.startsWith(code) || wanted.endsWith(code)));
     });
-  if (!operator || !operator.codeoperator || !operator.code?.CASHIN || operator.code.CASHIN.toLowerCase() === "none") {
+  if (!operator || !clapayOperatorSupportsMethod(operator, "CASHIN")) {
     throw new PayoutValidationError("L'opérateur Clapay sélectionné ne prend pas en charge les payouts CASHIN.", 422);
   }
   const formattedPhone = formatClapayPhone(phone, countryRecord.dialCode, country);

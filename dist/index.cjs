@@ -128993,6 +128993,7 @@ __export(clapay_exports, {
   CLAPAY_TERMINAL_SUCCESS: () => CLAPAY_TERMINAL_SUCCESS,
   ClapayClient: () => ClapayClient,
   clapayOperatorRequiresOtp: () => clapayOperatorRequiresOtp,
+  clapayOperatorSupportsMethod: () => clapayOperatorSupportsMethod,
   extractClapayTransactionId: () => extractClapayTransactionId,
   formatClapayPhone: () => formatClapayPhone,
   isClapayCancellationAcknowledged: () => isClapayCancellationAcknowledged,
@@ -129010,6 +129011,12 @@ function isClapayCancellationAcknowledged(response) {
 }
 function clapayOperatorRequiresOtp(operator) {
   return operator.otpstarter?.MERCHANT === true;
+}
+function clapayOperatorSupportsMethod(operator, method) {
+  if (!operator.active || !operator.codeoperator?.trim()) return false;
+  if (!operator.code || !Object.hasOwn(operator.code, method)) return true;
+  const capability = operator.code[method];
+  return typeof capability === "string" && capability.trim().length > 0 && capability.trim().toLowerCase() !== "none";
 }
 function formatClapayPhone(phoneNumber, dialCode, countryCode) {
   const countryDigits = (dialCode ?? "").replace(/\D/g, "");
@@ -129225,7 +129232,7 @@ var init_clapay = __esm({
       /**
        * Resolve the correct operator code for a given method slug and country.
        * Dynamically fetches operators from Clapay for the country and finds
-       * the matching one by name/codeoperator. Falls back to hardcoded mapping.
+        * the matching one by name/codeoperator. Never invents a fallback code.
        *
        * @param country  ISO alpha-2 country code (e.g. "CI", "CM")
        * @param methodSlug  e.g. "orange", "mtn", "wave"
@@ -129234,9 +129241,7 @@ var init_clapay = __esm({
         const operators = await this.getOperators(country);
         const normalize4 = (value) => value.toLowerCase().replace(/[^a-z0-9]/g, "");
         const slug = normalize4(methodSlug);
-        const eligible = operators.filter(
-          (op) => op.active && Boolean(op.codeoperator) && Boolean(op.code?.MERCHANT) && op.code.MERCHANT.toLowerCase() !== "none"
-        );
+        const eligible = operators.filter((op) => clapayOperatorSupportsMethod(op, "MERCHANT"));
         return eligible.find((op) => normalize4(op.codeoperator) === slug) ?? eligible.find((op) => {
           const code = normalize4(op.codeoperator);
           const name3 = normalize4(op.name);
@@ -166541,13 +166546,13 @@ async function resolveClapayReferralPayout(countryCode, operatorSlug, phone, amo
   const wanted = normalize4(operatorSlug);
   if (!wanted) throw new PayoutValidationError("Op\xE9rateur invalide", 422);
   const operators = await client.getOperators(country);
-  const eligible = operators.filter((op) => op.active && Boolean(op.codeoperator) && Boolean(op.code?.CASHIN) && op.code.CASHIN.toLowerCase() !== "none");
+  const eligible = operators.filter((op) => clapayOperatorSupportsMethod(op, "CASHIN"));
   const operator = eligible.find((op) => normalize4(op.codeoperator) === wanted) ?? eligible.find((op) => {
     const code = normalize4(op.codeoperator);
     const name3 = normalize4(op.name);
     return wanted === name3 || wanted.includes(name3) || name3.includes(wanted) || code.length > 2 && (wanted.startsWith(code) || wanted.endsWith(code));
   });
-  if (!operator || !operator.codeoperator || !operator.code?.CASHIN || operator.code.CASHIN.toLowerCase() === "none") {
+  if (!operator || !clapayOperatorSupportsMethod(operator, "CASHIN")) {
     throw new PayoutValidationError("L'op\xE9rateur Clapay s\xE9lectionn\xE9 ne prend pas en charge les payouts CASHIN.", 422);
   }
   const formattedPhone = formatClapayPhone(phone, countryRecord.dialCode, country);
@@ -167568,8 +167573,8 @@ router21.get("/admin/payouts/clapay/operators/:country", requireAdmin7, async (r
       merchantCode: op.code?.MERCHANT && op.code.MERCHANT !== "none" ? op.code.MERCHANT : null,
       logo: op.logo,
       requiresOtp: op.otpstarter?.CASHIN ?? false,
-      supportsPayout: !!(op.code?.CASHIN && op.code.CASHIN !== "none"),
-      supportsCashout: !!(op.code?.CASHOUT && op.code.CASHOUT !== "none")
+      supportsPayout: clapayOperatorSupportsMethod(op, "CASHIN"),
+      supportsCashout: clapayOperatorSupportsMethod(op, "CASHOUT")
     }));
     res.json({ operators: payoutOperators });
   } catch (err) {
@@ -167598,7 +167603,7 @@ router21.post("/admin/payouts/clapay", requireAdmin7, async (req, res) => {
     const countryCodeNormalized = countryCode.trim().toUpperCase();
     const operators = await client.getOperators(countryCodeNormalized);
     const operator = operators.find((op) => op.active && op.codeoperator.toLowerCase() === operatorCode.trim().toLowerCase());
-    if (!operator || !operator.codeoperator || !operator.code?.CASHIN || operator.code.CASHIN.toLowerCase() === "none") {
+    if (!operator || !clapayOperatorSupportsMethod(operator, "CASHIN")) {
       res.status(422).json({ error: "L'op\xE9rateur s\xE9lectionn\xE9 ne prend pas en charge les payouts CASHIN." });
       return;
     }

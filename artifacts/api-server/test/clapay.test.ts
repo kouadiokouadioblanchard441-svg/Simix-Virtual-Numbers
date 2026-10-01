@@ -3,6 +3,8 @@ import { afterEach, test } from "node:test";
 import {
   ClapayClient,
   clapayOperatorRequiresOtp,
+  clapayOperatorSupportsMethod,
+  type ClapayOperator,
   isClapayCancellationAcknowledged,
   normalizeClapayStatus,
   type ClapayGatewayMeta,
@@ -17,6 +19,49 @@ import { matchesMobileOperatorMethod } from "../src/lib/wallet-payment-classific
 
 const originalFetch = globalThis.fetch;
 afterEach(() => { globalThis.fetch = originalFetch; });
+
+test("live BF catalogue without legacy code metadata resolves Orange Money and preserves OTP", async () => {
+  const orange = {
+    name: "ORANGE MONEY",
+    codeoperator: "OM",
+    logo: "",
+    startwith: ["07"],
+    otpstarter: { MERCHANT: true, CASHIN: false, CASHOUT: false },
+    active: true,
+    secure: { MERCHANT: true, CASHIN: false, CASHOUT: false },
+    instruction: { MERCHANT: "Obtenez votre code OTP auprès de l'opérateur." },
+  } satisfies ClapayOperator;
+  globalThis.fetch = async (input) => {
+    const url = new URL(String(input));
+    assert.match(url.pathname, /\/operators\/data$/);
+    assert.equal(url.searchParams.get("country"), "BF");
+    return new Response(JSON.stringify([
+      { ...orange, name: "MOOV MONEY", codeoperator: "MOOV", otpstarter: { MERCHANT: false } },
+      orange,
+    ]), { status: 200, headers: { "Content-Type": "application/json" } });
+  };
+  const client = new ClapayClient("test-only-token");
+  const resolved = await client.resolveOperator("BF", "orange_money");
+  assert.equal(resolved?.codeoperator, "OM");
+  assert.equal(resolved?.instruction.MERCHANT, orange.instruction.MERCHANT);
+  assert.equal(clapayOperatorRequiresOtp(resolved!), true);
+  assert.equal(await client.resolveOperatorCode("BF", "orange_money"), "OM");
+  assert.equal(clapayOperatorSupportsMethod(orange, "CASHIN"), true);
+});
+
+test("missing legacy metadata does not bypass explicit denials or inactive catalogue operators", () => {
+  const operator = {
+    name: "ORANGE MONEY", codeoperator: "OM", active: true,
+  } as ClapayOperator;
+  assert.equal(clapayOperatorSupportsMethod(operator, "MERCHANT"), true);
+  assert.equal(clapayOperatorSupportsMethod({ ...operator, active: false }, "MERCHANT"), false);
+  assert.equal(clapayOperatorSupportsMethod({ ...operator, codeoperator: "" }, "MERCHANT"), false);
+  for (const denied of ["none", " NONE ", "", null]) {
+    assert.equal(clapayOperatorSupportsMethod({ ...operator, code: { MERCHANT: denied } }, "MERCHANT"), false);
+    assert.equal(clapayOperatorSupportsMethod({ ...operator, code: { CASHIN: denied } }, "CASHIN"), false);
+  }
+  assert.equal(clapayOperatorSupportsMethod({ ...operator, code: { MERCHANT: "ORANGEBF" } }, "MERCHANT"), true);
+});
 
 test("Clapay init uses API/MERCHANT and one current catalogue short operator code", async () => {
   const requested: Array<{ url: string; body?: Record<string, unknown> }> = [];

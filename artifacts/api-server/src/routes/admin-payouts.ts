@@ -23,6 +23,7 @@ import {
 } from "../lib/pawapay";
 import {
   ClapayClient,
+  clapayOperatorSupportsMethod,
   formatClapayPhone,
 } from "../lib/clapay";
 import {
@@ -419,8 +420,8 @@ router.get("/admin/payouts/clapay/operators/:country", requireAdmin, async (req,
         merchantCode: (op.code?.MERCHANT && op.code.MERCHANT !== "none") ? op.code.MERCHANT : null,
         logo: op.logo,
         requiresOtp: op.otpstarter?.CASHIN ?? false,
-        supportsPayout: !!(op.code?.CASHIN && op.code.CASHIN !== "none"),
-        supportsCashout: !!(op.code?.CASHOUT && op.code.CASHOUT !== "none"),
+        supportsPayout: clapayOperatorSupportsMethod(op, "CASHIN"),
+        supportsCashout: clapayOperatorSupportsMethod(op, "CASHOUT"),
       }));
     res.json({ operators: payoutOperators });
   } catch (err) {
@@ -468,7 +469,7 @@ router.post("/admin/payouts/clapay", requireAdmin, async (req, res): Promise<voi
     const countryCodeNormalized = countryCode.trim().toUpperCase();
     const operators = await client.getOperators(countryCodeNormalized);
     const operator = operators.find(op => op.active && op.codeoperator.toLowerCase() === operatorCode.trim().toLowerCase());
-    if (!operator || !operator.codeoperator || !operator.code?.CASHIN || operator.code.CASHIN.toLowerCase() === "none") {
+    if (!operator || !clapayOperatorSupportsMethod(operator, "CASHIN")) {
       res.status(422).json({ error: "L'opérateur sélectionné ne prend pas en charge les payouts CASHIN." });
       return;
     }

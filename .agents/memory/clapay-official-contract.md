@@ -14,3 +14,9 @@ Merchant payouts use `CASHIN` with the `API` tunnel, not a guessed `CASHOUT` ope
 **Why:** English withdrawal terminology and legacy client method names misleadingly suggested a separate cashout endpoint; the official payment-mode and initiation DTO documentation explicitly describes `CASHIN (PAYOUT)`.
 
 **How to apply:** Check https://docs.clapay.app/docs/nowallet/schemas/InitPaymentModelDTO and https://docs.clapay.app/docs/nowallet/metadata/operators-data when modifying payouts. Unlike PawaPay's documented UUID-based idempotence, Clapay initiation must not be resubmitted after an uncertain outcome. Recover a missing signature only from a callback candidate checked against the authenticated status API and the original immutable transaction identity.
+
+The live operator catalogue can omit the entire legacy `code` object while retaining active operators, short `codeoperator`, and method-specific OTP/instruction data. Missing long-code metadata is not proof that an operator is unavailable; still reject inactive operators and explicit method denials.
+
+**Why:** A real BF catalogue returned active Orange Money with short code `OM` and `otpstarter.MERCHANT: true`, but no `code` property. Requiring `code.MERCHANT` rejected a valid configured deposit method despite the documented initiation using only the short identifier.
+
+**How to apply:** Verify the actual metadata endpoint shape, not just its richer documentation example. Preserve the returned OTP requirement and use the returned short code; never fabricate a provider identifier or regard catalogue eligibility as confirmed payment success.
