@@ -10,7 +10,6 @@ import {
   countriesTable,
   systemSettingsTable,
   currenciesTable,
-  fxProfitsTable,
   paymentRouteLogsTable,
 } from "@workspace/db";
 import { RechargeWalletBody } from "@workspace/api-zod";
@@ -26,20 +25,43 @@ import {
   COUNTRY_CURRENCY,
 } from "../lib/pawapay";
 import {
+  getPawaPayClientForDeposit,
+  failPawaPayDeposit,
+  makePawaPayGatewayMeta,
+  verifyAndSettlePawaPayDeposit,
+} from "../lib/pawapay-settlement";
+import { createPendingDepositWithFx, isValidClapayLocalAmount } from "../lib/wallet-deposit";
+import {
   ClapayClient,
   makeClapayDepositId,
   isClapayDeposit,
   extractClapayTransactionId,
   serializeClapayMeta,
   parseClapayMeta,
-  mapClapayStatusToDb,
   formatClapayPhone,
-  CLAPAY_TERMINAL_FAILURE,
+  isClapayCancellationAcknowledged,
+  clapayOperatorRequiresOtp,
+  CLAPAY_TERMINAL_SUCCESS,
+  normalizeClapayStatus,
   type ClapayWebhookPayload,
 } from "../lib/clapay";
+import {
+  failClapayDeposit,
+  getClapayDepositMeta,
+  getClapayActionFields,
+  getVerifiedClapayStatus,
+  persistClapayDepositMeta,
+  settleVerifiedClapayDeposit,
+  type NormalizedClapayGatewayMeta,
+} from "../lib/clapay-settlement";
 import { logger } from "../lib/logger";
-import { resolveGateway } from "../lib/payment-router";
-import { resolvePawaPayCredentials, resolveClapayCredentials } from "../lib/gateway-credentials";
+import { GatewayRouteUnavailableError, resolveGateway, type RouterResult } from "../lib/payment-router";
+import { matchesMobileOperatorMethod } from "../lib/wallet-payment-classification";
+import {
+  resolvePawaPayCredentials,
+  resolveClapayCredentials,
+  resolveClapayGatewayCredentials,
+} from "../lib/gateway-credentials";
 import { getMinDepositFcfa, getMaxBalanceFcfa } from "../lib/settings";
 import { broadcastNotification } from "./notifications";
 import { notificationsTable } from "@workspace/db";
@@ -59,8 +81,10 @@ async function getPawaPayClient(): Promise<{ client: PawaPayClient; env: string 
   return { client: new PawaPayClient(creds.token, creds.env), env: creds.env };
 }
 
-async function getClapayClient(): Promise<{ client: ClapayClient } | null> {
-  const creds = await resolveClapayCredentials();
+async function getClapayClient(gatewayConfigId?: string | null): Promise<{ client: ClapayClient } | null> {
+  const creds = gatewayConfigId
+    ? await resolveClapayGatewayCredentials(gatewayConfigId)
+    : await resolveClapayCredentials();
   if (!creds) return null;
   return { client: new ClapayClient(creds.token, creds.baseUrl) };
 }
@@ -77,6 +101,82 @@ async function getGatewayPreference(): Promise<GatewayPref> {
   return (rows[0]?.value as GatewayPref) ?? "pawapay";
 }
 
+type ResolvedWalletGateway = {
+  gateway: "pawapay" | "clapay" | null;
+  pawaPayCtx: { client: PawaPayClient; env: string } | null;
+  clapayCtx: { client: ClapayClient } | null;
+  gatewayConfigId: string | null;
+  routingSource: "dynamic" | "legacy";
+  unavailableReason: string | null;
+};
+
+async function resolveWalletGateway(countryCode: string, methodSlug: string, amountXof: number): Promise<ResolvedWalletGateway> {
+  let pawaPayCtx: ResolvedWalletGateway["pawaPayCtx"] = null;
+  let clapayCtx: ResolvedWalletGateway["clapayCtx"] = null;
+  let gatewayConfigId: string | null = null;
+  let gateway: ResolvedWalletGateway["gateway"] = null;
+  let routingSource: ResolvedWalletGateway["routingSource"] = "legacy";
+
+  let dynamicRoute: RouterResult | null;
+  try {
+    dynamicRoute = await resolveGateway(countryCode, methodSlug, amountXof);
+  } catch (error) {
+    if (!(error instanceof GatewayRouteUnavailableError)) throw error;
+    return {
+      gateway: null,
+      pawaPayCtx: null,
+      clapayCtx: null,
+      gatewayConfigId: null,
+      routingSource: "dynamic",
+      unavailableReason: error.message,
+    };
+  }
+  if (dynamicRoute) {
+    routingSource = "dynamic";
+    if (dynamicRoute.type === "pawapay") {
+      pawaPayCtx = { client: dynamicRoute.client, env: process.env.PAWAPAY_ENV ?? "sandbox" };
+      gateway = "pawapay";
+    } else {
+      clapayCtx = { client: dynamicRoute.client };
+      gateway = "clapay";
+    }
+    gatewayConfigId = dynamicRoute.gatewayId;
+  }
+
+  if (!gateway) {
+    const gatewayPref = await getGatewayPreference();
+    const isAuto = gatewayPref.startsWith("auto_");
+    const legacyPawaPay = (gatewayPref === "pawapay" || isAuto) ? await getPawaPayClient() : null;
+    const legacyClapay = (gatewayPref === "clapay" || isAuto) ? await getClapayClient() : null;
+
+    if (gatewayPref === "pawapay") gateway = legacyPawaPay ? "pawapay" : null;
+    else if (gatewayPref === "clapay") gateway = legacyClapay ? "clapay" : null;
+    else if (gatewayPref === "auto_pawapay_first") gateway = legacyPawaPay ? "pawapay" : (legacyClapay ? "clapay" : null);
+    else if (gatewayPref === "auto_clapay_first") gateway = legacyClapay ? "clapay" : (legacyPawaPay ? "pawapay" : null);
+
+    if (gateway === "pawapay") pawaPayCtx = legacyPawaPay;
+    if (gateway === "clapay") clapayCtx = legacyClapay;
+  }
+
+  return { gateway, pawaPayCtx, clapayCtx, gatewayConfigId, routingSource, unavailableReason: null };
+}
+
+function serializeWalletTransaction(tx: typeof transactionsTable.$inferSelect) {
+  const base = toTransaction(tx);
+  if (!isClapayDeposit(tx.externalDepositId ?? "")) return base;
+  const meta = parseClapayMeta(tx.gatewayMeta);
+  return {
+    ...base,
+    ...getClapayActionFields(meta),
+    ...(tx.status === "pending" && !meta?.clapaySignature
+      ? {
+          uncertainPaymentInstruction:
+            "La confirmation Clapay est encore incertaine. Ne relancez pas le paiement; attendez le callback ou contactez le support avec cette référence.",
+        }
+      : {}),
+  };
+}
+
 /* ── Clapay webhook secret — derived from CLAPAY_PRIVATE_KEY ──────────────
  * Appended as ?whs=<token> to the callback URL so only Clapay (who received
  * the URL) can trigger the webhook. Verification is timing-safe.            */
@@ -89,16 +189,21 @@ function getClapayWebhookSecret(): string | null {
 
 /* ── Clapay callback URL (set in admin settings or env) ── */
 async function getClapayCallbackUrl(): Promise<string> {
-  if (process.env.CLAPAY_CALLBACK_URL) return process.env.CLAPAY_CALLBACK_URL;
-
-  const rows = await db.select().from(systemSettingsTable)
-    .where(eq(systemSettingsTable.key, "clapay_callback_url")).limit(1);
-  if (rows[0]?.value?.trim()) return rows[0].value.trim();
-
-  const appUrl = process.env.APP_URL?.replace(/\/$/, "") ?? "https://simix.site";
-  const base = `${appUrl}/api/wallet/clapay/webhook`;
+  let base = process.env.CLAPAY_CALLBACK_URL?.trim() || "";
+  if (!base) {
+    const rows = await db.select().from(systemSettingsTable)
+      .where(eq(systemSettingsTable.key, "clapay_callback_url")).limit(1);
+    base = rows[0]?.value?.trim() ?? "";
+  }
+  if (!base) {
+    const appUrl = process.env.APP_URL?.replace(/\/$/, "") ?? "https://simix.site";
+    base = `${appUrl}/api/wallet/clapay/webhook`;
+  }
   const secret = getClapayWebhookSecret();
-  return secret ? `${base}?whs=${secret}` : base;
+  if (!secret) return base;
+  const callback = new URL(base);
+  callback.searchParams.set("whs", secret);
+  return callback.toString();
 }
 
 /* ── Clapay return URL (user is sent here after checkout page) ── */
@@ -113,17 +218,15 @@ async function getClapayReturnUrl(): Promise<string> {
   return `${appUrl}/wallet`;
 }
 
-/* ── Mobile money operator keyword detection ── */
-const MOBILE_MONEY_KEYWORDS = [
-  "orange", "mtn", "wave", "moov", "airtel", "mpesa", "m-pesa",
-  "free", "expresso", "tmoney", "flooz", "mvola", "mobile",
-  "vodacom", "vodafone", "tigo", "zamtel", "africell",
-  "econet", "ecocash", "tnm", "unitel", "mpamba",
-];
-
-function isMobileMoneySlug(slug: string): boolean {
-  const s = slug.toLowerCase();
-  return MOBILE_MONEY_KEYWORDS.some(k => s.includes(k));
+async function getEnabledMobileOperator(methodSlug: string, methodName: string, countryCode: string) {
+  const operators = await db.select().from(mobileOperatorsTable)
+    .where(and(
+      eq(mobileOperatorsTable.active, true),
+      sql`${mobileOperatorsTable.countryCodes} @> ${JSON.stringify([countryCode.toUpperCase()])}::jsonb`,
+    ));
+  return operators.find(operator =>
+    matchesMobileOperatorMethod(methodSlug, methodName, operator.slug, operator.name),
+  ) ?? null;
 }
 
 /* ────────────────────────────────────────────────────────────────
@@ -134,13 +237,72 @@ router.get("/wallet", requireAuth, async (req, res): Promise<void> => {
   res.json({ balance: user.balance, currency: "FCFA" });
 });
 
+router.get("/wallet/payment-options", requireAuth, async (req, res): Promise<void> => {
+  const countryCode = typeof req.query.countryCode === "string" ? req.query.countryCode.trim().toUpperCase() : "";
+  const methodSlug = typeof req.query.methodSlug === "string" ? req.query.methodSlug.trim() : "";
+  if (!countryCode || !methodSlug) {
+    res.status(400).json({ error: "countryCode et methodSlug sont requis" });
+    return;
+  }
+
+  try {
+    const [method] = await db.select().from(paymentMethodsTable)
+      .where(eq(paymentMethodsTable.slug, methodSlug)).limit(1);
+    const [enabledMethod] = method
+      ? await db.select({ id: countryPaymentConfigsTable.id }).from(countryPaymentConfigsTable)
+        .where(and(
+          eq(countryPaymentConfigsTable.countryCode, countryCode),
+          eq(countryPaymentConfigsTable.methodSlug, methodSlug),
+          eq(countryPaymentConfigsTable.enabled, true),
+        )).limit(1)
+      : [];
+    const operator = method && enabledMethod
+      ? await getEnabledMobileOperator(methodSlug, method.name, countryCode)
+      : null;
+    if (!method || !enabledMethod || !operator) {
+      res.status(422).json({ error: "Mode Mobile Money inconnu ou non activé pour ce pays." });
+      return;
+    }
+
+    const selected = await resolveWalletGateway(countryCode, methodSlug, 0);
+    if (!selected.gateway) {
+      res.status(503).json({
+        error: selected.unavailableReason ?? "Aucune passerelle de paiement n'est configurée pour ce mode de paiement.",
+      });
+      return;
+    }
+    if (selected.gateway !== "clapay") {
+      res.json({ gateway: selected.gateway, requiresOtp: false, instruction: null, operatorCode: null });
+      return;
+    }
+
+    const clapayOperator = await selected.clapayCtx!.client.resolveOperator(countryCode, methodSlug);
+    if (!clapayOperator) {
+      res.status(422).json({ error: `Opérateur Clapay non disponible pour ${countryCode} / ${methodSlug}.` });
+      return;
+    }
+    const operatorInstruction = clapayOperator.instruction as Record<string, unknown> | null;
+    const instructionValue = operatorInstruction?.MERCHANT ?? operatorInstruction?.merchant;
+    const instruction = typeof instructionValue === "string" ? instructionValue : null;
+    res.json({
+      gateway: "clapay",
+      requiresOtp: clapayOperatorRequiresOtp(clapayOperator),
+      instruction,
+      operatorCode: clapayOperator.codeoperator,
+    });
+  } catch (error) {
+    logger.warn({ countryCode, methodSlug, error: (error as Error).message }, "[Clapay] Payment options lookup failed");
+    res.status(502).json({ error: "Impossible de charger les options de paiement auprès de Clapay. Réessayez plus tard." });
+  }
+});
+
 /* ────────────────────────────────────────────────────────────────
  * POST /wallet/recharge
  *
  * DEPOSIT RULES (critical):
  *  - Mobile money + PawaPay configured → MUST use PawaPay, NEVER instant credit
  *  - Mobile money + PawaPay NOT configured → return 503 error, NEVER instant credit
- *  - Non-mobile-money methods → instant credit (admin/manual confirmation flow)
+ *  - Unverified/non-mobile methods → reject; crypto uses its dedicated verified route
  *
  * PawaPay v2 flow:
  *  1. Build MSISDN from phone + dial code
@@ -167,7 +329,7 @@ router.post(
      * We convert to XOF using clientRate for balance credit
      * and track realRate profit in fx_profits. */
     const rawBody = req.body as Record<string, unknown>;
-    const currencyCode: string = typeof rawBody.currencyCode === "string" ? rawBody.currencyCode.toUpperCase() : "XOF";
+    const currencyCode: string = typeof rawBody.currencyCode === "string" ? rawBody.currencyCode.trim().toUpperCase() : "XOF";
     const isXofCurrency = currencyCode === "XOF" || currencyCode === "XAF";
 
     let amountXof   = amount;          // amount in FCFA credited to user
@@ -175,19 +337,33 @@ router.post(
     let fxMeta: { realRate: number; clientRate: number; profitXof: number } | null = null;
 
     if (!isXofCurrency) {
+      if (!countryCode) {
+        res.status(400).json({ error: "Code pays requis pour convertir la devise du dépôt." });
+        return;
+      }
       const [currRow] = await db
         .select()
         .from(currenciesTable)
-        .where(eq(currenciesTable.countryCode, (countryCode ?? "").toUpperCase()))
+        .where(and(
+          eq(currenciesTable.countryCode, countryCode.toUpperCase()),
+          eq(currenciesTable.currencyCode, currencyCode),
+          eq(currenciesTable.active, true),
+        ))
         .limit(1);
 
-      if (currRow && currRow.active) {
-        const clientRate = Number(currRow.clientRate);
-        const realRate   = Number(currRow.realRate);
-        localAmount      = amount;
-        amountXof        = Math.floor(amount * clientRate);
-        fxMeta           = { realRate, clientRate, profitXof: Math.floor(amount * (clientRate - realRate)) };
+      if (!currRow) {
+        res.status(422).json({ error: `La devise ${currencyCode} n'est pas activée pour ${countryCode.toUpperCase()}.` });
+        return;
       }
+      const clientRate = Number(currRow.clientRate);
+      const realRate   = Number(currRow.realRate);
+      if (!Number.isFinite(clientRate) || clientRate <= 0 || !Number.isFinite(realRate) || realRate <= 0) {
+        res.status(503).json({ error: "Les taux de conversion de cette devise ne sont pas disponibles." });
+        return;
+      }
+      localAmount      = amount;
+      amountXof        = Math.floor(amount * clientRate);
+      fxMeta           = { realRate, clientRate, profitXof: Math.floor(amount * (clientRate - realRate)) };
     }
 
     /* ── Amount limits (always checked in XOF) ── */
@@ -210,13 +386,38 @@ router.post(
       .from(paymentMethodsTable)
       .where(eq(paymentMethodsTable.slug, methodSlug))
       .limit(1);
+    if (!method) {
+      res.status(400).json({ error: "Mode de paiement inconnu." });
+      return;
+    }
+    if (!countryCode) {
+      res.status(400).json({ error: "Code pays requis pour une recharge vérifiée." });
+      return;
+    }
+
+    const [enabledMethod] = await db.select({ id: countryPaymentConfigsTable.id })
+      .from(countryPaymentConfigsTable)
+      .where(and(
+        eq(countryPaymentConfigsTable.countryCode, countryCode.toUpperCase()),
+        eq(countryPaymentConfigsTable.methodSlug, methodSlug),
+        eq(countryPaymentConfigsTable.enabled, true),
+      ))
+      .limit(1);
+    if (!enabledMethod) {
+      res.status(422).json({ error: "Ce mode de paiement n'est pas activé pour ce pays." });
+      return;
+    }
+
+    const mobileOperator = await getEnabledMobileOperator(methodSlug, method.name, countryCode);
+    if (!mobileOperator) {
+      res.status(422).json({
+        error: "Ce mode de paiement ne dispose pas d'un flux Mobile Money vérifié. Utilisez le dépôt crypto dédié ou contactez le support.",
+      });
+      return;
+    }
 
     const phoneDisplay = phoneNumber ? ` — ${dialCode ?? ""}${phoneNumber}` : "";
-    const description = method
-      ? `Recharge via ${method.name}${phoneDisplay}`
-      : `Recharge du portefeuille${phoneDisplay}`;
-
-    const isMobileMoney = isMobileMoneySlug(methodSlug);
+    const description = `Recharge via ${method.name}${phoneDisplay}`;
 
     /* ════════════════════════════════════════════════════════════
      * MOBILE MONEY PATH — Gateway-aware (PawaPay v2 / Clapay)
@@ -226,7 +427,7 @@ router.post(
      *  1. Dynamic routing via payment_routes table (admin-configurable)
      *  2. Legacy fallback via system_settings.mobile_money_gateway
      * ════════════════════════════════════════════════════════════ */
-    if (isMobileMoney) {
+    if (mobileOperator) {
       if (!phoneNumber || !countryCode) {
         res.status(400).json({ error: "Numéro de téléphone et code pays requis pour le Mobile Money." });
         return;
@@ -238,64 +439,25 @@ router.post(
         .from(countriesTable)
         .where(eq(countriesTable.code, countryCode.toUpperCase()))
         .limit(1);
-      if (depositCountry && depositCountry.enabled === false) {
+      if (!depositCountry || depositCountry.enabled === false) {
         res.status(400).json({ error: "Les dépôts ne sont pas disponibles pour ce pays pour le moment." });
         return;
       }
 
-      /* ── Step 1: Try dynamic routing (PostgreSQL routing table) ── */
-      let pawaPayCtx: { client: PawaPayClient; env: string } | null = null;
-      let clapayCtx:  { client: ClapayClient } | null = null;
-      let activeGateway: "pawapay" | "clapay" | null = null;
-      let routingSource: "dynamic" | "legacy" = "legacy";
-
-      const dynamicRoute = await resolveGateway(countryCode, methodSlug, amountXof);
-
-      if (dynamicRoute) {
-        routingSource = "dynamic";
-        if (dynamicRoute.type === "pawapay") {
-          pawaPayCtx = { client: dynamicRoute.client, env: process.env.PAWAPAY_ENV ?? "sandbox" };
-          activeGateway = "pawapay";
-        } else if (dynamicRoute.type === "clapay") {
-          clapayCtx = { client: dynamicRoute.client };
-          activeGateway = "clapay";
-        }
-        logger.info(
-          { countryCode, methodSlug, gateway: activeGateway, priority: dynamicRoute.priority, routeId: dynamicRoute.routeId },
-          "[Payment] Dynamic route resolved",
-        );
-      }
-
-      /* ── Step 2: Legacy fallback (system_settings.mobile_money_gateway) ── */
-      if (!activeGateway) {
-        const gatewayPref = await getGatewayPreference();
-        const isAuto = gatewayPref.startsWith("auto_");
-
-        const legacyPawaPay = (gatewayPref === "pawapay" || isAuto) ? await getPawaPayClient() : null;
-        const legacyClapay  = (gatewayPref === "clapay"  || isAuto) ? await getClapayClient()  : null;
-
-        if (gatewayPref === "pawapay") {
-          activeGateway = legacyPawaPay ? "pawapay" : null;
-        } else if (gatewayPref === "clapay") {
-          activeGateway = legacyClapay ? "clapay" : null;
-        } else if (gatewayPref === "auto_pawapay_first") {
-          activeGateway = legacyPawaPay ? "pawapay" : (legacyClapay ? "clapay" : null);
-        } else if (gatewayPref === "auto_clapay_first") {
-          activeGateway = legacyClapay ? "clapay" : (legacyPawaPay ? "pawapay" : null);
-        }
-
-        if (activeGateway === "pawapay" && legacyPawaPay) pawaPayCtx = legacyPawaPay;
-        if (activeGateway === "clapay"  && legacyClapay)  clapayCtx  = legacyClapay;
-
-        if (activeGateway) {
-          logger.info({ countryCode, methodSlug, gateway: activeGateway, gatewayPref }, "[Payment] Legacy gateway fallback used");
-        }
-      }
+      const {
+        gateway: activeGateway,
+        pawaPayCtx,
+        clapayCtx,
+        gatewayConfigId,
+        routingSource,
+        unavailableReason,
+      } =
+        await resolveWalletGateway(countryCode, methodSlug, amountXof);
 
       if (!activeGateway) {
         logger.error({ methodSlug, routingSource }, "[Payment] No gateway configured — cannot process mobile money");
         res.status(503).json({
-          error: "Le paiement Mobile Money est temporairement indisponible. Contactez le support.",
+          error: unavailableReason ?? "Le paiement Mobile Money est temporairement indisponible. Contactez le support.",
         });
         return;
       }
@@ -331,26 +493,28 @@ router.post(
 
         const depositId = generateDepositId();
 
-        const [pendingTx] = await db.insert(transactionsTable).values({
+        const pendingTx = await createPendingDepositWithFx({
           userId: user.id, type: "recharge", amount: amountXof, status: "pending",
           method: method?.name ?? methodSlug, description, externalDepositId: depositId,
-        }).returning();
+          gatewayMeta: makePawaPayGatewayMeta({
+            amount: localAmount,
+            currency,
+            provider,
+            phoneNumber: msisdn,
+            countryCode,
+            gatewayConfigId,
+          }),
+        }, fxMeta && !isXofCurrency ? {
+          currency: currencyCode,
+          localAmount: String(localAmount),
+          realRate: String(fxMeta.realRate),
+          clientRate: String(fxMeta.clientRate),
+          amountXof: String(amountXof),
+          profitXof: String(fxMeta.profitXof),
+          status: "pending",
+        } : undefined);
 
         auditLog({ userId: user.id, userName: user.fullName, action: "deposit_initiated", entity: "transaction", entityId: pendingTx.id, ip: req.ip ?? "unknown", userAgent: req.headers["user-agent"] ?? "", severity: "info", description: `Recharge ${amountXof} FCFA via PawaPay (${methodSlug})` });
-
-        /* Record pending FX profit if multi-currency */
-        if (fxMeta && !isXofCurrency) {
-          await db.insert(fxProfitsTable).values({
-            transactionId: pendingTx.id,
-            currency:      currencyCode,
-            localAmount:   String(localAmount),
-            realRate:      String(fxMeta.realRate),
-            clientRate:    String(fxMeta.clientRate),
-            amountXof:     String(amountXof),
-            profitXof:     String(fxMeta.profitXof),
-            status:        "pending",
-          });
-        }
 
         let depositRes;
         try {
@@ -366,12 +530,16 @@ router.post(
           const errMsg = (e as Error).message ?? "Erreur inconnue";
           logger.error({ error: errMsg, depositId, userId: user.id }, "[PawaPay] Deposit request failed");
 
-          /* Distinguish API rejection (4xx/5xx from PawaPay) vs true network error.
-           * API rejections mean the payment never started → mark as failed immediately.
-           * Network errors leave the tx pending so reconciliation can catch it. */
-          const isApiError = /^PawaPay\s+\d+/.test(errMsg) || (e as NodeJS.ErrnoException).code?.match(/^[345]\d\d$/) !== null;
-          if (isApiError) {
-            await db.update(transactionsTable).set({ status: "failed" }).where(eq(transactionsTable.id, pendingTx!.id));
+          /* Only explicit client-side rejection proves initiation did not happen.
+           * 5xx, timeouts and network failures are ambiguous: retain this ID and
+           * let authoritative status polling reconcile it; never retry initiation. */
+          const pawaStatus = Number(errMsg.match(/^PawaPay\s+(\d{3})/)?.[1]);
+          const nodeStatus = Number((e as NodeJS.ErrnoException).code?.match(/^[45]\d\d$/)?.[0]);
+          const isDefinitiveClientRejection =
+            (Number.isFinite(pawaStatus) && pawaStatus >= 400 && pawaStatus < 500 && ![408, 425, 429].includes(pawaStatus)) ||
+            (Number.isFinite(nodeStatus) && nodeStatus >= 400 && nodeStatus < 500 && ![408, 425, 429].includes(nodeStatus));
+          if (isDefinitiveClientRejection) {
+            await failPawaPayDeposit(depositId);
             res.status(422).json({ error: `Dépôt refusé par l'opérateur. ${errMsg}` });
           } else {
             res.status(502).json({
@@ -397,23 +565,44 @@ router.post(
           return;
         }
 
-        await db.update(transactionsTable).set({ status: "failed" }).where(eq(transactionsTable.id, pendingTx!.id));
-        const reason = depositRes.failureReason?.failureMessage ?? depositRes.failureReason?.failureCode ?? "Rejeté par l'opérateur";
-        logger.warn({ depositRes, provider, msisdn, depositId }, "[PawaPay] Deposit REJECTED");
-        res.status(422).json({ error: `Dépôt refusé : ${reason}. Vérifiez votre numéro et réessayez.` });
+        if (depositRes.status === "REJECTED") {
+          await failPawaPayDeposit(depositId);
+          const reason = depositRes.failureReason?.failureMessage ?? depositRes.failureReason?.failureCode ?? "Rejeté par l'opérateur";
+          logger.warn({ depositRes, provider, msisdn, depositId }, "[PawaPay] Deposit REJECTED");
+          res.status(422).json({ error: `Dépôt refusé : ${reason}. Vérifiez votre numéro et réessayez.` });
+          return;
+        }
+
+        res.status(502).json({
+          error: "Réponse d'initiation incertaine. Le dépôt reste en attente; ne le soumettez pas à nouveau avant de vérifier l'historique.",
+          depositId,
+          pending: true,
+        });
         return;
       }
 
       /* ── Clapay path ── */
       if (activeGateway === "clapay") {
         const { client } = clapayCtx!;
+        if (!isValidClapayLocalAmount(localAmount)) {
+          res.status(422).json({
+            error: "Clapay accepte uniquement les montants entiers dans la devise locale. Modifiez le montant avant de réessayer.",
+            code: "CLAPAY_INTEGER_AMOUNT_REQUIRED",
+          });
+          return;
+        }
 
-        /* Resolve operator code: try dynamic API lookup first, fall back to hardcoded map.
-         * Dynamic resolution calls GET /nowallet/api/opérateurs/données?pays=CC to get
-         * the exact codeoperator for this country, avoiding hardcoding mismatches. */
+        /* Resolve an active operator from the current API catalogue. */
         const clapayT0 = Date.now();
-        const operatorCode = await client.resolveOperatorCode(countryCode.toUpperCase(), methodSlug);
-        if (!operatorCode) {
+        let operator;
+        try {
+          operator = await client.resolveOperator(countryCode.toUpperCase(), methodSlug);
+        } catch (e) {
+          logger.warn({ countryCode, methodSlug, error: (e as Error).message }, "[Clapay] Operator catalogue request failed");
+          res.status(502).json({ error: "Impossible de charger les opérateurs Clapay. Réessayez plus tard." });
+          return;
+        }
+        if (!operator) {
           await db.insert(paymentRouteLogsTable).values({
             eventType: "payment", status: "error",
             errorMessage: `Opérateur Clapay introuvable pour ${countryCode} / ${methodSlug}`,
@@ -424,34 +613,49 @@ router.post(
           });
           return;
         }
+        const operatorCode = operator.codeoperator;
+        const operatorOtp = typeof (req.body as Record<string, unknown>).operatorOtp === "string"
+          ? String((req.body as Record<string, unknown>).operatorOtp).trim()
+          : "";
+        const requiresOtp = clapayOperatorRequiresOtp(operator);
+        if (requiresOtp && !operatorOtp) {
+          res.status(400).json({ error: "Le code OTP opérateur est requis pour ce mode de paiement.", requiresOtp: true });
+          return;
+        }
 
         logger.info({ country: countryCode, methodSlug, operatorCode }, "[Clapay] Resolved operator code");
 
         /* Generate our tracking UUID (sent to Clapay as transaction_id, echoed back in webhook) */
         const trackingId = generateDepositId(); /* UUID v4 */
         const externalDepositId = makeClapayDepositId(trackingId);
+        const localCurrency = currencyCode.toUpperCase();
+        const clapayAmount = localAmount;
+        const initialMeta = serializeClapayMeta({
+          clapayCurrency: localCurrency,
+          clapayCountry: countryCode.toUpperCase(),
+          localAmount: clapayAmount,
+          operatorCode,
+          trackingId,
+          method: "MERCHANT",
+          initiatedAt: new Date().toISOString(),
+          gatewayConfigId,
+        });
 
         /* Create pending transaction BEFORE calling Clapay — idempotency */
-        const [pendingTx] = await db.insert(transactionsTable).values({
+        const pendingTx = await createPendingDepositWithFx({
           userId: user.id, type: "recharge", amount: amountXof, status: "pending",
-          method: method?.name ?? methodSlug, description, externalDepositId,
-        }).returning();
+          method: method?.name ?? methodSlug, description, externalDepositId, gatewayMeta: initialMeta,
+        }, fxMeta && !isXofCurrency ? {
+          currency: currencyCode,
+          localAmount: String(localAmount),
+          realRate: String(fxMeta.realRate),
+          clientRate: String(fxMeta.clientRate),
+          amountXof: String(amountXof),
+          profitXof: String(fxMeta.profitXof),
+          status: "pending",
+        } : undefined);
 
         auditLog({ userId: user.id, userName: user.fullName, action: "deposit_initiated", entity: "transaction", entityId: pendingTx.id, ip: req.ip ?? "unknown", userAgent: req.headers["user-agent"] ?? "", severity: "info", description: `Recharge ${amountXof} FCFA via Clapay (${methodSlug})` });
-
-        /* Record pending FX profit if multi-currency */
-        if (fxMeta && !isXofCurrency) {
-          await db.insert(fxProfitsTable).values({
-            transactionId: pendingTx.id,
-            currency:      currencyCode,
-            localAmount:   String(localAmount),
-            realRate:      String(fxMeta.realRate),
-            clientRate:    String(fxMeta.clientRate),
-            amountXof:     String(amountXof),
-            profitXof:     String(fxMeta.profitXof),
-            status:        "pending",
-          });
-        }
 
         const [callbackUrl, returnUrl] = await Promise.all([getClapayCallbackUrl(), getClapayReturnUrl()]);
 
@@ -465,13 +669,14 @@ router.post(
               customer_lastname: user.fullName?.split(" ").slice(1).join(" ") ?? undefined,
               customer_email: user.email ?? undefined,
             },
-            amount: localAmount,   /* local currency amount sent to Clapay */
+            amount: clapayAmount,   /* local currency amount sent to Clapay */
             callback_url: callbackUrl,
             return_url: returnUrl,
             country_code: countryCode.toUpperCase(),
             operators_code: [operatorCode],
             method: "MERCHANT",
-            tunnel: "CHECKOUTPAGE",
+            tunnel: "API",
+            ...(requiresOtp ? { operator_otp: operatorOtp } : {}),
           });
         } catch (e) {
           const errMsg = (e as Error).message ?? "Erreur inconnue";
@@ -496,13 +701,11 @@ router.post(
             },
           }).catch(() => {});
 
-          /* Distinguish API rejection (Clapay returned 4xx/5xx) vs true network error.
-           * The ClapayClient throws errors prefixed "Clapay {status}: ..." for API errors.
-           * API rejections mean the payment never started → mark transaction as failed.
-           * Network errors (DNS, timeout, ECONNRESET) leave tx pending for reconciliation. */
-          const isClapayApiError = /^Clapay\s+\d+/.test(errMsg);
-          if (isClapayApiError) {
-            await db.update(transactionsTable).set({ status: "failed" }).where(eq(transactionsTable.id, pendingTx!.id));
+          const statusCode = Number((e as NodeJS.ErrnoException).code);
+          const explicitClientRejection = statusCode >= 400 && statusCode < 500 &&
+            ![408, 425, 429].includes(statusCode);
+          if (explicitClientRejection) {
+            await failClapayDeposit(externalDepositId);
             const userMsg = errMsg.replace(/^Clapay\s+\d+:\s*/, "");
             res.status(422).json({ error: `Paiement refusé par l'opérateur : ${userMsg}` });
           } else {
@@ -514,8 +717,29 @@ router.post(
           return;
         }
 
+        const initStatus = String(clapayRes.status_payment ?? "").toUpperCase();
+        if (normalizeClapayStatus(initStatus) === "failed" || clapayRes.observation_error) {
+          await failClapayDeposit(externalDepositId);
+          const refusal = clapayRes.observation_error || clapayRes.message || `Paiement refusé (${initStatus}).`;
+          res.status(422).json({ error: refusal });
+          return;
+        }
+        const knownSuccessfulInit = CLAPAY_TERMINAL_SUCCESS.has(initStatus);
+        const ambiguousInitStatus = initStatus !== "INITIATED" && !knownSuccessfulInit;
+
+        if (!clapayRes.signature) {
+          logger.error({ trackingId, userId: user.id }, "[Clapay] Init response missing a payment signature; leaving deposit pending");
+          res.status(502).json({
+            error: "Réponse Clapay incomplète. Votre dépôt reste incertain; ne relancez pas le paiement. Attendez le callback ou contactez le support avec cette référence.",
+            depositId: externalDepositId,
+            pending: true,
+            uncertainPayment: true,
+          });
+          return;
+        }
+
         logger.info(
-          { trackingId, userId: user.id, amount: localAmount, amountXof, operatorCode, signature: clapayRes.signature, currency: clapayRes.currency },
+          { trackingId, userId: user.id, amount: clapayAmount, amountXof, operatorCode, status: initStatus },
           "[Clapay] Payment initiated",
         );
 
@@ -529,89 +753,67 @@ router.post(
             country: countryCode,
             methodSlug,
             operatorCode,
-            amountLocal: localAmount,
+            amountLocal: clapayAmount,
             amountXof,
-            phone: `${dialCode ?? ""}${phoneNumber}`,
             trackingId,
-            signature: clapayRes.signature,
-            payment_url: clapayRes.payment_url ?? null,
-            currency: clapayRes.currency,
+            status: initStatus,
+            currency: localCurrency,
             routingSource,
           },
         }).catch(() => {});
 
-        /* Store Clapay signature in gateway_meta — required for official reconciliation
-         * endpoint GET /nowallet/api/check/transactions/single/signature/:sig */
-        const gatewayMeta = serializeClapayMeta({
+        const message = clapayRes.message
+          ?? (clapayRes.payment_otp
+            ? `Saisissez le code ${clapayRes.payment_otp} dans votre application mobile money pour confirmer le paiement.`
+            : `Confirmez le paiement sur votre téléphone (${method?.name ?? methodSlug}). Votre solde sera crédité après vérification.`);
+        const persistedMeta = await persistClapayDepositMeta(externalDepositId, {
           clapaySignature: clapayRes.signature,
-          clapayCurrency: clapayRes.currency,
-          clapayCountry: clapayRes.country,
-          initiatedAt: new Date().toISOString(),
+          operatorPaymentUrl: clapayRes.payment_url_operator ?? null,
+          paymentOtp: clapayRes.payment_otp ?? null,
+          message,
         });
-        await db.update(transactionsTable)
-          .set({ gatewayMeta })
-          .where(eq(transactionsTable.id, pendingTx!.id));
+        if (!persistedMeta) {
+          const [latest] = await db.select().from(transactionsTable)
+            .where(eq(transactionsTable.id, pendingTx!.id)).limit(1);
+          if (latest && latest.status !== "pending") {
+            res.json(serializeWalletTransaction(latest));
+          } else {
+            res.status(502).json({
+              error: "La réponse Clapay ne correspond pas à la signature déjà associée. Le dépôt reste en attente de vérification.",
+              depositId: externalDepositId,
+              pending: true,
+            });
+          }
+          return;
+        }
+
+        if (ambiguousInitStatus) {
+          res.status(502).json({
+            error: "Clapay a renvoyé un statut d'initialisation inconnu. Le dépôt reste en attente de vérification.",
+            depositId: externalDepositId,
+            pending: true,
+          });
+          return;
+        }
 
         res.json({
           ...toTransaction(pendingTx!),
           pending: true,
           depositId: externalDepositId,
           gateway: "clapay",
-          payment_url: clapayRes.payment_url ?? null,
-          message: clapayRes.payment_url
-            ? `Finalisez le paiement sur la page Clapay. Votre solde sera crédité automatiquement dès confirmation.`
-            : `En attente de confirmation de paiement (${method?.name ?? methodSlug}). Votre solde sera crédité automatiquement.`,
+          paymentMode: "API",
+          payment_url: null,
+          operatorPaymentUrl: persistedMeta.operatorPaymentUrl ?? null,
+          paymentOtp: persistedMeta.paymentOtp ?? null,
+          message: persistedMeta.message ?? message,
         });
         return;
       }
     }
 
-    /* ════════════════════════════════════════════════════════════
-     * NON-MOBILE MONEY PATH — instant credit
-     * (bank transfer, voucher, manual top-up, etc.)
-     * ════════════════════════════════════════════════════════════ */
-    await db
-      .update(usersTable)
-      .set({ balance: sql`${usersTable.balance} + ${amountXof}` })
-      .where(eq(usersTable.id, user.id));
-
-    const [tx] = await db
-      .insert(transactionsTable)
-      .values({
-        userId: user.id,
-        type: "recharge",
-        amount: amountXof,
-        status: "completed",
-        method: method?.name ?? methodSlug,
-        description,
-      })
-      .returning();
-
-    /* ── Send deposit confirmation email (non-mobile-money instant credit) ── */
-    if (tx && user.email) {
-      const newBalanceAfter = user.balance + amountXof;
-      sendDepositConfirmationEmail({
-        userEmail: user.email,
-        userFullName: user.fullName ?? "Utilisateur",
-        amount: amountXof,
-        method: method?.name ?? methodSlug,
-        phoneNumber: phoneNumber ? `${dialCode ?? ""}${phoneNumber}` : null,
-        transactionId: String(tx.id),
-        depositId: null,
-        createdAt: tx.createdAt ? new Date(tx.createdAt) : new Date(),
-        newBalance: newBalanceAfter,
-      }).catch((e: Error) => logger.warn({ error: e.message }, "[email] Deposit confirmation (manual) non-critical error"));
-    }
-
-    /* ── Referral commission — credit parrain on this deposit ── */
-    void creditReferralDepositCommission({
-      depositorId: user.id,
-      referredBy: user.referredBy,
-      depositAmount: amountXof,
-      sourceLabel: method?.name ?? methodSlug,
+    res.status(422).json({
+      error: "Aucun flux de paiement vérifié n'est disponible pour ce mode. Le solde n'a pas été crédité.",
     });
-
-    res.json(toTransaction(tx!));
   },
 );
 
@@ -643,25 +845,18 @@ router.post("/wallet/predict-provider", requireAuth, async (req, res): Promise<v
  * PawaPay POSTs the final deposit status here.
  * Security: verify Content-Digest if present (optional signed callbacks).
  *
- * IMPORTANT: Respond 200 immediately, process asynchronously.
- * Account is ONLY credited here when status = "COMPLETED".
+ * The callback is only a hint: query PawaPay's status endpoint and process it
+ * before acknowledging. Account credit is based only on verified status data.
  * ──────────────────────────────────────────────────────────────── */
 router.post("/wallet/pawapay/webhook", async (req: Request, res: Response): Promise<void> => {
-  /* Respond immediately — PawaPay requires fast 2xx response */
-  res.status(200).json({ received: true });
-
   try {
     /* Content-Digest verification (if signed callbacks are enabled in PawaPay dashboard) */
     const contentDigest = req.headers["content-digest"] as string | undefined;
     if (contentDigest) {
-      /* Use the raw body captured before JSON parsing (see app.ts verify callback).
-       * JSON.stringify(req.body) must NOT be used here — it re-serializes the
-       * parsed object which may differ from PawaPay's original bytes (whitespace,
-       * key ordering) and would always produce a mismatch on signed callbacks. */
-      const rawBody = req.rawBody ?? JSON.stringify(req.body);
-      const digestOk = verifyContentDigest(rawBody, contentDigest);
+      const digestOk = Boolean(req.rawBody) && verifyContentDigest(req.rawBody!, contentDigest);
       if (!digestOk) {
         logger.error({ contentDigest, hasRawBody: !!req.rawBody }, "[PawaPay Webhook] Content-Digest MISMATCH — possible tampering, ignoring");
+        res.status(400).json({ error: "Invalid Content-Digest" });
         return;
       }
       logger.info("[PawaPay Webhook] Content-Digest verified ✓");
@@ -676,139 +871,97 @@ router.post("/wallet/pawapay/webhook", async (req: Request, res: Response): Prom
     for (const item of items) {
       await processDepositCallback(item);
     }
+    res.status(200).json({ received: true });
   } catch (e) {
     logger.error({ error: (e as Error).message }, "[PawaPay Webhook] Error processing deposit callback");
+    res.status(503).json({ error: "Unable to verify or process deposit status; retry later." });
   }
 });
 
 /* ── Process a single v2 deposit callback ── */
 async function processDepositCallback(payload: PawaPayDepositCallback): Promise<void> {
-  const { depositId, status, amount, failureReason } = payload;
+  if (!payload || typeof payload !== "object") {
+    logger.warn("[PawaPay Webhook] Invalid callback payload ignored");
+    return;
+  }
+  const { depositId, status } = payload;
 
   if (!depositId || !status) {
     logger.warn({ payload }, "[PawaPay Webhook] Invalid payload — missing depositId or status");
     return;
   }
 
-  logger.info({ depositId, status, amount }, "[PawaPay Webhook] Processing deposit callback");
+  logger.info({ depositId, status }, "[PawaPay Webhook] Callback received as a status hint");
+  if (status !== "COMPLETED" && status !== "FAILED") return;
 
-  if (status === "COMPLETED") {
-    /* Find the pending transaction — guard against double-processing */
-    const [tx] = await db.select().from(transactionsTable)
-      .where(and(
-        eq(transactionsTable.externalDepositId, depositId),
-        eq(transactionsTable.status, "pending"),
-      ))
-      .limit(1);
+  const [deposit] = await db.select().from(transactionsTable)
+    .where(and(
+      eq(transactionsTable.externalDepositId, depositId),
+      eq(transactionsTable.type, "recharge"),
+    ))
+    .limit(1);
+  if (!deposit || deposit.status !== "pending") {
+    logger.info({ depositId }, "[PawaPay Webhook] Unknown or already processed deposit ignored");
+    return;
+  }
 
-    if (!tx) {
-      logger.warn({ depositId }, "[PawaPay Webhook] Transaction not found or already processed");
-      return;
-    }
+  const client = await getPawaPayClientForDeposit(deposit);
+  if (!client) throw new Error("PawaPay credentials for the initiating gateway are unavailable");
+  const outcome = await verifyAndSettlePawaPayDeposit(depositId, client);
+  if (outcome.ignored) {
+    logger.warn({ depositId }, "[PawaPay Webhook] Authoritative status did not match stored deposit evidence");
+  }
+  if (outcome.failed) {
+    logger.warn({ depositId }, "[PawaPay Webhook] Verified failed deposit atomically marked failed");
+  }
+  if (!outcome.settled || !outcome.userId || outcome.amount === undefined || !outcome.transactionId) return;
 
-    /* ALWAYS use the stored XOF amount (tx.amount) — never the webhook `amount`.
-     * The webhook `amount` is in the payer's LOCAL currency (e.g. KES, GHS)
-     * which may differ from our internal FCFA amount after FX conversion. */
-    const creditAmount = tx.amount;
+  // Everything below is best-effort after the atomic credit has committed. A
+  // notification/email outage must never undo or obscure the settled payment.
+  try {
+    const [notif] = await db.insert(notificationsTable).values({
+      userId: outcome.userId,
+      title: "💰 Solde rechargé",
+      body: `Votre solde a été crédité de ${outcome.amount.toLocaleString("fr-FR")} FCFA avec succès.`,
+      type: "deposit",
+      icon: "wallet",
+      link: "/wallet",
+      metadata: { amount: outcome.amount, depositId, gateway: "pawapay" },
+    }).returning();
+    if (notif) broadcastNotification(notif);
+  } catch (error) {
+    logger.warn({ depositId, error: (error as Error).message }, "[PawaPay Webhook] Notification failed after settlement");
+  }
 
-    /* Atomic transition pending → completed. Re-check status="pending" in the
-     * WHERE clause and inspect .returning() — this guards against a race where
-     * the webhook fires twice (PawaPay retries) or fires concurrently with the
-     * reconciliation poller / status-poll endpoint. Only the caller that wins
-     * the atomic transition may credit the balance. */
-    const [justCompleted] = await db.update(transactionsTable)
-      .set({ status: "completed" })
-      .where(and(
-        eq(transactionsTable.id, tx.id),
-        eq(transactionsTable.status, "pending"),
-      ))
-      .returning();
-
-    if (!justCompleted) {
-      logger.info({ depositId }, "[PawaPay Webhook] Already processed — skipping double-credit");
-      return;
-    }
-
-    await db.update(usersTable)
-      .set({ balance: sql`${usersTable.balance} + ${creditAmount}` })
-      .where(eq(usersTable.id, tx.userId));
-
-    logger.info({ depositId, userId: tx.userId, creditAmount }, "[PawaPay Webhook] Deposit COMPLETED — balance credited ✓");
-
-    /* ── Complete FX profit record if present ── */
-    try {
-      await db.update(fxProfitsTable)
-        .set({ status: "completed" })
-        .where(eq(fxProfitsTable.transactionId, tx.id));
-    } catch { /* non-critical */ }
-
-    /* ── Push real-time deposit notification ── */
-    try {
-      const [notif] = await db.insert(notificationsTable).values({
-        userId: tx.userId,
-        title: "💰 Solde rechargé",
-        body: `Votre solde a été crédité de ${creditAmount.toLocaleString("fr-FR")} FCFA avec succès.`,
-        type: "deposit",
-        icon: "wallet",
-        link: `/wallet`,
-        metadata: { amount: creditAmount, depositId },
-      }).returning();
-      if (notif) broadcastNotification(notif);
-    } catch { /* non-critical */ }
-
-    /* ── Fetch depositor (email + referral) once, used below ── */
+  try {
     const [userRow] = await db.select({
       email: usersTable.email,
       fullName: usersTable.fullName,
       balance: usersTable.balance,
       referredBy: usersTable.referredBy,
-    }).from(usersTable).where(eq(usersTable.id, tx.userId)).limit(1);
-
-    /* ── Send deposit confirmation email ── */
-    try {
-      if (userRow?.email) {
-        const phoneMatch = tx.description?.match(/[\+\d]{8,}/);
-        await sendDepositConfirmationEmail({
-          userEmail: userRow.email,
-          userFullName: userRow.fullName ?? "Utilisateur",
-          amount: creditAmount,
-          method: tx.method ?? "Mobile Money",
-          phoneNumber: phoneMatch?.[0] ?? null,
-          transactionId: String(tx.id),
-          depositId: tx.externalDepositId ?? depositId,
-          createdAt: tx.createdAt ? new Date(tx.createdAt) : new Date(),
-          newBalance: userRow.balance,
-        });
-        logger.info({ userId: tx.userId, depositId }, "[email] Deposit confirmation email sent ✓");
-      }
-    } catch (e) {
-      logger.warn({ error: (e as Error).message, depositId }, "[email] Failed to send deposit confirmation email (non-critical)");
+    }).from(usersTable).where(eq(usersTable.id, outcome.userId)).limit(1);
+    if (userRow?.email) {
+      const phoneMatch = deposit.description?.match(/[\+\d]{8,}/);
+      await sendDepositConfirmationEmail({
+        userEmail: userRow.email,
+        userFullName: userRow.fullName ?? "Utilisateur",
+        amount: outcome.amount,
+        method: deposit.method ?? "Mobile Money",
+        phoneNumber: phoneMatch?.[0] ?? null,
+        transactionId: outcome.transactionId,
+        depositId,
+        createdAt: deposit.createdAt ? new Date(deposit.createdAt) : new Date(),
+        newBalance: userRow.balance,
+      });
     }
-
-    /* ── Referral commission — credit parrain on this deposit ── */
     void creditReferralDepositCommission({
-      depositorId: tx.userId,
+      depositorId: outcome.userId,
       referredBy: userRow?.referredBy,
-      depositAmount: creditAmount,
-      sourceLabel: tx.method ?? "Mobile Money",
+      depositAmount: outcome.amount,
+      sourceLabel: deposit.method ?? "Mobile Money",
     });
-
-  } else if (status === "FAILED") {
-    const updated = await db.update(transactionsTable)
-      .set({ status: "failed" })
-      .where(and(
-        eq(transactionsTable.externalDepositId, depositId),
-        eq(transactionsTable.status, "pending"),
-      ))
-      .returning();
-
-    if (updated.length > 0) {
-      logger.warn({ depositId, failureReason }, "[PawaPay Webhook] Deposit FAILED — transaction marked failed");
-    } else {
-      logger.warn({ depositId }, "[PawaPay Webhook] FAILED callback — transaction not found or already processed");
-    }
-  } else {
-    logger.info({ depositId, status }, "[PawaPay Webhook] Non-final status received, ignoring");
+  } catch (error) {
+    logger.warn({ depositId, error: (error as Error).message }, "[PawaPay Webhook] Post-settlement email/referral lookup failed");
   }
 }
 
@@ -860,7 +1013,7 @@ router.post("/wallet/clapay/webhook", async (req: Request, res: Response): Promi
       valid = a.length === b.length && timingSafeEqual(a, b);
     } catch { valid = false; }
     if (!valid) {
-      logger.warn({ ip: req.ip, receivedToken: received.slice(0, 8) }, "[Clapay Webhook] Invalid or missing webhook token — rejected");
+      logger.warn({ ip: req.ip }, "[Clapay Webhook] Invalid or missing webhook token — rejected");
       res.status(401).json({ error: "Unauthorized" });
       return;
     }
@@ -869,150 +1022,153 @@ router.post("/wallet/clapay/webhook", async (req: Request, res: Response): Promi
   /* Respond 200 immediately — Clapay requires a fast ACK */
   res.status(200).json({ received: true });
 
-  const receivedAt = new Date().toISOString();
-
   try {
     const payload = req.body as ClapayWebhookPayload;
-    const { status, transaction_id, amount, signature, currency } = payload;
-
-    if (!transaction_id || !status) {
-      logger.warn({ payload, receivedAt }, "[Clapay Webhook] Invalid payload — missing transaction_id or status");
+    const transactionId = payload.transaction_id;
+    if (!transactionId || !payload.signature) {
+      logger.warn({ hasTransactionId: Boolean(transactionId), hasSignature: Boolean(payload.signature) }, "[Clapay Webhook] Invalid payload");
       return;
     }
 
-    /* Log the full webhook for auditability */
-    logger.info(
-      { transaction_id, status, amount, currency, signature, receivedAt },
-      "[Clapay Webhook] Callback received",
-    );
+    const externalDepositId = makeClapayDepositId(transactionId);
+    const [deposit] = await db.select().from(transactionsTable)
+      .where(eq(transactionsTable.externalDepositId, externalDepositId)).limit(1);
+    if (!deposit || deposit.status !== "pending") return;
 
-    const externalDepositId = makeClapayDepositId(transaction_id);
-    const normalizedStatus = status.toUpperCase();
-
-    if (normalizedStatus === "COMPLETED") {
-      const [tx] = await db.select().from(transactionsTable)
-        .where(and(
-          eq(transactionsTable.externalDepositId, externalDepositId),
-          eq(transactionsTable.status, "pending"),
-        ))
-        .limit(1);
-
-      if (!tx) {
-        logger.warn({ transaction_id, externalDepositId }, "[Clapay Webhook] Transaction not found or already processed");
-        return;
-      }
-
-      /* ALWAYS use the stored XOF amount (tx.amount) — never the webhook amount.
-       * The webhook `amount` is in the LOCAL currency (e.g. KES, XAF) which may
-       * differ from our internal FCFA amount after FX conversion. */
-      const creditAmount = tx.amount;
-
-      const [justCompleted] = await db.update(transactionsTable)
-        .set({ status: "completed" })
-        .where(and(
-          eq(transactionsTable.id, tx.id),
-          eq(transactionsTable.status, "pending"),
-        ))
-        .returning();
-
-      if (!justCompleted) {
-        logger.info({ transaction_id }, "[Clapay Webhook] Already processed — skipping double-credit");
-        return;
-      }
-
-      await db.update(usersTable)
-        .set({ balance: sql`${usersTable.balance} + ${creditAmount}` })
-        .where(eq(usersTable.id, tx.userId));
-
-      logger.info(
-        { transaction_id, userId: tx.userId, creditAmount, clapayAmount: amount, clapayCurrency: currency },
-        "[Clapay Webhook] Deposit COMPLETED — balance credited ✓",
-      );
-
-      /* ── Complete FX profit record if present ── */
-      try {
-        await db.update(fxProfitsTable)
-          .set({ status: "completed" })
-          .where(eq(fxProfitsTable.transactionId, tx.id));
-      } catch { /* non-critical */ }
-
-      /* Push real-time notification */
-      try {
-        const [notif] = await db.insert(notificationsTable).values({
-          userId: tx.userId,
-          title: "💰 Solde rechargé",
-          body: `Votre solde a été crédité de ${creditAmount.toLocaleString("fr-FR")} FCFA avec succès.`,
-          type: "deposit",
-          icon: "wallet",
-          link: "/wallet",
-          metadata: { amount: creditAmount, depositId: transaction_id, gateway: "clapay" },
-        }).returning();
-        if (notif) broadcastNotification(notif);
-      } catch { /* non-critical */ }
-
-      /* ── Fetch depositor (email + referral) once, used below ── */
-      const [userRow] = await db.select({
-        email: usersTable.email, fullName: usersTable.fullName, balance: usersTable.balance,
-        referredBy: usersTable.referredBy,
-      }).from(usersTable).where(eq(usersTable.id, tx.userId)).limit(1);
-
-      /* Send deposit confirmation email */
-      try {
-        if (userRow?.email) {
-          const phoneMatch = tx.description?.match(/[\+\d]{8,}/);
-          await sendDepositConfirmationEmail({
-            userEmail: userRow.email,
-            userFullName: userRow.fullName ?? "Utilisateur",
-            amount: creditAmount,
-            method: tx.method ?? "Mobile Money",
-            phoneNumber: phoneMatch?.[0] ?? null,
-            transactionId: String(tx.id),
-            depositId: transaction_id,
-            createdAt: tx.createdAt ? new Date(tx.createdAt) : new Date(),
-            newBalance: userRow.balance,
-          });
-          logger.info({ userId: tx.userId, transaction_id }, "[Clapay Webhook] Deposit confirmation email sent ✓");
-        }
-      } catch (e) {
-        logger.warn({ error: (e as Error).message, transaction_id }, "[Clapay Webhook] Email failed (non-critical)");
-      }
-
-      /* ── Referral commission — credit parrain on this deposit ── */
-      void creditReferralDepositCommission({
-        depositorId: tx.userId,
-        referredBy: userRow?.referredBy,
-        depositAmount: creditAmount,
-        sourceLabel: tx.method ?? "Mobile Money",
-      });
-
-    } else if (CLAPAY_TERMINAL_FAILURE.has(normalizedStatus)) {
-      /* Handles: FAILED, CANCELLED, REJECTED, TIMEOUT, EXPIRED */
-      const updated = await db.update(transactionsTable)
-        .set({ status: "failed" })
-        .where(and(
-          eq(transactionsTable.externalDepositId, externalDepositId),
-          eq(transactionsTable.status, "pending"),
-        ))
-        .returning();
-
-      if (updated.length > 0) {
-        logger.warn({ transaction_id, status: normalizedStatus }, "[Clapay Webhook] Payment terminal failure — transaction marked failed");
-      } else {
-        logger.warn({ transaction_id, status: normalizedStatus }, "[Clapay Webhook] Failure callback — transaction not found or already processed");
-      }
-    } else {
-      /* PENDING or other non-terminal status — no action required */
-      logger.info({ transaction_id, status: normalizedStatus }, "[Clapay Webhook] Non-terminal status received — waiting for final callback");
+    const context = await getClapayDepositMeta(externalDepositId, { clapaySignature: payload.signature });
+    if (!context || context.meta.trackingId !== transactionId) {
+      logger.warn({ transactionId }, "[Clapay Webhook] Callback identity does not match stored payment");
+      return;
     }
+    const meta = context.meta;
+
+    const clientContext = await getClapayClient(meta.gatewayConfigId);
+    if (!clientContext) {
+      logger.warn({ transactionId }, "[Clapay Webhook] Cannot verify status because Clapay is not configured");
+      return;
+    }
+    const verified = await getVerifiedClapayStatus(clientContext.client, meta, transactionId, true);
+    if (!verified) {
+      logger.warn({ transactionId }, "[Clapay Webhook] Signature is unknown to status API; deposit remains pending");
+      return;
+    }
+    const persistedMeta = await persistClapayDepositMeta(externalDepositId, { clapaySignature: payload.signature });
+    if (!persistedMeta) {
+      logger.warn({ transactionId }, "[Clapay Webhook] Could not safely persist verified signature metadata");
+      return;
+    }
+    if (verified.status === "failed") {
+      await failClapayDeposit(externalDepositId);
+      return;
+    }
+    if (verified.status !== "completed") return;
+
+    const outcome = await settleVerifiedClapayDeposit(externalDepositId);
+    if (!outcome.settled || !outcome.userId || outcome.amount === undefined || !outcome.transactionId) return;
+    const [userRow] = await db.select({
+      email: usersTable.email,
+      fullName: usersTable.fullName,
+      balance: usersTable.balance,
+      referredBy: usersTable.referredBy,
+    }).from(usersTable).where(eq(usersTable.id, outcome.userId)).limit(1);
+    try {
+      const [notif] = await db.insert(notificationsTable).values({
+        userId: outcome.userId,
+        title: "💰 Solde rechargé",
+        body: `Votre solde a été crédité de ${outcome.amount.toLocaleString("fr-FR")} FCFA avec succès.`,
+        type: "deposit",
+        icon: "wallet",
+        link: "/wallet",
+        metadata: { amount: outcome.amount, depositId: transactionId, gateway: "clapay" },
+      }).returning();
+      if (notif) broadcastNotification(notif);
+    } catch { /* Non-critical after atomic settlement. */ }
+    if (userRow?.email) {
+      const phoneMatch = deposit.description?.match(/[\+\d]{8,}/);
+      await sendDepositConfirmationEmail({
+        userEmail: userRow.email,
+        userFullName: userRow.fullName ?? "Utilisateur",
+        amount: outcome.amount,
+        method: deposit.method ?? "Mobile Money",
+        phoneNumber: phoneMatch?.[0] ?? null,
+        transactionId: outcome.transactionId,
+        depositId: transactionId,
+        createdAt: deposit.createdAt,
+        newBalance: userRow.balance,
+      }).catch((e: Error) => logger.warn({ error: e.message, transactionId }, "[Clapay Webhook] Email failed"));
+    }
+    void creditReferralDepositCommission({
+      depositorId: outcome.userId,
+      referredBy: userRow?.referredBy,
+      depositAmount: outcome.amount,
+      sourceLabel: deposit.method ?? "Mobile Money",
+    });
   } catch (e) {
     logger.error({ error: (e as Error).message }, "[Clapay Webhook] Unhandled error processing callback");
   }
 });
 
 /* ────────────────────────────────────────────────────────────────
+ * POST /wallet/deposit/:depositId/cancel
+ * ──────────────────────────────────────────────────────────────── */
+router.post("/wallet/deposit/:depositId/cancel", requireAuth, async (req, res): Promise<void> => {
+  const depositId = String(req.params.depositId);
+  const [tx] = await db.select().from(transactionsTable)
+    .where(and(
+      eq(transactionsTable.externalDepositId, depositId),
+      eq(transactionsTable.userId, req.user!.id),
+      eq(transactionsTable.type, "recharge"),
+    ))
+    .limit(1);
+  if (!tx) { res.status(404).json({ error: "Dépôt introuvable" }); return; }
+  if (!isClapayDeposit(depositId)) {
+    res.status(400).json({ error: "L'annulation est disponible uniquement pour les paiements Clapay." });
+    return;
+  }
+  if (tx.status !== "pending") { res.json(serializeWalletTransaction(tx)); return; }
+
+  const meta = await persistClapayDepositMeta(depositId);
+  if (!meta?.clapaySignature) { res.status(409).json({ error: "La signature ou les données vérifiables du paiement ne sont pas encore disponibles." }); return; }
+  const clapayContext = await getClapayClient(meta.gatewayConfigId);
+  if (!clapayContext) { res.status(503).json({ error: "Clapay n'est pas configuré." }); return; }
+
+  try {
+    const verified = await getVerifiedClapayStatus(
+      clapayContext.client, meta, extractClapayTransactionId(depositId), true,
+    );
+    if (verified?.status === "completed") {
+      await settleVerifiedClapayDeposit(depositId);
+    } else if (verified?.status === "failed") {
+      await failClapayDeposit(depositId);
+    } else if (verified?.status === "pending") {
+      const cancellation = await clapayContext.client.cancelPayment(meta.clapaySignature);
+      if (!isClapayCancellationAcknowledged(cancellation)) {
+        res.status(502).json({
+          error: cancellation.message ?? "Clapay n'a pas confirmé l'annulation. Le paiement reste en attente.",
+          pending: true,
+        });
+        return;
+      }
+      await failClapayDeposit(depositId);
+    } else {
+      res.status(409).json({
+        error: "Clapay ne confirme pas que ce paiement est toujours initié; il n'a pas été annulé.",
+        pending: true,
+      });
+      return;
+    }
+    const [updated] = await db.select().from(transactionsTable)
+      .where(eq(transactionsTable.id, tx.id)).limit(1);
+    res.json(serializeWalletTransaction(updated ?? tx));
+  } catch (error) {
+    logger.warn({ depositId, error: (error as Error).message }, "[Clapay Cancel] Status check or cancellation failed");
+    res.status(502).json({ error: "Impossible de vérifier ou d'annuler ce paiement auprès de Clapay.", pending: true });
+  }
+});
+
+/* ────────────────────────────────────────────────────────────────
  * GET /wallet/deposit/:depositId/status
- * Poll PawaPay v2 for live deposit status (frontend polling)
- * Credits balance if COMPLETED and not yet done (reconciliation safety net).
+ * Poll the selected gateway for live deposit status.
  * ──────────────────────────────────────────────────────────────── */
 router.get("/wallet/deposit/:depositId/status", requireAuth, async (req, res): Promise<void> => {
   const depositId = String(req.params.depositId);
@@ -1022,94 +1178,70 @@ router.get("/wallet/deposit/:depositId/status", requireAuth, async (req, res): P
     .where(and(
       eq(transactionsTable.externalDepositId, depositId),
       eq(transactionsTable.userId, user.id),
+      eq(transactionsTable.type, "recharge"),
     ))
     .limit(1);
 
   if (!tx) { res.status(404).json({ error: "Dépôt introuvable" }); return; }
 
+  const clapayDeposit = isClapayDeposit(depositId);
+  let clapayMeta: NormalizedClapayGatewayMeta | null = null;
+
   /* Only poll if transaction is still pending */
   if (tx.status === "pending") {
-    /* Clapay deposits: Clapay V3 API does NOT provide a status polling endpoint.
-     * Payment confirmation is done exclusively via webhook (callback_url).
-     * This endpoint simply returns the current DB state.
-     * If a webhook was missed, the reconciliation job will expire the tx after 2h. */
-    if (isClapayDeposit(depositId)) {
-      res.json({ ...toTransaction(tx), gateway: "clapay" });
+    if (clapayDeposit) {
+      clapayMeta = await persistClapayDepositMeta(depositId);
+      const clapayContext = await getClapayClient(clapayMeta?.gatewayConfigId);
+      if (clapayContext && clapayMeta?.clapaySignature) {
+        try {
+          const trackingId = extractClapayTransactionId(depositId);
+          const verified = await getVerifiedClapayStatus(clapayContext.client, clapayMeta, trackingId);
+          if (verified?.status === "completed") {
+            const outcome = await settleVerifiedClapayDeposit(depositId);
+            if (outcome.settled && outcome.userId && outcome.amount !== undefined) {
+              void creditReferralDepositCommission({
+                depositorId: outcome.userId,
+                referredBy: user.referredBy,
+                depositAmount: outcome.amount,
+                sourceLabel: tx.method ?? "Mobile Money",
+              });
+            }
+          } else if (verified?.status === "failed") {
+            await failClapayDeposit(depositId);
+          }
+        } catch (error) {
+          logger.warn({ depositId, error: (error as Error).message }, "[Clapay Poll] Status verification failed; transaction remains pending");
+        }
+      }
+      const [updated] = await db.select().from(transactionsTable)
+        .where(eq(transactionsTable.id, tx.id)).limit(1);
+      res.json(serializeWalletTransaction(updated ?? tx));
       return;
     }
 
-    const pawaPayCtx = await getPawaPayClient();
-    if (pawaPayCtx) {
+    const pawaPayClient = await getPawaPayClientForDeposit(tx);
+    if (pawaPayClient) {
       try {
-        const result = await pawaPayCtx.client.getDepositStatus(depositId);
-
-        if (result.status === "FOUND" && result.data) {
-          const depositStatus = result.data.status;
-
-          if (depositStatus === "COMPLETED") {
-            /* Safety net: credit if webhook was missed.
-             * Use .returning() to detect if this update actually transitioned
-             * the row from pending → completed. If it returns nothing, another
-             * process (the webhook) already handled it — skip balance credit. */
-            const creditAmount = result.data.amount ? Math.round(Number(result.data.amount)) : tx.amount;
-
-            const [justCompleted] = await db.update(transactionsTable)
-              .set({ status: "completed" })
-              .where(and(
-                eq(transactionsTable.id, tx.id),
-                eq(transactionsTable.status, "pending"),
-              ))
-              .returning();
-
-            if (justCompleted) {
-              /* We did the transition — credit the balance */
-              await db.update(usersTable)
-                .set({ balance: sql`${usersTable.balance} + ${creditAmount}` })
-                .where(eq(usersTable.id, user.id));
-              logger.info({ depositId, userId: user.id, creditAmount }, "[PawaPay Poll] Deposit COMPLETED via polling — balance credited ✓");
-
-              /* ── Referral commission — credit parrain on this deposit ── */
-              void creditReferralDepositCommission({
-                depositorId: user.id,
-                referredBy: user.referredBy,
-                depositAmount: creditAmount,
-                sourceLabel: tx.method ?? "Mobile Money",
-              });
-            } else {
-              /* Webhook already processed it — nothing to do */
-              logger.info({ depositId }, "[PawaPay Poll] Already processed by webhook — skipping double-credit");
-            }
-
-            /* Re-fetch updated transaction */
-            const [updated] = await db.select().from(transactionsTable)
-              .where(eq(transactionsTable.id, tx.id)).limit(1);
-
-            res.json(toTransaction(updated ?? tx));
-            return;
-
-          } else if (depositStatus === "FAILED") {
-            await db.update(transactionsTable)
-              .set({ status: "failed" })
-              .where(eq(transactionsTable.id, tx.id));
-
-            const [updated] = await db.select().from(transactionsTable)
-              .where(eq(transactionsTable.id, tx.id)).limit(1);
-            res.json(toTransaction(updated ?? { ...tx, status: "failed" }));
-            return;
-
-          } else if (depositStatus === "PROCESSING" || depositStatus === "ACCEPTED") {
-            /* Still in progress — return current pending state */
-            res.json({ ...toTransaction(tx), pawapayStatus: depositStatus });
-            return;
-          }
+        const outcome = await verifyAndSettlePawaPayDeposit(depositId, pawaPayClient);
+        if (outcome.settled && outcome.userId && outcome.amount !== undefined) {
+          void creditReferralDepositCommission({
+            depositorId: outcome.userId,
+            referredBy: user.referredBy,
+            depositAmount: outcome.amount,
+            sourceLabel: tx.method ?? "Mobile Money",
+          });
         }
       } catch (e) {
         logger.warn({ error: (e as Error).message }, "[PawaPay Poll] Status check failed");
       }
     }
+    const [updated] = await db.select().from(transactionsTable)
+      .where(eq(transactionsTable.id, tx.id)).limit(1);
+    res.json(serializeWalletTransaction(updated ?? tx));
+    return;
   }
 
-  res.json(toTransaction(tx));
+  res.json(serializeWalletTransaction(tx));
 });
 
 /* ────────────────────────────────────────────────────────────────
@@ -1126,7 +1258,7 @@ router.get(
       .where(eq(transactionsTable.userId, user.id))
       .orderBy(desc(transactionsTable.createdAt))
       .limit(100);
-    res.json(rows.map(toTransaction));
+    res.json(rows.map(serializeWalletTransaction));
   },
 );
 

@@ -9,8 +9,8 @@ import { db, mobileOperatorsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { resolvePaymentRoute, type ResolvedRoute } from "../routes/admin-payment-routing";
 import { PawaPayClient, getProviderForCountry } from "./pawapay";
-import { ClapayClient, getOperatorCodeForMethod } from "./clapay";
-import { resolvePawaPayCredentials, resolveClapayCredentials } from "./gateway-credentials";
+import { ClapayClient } from "./clapay";
+import { resolvePawaPayCredentials } from "./gateway-credentials";
 import { logger } from "./logger";
 
 /* ── Operator slug normalizer ────────────────────────────────────────────
@@ -65,6 +65,7 @@ async function resolveOperatorSlugFromDb(methodSlug: string): Promise<string | n
 export interface RouterResultPawaPay {
   type: "pawapay";
   client: PawaPayClient;
+  gatewayId: string;
   gatewaySlug: string;
   gatewayName: string;
   routeId: string;
@@ -73,6 +74,7 @@ export interface RouterResultPawaPay {
 export interface RouterResultClapay {
   type: "clapay";
   client: ClapayClient;
+  gatewayId: string;
   gatewaySlug: string;
   gatewayName: string;
   routeId: string;
@@ -80,9 +82,15 @@ export interface RouterResultClapay {
 }
 export type RouterResult = RouterResultPawaPay | RouterResultClapay;
 
-/* ── Build PawaPay/Clapay clients — see lib/gateway-credentials.ts for the
- * single documented priority order: route override → system_settings (DB,
- * authoritative) → env var (last-resort fallback). ── */
+export class GatewayRouteUnavailableError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "GatewayRouteUnavailableError";
+  }
+}
+
+/* ── Build clients for selected dynamic routes. Clapay requires a route-local
+ * key; global credentials are not substituted for a selected route. ── */
 async function buildPawaPayClient(route: ResolvedRoute): Promise<PawaPayClient | null> {
   const creds = await resolvePawaPayCredentials(route.apiKey);
   if (!creds) return null;
@@ -90,9 +98,9 @@ async function buildPawaPayClient(route: ResolvedRoute): Promise<PawaPayClient |
 }
 
 async function buildClapayClient(route: ResolvedRoute): Promise<ClapayClient | null> {
-  const creds = await resolveClapayCredentials(route.apiKey, route.apiUrl);
-  if (!creds) return null;
-  return new ClapayClient(creds.token, creds.baseUrl);
+  const token = route.apiKey?.trim();
+  if (!token) return null;
+  return new ClapayClient(token, route.apiUrl ?? undefined);
 }
 
 /* ════════════════════════════════════════════════════════════════════
@@ -132,20 +140,20 @@ export async function resolveGateway(
       logger.warn({ routeId: route.routeId }, "[PaymentRouter] PawaPay route found but no API token available");
       return null;
     }
-    return { type: "pawapay", client, gatewaySlug: route.gatewaySlug, gatewayName: route.gatewayName, routeId: route.routeId, priority: route.priority };
+    return { type: "pawapay", client, gatewayId: route.gatewayId, gatewaySlug: route.gatewaySlug, gatewayName: route.gatewayName, routeId: route.routeId, priority: route.priority };
   }
 
   if (slug.includes("clapay") || slug === "clapay") {
     const client = await buildClapayClient(route);
     if (!client) {
       logger.warn({ routeId: route.routeId }, "[PaymentRouter] Clapay route found but no API token available");
-      return null;
+      throw new GatewayRouteUnavailableError("La passerelle Clapay sélectionnée ne possède pas de clé API dédiée.");
     }
-    return { type: "clapay", client, gatewaySlug: route.gatewaySlug, gatewayName: route.gatewayName, routeId: route.routeId, priority: route.priority };
+    return { type: "clapay", client, gatewayId: route.gatewayId, gatewaySlug: route.gatewaySlug, gatewayName: route.gatewayName, routeId: route.routeId, priority: route.priority };
   }
 
   logger.warn({ gatewaySlug: route.gatewaySlug }, "[PaymentRouter] Unknown gateway slug — cannot build client");
-  return null;
+  throw new GatewayRouteUnavailableError("La passerelle sélectionnée n'est pas prise en charge.");
 }
 
-export { getProviderForCountry, getOperatorCodeForMethod };
+export { getProviderForCountry };

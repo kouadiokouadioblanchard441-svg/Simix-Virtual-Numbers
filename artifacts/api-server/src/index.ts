@@ -8,6 +8,7 @@ import { emailService } from "./lib/email-service";
 import { startFiveSimSyncScheduler, syncFiveSimCountries, syncFiveSimProducts } from "./lib/fivesim-sync";
 import { startClapayReconciliation } from "./lib/clapay-reconciliation";
 import { startPawaPayReconciliation } from "./lib/pawapay-reconciliation";
+import { startPayoutReconciliation } from "./lib/payout-reconciliation";
 import { seedPaymentMethods } from "./lib/seed-payment-methods";
 import { seedEmailProvidersFromEnv, seedProvidersFromEnv } from "./lib/seed-providers";
 import { seedRoutingData } from "./lib/seed-routing";
@@ -24,6 +25,9 @@ if (Number.isNaN(port) || port <= 0) {
 }
 
 async function start(): Promise<void> {
+  // The preview can share Plesk's database. Never migrate, seed or run
+  // payment workers against that shared database from the Replit workspace.
+  const isReplitDevEnvironment = Boolean(process.env["REPL_ID"] || process.env["REPLIT_DEV_DOMAIN"]);
   /* ── Auto-migrate: apply any pending SQL migrations before boot ──
    * drizzle-orm migrator tracks applied migrations in __drizzle_migrations.
    * Fresh DB  → creates all tables.
@@ -32,7 +36,7 @@ async function start(): Promise<void> {
   const currentDir = (globalThis as { __dirname?: string }).__dirname ?? __dirname;
   const migrationsFolder = path.join(currentDir, "migrations");
 
-  try {
+  if (!isReplitDevEnvironment) try {
     logger.info({ migrationsFolder }, "[startup] Running database migrations…");
     await migrate(db, { migrationsFolder });
     logger.info("[startup] Database migrations applied ✓");
@@ -65,10 +69,12 @@ async function start(): Promise<void> {
     } else {
       /* Seed the default into DB so it's visible and editable in admin panel */
       const defaultUrl = process.env["APP_URL"] ?? "https://simix.site";
-      await db
-        .insert(systemSettingsTable)
-        .values({ key: "app_url", value: defaultUrl, description: "URL publique de l'application (ex: https://simix.site)" })
-        .onConflictDoNothing();
+      if (!isReplitDevEnvironment) {
+        await db
+          .insert(systemSettingsTable)
+          .values({ key: "app_url", value: defaultUrl, description: "URL publique de l'application (ex: https://simix.site)" })
+          .onConflictDoNothing();
+      }
       setAppUrl(defaultUrl);
       logger.info({ url: defaultUrl }, "[startup] app_url seeded in DB ✓");
     }
@@ -77,9 +83,11 @@ async function start(): Promise<void> {
   }
 
   /* ── Seed reference data AFTER migrations complete ─────────────── */
-  void seedPaymentMethods();
-  void seedCountryPaymentConfigs();
-  void seedRoutingData();
+  if (!isReplitDevEnvironment) {
+    void seedPaymentMethods();
+    void seedCountryPaymentConfigs();
+    void seedRoutingData();
+  }
 
   /* ── Ce process tourne-t-il dans l'espace de développement Replit ? ──
    * Simix est hébergé uniquement sur Plesk (production) — Replit n'est
@@ -92,11 +100,10 @@ async function start(): Promise<void> {
    * à la place — ou en concurrence avec — le vrai serveur Plesk.
    * REPL_ID / REPLIT_DEV_DOMAIN ne sont définis que sur Replit ; le
    * serveur Plesk de production ne les a jamais. */
-  const isReplitDevEnvironment = Boolean(process.env["REPL_ID"] || process.env["REPLIT_DEV_DOMAIN"]);
 
   if (isReplitDevEnvironment) {
     logger.warn(
-      "[startup] Environnement Replit détecté — workers de fond (5sim, emails, réconciliation) désactivés pour éviter tout conflit avec le serveur de production Plesk"
+      "[startup] Environnement Replit détecté — migrations, seeds et workers de fond désactivés pour protéger la base partagée avec Plesk"
     );
   } else {
     void seedProvidersFromEnv().then(() => seedEmailProvidersFromEnv()).then(() => {
@@ -110,6 +117,7 @@ async function start(): Promise<void> {
         startFiveSimSyncScheduler();
         startClapayReconciliation();
         startPawaPayReconciliation();
+        startPayoutReconciliation();
         emailService.startBackgroundWorkers();
 
         void (async () => {

@@ -1,15 +1,13 @@
 /**
- * Unified gateway credential resolution — PawaPay & Clapay.
+ * Gateway credential resolution — PawaPay and legacy/global Clapay.
  *
- * This is the SINGLE source of truth for how API tokens/URLs are resolved,
- * used by every code path that talks to PawaPay or Clapay (legacy wallet
- * routes, the dynamic payment router, both reconciliation jobs, and the
- * admin "test connection" endpoint).
+ * This is the single resolver for global/legacy credentials. Dynamic Clapay
+ * payments use resolveClapayGatewayCredentials so a persisted gateway row
+ * identity cannot silently fall back to another credential source.
  *
- * Priority order (documented once, applied everywhere):
- *   1. Route-specific override (payment_gateways.apiKey/apiUrl) — only
- *      relevant when called from the dynamic payment router with a
- *      resolved route for a specific country/operator.
+ * Global/legacy resolver priority order:
+ *   1. Route-specific override (payment_gateways.apiKey/apiUrl) — used by
+ *      PawaPay routes and legacy callers that explicitly request an override.
  *   2. system_settings in the database — this is what the admin panel
  *      writes to (Paramètres → pawapay_api_token / clapay_api_token).
  *      This is the authoritative, live-rotatable source.
@@ -25,7 +23,7 @@
  * bugs very hard to diagnose. Keep the DB authoritative.
  */
 import { eq } from "drizzle-orm";
-import { db, systemSettingsTable } from "@workspace/db";
+import { db, paymentGatewaysTable, systemSettingsTable } from "@workspace/db";
 
 export interface PawaPayCredentials {
   token: string;
@@ -96,4 +94,28 @@ export async function resolveClapayCredentials(
 
   if (!token) return null;
   return { token, baseUrl: baseUrl ?? undefined };
+}
+
+/**
+ * Resolve credentials from the exact non-secret gateway identity persisted
+ * on a new dynamic-route deposit. Do not fall back to another gateway's
+ * credentials when that selected gateway has been removed or disabled.
+ */
+export async function resolveClapayGatewayCredentials(
+  gatewayId: string,
+): Promise<ClapayCredentials | null> {
+  const [gateway] = await db.select({
+    id: paymentGatewaysTable.id,
+    slug: paymentGatewaysTable.slug,
+    apiKey: paymentGatewaysTable.apiKey,
+    apiUrl: paymentGatewaysTable.apiUrl,
+    active: paymentGatewaysTable.active,
+  }).from(paymentGatewaysTable)
+    .where(eq(paymentGatewaysTable.id, gatewayId))
+    .limit(1);
+
+  if (!gateway || !gateway.active || !gateway.slug.toLowerCase().includes("clapay") || !gateway.apiKey?.trim()) {
+    return null;
+  }
+  return { token: gateway.apiKey.trim(), baseUrl: gateway.apiUrl?.trim() || undefined };
 }

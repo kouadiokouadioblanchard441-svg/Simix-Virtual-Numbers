@@ -26,9 +26,44 @@ async function req<T>(method: string, path: string, body?: unknown): Promise<T> 
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: res.statusText }));
-    throw new Error(err.error || "Erreur serveur");
+    throw new AdminApiError(
+      err.error || err.message || "Erreur serveur",
+      res.status,
+      { requiresOtp: err.requiresOtp ?? err.details?.requiresOtp, code: err.code ?? err.details?.code },
+    );
   }
   return res.json() as Promise<T>;
+}
+
+export class AdminApiError extends Error {
+  status: number;
+  requiresOtp?: boolean;
+  code?: string;
+
+  constructor(message: string, status: number, details: { requiresOtp?: boolean; code?: string } = {}) {
+    super(message);
+    this.name = "AdminApiError";
+    this.status = status;
+    this.requiresOtp = details.requiresOtp;
+    this.code = details.code;
+  }
+}
+
+export interface AdminPayoutRecord {
+  id: string;
+  gateway: "pawapay" | "clapay";
+  status: "pending" | "completed" | "failed";
+  amount: string | number;
+  currency: string;
+  countryCode: string;
+  phoneNumber: string;
+  providerCode: string;
+  externalId: string | null;
+  signature?: string | null;
+  failureReason?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  referralWithdrawalId?: string | null;
 }
 
 export const adminApi = {
@@ -410,8 +445,8 @@ export const adminApi = {
       "GET",
       `/admin/referral-withdrawals${status ? `?status=${status}` : ""}`,
     ),
-  approveReferralWithdrawal: (id: string) =>
-    req<{ success: boolean }>("POST", `/admin/referral-withdrawals/${id}/approve`),
+  sendReferralWithdrawal: (id: string, data: { gateway: "pawapay" | "clapay"; idempotencyKey: string; operatorOtp?: string }) =>
+    req<AdminPayoutRecord>("POST", `/admin/referral-withdrawals/${id}/send`, data),
   rejectReferralWithdrawal: (id: string, reason?: string) =>
     req<{ success: boolean }>("POST", `/admin/referral-withdrawals/${id}/reject`, { reason }),
 
@@ -429,6 +464,7 @@ export const adminApi = {
           currency: string;
           minAmount?: string;
           maxAmount?: string;
+          payoutEnabled?: boolean;
         }>;
       }>;
     }>("GET", "/admin/payouts/pawapay/config"),
@@ -439,26 +475,13 @@ export const adminApi = {
     provider: string;
     currency: string;
     amount: number;
-  }) =>
-    req<{
-      payoutId: string;
-      status: string;
-      created?: string;
-      failureReason?: { failureCode: string; failureMessage: string };
-    }>("POST", "/admin/payouts/pawapay", data),
+    idempotencyKeyUUID: string;
+  }) => req<AdminPayoutRecord>("POST", "/admin/payouts/pawapay", data),
 
-  getPawapayPayoutStatus: (payoutId: string) =>
-    req<{
-      status: "FOUND" | "NOT_FOUND";
-      data?: {
-        payoutId: string;
-        status: string;
-        amount: string;
-        currency: string;
-        country: string;
-        failureReason?: { failureCode: string; failureMessage: string };
-      };
-    }>("GET", `/admin/payouts/pawapay/status/${payoutId}`),
+  getPayoutHistory: () =>
+    req<{ payouts: AdminPayoutRecord[] }>("GET", "/admin/payouts/history"),
+  refreshPayout: (id: string) =>
+    req<AdminPayoutRecord>("POST", `/admin/payouts/${encodeURIComponent(id)}/refresh`),
 
   getClapayPayoutCountries: () =>
     req<{
@@ -490,11 +513,14 @@ export const adminApi = {
       operators: Array<{
         name: string;
         codeoperator: string;
-        cashoutCode: string | null;
+        payoutCode?: string | null;
+        supportsPayout?: boolean;
+        code?: { CASHIN?: string | null; CASHOUT?: string | null };
+        cashoutCode?: string | null;
         merchantCode: string | null;
         logo: string;
         requiresOtp: boolean;
-        supportsCashout: boolean;
+        supportsCashout?: boolean;
       }>;
     }>("GET", `/admin/payouts/clapay/operators/${country}`),
 
@@ -502,15 +528,11 @@ export const adminApi = {
     phoneNumber: string;
     dialCode?: string;
     countryCode: string;
-    cashoutCode: string;
+    operatorCode: string;
     amount: number;
-  }) =>
-    req<{
-      transactionId: string;
-      signature: string;
-      currency: string;
-      status?: string;
-    }>("POST", "/admin/payouts/clapay", data),
+    idempotencyKey: string;
+    operatorOtp?: string;
+  }) => req<AdminPayoutRecord>("POST", "/admin/payouts/clapay", data),
 };
 
 /* ── Pricing Matrix ── */
@@ -1139,5 +1161,7 @@ export interface ReferralWithdrawal {
   countryFlag: string | null;
   operatorName: string | null;
   operatorColor: string | null;
+  payout?: AdminPayoutRecord | null;
+  payoutInProgress?: boolean;
 }
 

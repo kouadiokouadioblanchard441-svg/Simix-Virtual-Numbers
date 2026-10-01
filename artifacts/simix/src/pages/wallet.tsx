@@ -11,7 +11,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, CheckCircle2, Shield, Loader2,
   ChevronDown, Search, X, AlertCircle, Clock,
-  Zap, Star, ChevronRight, Smartphone, Coins,
+  Zap, Star, ChevronRight, Smartphone, Coins, RefreshCw,
 } from "lucide-react";
 import { CryptoDeposit } from "@/components/crypto-deposit";
 import { useLocation } from "wouter";
@@ -20,6 +20,12 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
+import { WalletPendingOverlay } from "@/components/wallet-pending-overlay";
+import { rechargeOutcome } from "@/lib/recharge-outcome";
+import {
+  clearPendingDeposit, loadPendingDeposit, savePendingDeposit, fetchPaymentOptions,
+  readRechargeError, safeHttpsUrl, toDirectAction, type DirectAction,
+} from "@/lib/clapay-direct";
 
 /* ─── Types ─── */
 interface DepositCountry {
@@ -564,182 +570,6 @@ function SuccessOverlay({ amountXof, localAmount, currencyCode }: {
   );
 }
 
-/* ─── Pending Overlay ─── */
-/* ── Session storage key for pending Clapay deposits (survives page navigation) ── */
-const PENDING_KEY = "simix_pending_deposit";
-interface StoredPending {
-  depositId: string;
-  paymentUrl: string | null;
-  methodSlug: string;
-  methodName: string;
-  methodColor: string;
-  localAmount: number;
-  currencyCode: string;
-}
-
-function savePendingDeposit(data: StoredPending) {
-  try { sessionStorage.setItem(PENDING_KEY, JSON.stringify(data)); } catch { /* ignore */ }
-}
-function loadPendingDeposit(): StoredPending | null {
-  try {
-    const raw = sessionStorage.getItem(PENDING_KEY);
-    return raw ? (JSON.parse(raw) as StoredPending) : null;
-  } catch { return null; }
-}
-function clearPendingDeposit() {
-  try { sessionStorage.removeItem(PENDING_KEY); } catch { /* ignore */ }
-}
-
-function PendingOverlay({
-  localAmount,
-  currencyCode,
-  methodName,
-  methodColor,
-  paymentUrl,
-  onCancel,
-  onSuccess,
-  onFailed,
-  depositId,
-}: {
-  localAmount: number;
-  currencyCode: string;
-  methodName: string;
-  methodColor: string;
-  paymentUrl: string | null;
-  onCancel: () => void;
-  onSuccess: () => void;
-  onFailed: () => void;
-  depositId: string;
-}) {
-  const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
-  const [dots, setDots] = useState(".");
-  const [elapsed, setElapsed] = useState(0);
-  const isCheckout = !!paymentUrl;
-
-  useEffect(() => {
-    const iv = setInterval(() => setDots(d => d.length >= 3 ? "." : d + "."), 600);
-    return () => clearInterval(iv);
-  }, []);
-
-  useEffect(() => {
-    const iv = setInterval(() => setElapsed(e => e + 1), 1000);
-    return () => clearInterval(iv);
-  }, []);
-
-  useEffect(() => {
-    let stopped = false;
-    async function poll() {
-      while (!stopped) {
-        await new Promise(r => setTimeout(r, 4000));
-        if (stopped) break;
-        try {
-          const res = await fetch(`${BASE}/api/wallet/deposit/${depositId}/status`, { credentials: "include" });
-          if (!res.ok) continue;
-          const data = await res.json() as { status: string };
-          if (data.status === "completed") { clearPendingDeposit(); onSuccess(); return; }
-          if (data.status === "failed")    { clearPendingDeposit(); onFailed(); return; }
-        } catch { /* ignore */ }
-      }
-    }
-    poll();
-    return () => { stopped = true; };
-  }, [depositId, BASE, onSuccess, onFailed]);
-
-  const minutes = Math.floor(elapsed / 60);
-  const seconds = elapsed % 60;
-  const timeStr = minutes > 0 ? `${minutes}m ${seconds}s` : `${seconds}s`;
-
-  return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      className="fixed inset-0 z-50 flex items-center justify-center px-6"
-      style={{ background: "rgba(0,0,0,0.95)" }}
-    >
-      <motion.div
-        initial={{ scale: 0.85, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        transition={{ type: "spring", damping: 20 }}
-        className="text-center w-full max-w-xs"
-      >
-        <div className="relative w-20 h-20 mx-auto mb-5">
-          <div
-            className="w-20 h-20 rounded-full border-4 flex items-center justify-center"
-            style={{ borderColor: `${methodColor}40`, backgroundColor: `${methodColor}15` }}
-          >
-            <Clock className="w-8 h-8" style={{ color: methodColor }} />
-          </div>
-          <motion.div
-            className="absolute inset-0 rounded-full border-4 border-transparent"
-            style={{ borderTopColor: methodColor }}
-            animate={{ rotate: 360 }}
-            transition={{ repeat: Infinity, duration: 1.2, ease: "linear" }}
-          />
-        </div>
-
-        {isCheckout ? (
-          <>
-            <p className="text-xl font-black text-white mb-2">Paiement en cours{dots}</p>
-            <p className="text-sm text-muted-foreground mb-1">
-              Retournez sur la page{" "}
-              <span className="font-bold" style={{ color: methodColor }}>{methodName}</span>{" "}
-              pour finaliser le paiement de{" "}
-              <span className="font-bold text-white">
-                {currencyCode === "XOF" || currencyCode === "XAF"
-                  ? formatFCFA(localAmount)
-                  : `${localAmount.toLocaleString("fr-FR")} ${currencyCode}`}
-              </span>
-            </p>
-            <p className="text-xs text-muted-foreground/50 mt-2">Temps écoulé : {timeStr}</p>
-            <a
-              href={paymentUrl!}
-              className="mt-5 flex items-center justify-center gap-2 w-full py-3 rounded-2xl font-bold text-white text-sm transition-opacity hover:opacity-90"
-              style={{ backgroundColor: methodColor }}
-            >
-              Ouvrir la page de paiement
-            </a>
-            <div className="mt-4 p-3 bg-white/5 border border-white/10 rounded-2xl text-left">
-              <p className="text-xs font-bold text-muted-foreground uppercase tracking-wide mb-1.5">En attente de confirmation</p>
-              <ul className="space-y-1 text-xs text-muted-foreground">
-                <li>• Complétez le paiement sur la page {methodName}</li>
-                <li>• Votre solde sera crédité automatiquement</li>
-                <li>• Ne fermez pas cette page après paiement</li>
-              </ul>
-            </div>
-          </>
-        ) : (
-          <>
-            <p className="text-xl font-black text-white mb-2">En attente{dots}</p>
-            <p className="text-sm text-muted-foreground mb-1">
-              Validez{" "}
-              <span className="font-bold text-white">
-                {currencyCode === "XOF" || currencyCode === "XAF"
-                  ? formatFCFA(localAmount)
-                  : `${localAmount.toLocaleString("fr-FR")} ${currencyCode}`}
-              </span>{" "}
-              sur votre téléphone
-            </p>
-            <p className="text-sm font-medium mb-1" style={{ color: methodColor }}>{methodName}</p>
-            <p className="text-xs text-muted-foreground/50 mt-3">Temps écoulé : {timeStr}</p>
-            <div className="mt-5 p-4 bg-white/5 border border-white/10 rounded-2xl text-left">
-              <p className="text-xs font-bold text-muted-foreground uppercase tracking-wide mb-2">Instructions</p>
-              <ul className="space-y-1.5 text-xs text-muted-foreground">
-                <li>• Vérifiez votre téléphone pour la notification</li>
-                <li>• Entrez votre code secret pour confirmer</li>
-                <li>• Ne fermez pas cette page</li>
-              </ul>
-            </div>
-          </>
-        )}
-
-        <button onClick={() => { clearPendingDeposit(); onCancel(); }} className="mt-5 text-xs text-muted-foreground/60 underline underline-offset-2">
-          Annuler et revenir
-        </button>
-      </motion.div>
-    </motion.div>
-  );
-}
-
 /* ─── Main export ─── */
 export default function Wallet() {
   return (
@@ -772,6 +602,10 @@ function DepositContent() {
   const [confirming, setConfirming] = useState(false);
   const [pendingDepositId, setPendingDepositId] = useState<string | null>(null);
   const [pendingPaymentUrl, setPendingPaymentUrl] = useState<string | null>(null);
+  const [pendingAction, setPendingAction] = useState<DirectAction>({ operatorPaymentUrl: null, paymentOtp: null, message: null });
+  const [pendingAmbiguous, setPendingAmbiguous] = useState(false);
+  const [pendingHidden, setPendingHidden] = useState(false);
+  const [operatorOtp, setOperatorOtp] = useState("");
   const [currencyInfo, setCurrencyInfo] = useState<CurrencyInfo | null>(null);
 
   /* Restore pending Clapay checkout if user navigated back from payment page */
@@ -779,7 +613,8 @@ function DepositContent() {
     const stored = loadPendingDeposit();
     if (stored) {
       setPendingDepositId(stored.depositId);
-      setPendingPaymentUrl(stored.paymentUrl);
+      setPendingPaymentUrl(safeHttpsUrl(stored.paymentUrl));
+      setPendingAction({ operatorPaymentUrl: safeHttpsUrl(stored.operatorPaymentUrl), paymentOtp: stored.paymentOtp ?? null, message: stored.message ?? null });
     }
   }, []);
 
@@ -795,6 +630,20 @@ function DepositContent() {
     queryFn: () => fetchMethodsForCountry(selectedCountry!.code),
     enabled: !!selectedCountry,
   });
+
+  const optionsQuery = useQuery({
+    queryKey: ["wallet-payment-options", selectedCountry?.code, selectedMethod?.slug],
+    queryFn: () => fetchPaymentOptions(selectedCountry!.code, selectedMethod!.slug),
+    enabled: !!selectedCountry && !!selectedMethod,
+    retry: false,
+    staleTime: 0,
+  });
+  const payOptions = optionsQuery.data;
+  const optionsReady = !!payOptions && !optionsQuery.isFetching && !optionsQuery.isError;
+  const requiresOtp = optionsReady && payOptions.requiresOtp === true;
+
+  /* Never keep the operator OTP across country/operator changes */
+  useEffect(() => { setOperatorOtp(""); }, [selectedCountry?.code, selectedMethod?.slug]);
 
   const prevCountry = useRef<string | null>(null);
   useEffect(() => {
@@ -826,7 +675,7 @@ function DepositContent() {
   /* Minimum displayed in local currency */
   const minLocal   = isFxCurrency ? Math.ceil(minDeposit / clientRate) : minDeposit;
   const amountValid = amountXof >= minDeposit;
-  const canConfirm = !!selectedCountry && !!selectedMethod && phone.length >= 6 && amountValid && !confirming;
+  const canConfirm = !!selectedCountry && !!selectedMethod && phone.length >= 6 && amountValid && !confirming && optionsReady && (!requiresOtp || operatorOtp.trim().length >= 3);
 
   const dialCode = selectedCountry?.dialCode ?? "";
 
@@ -837,6 +686,7 @@ function DepositContent() {
     clearPendingDeposit();
     setPendingDepositId(null);
     setPendingPaymentUrl(null);
+    setPendingHidden(false);
     setShowSuccess(true);
     queryClient.invalidateQueries({ queryKey: getGetWalletQueryKey() });
     queryClient.invalidateQueries({ queryKey: getGetMeQueryKey() });
@@ -849,12 +699,19 @@ function DepositContent() {
     clearPendingDeposit();
     setPendingDepositId(null);
     setPendingPaymentUrl(null);
+    setPendingHidden(false);
+    queryClient.invalidateQueries({ queryKey: getGetWalletQueryKey() });
+    queryClient.invalidateQueries({ queryKey: getGetMeQueryKey() });
+    queryClient.invalidateQueries({ queryKey: getListTransactionsQueryKey() });
+    queryClient.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() });
     toast({ variant: "destructive", title: "Paiement échoué", description: "Le paiement n'a pas pu être confirmé. Veuillez réessayer." });
-  }, [toast]);
+  }, [toast, queryClient]);
 
   async function handleConfirm() {
     if (!canConfirm || !selectedMethod || !selectedCountry) return;
     setConfirming(true);
+    const otpToSend = requiresOtp ? operatorOtp.trim() : undefined;
+    setOperatorOtp("");
     try {
       const result = await rechargeMutation.mutateAsync({
         data: {
@@ -864,38 +721,58 @@ function DepositContent() {
           countryCode: selectedCountry.code,
           dialCode: selectedCountry.dialCode,
           currencyCode: currencyCode !== "XOF" ? currencyCode : undefined,
-        } as any,
-      }) as { pending?: boolean; depositId?: string; status?: string; payment_url?: string | null };
+          operatorOtp: otpToSend,
+        },
+      });
 
-      if (result.pending && result.depositId) {
-        const payUrl = result.payment_url ?? null;
-        /* Save to sessionStorage so the overlay survives a page redirect */
+      const outcome = rechargeOutcome(result);
+      if (outcome.state === "failed") {
+        handleDepositFailed();
+        return;
+      }
+      if (outcome.state === "pending" && outcome.depositId) {
+        const payUrl = safeHttpsUrl(result.payment_url);
+        const act = toDirectAction(result);
         savePendingDeposit({
-          depositId: result.depositId,
+          depositId: outcome.depositId,
           paymentUrl: payUrl,
+          ...act,
           methodSlug: selectedMethod.slug,
           methodName: selectedMethod.name,
           methodColor: selectedMethod.color,
           localAmount: parsedAmount,
           currencyCode,
         });
-        setPendingPaymentUrl(payUrl);
-        setPendingDepositId(result.depositId);
-        /* For Clapay CHECKOUTPAGE: redirect immediately to the payment page */
-        if (payUrl) {
-          window.location.href = payUrl;
-        }
+        setPendingPaymentUrl(null);
+        setPendingAction(act);
+        setPendingAmbiguous(false);
+        setPendingHidden(false);
+        setPendingDepositId(outcome.depositId);
+        /* Direct API payment: never redirect automatically */
         return;
       }
 
-      setShowSuccess(true);
-      queryClient.invalidateQueries({ queryKey: getGetWalletQueryKey() });
-      queryClient.invalidateQueries({ queryKey: getGetMeQueryKey() });
-      queryClient.invalidateQueries({ queryKey: getListTransactionsQueryKey() });
-      queryClient.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() });
-      setTimeout(() => setLocation("/dashboard"), 2500);
+      if (outcome.state === "completed") {
+        handleDepositSuccess();
+        return;
+      }
+      throw new Error("Le paiement n'est pas confirmé. Vérifiez l'historique avant de réessayer.");
     } catch (e: unknown) {
-      toast({ variant: "destructive", title: "Paiement non abouti", description: (e as Error).message || "Une erreur est survenue lors du paiement. Vérifiez vos informations et réessayez." });
+      const info = readRechargeError(e);
+      if (info.pending && info.depositId && selectedMethod) {
+        savePendingDeposit({
+          depositId: info.depositId, paymentUrl: null, ...info.action,
+          methodSlug: selectedMethod.slug, methodName: selectedMethod.name, methodColor: selectedMethod.color,
+          localAmount: parsedAmount, currencyCode,
+        });
+        setPendingPaymentUrl(null);
+        setPendingAction(info.action);
+        setPendingAmbiguous(info.status === 502);
+        setPendingHidden(false);
+        setPendingDepositId(info.depositId);
+      } else {
+        toast({ variant: "destructive", title: "Paiement non abouti", description: info.message });
+      }
     } finally {
       setConfirming(false);
     }
@@ -953,17 +830,35 @@ function DepositContent() {
       )}
 
       {pendingDepositId && (
-        <PendingOverlay
-          localAmount={(() => { const s = loadPendingDeposit(); return s?.localAmount ?? parsedAmount; })()}
-          currencyCode={(() => { const s = loadPendingDeposit(); return s?.currencyCode ?? currencyCode; })()}
-          methodName={(() => { const s = loadPendingDeposit(); return s?.methodName ?? selectedMethod?.name ?? ""; })()}
-          methodColor={(() => { const s = loadPendingDeposit(); return s?.methodColor ?? selectedMethod?.color ?? "#7C3AED"; })()}
+        <WalletPendingOverlay
+          localAmount={loadPendingDeposit()?.localAmount ?? parsedAmount}
+          currencyCode={loadPendingDeposit()?.currencyCode ?? currencyCode}
+          methodName={loadPendingDeposit()?.methodName ?? selectedMethod?.name ?? ""}
+          methodColor={loadPendingDeposit()?.methodColor ?? selectedMethod?.color ?? "#7C3AED"}
           paymentUrl={pendingPaymentUrl}
+          initialAction={pendingAction}
+          ambiguous={pendingAmbiguous}
+          hidden={pendingHidden}
           depositId={pendingDepositId}
           onSuccess={handleDepositSuccess}
           onFailed={handleDepositFailed}
-          onCancel={() => { clearPendingDeposit(); setPendingDepositId(null); setPendingPaymentUrl(null); }}
+          onHide={() => setPendingHidden(true)}
+          onCancelled={() => {
+            clearPendingDeposit(); setPendingDepositId(null); setPendingPaymentUrl(null); setPendingHidden(false);
+            queryClient.invalidateQueries({ queryKey: getListTransactionsQueryKey() });
+            queryClient.invalidateQueries({ queryKey: getGetWalletQueryKey() });
+            toast({ title: "Paiement annulé", description: "La demande a été annulée." });
+          }}
         />
+      )}
+
+      {pendingDepositId && pendingHidden && (
+        <div className="mx-4 mt-3 flex items-center gap-3 p-3 rounded-2xl bg-amber-500/10 border border-amber-500/30" data-testid="banner-pending-deposit">
+          <Clock className="w-4 h-4 text-amber-300 flex-shrink-0" />
+          <p className="text-xs text-amber-200 flex-1">Un paiement est en attente de validation.</p>
+          <button type="button" onClick={() => setPendingHidden(false)} data-testid="button-resume-pending"
+            className="text-xs font-bold text-amber-300 underline underline-offset-2">Reprendre</button>
+        </div>
       )}
 
       {/* ── Header ── */}
@@ -1138,6 +1033,46 @@ function DepositContent() {
                   )}
                 </div>
               </div>
+
+              {/* Payment options (gateway-resolved by the server) */}
+              {optionsQuery.isLoading || optionsQuery.isFetching ? (
+                <div className="h-12 bg-card border border-card-border rounded-2xl animate-pulse" data-testid="status-options-loading" />
+              ) : optionsQuery.isError ? (
+                <div className="flex items-center gap-2 p-3 rounded-2xl bg-rose-500/10 border border-rose-500/30" data-testid="status-options-error">
+                  <AlertCircle className="w-4 h-4 text-rose-300 flex-shrink-0" />
+                  <p className="text-xs text-rose-300 flex-1 break-words">{(optionsQuery.error as Error)?.message || "Vérification impossible."}</p>
+                  <button type="button" onClick={() => optionsQuery.refetch()} data-testid="button-retry-options"
+                    className="flex items-center gap-1 text-xs font-bold text-rose-200 underline underline-offset-2">
+                    <RefreshCw className="w-3 h-3" /> Réessayer
+                  </button>
+                </div>
+              ) : optionsReady ? (
+                <>
+                  {payOptions?.instruction && (
+                    <div className="p-3 rounded-2xl bg-secondary/40 border border-card-border/60" data-testid="text-operator-instruction">
+                      <p className="text-xs text-foreground/90 whitespace-pre-line break-words">{payOptions.instruction}</p>
+                    </div>
+                  )}
+                  {requiresOtp && (
+                    <div className="space-y-1.5">
+                      <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide px-0.5">
+                        Code de validation opérateur
+                      </label>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        autoComplete="off"
+                        value={operatorOtp}
+                        onChange={e => setOperatorOtp(e.target.value.replace(/\D/g, "").slice(0, 10))}
+                        placeholder="Code reçu ou généré par l'opérateur"
+                        data-testid="input-operator-otp"
+                        className="w-full px-4 py-3 text-sm font-bold text-foreground bg-card border border-card-border rounded-2xl focus:outline-none focus:border-primary/50 placeholder:font-normal placeholder:text-muted-foreground"
+                      />
+                      <p className="text-[10px] text-muted-foreground px-1">N'entrez jamais votre code PIN ici.</p>
+                    </div>
+                  )}
+                </>
+              ) : null}
 
               {/* Amount */}
               <div className="space-y-1.5">

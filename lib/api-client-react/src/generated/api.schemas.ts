@@ -162,6 +162,15 @@ export interface RechargeInput {
   phoneNumber?: string;
   countryCode?: string;
   dialCode?: string;
+  currencyCode?: string;
+  operatorOtp?: string;
+}
+
+export interface WalletPaymentOptions {
+  gateway: string;
+  requiresOtp: boolean;
+  instruction: string | null;
+  operatorCode: string | null;
 }
 
 export type TransactionType =
@@ -189,8 +198,19 @@ export interface Transaction {
   status: TransactionStatus;
   method?: string;
   description?: string;
+  externalDepositId?: string;
+  pending?: boolean;
+  depositId?: string;
+  gateway?: string;
+  paymentMode?: "API";
+  payment_url?: string | null;
+  operatorPaymentUrl?: string | null;
+  paymentOtp?: string | null;
+  message?: string | null;
   createdAt: string;
 }
+
+export type RechargeResponse = Transaction;
 
 export interface DashboardSummary {
   balance: number;

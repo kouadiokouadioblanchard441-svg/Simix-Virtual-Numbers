@@ -364,7 +364,69 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Transaction"
+                $ref: "#/components/schemas/RechargeResponse"
+
+  /wallet/payment-options:
+    get:
+      operationId: getWalletPaymentOptions
+      tags: [wallet]
+      summary: Get the selected mobile-money gateway requirements for a payment method
+      parameters:
+        - name: countryCode
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: methodSlug
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Gateway and selected operator requirements
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WalletPaymentOptions"
+
+  /wallet/deposit/{depositId}/status:
+    get:
+      operationId: getWalletDepositStatus
+      tags: [wallet]
+      summary: Get authoritative status for an owned wallet deposit
+      parameters:
+        - name: depositId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Deposit status and available payment action details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RechargeResponse"
+
+  /wallet/deposit/{depositId}/cancel:
+    post:
+      operationId: cancelWalletDeposit
+      tags: [wallet]
+      summary: Cancel an owned pending Clapay payment
+      parameters:
+        - name: depositId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Current deposit status after cancellation request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RechargeResponse"
 
   /wallet/transactions:
     get:
@@ -664,6 +726,59 @@ components:
           minimum: 100
         methodSlug:
           type: string
+        phoneNumber:
+          type: string
+        countryCode:
+          type: string
+        dialCode:
+          type: string
+        currencyCode:
+          type: string
+        operatorOtp:
+          type: string
+          description: Operator-provided one-time code, required only when the selected gateway/operator requires it
+
+    WalletPaymentOptions:
+      type: object
+      required: [gateway, requiresOtp, instruction, operatorCode]
+      properties:
+        gateway:
+          type: string
+        requiresOtp:
+          type: boolean
+        instruction:
+          type: string
+          nullable: true
+        operatorCode:
+          type: string
+          nullable: true
+
+    RechargeResponse:
+      allOf:
+        - $ref: "#/components/schemas/Transaction"
+        - type: object
+          properties:
+            pending:
+              type: boolean
+            depositId:
+              type: string
+            gateway:
+              type: string
+            paymentMode:
+              type: string
+              enum: [API]
+            payment_url:
+              type: string
+              nullable: true
+            operatorPaymentUrl:
+              type: string
+              nullable: true
+            paymentOtp:
+              type: string
+              nullable: true
+            message:
+              type: string
+              nullable: true
 
     Transaction:
       type: object
@@ -686,6 +801,29 @@ components:
         createdAt:
           type: string
           format: date-time
+        externalDepositId:
+          type: string
+        pending:
+          type: boolean
+        depositId:
+          type: string
+        gateway:
+          type: string
+        paymentMode:
+          type: string
+          enum: [API]
+        payment_url:
+          type: string
+          nullable: true
+        operatorPaymentUrl:
+          type: string
+          nullable: true
+        paymentOtp:
+          type: string
+          nullable: true
+        message:
+          type: string
+          nullable: true
 
     DashboardSummary:
       type: object

@@ -5,12 +5,12 @@
  *  POST /admin/payouts/pawapay                     — Initiate PawaPay payout
  *  GET  /admin/payouts/pawapay/status/:payoutId    — Check PawaPay payout status
  *  GET  /admin/payouts/clapay/countries            — Clapay supported countries
- *  GET  /admin/payouts/clapay/operators/:country   — Clapay operators for a country (with CASHOUT code)
- *  POST /admin/payouts/clapay                      — Initiate Clapay cashout
+ *  GET  /admin/payouts/clapay/operators/:country   — Clapay operators supporting CASHIN payout
+ *  POST /admin/payouts/clapay                      — Initiate Clapay payout
  */
 
 import { Router, type IRouter, type Request, type Response } from "express";
-import { eq, asc } from "drizzle-orm";
+import { eq, asc, desc } from "drizzle-orm";
 import { requireAdminJwt } from "../lib/admin-jwt-middleware";
 import {
   PawaPayClient,
@@ -30,9 +30,46 @@ import {
   resolveClapayCredentials,
 } from "../lib/gateway-credentials";
 import { logger } from "../lib/logger";
-import { countriesTable, db, mobileOperatorsTable } from "@workspace/db";
+import { countriesTable, db, mobileOperatorsTable, payoutsTable } from "@workspace/db";
+import {
+  getPayoutById,
+  initiatePayout,
+  normalizePayoutRecord,
+  registerPayout,
+  refreshPayout,
+  validatePawaPayRecipient,
+  PayoutValidationError,
+} from "../lib/payout-service";
 
 const router: IRouter = Router();
+
+/* Public callbacks are only reconciliation hints. Never settle a payout from
+   webhook contents: the provider's authenticated status API is authoritative. */
+router.post("/payouts/clapay/webhook", async (req, res): Promise<void> => {
+  const payload = (req.body ?? {}) as Record<string, unknown>;
+  const transactionId = String(payload.transaction_id ?? "");
+  const signature = String(payload.signature ?? "");
+  const [payout] = await db.select().from(payoutsTable).where(
+    transactionId
+      ? eq(payoutsTable.externalId, transactionId)
+      : eq(payoutsTable.signature, signature),
+  ).limit(1);
+  if (payout?.gateway === "clapay") {
+    await refreshPayout(payout.id, signature || undefined);
+  }
+  res.status(202).json({ received: true });
+});
+
+router.post("/payouts/pawapay/webhook", async (req, res): Promise<void> => {
+  const payload = (req.body ?? {}) as Record<string, unknown>;
+  const payoutId = String(payload.payoutId ?? payload.payout_id ?? "");
+  const [payout] = payoutId
+    ? await db.select().from(payoutsTable).where(eq(payoutsTable.externalId, payoutId)).limit(1)
+    : [];
+  if (payout?.gateway === "pawapay") await refreshPayout(payout.id);
+  res.status(202).json({ received: true });
+});
+
 router.use(requireAdminJwt);
 
 function requireAdmin(req: Request, res: Response, next: () => void): void {
@@ -257,158 +294,57 @@ router.get("/admin/payouts/pawapay/config", requireAdmin, async (req, res): Prom
  * POST /admin/payouts/pawapay
  * Initiate a PawaPay payout (merchant → recipient mobile money).
  *
- * Body: { phoneNumber, countryIso2, provider, currency, amount }
+ * Body: { phoneNumber, countryIso2, provider, currency, amount, idempotencyKey }
  */
 router.post("/admin/payouts/pawapay", requireAdmin, async (req, res): Promise<void> => {
-  const { phoneNumber, countryIso2, provider, currency, amount } = req.body as {
+  const { phoneNumber, countryIso2, provider, currency, amount, idempotencyKey } = (req.body ?? {}) as {
     phoneNumber?: string;
     countryIso2?: string;
     provider?: string;
     currency?: string;
     amount?: string | number;
+    idempotencyKey?: string;
   };
 
-  if (!phoneNumber || !countryIso2 || !provider || !currency || !amount) {
-    res.status(400).json({ error: "Champs requis : phoneNumber, countryIso2, provider, currency, amount" });
-    return;
-  }
-
-  const amountNum = Number(amount);
-  if (!Number.isFinite(amountNum) || amountNum <= 0) {
-    res.status(400).json({ error: "Montant invalide" });
+  if (!phoneNumber || !countryIso2 || !provider || !currency || amount === undefined || !idempotencyKey?.trim()) {
+    res.status(400).json({ error: "Champs requis : phoneNumber, countryIso2, provider, currency, amount, idempotencyKey" });
     return;
   }
 
   try {
-    const iso2 = countryIso2.trim().toUpperCase();
-    const [country] = await db
-      .select({ dialCode: countriesTable.dialCode })
-      .from(countriesTable)
-      .where(eq(countriesTable.code, iso2))
-      .limit(1);
-
-    const creds = await resolvePawaPayCredentials();
-    if (!creds) {
-      res.status(503).json({ error: "PawaPay non configuré" });
-      return;
-    }
-
-    const client = new PawaPayClient(creds.token, creds.env);
-    const msisdn = buildMSISDN(phoneNumber);
-    const expectedDialCode = country?.dialCode?.replace(/\D/g, "");
-    if (!expectedDialCode || !msisdn.startsWith(expectedDialCode)) {
-      res.status(422).json({
-        error: `Le numéro doit être saisi au format international complet pour ${iso2}, par exemple ${country?.dialCode ?? "+237"}683677872.`,
-      });
-      return;
-    }
-    if (!/^[1-9][0-9]{7,17}$/.test(msisdn)) {
-      res.status(422).json({
-        error: "Numéro de téléphone invalide. Utilisez le format international, par exemple +237683677872.",
-      });
-      return;
-    }
-
-    const pawapayProvider = normalizePawaPayProvider(iso2, provider);
-    const payoutCurrencyCode = currency.trim().toUpperCase();
-    const amountString = String(amount).trim();
-    const iso3 = ISO2_TO_ISO3[iso2] ?? iso2;
-
-    if (!/^([0]|([1-9][0-9]{0,17}))([.][0-9]{0,3}[1-9])?$/.test(amountString)) {
-      res.status(400).json({ error: "Format du montant invalide pour PawaPay" });
-      return;
-    }
-
-    const predicted = await client.predictProvider(msisdn);
-    if (!predicted?.phoneNumber || !predicted.provider) {
-      res.status(422).json({
-        error: "PawaPay n'a pas pu valider ce numéro. Vérifiez le numéro et l'indicatif du pays.",
-      });
-      return;
-    }
-    if (predicted.provider !== pawapayProvider) {
-      res.status(422).json({
-        error: `Ce numéro est identifié par PawaPay comme ${predicted.provider}, mais l'opérateur sélectionné est ${pawapayProvider}. Sélectionnez l'opérateur correspondant.`,
-      });
-      return;
-    }
-    const payoutPhoneNumber = predicted.phoneNumber;
-
-    /*
-     * Do not create a payout request for a provider that the merchant account
-     * cannot use. This turns PawaPay's opaque 403 into an actionable admin
-     * message and prevents unnecessary rejected payout IDs.
-     */
-    try {
-      const config = await client.getActiveConfiguration({
-        country: iso3,
-        operationType: "PAYOUT",
-      });
-      const country = config.countries.find((c) =>
-        c.country === iso3 || c.country === iso2,
-      );
-      const providerConfig = country?.providers.find((p) => p.provider === pawapayProvider);
-      const payoutCurrency = providerConfig?.currencies.find((c) =>
-        c.currency === payoutCurrencyCode &&
-        getPawaPayOperationConfig(c.operationTypes, "PAYOUT"),
-      );
-      const payoutConfig = payoutCurrency
-        ? getPawaPayOperationConfig(payoutCurrency.operationTypes, "PAYOUT")
-        : undefined;
-
-      if (!providerConfig || !payoutCurrency || !payoutConfig) {
-        res.status(422).json({
-          error: `Le retrait PawaPay n'est pas activé pour ${pawapayProvider} dans votre compte. Activez ce fournisseur dans la configuration Payouts PawaPay ou choisissez un opérateur autorisé.`,
-        });
-        return;
-      }
-
-      const minAmount = Number(payoutConfig.minTransactionLimit ?? payoutConfig.minAmount);
-      const maxAmount = Number(payoutConfig.maxTransactionLimit ?? payoutConfig.maxAmount);
-      if (Number.isFinite(minAmount) && amountNum < minAmount) {
-        res.status(422).json({ error: `Le montant minimum pour ${pawapayProvider} est ${minAmount} ${payoutCurrencyCode}.` });
-        return;
-      }
-      if (Number.isFinite(maxAmount) && amountNum > maxAmount) {
-        res.status(422).json({ error: `Le montant maximum pour ${pawapayProvider} est ${maxAmount} ${payoutCurrencyCode}.` });
-        return;
-      }
-      if (payoutConfig.decimalsInAmount === "NONE" && amountString.includes(".")) {
-        res.status(422).json({ error: `Les décimales ne sont pas autorisées pour ${pawapayProvider}.` });
-        return;
-      }
-    } catch (err) {
-      logger.error({ err, provider: pawapayProvider, countryIso2: iso2 }, "[admin-payouts] PawaPay payout configuration check failed");
-      res.status(503).json({
-        error: "Impossible de vérifier la configuration des retraits PawaPay. Aucun retrait n'a été envoyé, veuillez réessayer.",
-      });
-      return;
-    }
-
-    const payoutId = crypto.randomUUID();
-
-    logger.info({ payoutId, msisdn: payoutPhoneNumber, countryIso2, provider: pawapayProvider, currency: payoutCurrencyCode, amount: amountString }, "[admin-payouts] Initiating PawaPay payout");
-
-    const result = await client.initiatePayout({
-      payoutId,
-      amount: amountString,
-      currency: payoutCurrencyCode,
-      recipient: {
-        type: "MMO",
-        accountDetails: {
-          phoneNumber: payoutPhoneNumber,
-          provider: pawapayProvider,
-        },
-      },
-      customerMessage: "Simix retrait",
-      metadata: [{ type: "admin_payout" }],
+    const prepared = await validatePawaPayRecipient({
+      phoneNumber, countryIso2, provider, currency, amount,
     });
-
-    logger.info({ payoutId, status: result.status }, "[admin-payouts] PawaPay payout initiated");
-    res.json({ payoutId, status: result.status, created: result.created, failureReason: result.failureReason });
+    const registered = await registerPayout({
+      ...prepared,
+      gateway: "pawapay",
+      actorId: req.adminPayload?.sub ?? req.user?.id ?? "unknown",
+      idempotencyKey: idempotencyKey.trim(),
+    });
+    if (registered.kind === "conflict") {
+      res.status(409).json({ error: "Cette clé d'idempotence a déjà été utilisée pour une demande différente." });
+      return;
+    }
+    if (registered.kind === "created" && registered.payout.status === "pending") {
+      try {
+        /* Reusing the persisted PawaPay UUID is safe, including after an
+           ambiguous timeout; never generate a new ID for the same key. */
+        await initiatePayout(registered.payout);
+      } catch (err) {
+        logger.warn({ payoutId: registered.payout.externalId, err: (err as Error).message }, "[admin-payouts] PawaPay outcome unknown; record remains pending");
+      }
+    } else if (registered.payout.status === "pending") {
+      await refreshPayout(registered.payout.id);
+    }
+    const payout = await getPayoutById(registered.payout.id);
+    res.json(normalizePayoutRecord(payout ?? registered.payout));
   } catch (err) {
-    logger.error({ err }, "[admin-payouts] PawaPay payout failed");
-    res.status(500).json({ error: (err as Error).message });
+    if (err instanceof PayoutValidationError) {
+      res.status(err.httpStatus).json({ error: err.message });
+      return;
+    }
+    logger.error({ err: (err as Error).message }, "[admin-payouts] PawaPay payout validation failed");
+    res.status(503).json({ error: "Impossible de valider la configuration PawaPay. Aucun payout n'a été enregistré." });
   }
 });
 
@@ -417,7 +353,7 @@ router.post("/admin/payouts/pawapay", requireAdmin, async (req, res): Promise<vo
  * Check the status of a previously initiated PawaPay payout.
  */
 router.get("/admin/payouts/pawapay/status/:payoutId", requireAdmin, async (req, res): Promise<void> => {
-  const { payoutId } = req.params;
+  const payoutId = Array.isArray(req.params.payoutId) ? req.params.payoutId[0] ?? "" : req.params.payoutId ?? "";
   try {
     const creds = await resolvePawaPayCredentials();
     if (!creds) {
@@ -459,10 +395,10 @@ router.get("/admin/payouts/clapay/countries", requireAdmin, async (req, res): Pr
 
 /**
  * GET /admin/payouts/clapay/operators/:country
- * Returns operators for a country that support CASHOUT.
+ * Returns operators for a country that support payout/CASHIN.
  */
 router.get("/admin/payouts/clapay/operators/:country", requireAdmin, async (req, res): Promise<void> => {
-  const { country } = req.params;
+  const country = Array.isArray(req.params.country) ? req.params.country[0] ?? "" : req.params.country ?? "";
   try {
     const creds = await resolveClapayCredentials();
     if (!creds) {
@@ -471,20 +407,22 @@ router.get("/admin/payouts/clapay/operators/:country", requireAdmin, async (req,
     }
     const client = new ClapayClient(creds.token, creds.baseUrl);
     const all = await client.getOperators(country);
-    // Return operators that are active and have a CASHOUT code
-    /* Show all active operators; cashoutCode may be "none" when not supported */
-    const cashoutOps = all
+    const payoutOperators = all
       .filter((op) => op.active)
       .map((op) => ({
         name: op.name,
         codeoperator: op.codeoperator,
+        operatorCode: op.codeoperator,
+        payoutCode: op.codeoperator,
+        cashinCode: (op.code?.CASHIN && op.code.CASHIN !== "none") ? op.code.CASHIN : null,
         cashoutCode: (op.code?.CASHOUT && op.code.CASHOUT !== "none") ? op.code.CASHOUT : null,
         merchantCode: (op.code?.MERCHANT && op.code.MERCHANT !== "none") ? op.code.MERCHANT : null,
         logo: op.logo,
-        requiresOtp: op.otpstarter?.CASHOUT ?? false,
+        requiresOtp: op.otpstarter?.CASHIN ?? false,
+        supportsPayout: !!(op.code?.CASHIN && op.code.CASHIN !== "none"),
         supportsCashout: !!(op.code?.CASHOUT && op.code.CASHOUT !== "none"),
       }));
-    res.json({ operators: cashoutOps });
+    res.json({ operators: payoutOperators });
   } catch (err) {
     logger.error({ err, country }, "[admin-payouts] Clapay operators fetch failed");
     res.status(500).json({ error: (err as Error).message });
@@ -493,27 +431,29 @@ router.get("/admin/payouts/clapay/operators/:country", requireAdmin, async (req,
 
 /**
  * POST /admin/payouts/clapay
- * Initiate a Clapay cashout (merchant → recipient mobile money).
+ * Initiate a Clapay payout (merchant → recipient mobile money).
  *
- * Body: { phoneNumber, dialCode, countryCode, cashoutCode, amount }
+ * Body: { phoneNumber, dialCode, countryCode, operatorCode, amount, idempotencyKey, operatorOtp? }
  */
 router.post("/admin/payouts/clapay", requireAdmin, async (req, res): Promise<void> => {
-  const { phoneNumber, dialCode, countryCode, cashoutCode, amount } = req.body as {
+  const { phoneNumber, dialCode, countryCode, operatorCode, amount, idempotencyKey, operatorOtp } = (req.body ?? {}) as {
     phoneNumber?: string;
     dialCode?: string;
     countryCode?: string;
-    cashoutCode?: string;
+    operatorCode?: string;
     amount?: string | number;
+    idempotencyKey?: string;
+    operatorOtp?: string;
   };
 
-  if (!phoneNumber || !countryCode || !cashoutCode || !amount) {
-    res.status(400).json({ error: "Champs requis : phoneNumber, countryCode, cashoutCode, amount" });
+  if (!phoneNumber || !countryCode || !operatorCode || amount === undefined || !idempotencyKey?.trim()) {
+    res.status(400).json({ error: "Champs requis : phoneNumber, countryCode, operatorCode, amount, idempotencyKey" });
     return;
   }
 
   const amountNum = Number(amount);
-  if (!Number.isFinite(amountNum) || amountNum <= 0) {
-    res.status(400).json({ error: "Montant invalide" });
+  if (!Number.isSafeInteger(amountNum) || amountNum <= 0) {
+    res.status(400).json({ error: "Le montant Clapay doit être un entier positif." });
     return;
   }
 
@@ -525,29 +465,77 @@ router.post("/admin/payouts/clapay", requireAdmin, async (req, res): Promise<voi
     }
 
     const client = new ClapayClient(creds.token, creds.baseUrl);
-    const formattedPhone = formatClapayPhone(phoneNumber, dialCode, countryCode);
-    const transactionId = crypto.randomUUID();
-
-    logger.info({ transactionId, formattedPhone, countryCode, cashoutCode, amount: amountNum }, "[admin-payouts] Initiating Clapay cashout");
-
-    const appUrl = process.env.APP_URL?.replace(/\/$/, "") ?? "https://simix.site";
-    const result = await client.initiateCashout({
-      transaction_id: transactionId,
-      additional_infos: { customer_phone: formattedPhone },
-      amount: amountNum,
-      callback_url: `${appUrl}/api/wallet/clapay/webhook`,
-      return_url: `${appUrl}/admin/payouts`,
-      country_code: countryCode.toUpperCase(),
-      operators_code: [cashoutCode],
-      method: "CASHOUT",
+    const countryCodeNormalized = countryCode.trim().toUpperCase();
+    const operators = await client.getOperators(countryCodeNormalized);
+    const operator = operators.find(op => op.active && op.codeoperator.toLowerCase() === operatorCode.trim().toLowerCase());
+    if (!operator || !operator.codeoperator || !operator.code?.CASHIN || operator.code.CASHIN.toLowerCase() === "none") {
+      res.status(422).json({ error: "L'opérateur sélectionné ne prend pas en charge les payouts CASHIN." });
+      return;
+    }
+    if (operator.otpstarter?.CASHIN && !operatorOtp?.trim()) {
+      res.status(422).json({ error: "Un code OTP opérateur est requis pour ce payout." });
+      return;
+    }
+    const countries = await client.getCountries(countryCodeNormalized);
+    const country = countries.find(item => item.code.toUpperCase() === countryCodeNormalized);
+    if (!country?.currency) {
+      res.status(422).json({ error: "Clapay ne fournit aucune devise pour ce pays." });
+      return;
+    }
+    const formattedPhone = formatClapayPhone(phoneNumber, dialCode, countryCodeNormalized);
+    const registered = await registerPayout({
+      gateway: "clapay",
+      actorId: req.adminPayload?.sub ?? req.user?.id ?? "unknown",
+      idempotencyKey: idempotencyKey.trim(),
+      phone: formattedPhone,
+      provider: operator.codeoperator,
+      country: countryCodeNormalized,
+      currency: country.currency.toUpperCase(),
+      amount: String(amountNum),
     });
-
-    logger.info({ transactionId, signature: result.signature }, "[admin-payouts] Clapay cashout initiated");
-    res.json({ transactionId, signature: result.signature, currency: result.currency, status: result.status });
+    if (registered.kind === "conflict") {
+      res.status(409).json({ error: "Cette clé d'idempotence a déjà été utilisée pour une demande différente." });
+      return;
+    }
+    if (registered.kind === "created") {
+      try {
+        await initiatePayout(registered.payout, operatorOtp?.trim());
+      } catch (err) {
+        logger.warn({ payoutId: registered.payout.id, err: (err as Error).message }, "[admin-payouts] Clapay outcome unknown; record remains pending");
+      }
+    } else if (registered.payout.status === "pending" && !registered.payout.initiationClaimedAt) {
+      try {
+        /* A null claim proves no attempt was started before a process crash.
+           The atomic claim still permits only one replay to send. */
+        await initiatePayout(registered.payout, operatorOtp?.trim());
+      } catch (err) {
+        logger.warn({ payoutId: registered.payout.id, err: (err as Error).message }, "[admin-payouts] Clapay first attempt outcome unknown; record remains pending");
+      }
+    } else if (registered.payout.status === "pending") {
+      await refreshPayout(registered.payout.id);
+    }
+    const payout = await getPayoutById(registered.payout.id);
+    res.json(normalizePayoutRecord(payout ?? registered.payout));
   } catch (err) {
-    logger.error({ err }, "[admin-payouts] Clapay cashout failed");
-    res.status(500).json({ error: (err as Error).message });
+    logger.error({ err: (err as Error).message }, "[admin-payouts] Clapay payout validation failed");
+    res.status(503).json({ error: (err as Error).message });
   }
+});
+
+router.get("/admin/payouts/history", requireAdmin, async (_req, res): Promise<void> => {
+  const rows = await db.select().from(payoutsTable)
+    .orderBy(desc(payoutsTable.createdAt)).limit(250);
+  res.json({ payouts: rows.map(normalizePayoutRecord) });
+});
+
+router.post("/admin/payouts/:id/refresh", requireAdmin, async (req, res): Promise<void> => {
+  const id = Array.isArray(req.params.id) ? req.params.id[0] ?? "" : req.params.id ?? "";
+  const payout = await refreshPayout(id);
+  if (!payout) {
+    res.status(404).json({ error: "Payout introuvable" });
+    return;
+  }
+  res.json(normalizePayoutRecord(payout));
 });
 
 export default router;

@@ -17,14 +17,11 @@ import { logger } from "./logger";
  *  GET  /nowallet/api/fees/by/country                                ← fees by country      (query: country)
  *  GET  /nowallet/api/limitation/paiement                            ← payment limits       (query: country)
  *
- * NOTE: There is NO transaction status polling endpoint in the official V3 API.
- *  Payment confirmation is done exclusively via webhook callbacks (callback_url).
- *  If a webhook is missed, the only recovery is contacting Clapay support.
+ * The NoWallet payment API supports signature status checks and cancellation.
  *
  * IMPORTANT:
  *  - All GET endpoints use the query parameter "country" for country code.
- *  - operators_code[] must contain the operator's `code.MERCHANT` value (from
- *    GET /operators/data), NOT the `codeoperator` short code.
+ *  - API mode sends exactly one operator `codeoperator` short code.
  *  - The signature returned on payment init MUST be stored — it is the primary
  *    key for any future reconciliation or cancellation.
  */
@@ -35,15 +32,15 @@ export interface ClapayPaymentRequest {
     customer_email?: string;
     customer_lastname?: string;
     customer_firstname?: string;
-    customer_phone?: string;
+    customer_phone: string;
   };
   amount: number;                     // Integer amount in local currency (floor before sending)
   callback_url: string;               // Our webhook URL
   return_url: string;                 // Redirect after payment
   country_code: string;               // ISO alpha-2 (CI, CM, SN…)
-  operators_code: string[];           // code.MERCHANT values from GET /operators/data (e.g. ["WAVECI"], ["MTNCI"])
-  method: "MERCHANT" | "CASHIN";
-  tunnel: "CHECKOUTPAGE" | "DIRECT";
+  operators_code: [string];           // Exactly one active operator codeoperator short code
+  method: "MERCHANT";
+  tunnel: "API";
   operator_otp?: string;
 }
 
@@ -51,10 +48,32 @@ export interface ClapayPaymentResponse {
   country: string;
   currency: string;
   signature: string;                  // Clapay transaction signature — MUST be stored
-  available_operator: string[];
-  authorized_operator: string[];
-  payment_url: string;                // Hosted payment page URL (CHECKOUTPAGE tunnel)
+  status_payment: string;
+  message?: string;
+  observation_error?: string;
+  payment_url_operator?: string;      // Optional operator deep link (not hosted checkout)
   payment_otp?: string;
+}
+
+export interface ClapayPaymentStatusResponse {
+  status: string;
+  transaction_id?: string;
+  signature?: string;
+  amount?: number | string;
+  currency?: string;
+  method?: string;
+  country?: string;
+  [key: string]: unknown;
+}
+
+export function isClapayCancellationAcknowledged(response: {
+  success?: boolean;
+  status?: string;
+  status_payment?: string;
+  message?: string;
+}): boolean {
+  const status = String(response.status ?? response.status_payment ?? "").toUpperCase();
+  return response.success === true || ["SUCCESS", "CANCELLED", "CANCELED", "DESTROYED"].includes(status);
 }
 
 export interface ClapayWebhookPayload {
@@ -115,6 +134,10 @@ export interface ClapayOperator {
   instruction: Record<string, unknown>;
 }
 
+export function clapayOperatorRequiresOtp(operator: ClapayOperator): boolean {
+  return operator.otpstarter?.MERCHANT === true;
+}
+
 export interface ClapayFees {
   fee_cashin: number;
   fee_cashout: number;
@@ -158,8 +181,10 @@ export interface ClapayCashoutRequest {
   callback_url: string;
   return_url: string;
   country_code: string;        // ISO alpha-2 (CI, CM, SN…)
-  operators_code: string[];    // code.CASHOUT values from GET /operators/data
-  method: "CASHOUT";
+  operators_code: [string];    // codeoperator short code from GET /operators/data
+  method: "CASHIN";
+  tunnel: "API";
+  operator_otp?: string;
 }
 
 export interface ClapayCashoutResponse {
@@ -167,36 +192,9 @@ export interface ClapayCashoutResponse {
   currency: string;
   country: string;
   status?: string;
+  status_payment?: string;
   message?: string;
 }
-
-/* ─────────────────────────────────────────────────────────────────
- * Operator slug → Clapay operator code mapping (fallback)
- * Used when dynamic resolution from /opérateurs/données fails.
- * These are the `codeoperator` values as defined in the Clapay API.
- * ─────────────────────────────────────────────────────────────── */
-export const METHOD_TO_CLAPAY_OPERATOR: Record<string, string> = {
-  orange: "OM",
-  "orange money": "OM",
-  mtn: "MTN",
-  "mtn money": "MTN",
-  wave: "WAVE",
-  moov: "MOOV",
-  "moov africa": "MOOV",
-  free: "FREE",
-  "free money": "FREE",
-  expresso: "EXPRESSO",
-  airtel: "AIRTEL",
-  "airtel money": "AIRTEL",
-  mpesa: "MPESA",
-  "m-pesa": "MPESA",
-  tmoney: "TMONEY",
-  flooz: "FLOOZ",
-  mvola: "MVOLA",
-  vodafone: "VODAFONE",
-  "mobile money": "MTN",
-  "mobile": "MTN",
-};
 
 /**
  * Format a local phone number + dial code into the E.164-style string
@@ -277,42 +275,45 @@ export function formatClapayPhone(phoneNumber: string, dialCode?: string, countr
   return `+${countryDigits}${localDigits}`;
 }
 
-export function getOperatorCodeForMethod(methodSlug: string): string | null {
-  const slug = methodSlug.toLowerCase();
-  for (const [keyword, code] of Object.entries(METHOD_TO_CLAPAY_OPERATOR)) {
-    if (slug.includes(keyword)) return code;
-  }
-  return null;
-}
-
 /* ─────────────────────────────────────────────────────────────────
  * Terminal statuses — any of these means the transaction is DONE
  * ─────────────────────────────────────────────────────────────── */
-export const CLAPAY_TERMINAL_SUCCESS = new Set(["COMPLETED"]);
+export const CLAPAY_TERMINAL_SUCCESS = new Set(["SUCCESS", "SUCCESSFUL", "COMPLETED"]);
 export const CLAPAY_TERMINAL_FAILURE = new Set([
-  "FAILED", "CANCELLED", "REJECTED", "TIMEOUT", "EXPIRED",
+  "FAILED", "CANCELLED", "CANCELED", "REJECTED", "REFUSED", "DECLINED", "TIMEOUT", "EXPIRED",
 ]);
 
-export function isClapayTerminalStatus(status: string): boolean {
-  const s = status.toUpperCase();
-  return CLAPAY_TERMINAL_SUCCESS.has(s) || CLAPAY_TERMINAL_FAILURE.has(s);
-}
-
-export function mapClapayStatusToDb(status: string): "completed" | "failed" | "pending" {
-  const s = status.toUpperCase();
+export function normalizeClapayStatus(status: string): "completed" | "failed" | "pending" {
+  const s = status.trim().toUpperCase();
   if (CLAPAY_TERMINAL_SUCCESS.has(s)) return "completed";
   if (CLAPAY_TERMINAL_FAILURE.has(s)) return "failed";
   return "pending";
+}
+
+export function isClapayTerminalStatus(status: string): boolean {
+  return normalizeClapayStatus(status) !== "pending";
+}
+
+export function mapClapayStatusToDb(status: string): "completed" | "failed" | "pending" {
+  return normalizeClapayStatus(status);
 }
 
 /* ─────────────────────────────────────────────────────────────────
  * Gateway metadata stored in transactions.gateway_meta (JSON)
  * ─────────────────────────────────────────────────────────────── */
 export interface ClapayGatewayMeta {
-  clapaySignature: string;
-  clapayCurrency: string;
-  clapayCountry: string;
-  initiatedAt: string;
+  clapaySignature?: string;
+  clapayCurrency?: string;
+  clapayCountry?: string;
+  localAmount?: number;
+  operatorCode?: string;
+  trackingId?: string;
+  method?: "MERCHANT";
+  initiatedAt?: string;
+  gatewayConfigId?: string | null;
+  operatorPaymentUrl?: string | null;
+  paymentOtp?: string | null;
+  message?: string | null;
 }
 
 export function serializeClapayMeta(meta: ClapayGatewayMeta): string {
@@ -408,11 +409,11 @@ export class ClapayClient {
 
   /**
    * Initiate a Mobile Money payment.
-   * Returns a signature (tracking ID) and optionally a payment_url for CHECKOUTPAGE tunnel.
+   * Returns the NoWallet signature and optional operator deep-link/OTP data.
    *
    * IMPORTANT:
    *  - amount must be a whole integer (floor before calling)
-   *  - operators_code takes codeoperator short codes (e.g. ["OM"], ["MTN"])
+   *  - operators_code contains exactly one codeoperator short code (e.g. ["OM"])
    *  - Store `signature` in transactions.gateway_meta — required for cancellation
    */
   async initiatePayment(params: ClapayPaymentRequest): Promise<ClapayPaymentResponse> {
@@ -421,12 +422,28 @@ export class ClapayClient {
     return this.request<ClapayPaymentResponse>("/nowallet/api/init/payment", "POST", safeParams);
   }
 
+  /** POST /nowallet/api/check/status/payment */
+  async checkPaymentStatus(signature: string): Promise<ClapayPaymentStatusResponse> {
+    try {
+      const response = await this.request<ClapayPaymentStatusResponse | { data: ClapayPaymentStatusResponse }>(
+        "/nowallet/api/check/status/payment", "POST", { signature },
+      );
+      const wrapped = (response as { data?: ClapayPaymentStatusResponse }).data;
+      return wrapped ?? response as ClapayPaymentStatusResponse;
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === "404") {
+        return { status: "UNKNOWN", signature };
+      }
+      throw error;
+    }
+  }
+
   /**
    * Cancel a pending payment by signature.
    * Docs: POST /nowallet/api/destroy/signature
    */
-  async cancelPayment(signature: string): Promise<{ success: boolean }> {
-    return this.request<{ success: boolean }>("/nowallet/api/destroy/signature", "POST", { signature });
+  async cancelPayment(signature: string): Promise<{ success?: boolean; status?: string; status_payment?: string; message?: string }> {
+    return this.request<{ success?: boolean; status?: string; status_payment?: string; message?: string }>("/nowallet/api/destroy/signature", "POST", { signature });
   }
 
   /**
@@ -465,7 +482,7 @@ export class ClapayClient {
   /**
    * Get available operators for a country.
    * Docs: GET /nowallet/api/operators/data — query param: "country"
-   * Returns operators with code.MERCHANT — this is what goes in operators_code[].
+   * Returns the dynamic operator catalogue including MERCHANT capability.
    */
   async getOperators(country: string): Promise<ClapayOperator[]> {
     const result = await this.request<ClapayOperator | ClapayOperator[]>(
@@ -482,51 +499,29 @@ export class ClapayClient {
    * @param country  ISO alpha-2 country code (e.g. "CI", "CM")
    * @param methodSlug  e.g. "orange", "mtn", "wave"
    */
+  async resolveOperator(country: string, methodSlug: string): Promise<ClapayOperator | null> {
+    const operators = await this.getOperators(country);
+    const normalize = (value: string) => value.toLowerCase().replace(/[^a-z0-9]/g, "");
+    const slug = normalize(methodSlug);
+    const eligible = operators.filter(op =>
+      op.active &&
+      Boolean(op.codeoperator) &&
+      Boolean(op.code?.MERCHANT) &&
+      op.code.MERCHANT.toLowerCase() !== "none",
+    );
+
+    return eligible.find(op => normalize(op.codeoperator) === slug)
+      ?? eligible.find(op => {
+        const code = normalize(op.codeoperator);
+        const name = normalize(op.name);
+        return slug === name || slug.includes(name) || name.includes(slug) ||
+          (code.length > 2 && (slug.startsWith(code) || slug.endsWith(code)));
+      })
+      ?? null;
+  }
+
   async resolveOperatorCode(country: string, methodSlug: string): Promise<string | null> {
-    try {
-      const operators = await this.getOperators(country);
-      const slug = methodSlug.toLowerCase();
-
-      /* Helper: return code.MERCHANT (what operators_code[] expects) */
-      const merchantCode = (op: ClapayOperator): string =>
-        op.code?.MERCHANT && op.code.MERCHANT !== "none" ? op.code.MERCHANT : op.codeoperator;
-
-      /* 1. Exact codeoperator match (e.g. "wave" → codeoperator "WAVE") */
-      const exactMatch = operators.find(op =>
-        op.active && op.codeoperator.toLowerCase() === slug,
-      );
-      if (exactMatch) return merchantCode(exactMatch);
-
-      /* 2. Name match (e.g. "orange" matches "ORANGE MONEY") */
-      const nameMatch = operators.find(op =>
-        op.active && (
-          op.name.toLowerCase().includes(slug) ||
-          slug.includes(op.codeoperator.toLowerCase()) ||
-          op.codeoperator.toLowerCase().includes(slug)
-        ),
-      );
-      if (nameMatch) return merchantCode(nameMatch);
-
-      /* 3. Keyword match via hardcoded map (codeoperator lookup) */
-      for (const [keyword, codeop] of Object.entries(METHOD_TO_CLAPAY_OPERATOR)) {
-        if (slug.includes(keyword) || keyword.includes(slug)) {
-          const kwMatch = operators.find(op =>
-            op.active && op.codeoperator === codeop,
-          );
-          if (kwMatch) return merchantCode(kwMatch);
-        }
-      }
-
-      /* Log available operators for debugging */
-      logger.warn(
-        `[Clapay] No operator match for "${methodSlug}" in ${country}. Available: ${operators.map(o => `${o.codeoperator}(${o.name}) merchant=${o.code?.MERCHANT}`).join(", ")}`,
-      );
-    } catch (e) {
-      logger.warn({ err: (e as Error).message }, "[Clapay] resolveOperatorCode fetch failed — falling back to hardcoded map");
-    }
-
-    /* Fallback to hardcoded mapping (codeoperator values — last resort) */
-    return getOperatorCodeForMethod(methodSlug);
+    return (await this.resolveOperator(country, methodSlug))?.codeoperator ?? null;
   }
 
   /**
@@ -552,15 +547,15 @@ export class ClapayClient {
   }
 
   /**
-   * Initiate a cashout (merchant → mobile money recipient).
-   * Uses the same init endpoint as payments but with method: "CASHOUT"
-   * and the operator's code.CASHOUT value.
+   * Initiate a merchant payout (merchant → mobile money recipient).
+   * NoWallet routes payouts through init/payment with method CASHIN, API
+   * tunnel, and the catalogue operator's short codeoperator value.
    *
    * @param params ClapayCashoutRequest
    */
   async initiateCashout(params: ClapayCashoutRequest): Promise<ClapayCashoutResponse> {
     const safeParams = { ...params, amount: Math.floor(params.amount) };
-    return this.request<ClapayCashoutResponse>("/nowallet/api/init/cashout", "POST", safeParams);
+    return this.request<ClapayCashoutResponse>("/nowallet/api/init/payment", "POST", safeParams);
   }
 }
 

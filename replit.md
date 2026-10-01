@@ -69,6 +69,13 @@ Workflows are managed by Replit and serve the artifacts on a single shared proxy
 - The shared Supabase `email_providers` table is the source of truth for email credentials, activation, and priority. Plesk environment provider keys are bootstrap-only and must not overwrite database credentials.
 - Every environment that shares this database must use the same dedicated `ENCRYPTION_KEY`; never rely on an environment-specific `SESSION_SECRET` for provider encryption.
 
+## Clapay payments
+
+- Wallet recharges must use the direct server-to-server API, not the hosted Clapay checkout.
+- Follow the official NoWallet documentation at `https://docs.clapay.app/docs/nowallet/payment-modes` and `https://docs.clapay.app/docs/nowallet/payment/init-payment`.
+- Keep operator OTPs transient; never request the customer's Mobile Money PIN or persist submitted OTPs.
+- Supabase is shared with Plesk: payment tests must use isolated mocks, not real deposits or changes to customer balances.
+
 ## Replit setup
 
 The `Start application` workflow runs `bash start-replit.sh` and serves the combined

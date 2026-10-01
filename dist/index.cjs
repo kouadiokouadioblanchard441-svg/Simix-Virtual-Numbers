@@ -15364,7 +15364,7 @@ var require_type_is = __commonJS({
     module2.exports = typeofrequest;
     module2.exports.is = typeis;
     module2.exports.hasBody = hasbody;
-    module2.exports.normalize = normalize3;
+    module2.exports.normalize = normalize4;
     module2.exports.match = mimeMatch;
     function typeis(value, types_) {
       if (value && typeof value === "object") {
@@ -15387,7 +15387,7 @@ var require_type_is = __commonJS({
       }
       var type;
       for (i2 = 0; i2 < types5.length; i2++) {
-        if (mimeMatch(normalize3(type = types5[i2]), val)) {
+        if (mimeMatch(normalize4(type = types5[i2]), val)) {
           return type[0] === "+" || type.indexOf("*") !== -1 ? val : type;
         }
       }
@@ -15402,7 +15402,7 @@ var require_type_is = __commonJS({
       var value = req.headers["content-type"];
       return typeis(value, types5);
     }
-    function normalize3(type) {
+    function normalize4(type) {
       if (typeof type !== "string") {
         return false;
       }
@@ -21970,7 +21970,7 @@ var require_type_is2 = __commonJS({
     module2.exports = typeofrequest;
     module2.exports.is = typeis;
     module2.exports.hasBody = hasbody;
-    module2.exports.normalize = normalize3;
+    module2.exports.normalize = normalize4;
     module2.exports.match = mimeMatch;
     function typeis(value, types_) {
       var i2;
@@ -21990,7 +21990,7 @@ var require_type_is2 = __commonJS({
       }
       var type;
       for (i2 = 0; i2 < types5.length; i2++) {
-        if (mimeMatch(normalize3(type = types5[i2]), val)) {
+        if (mimeMatch(normalize4(type = types5[i2]), val)) {
           return type[0] === "+" || type.indexOf("*") !== -1 ? val : type;
         }
       }
@@ -22005,7 +22005,7 @@ var require_type_is2 = __commonJS({
       var value = req.headers["content-type"];
       return typeis(value, types5);
     }
-    function normalize3(type) {
+    function normalize4(type) {
       if (typeof type !== "string") {
         return false;
       }
@@ -22723,7 +22723,7 @@ var require_send = __commonJS({
     var util3 = require("util");
     var extname = path6.extname;
     var join = path6.join;
-    var normalize3 = path6.normalize;
+    var normalize4 = path6.normalize;
     var resolve = path6.resolve;
     var sep = path6.sep;
     var BYTES_RANGE_REGEXP = /^ *bytes=/;
@@ -22886,7 +22886,7 @@ var require_send = __commonJS({
       var parts;
       if (root !== null) {
         if (path7) {
-          path7 = normalize3("." + sep + path7);
+          path7 = normalize4("." + sep + path7);
         }
         if (UP_PATH_REGEXP.test(path7)) {
           debug('malicious path "%s"', path7);
@@ -22894,14 +22894,14 @@ var require_send = __commonJS({
           return res;
         }
         parts = path7.split(sep);
-        path7 = normalize3(join(root, path7));
+        path7 = normalize4(join(root, path7));
       } else {
         if (UP_PATH_REGEXP.test(path7)) {
           debug('malicious path "%s"', path7);
           this.error(403);
           return res;
         }
-        parts = normalize3(path7).split(sep);
+        parts = normalize4(path7).split(sep);
         path7 = resolve(path7);
       }
       if (containsDotFile(parts)) {
@@ -29747,11 +29747,11 @@ var require_pino = __commonJS({
       depthLimit: 5,
       edgeLimit: 100
     };
-    var normalize3 = createArgsNormalizer(defaultOptions);
+    var normalize4 = createArgsNormalizer(defaultOptions);
     var serializers = Object.assign(/* @__PURE__ */ Object.create(null), stdSerializers);
     function pino2(...args) {
       const instance = {};
-      const { opts, stream } = normalize3(instance, caller(), ...args);
+      const { opts, stream } = normalize4(instance, caller(), ...args);
       if (opts.level && typeof opts.level === "string" && DEFAULT_LEVELS[opts.level.toLowerCase()] !== void 0) opts.level = opts.level.toLowerCase();
       const {
         redact,
@@ -36022,10 +36022,10 @@ var init_subquery = __esm({
     init_entity();
     Subquery = class {
       static [entityKind] = "Subquery";
-      constructor(sql6, fields, alias, isWith = false, usedTables = []) {
+      constructor(sql5, fields, alias, isWith = false, usedTables = []) {
         this._ = {
           brand: "Subquery",
-          sql: sql6,
+          sql: sql5,
           selectedFields: fields,
           alias,
           isWith,
@@ -42748,10 +42748,10 @@ var init_raw = __esm({
     init_entity();
     init_query_promise();
     PgRaw = class extends QueryPromise {
-      constructor(execute, sql6, query, mapBatchResult) {
+      constructor(execute, sql5, query, mapBatchResult) {
         super();
         this.execute = execute;
-        this.sql = sql6;
+        this.sql = sql5;
         this.query = query;
         this.mapBatchResult = mapBatchResult;
       }
@@ -43071,8 +43071,8 @@ var init_db = __esm({
 });
 
 // ../../node_modules/.pnpm/drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0/node_modules/drizzle-orm/cache/core/cache.js
-async function hashQuery(sql6, params) {
-  const dataToHash = `${sql6}-${JSON.stringify(params)}`;
+async function hashQuery(sql5, params) {
+  const dataToHash = `${sql5}-${JSON.stringify(params)}`;
   const encoder = new TextEncoder();
   const data = encoder.encode(dataToHash);
   const hashBuffer = await crypto.subtle.digest("SHA-256", data);
@@ -44735,6 +44735,43 @@ var init_email_providers = __esm({
   }
 });
 
+// ../../lib/db/src/schema/payouts.ts
+var payoutsTable;
+var init_payouts = __esm({
+  "../../lib/db/src/schema/payouts.ts"() {
+    "use strict";
+    init_pg_core();
+    init_referrals();
+    payoutsTable = pgTable("payouts", {
+      id: uuid("id").primaryKey().defaultRandom(),
+      idempotencyKey: text("idempotency_key").notNull(),
+      requestFingerprint: text("request_fingerprint").notNull(),
+      gateway: text("gateway").notNull(),
+      externalId: text("external_id").notNull(),
+      signature: text("signature"),
+      gatewayConfigId: uuid("gateway_config_id"),
+      referralWithdrawalId: uuid("referral_withdrawal_id").references(() => referralWithdrawalsTable.id, { onDelete: "set null" }),
+      actorId: text("actor_id").notNull(),
+      phone: text("phone").notNull(),
+      provider: text("provider").notNull(),
+      country: text("country").notNull(),
+      currency: text("currency").notNull(),
+      amount: numeric("amount", { precision: 20, scale: 3 }).notNull(),
+      status: text("status").notNull().default("pending"),
+      failureReason: text("failure_reason"),
+      initiationClaimedAt: timestamp("initiation_claimed_at", { withTimezone: true }),
+      createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+      updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+      completedAt: timestamp("completed_at", { withTimezone: true })
+    }, (table) => [
+      uniqueIndex("payouts_idempotency_key_uidx").on(table.idempotencyKey),
+      uniqueIndex("payouts_referral_withdrawal_uidx").on(table.referralWithdrawalId),
+      uniqueIndex("payouts_external_id_uidx").on(table.gateway, table.externalId),
+      index("payouts_status_created_idx").on(table.status, table.createdAt)
+    ]);
+  }
+});
+
 // ../../lib/db/src/schema/index.ts
 var schema_exports = {};
 __export(schema_exports, {
@@ -44766,6 +44803,7 @@ __export(schema_exports, {
   paymentOperatorsTable: () => paymentOperatorsTable,
   paymentRouteLogsTable: () => paymentRouteLogsTable,
   paymentRoutesTable: () => paymentRoutesTable,
+  payoutsTable: () => payoutsTable,
   pushSubscriptionsTable: () => pushSubscriptionsTable,
   referralCommissionsTable: () => referralCommissionsTable,
   referralWithdrawalsTable: () => referralWithdrawalsTable,
@@ -44820,6 +44858,7 @@ var init_schema2 = __esm({
     init_push_subscriptions();
     init_audit_logs();
     init_email_providers();
+    init_payouts();
   }
 });
 
@@ -44855,6 +44894,7 @@ __export(src_exports, {
   paymentOperatorsTable: () => paymentOperatorsTable,
   paymentRouteLogsTable: () => paymentRouteLogsTable,
   paymentRoutesTable: () => paymentRoutesTable,
+  payoutsTable: () => payoutsTable,
   pool: () => pool,
   pushSubscriptionsTable: () => pushSubscriptionsTable,
   referralCommissionsTable: () => referralCommissionsTable,
@@ -45199,7 +45239,7 @@ var require_tr46 = __commonJS({
       TRANSITIONAL: 0,
       NONTRANSITIONAL: 1
     };
-    function normalize3(str) {
+    function normalize4(str) {
       return str.split("\0").map(function(s3) {
         return s3.normalize("NFC");
       }).join("\0");
@@ -45279,7 +45319,7 @@ var require_tr46 = __commonJS({
         processing_option = PROCESSING_OPTIONS.NONTRANSITIONAL;
       }
       var error = false;
-      if (normalize3(label) !== label || label[3] === "-" && label[4] === "-" || label[0] === "-" || label[label.length - 1] === "-" || label.indexOf(".") !== -1 || label.search(combiningMarksRegex) === 0) {
+      if (normalize4(label) !== label || label[3] === "-" && label[4] === "-" || label[0] === "-" || label[label.length - 1] === "-" || label.indexOf(".") !== -1 || label.search(combiningMarksRegex) === 0) {
         error = true;
       }
       var len = countSymbols(label);
@@ -45297,7 +45337,7 @@ var require_tr46 = __commonJS({
     }
     function processing(domain_name, useSTD3, processing_option) {
       var result = mapChars(domain_name, useSTD3, processing_option);
-      result.string = normalize3(result.string);
+      result.string = normalize4(result.string);
       var labels = result.string.split(".");
       for (var i2 = 0; i2 < labels.length; ++i2) {
         try {
@@ -109163,8 +109203,8 @@ var require_ponyfill_es2018 = __commonJS({
         // without modifying the queue.
         peek() {
           const front = this._front;
-          const cursor = this._cursor;
-          return front._elements[cursor];
+          const cursor2 = this._cursor;
+          return front._elements[cursor2];
         }
       }
       const AbortSteps = /* @__PURE__ */ Symbol("[[AbortSteps]]");
@@ -115461,7 +115501,7 @@ var require_gaxios2 = __commonJS({
     var retry_js_1 = require_retry4();
     var stream_1 = require("stream");
     var interceptor_js_1 = require_interceptor2();
-    var randomUUID5 = async () => globalThis.crypto?.randomUUID() || (await import("crypto")).randomUUID();
+    var randomUUID7 = async () => globalThis.crypto?.randomUUID() || (await import("crypto")).randomUUID();
     var HTTP_STATUS_NO_CONTENT = 204;
     var Gaxios = class {
       agentCache = /* @__PURE__ */ new Map();
@@ -115734,7 +115774,7 @@ var require_gaxios2 = __commonJS({
          */
         ["Blob", "File", "FormData"].includes(opts.data?.constructor?.name || "");
         if (opts.multipart?.length) {
-          const boundary = await randomUUID5();
+          const boundary = await randomUUID7();
           preparedHeaders.set("content-type", `multipart/related; boundary=${boundary}`);
           opts.body = stream_1.Readable.from(this.getMultipartRequest(opts.multipart, boundary));
         } else if (shouldDirectlyPassData) {
@@ -128871,6 +128911,80 @@ var init_pawapay = __esm({
   }
 });
 
+// src/lib/gateway-credentials.ts
+var gateway_credentials_exports = {};
+__export(gateway_credentials_exports, {
+  resolveClapayCredentials: () => resolveClapayCredentials,
+  resolveClapayGatewayCredentials: () => resolveClapayGatewayCredentials,
+  resolvePawaPayCredentials: () => resolvePawaPayCredentials
+});
+async function resolvePawaPayCredentials(routeApiKey) {
+  let token2 = routeApiKey?.trim() || null;
+  let env = null;
+  if (!token2) {
+    try {
+      const rows = await db.select().from(systemSettingsTable).where(eq(systemSettingsTable.key, "pawapay_api_token")).limit(1);
+      token2 = rows[0]?.value?.trim() || null;
+    } catch {
+    }
+  }
+  try {
+    const envRows = await db.select().from(systemSettingsTable).where(eq(systemSettingsTable.key, "pawapay_env")).limit(1);
+    const dbEnv = envRows[0]?.value?.trim().toLowerCase();
+    if (dbEnv === "sandbox" || dbEnv === "production") env = dbEnv;
+  } catch {
+  }
+  if (!token2) token2 = process.env.PAWAPAY_API_TOKEN?.trim() || null;
+  if (!env) {
+    const rawEnvVar = process.env.PAWAPAY_ENV?.trim().toLowerCase();
+    env = rawEnvVar === "production" ? "production" : "sandbox";
+  }
+  if (!token2) return null;
+  return { token: token2, env };
+}
+async function resolveClapayCredentials(routeApiKey, routeApiUrl) {
+  let token2 = routeApiKey?.trim() || null;
+  let baseUrl2 = routeApiUrl?.trim() || null;
+  if (!token2) {
+    try {
+      const rows = await db.select().from(systemSettingsTable).where(eq(systemSettingsTable.key, "clapay_api_token")).limit(1);
+      token2 = rows[0]?.value?.trim() || null;
+    } catch {
+    }
+  }
+  if (!baseUrl2) {
+    try {
+      const urlRows = await db.select().from(systemSettingsTable).where(eq(systemSettingsTable.key, "clapay_base_url")).limit(1);
+      baseUrl2 = urlRows[0]?.value?.trim() || null;
+    } catch {
+    }
+  }
+  if (!token2) token2 = process.env.CLAPAY_API_TOKEN?.trim() || null;
+  if (!baseUrl2) baseUrl2 = process.env.CLAPAY_BASE_URL?.trim() || null;
+  if (!token2) return null;
+  return { token: token2, baseUrl: baseUrl2 ?? void 0 };
+}
+async function resolveClapayGatewayCredentials(gatewayId) {
+  const [gateway] = await db.select({
+    id: paymentGatewaysTable.id,
+    slug: paymentGatewaysTable.slug,
+    apiKey: paymentGatewaysTable.apiKey,
+    apiUrl: paymentGatewaysTable.apiUrl,
+    active: paymentGatewaysTable.active
+  }).from(paymentGatewaysTable).where(eq(paymentGatewaysTable.id, gatewayId)).limit(1);
+  if (!gateway || !gateway.active || !gateway.slug.toLowerCase().includes("clapay") || !gateway.apiKey?.trim()) {
+    return null;
+  }
+  return { token: gateway.apiKey.trim(), baseUrl: gateway.apiUrl?.trim() || void 0 };
+}
+var init_gateway_credentials = __esm({
+  "src/lib/gateway-credentials.ts"() {
+    "use strict";
+    init_drizzle_orm();
+    init_src();
+  }
+});
+
 // src/lib/clapay.ts
 var clapay_exports = {};
 __export(clapay_exports, {
@@ -128878,17 +128992,25 @@ __export(clapay_exports, {
   CLAPAY_TERMINAL_FAILURE: () => CLAPAY_TERMINAL_FAILURE,
   CLAPAY_TERMINAL_SUCCESS: () => CLAPAY_TERMINAL_SUCCESS,
   ClapayClient: () => ClapayClient,
-  METHOD_TO_CLAPAY_OPERATOR: () => METHOD_TO_CLAPAY_OPERATOR,
+  clapayOperatorRequiresOtp: () => clapayOperatorRequiresOtp,
   extractClapayTransactionId: () => extractClapayTransactionId,
   formatClapayPhone: () => formatClapayPhone,
-  getOperatorCodeForMethod: () => getOperatorCodeForMethod,
+  isClapayCancellationAcknowledged: () => isClapayCancellationAcknowledged,
   isClapayDeposit: () => isClapayDeposit,
   isClapayTerminalStatus: () => isClapayTerminalStatus,
   makeClapayDepositId: () => makeClapayDepositId,
   mapClapayStatusToDb: () => mapClapayStatusToDb,
+  normalizeClapayStatus: () => normalizeClapayStatus,
   parseClapayMeta: () => parseClapayMeta,
   serializeClapayMeta: () => serializeClapayMeta
 });
+function isClapayCancellationAcknowledged(response) {
+  const status = String(response.status ?? response.status_payment ?? "").toUpperCase();
+  return response.success === true || ["SUCCESS", "CANCELLED", "CANCELED", "DESTROYED"].includes(status);
+}
+function clapayOperatorRequiresOtp(operator) {
+  return operator.otpstarter?.MERCHANT === true;
+}
 function formatClapayPhone(phoneNumber, dialCode, countryCode) {
   const countryDigits = (dialCode ?? "").replace(/\D/g, "");
   let localDigits = phoneNumber.replace(/\D/g, "");
@@ -128912,22 +129034,17 @@ function formatClapayPhone(phoneNumber, dialCode, countryCode) {
   }
   return `+${countryDigits}${localDigits}`;
 }
-function getOperatorCodeForMethod(methodSlug) {
-  const slug = methodSlug.toLowerCase();
-  for (const [keyword, code] of Object.entries(METHOD_TO_CLAPAY_OPERATOR)) {
-    if (slug.includes(keyword)) return code;
-  }
-  return null;
-}
-function isClapayTerminalStatus(status) {
-  const s3 = status.toUpperCase();
-  return CLAPAY_TERMINAL_SUCCESS.has(s3) || CLAPAY_TERMINAL_FAILURE.has(s3);
-}
-function mapClapayStatusToDb(status) {
-  const s3 = status.toUpperCase();
+function normalizeClapayStatus(status) {
+  const s3 = status.trim().toUpperCase();
   if (CLAPAY_TERMINAL_SUCCESS.has(s3)) return "completed";
   if (CLAPAY_TERMINAL_FAILURE.has(s3)) return "failed";
   return "pending";
+}
+function isClapayTerminalStatus(status) {
+  return normalizeClapayStatus(status) !== "pending";
+}
+function mapClapayStatusToDb(status) {
+  return normalizeClapayStatus(status);
 }
 function serializeClapayMeta(meta) {
   return JSON.stringify(meta);
@@ -128949,40 +129066,21 @@ function isClapayDeposit(externalDepositId) {
 function extractClapayTransactionId(externalDepositId) {
   return externalDepositId.slice(CLAPAY_PREFIX.length);
 }
-var METHOD_TO_CLAPAY_OPERATOR, LOCAL_FORMAT_ONLY_COUNTRIES, KEEP_LEADING_ZERO_COUNTRIES, CLAPAY_TERMINAL_SUCCESS, CLAPAY_TERMINAL_FAILURE, ClapayClient, CLAPAY_PREFIX;
+var LOCAL_FORMAT_ONLY_COUNTRIES, KEEP_LEADING_ZERO_COUNTRIES, CLAPAY_TERMINAL_SUCCESS, CLAPAY_TERMINAL_FAILURE, ClapayClient, CLAPAY_PREFIX;
 var init_clapay = __esm({
   "src/lib/clapay.ts"() {
     "use strict";
     init_logger2();
-    METHOD_TO_CLAPAY_OPERATOR = {
-      orange: "OM",
-      "orange money": "OM",
-      mtn: "MTN",
-      "mtn money": "MTN",
-      wave: "WAVE",
-      moov: "MOOV",
-      "moov africa": "MOOV",
-      free: "FREE",
-      "free money": "FREE",
-      expresso: "EXPRESSO",
-      airtel: "AIRTEL",
-      "airtel money": "AIRTEL",
-      mpesa: "MPESA",
-      "m-pesa": "MPESA",
-      tmoney: "TMONEY",
-      flooz: "FLOOZ",
-      mvola: "MVOLA",
-      vodafone: "VODAFONE",
-      "mobile money": "MTN",
-      "mobile": "MTN"
-    };
     LOCAL_FORMAT_ONLY_COUNTRIES = /* @__PURE__ */ new Set(["CI", "BJ"]);
     KEEP_LEADING_ZERO_COUNTRIES = /* @__PURE__ */ new Set(["CI", "BJ"]);
-    CLAPAY_TERMINAL_SUCCESS = /* @__PURE__ */ new Set(["COMPLETED"]);
+    CLAPAY_TERMINAL_SUCCESS = /* @__PURE__ */ new Set(["SUCCESS", "SUCCESSFUL", "COMPLETED"]);
     CLAPAY_TERMINAL_FAILURE = /* @__PURE__ */ new Set([
       "FAILED",
       "CANCELLED",
+      "CANCELED",
       "REJECTED",
+      "REFUSED",
+      "DECLINED",
       "TIMEOUT",
       "EXPIRED"
     ]);
@@ -129042,16 +129140,33 @@ var init_clapay = __esm({
       }
       /**
        * Initiate a Mobile Money payment.
-       * Returns a signature (tracking ID) and optionally a payment_url for CHECKOUTPAGE tunnel.
+       * Returns the NoWallet signature and optional operator deep-link/OTP data.
        *
        * IMPORTANT:
        *  - amount must be a whole integer (floor before calling)
-       *  - operators_code takes codeoperator short codes (e.g. ["OM"], ["MTN"])
+       *  - operators_code contains exactly one codeoperator short code (e.g. ["OM"])
        *  - Store `signature` in transactions.gateway_meta — required for cancellation
        */
       async initiatePayment(params) {
         const safeParams = { ...params, amount: Math.floor(params.amount) };
         return this.request("/nowallet/api/init/payment", "POST", safeParams);
+      }
+      /** POST /nowallet/api/check/status/payment */
+      async checkPaymentStatus(signature) {
+        try {
+          const response = await this.request(
+            "/nowallet/api/check/status/payment",
+            "POST",
+            { signature }
+          );
+          const wrapped = response.data;
+          return wrapped ?? response;
+        } catch (error) {
+          if (error.code === "404") {
+            return { status: "UNKNOWN", signature };
+          }
+          throw error;
+        }
       }
       /**
        * Cancel a pending payment by signature.
@@ -129096,7 +129211,7 @@ var init_clapay = __esm({
       /**
        * Get available operators for a country.
        * Docs: GET /nowallet/api/operators/data — query param: "country"
-       * Returns operators with code.MERCHANT — this is what goes in operators_code[].
+       * Returns the dynamic operator catalogue including MERCHANT capability.
        */
       async getOperators(country) {
         const result = await this.request(
@@ -129115,34 +129230,21 @@ var init_clapay = __esm({
        * @param country  ISO alpha-2 country code (e.g. "CI", "CM")
        * @param methodSlug  e.g. "orange", "mtn", "wave"
        */
+      async resolveOperator(country, methodSlug) {
+        const operators = await this.getOperators(country);
+        const normalize4 = (value) => value.toLowerCase().replace(/[^a-z0-9]/g, "");
+        const slug = normalize4(methodSlug);
+        const eligible = operators.filter(
+          (op) => op.active && Boolean(op.codeoperator) && Boolean(op.code?.MERCHANT) && op.code.MERCHANT.toLowerCase() !== "none"
+        );
+        return eligible.find((op) => normalize4(op.codeoperator) === slug) ?? eligible.find((op) => {
+          const code = normalize4(op.codeoperator);
+          const name3 = normalize4(op.name);
+          return slug === name3 || slug.includes(name3) || name3.includes(slug) || code.length > 2 && (slug.startsWith(code) || slug.endsWith(code));
+        }) ?? null;
+      }
       async resolveOperatorCode(country, methodSlug) {
-        try {
-          const operators = await this.getOperators(country);
-          const slug = methodSlug.toLowerCase();
-          const merchantCode = (op) => op.code?.MERCHANT && op.code.MERCHANT !== "none" ? op.code.MERCHANT : op.codeoperator;
-          const exactMatch = operators.find(
-            (op) => op.active && op.codeoperator.toLowerCase() === slug
-          );
-          if (exactMatch) return merchantCode(exactMatch);
-          const nameMatch = operators.find(
-            (op) => op.active && (op.name.toLowerCase().includes(slug) || slug.includes(op.codeoperator.toLowerCase()) || op.codeoperator.toLowerCase().includes(slug))
-          );
-          if (nameMatch) return merchantCode(nameMatch);
-          for (const [keyword, codeop] of Object.entries(METHOD_TO_CLAPAY_OPERATOR)) {
-            if (slug.includes(keyword) || keyword.includes(slug)) {
-              const kwMatch = operators.find(
-                (op) => op.active && op.codeoperator === codeop
-              );
-              if (kwMatch) return merchantCode(kwMatch);
-            }
-          }
-          logger.warn(
-            `[Clapay] No operator match for "${methodSlug}" in ${country}. Available: ${operators.map((o2) => `${o2.codeoperator}(${o2.name}) merchant=${o2.code?.MERCHANT}`).join(", ")}`
-          );
-        } catch (e3) {
-          logger.warn({ err: e3.message }, "[Clapay] resolveOperatorCode fetch failed \u2014 falling back to hardcoded map");
-        }
-        return getOperatorCodeForMethod(methodSlug);
+        return (await this.resolveOperator(country, methodSlug))?.codeoperator ?? null;
       }
       /**
        * Get transaction fees for a country.
@@ -129171,78 +129273,18 @@ var init_clapay = __esm({
         return Array.isArray(result) ? result : [result];
       }
       /**
-       * Initiate a cashout (merchant → mobile money recipient).
-       * Uses the same init endpoint as payments but with method: "CASHOUT"
-       * and the operator's code.CASHOUT value.
+       * Initiate a merchant payout (merchant → mobile money recipient).
+       * NoWallet routes payouts through init/payment with method CASHIN, API
+       * tunnel, and the catalogue operator's short codeoperator value.
        *
        * @param params ClapayCashoutRequest
        */
       async initiateCashout(params) {
         const safeParams = { ...params, amount: Math.floor(params.amount) };
-        return this.request("/nowallet/api/init/cashout", "POST", safeParams);
+        return this.request("/nowallet/api/init/payment", "POST", safeParams);
       }
     };
     CLAPAY_PREFIX = "clapay:";
-  }
-});
-
-// src/lib/gateway-credentials.ts
-var gateway_credentials_exports = {};
-__export(gateway_credentials_exports, {
-  resolveClapayCredentials: () => resolveClapayCredentials,
-  resolvePawaPayCredentials: () => resolvePawaPayCredentials
-});
-async function resolvePawaPayCredentials(routeApiKey) {
-  let token2 = routeApiKey?.trim() || null;
-  let env = null;
-  if (!token2) {
-    try {
-      const rows = await db.select().from(systemSettingsTable).where(eq(systemSettingsTable.key, "pawapay_api_token")).limit(1);
-      token2 = rows[0]?.value?.trim() || null;
-    } catch {
-    }
-  }
-  try {
-    const envRows = await db.select().from(systemSettingsTable).where(eq(systemSettingsTable.key, "pawapay_env")).limit(1);
-    const dbEnv = envRows[0]?.value?.trim().toLowerCase();
-    if (dbEnv === "sandbox" || dbEnv === "production") env = dbEnv;
-  } catch {
-  }
-  if (!token2) token2 = process.env.PAWAPAY_API_TOKEN?.trim() || null;
-  if (!env) {
-    const rawEnvVar = process.env.PAWAPAY_ENV?.trim().toLowerCase();
-    env = rawEnvVar === "production" ? "production" : "sandbox";
-  }
-  if (!token2) return null;
-  return { token: token2, env };
-}
-async function resolveClapayCredentials(routeApiKey, routeApiUrl) {
-  let token2 = routeApiKey?.trim() || null;
-  let baseUrl2 = routeApiUrl?.trim() || null;
-  if (!token2) {
-    try {
-      const rows = await db.select().from(systemSettingsTable).where(eq(systemSettingsTable.key, "clapay_api_token")).limit(1);
-      token2 = rows[0]?.value?.trim() || null;
-    } catch {
-    }
-  }
-  if (!baseUrl2) {
-    try {
-      const urlRows = await db.select().from(systemSettingsTable).where(eq(systemSettingsTable.key, "clapay_base_url")).limit(1);
-      baseUrl2 = urlRows[0]?.value?.trim() || null;
-    } catch {
-    }
-  }
-  if (!token2) token2 = process.env.CLAPAY_API_TOKEN?.trim() || null;
-  if (!baseUrl2) baseUrl2 = process.env.CLAPAY_BASE_URL?.trim() || null;
-  if (!token2) return null;
-  return { token: token2, baseUrl: baseUrl2 ?? void 0 };
-}
-var init_gateway_credentials = __esm({
-  "src/lib/gateway-credentials.ts"() {
-    "use strict";
-    init_drizzle_orm();
-    init_src();
   }
 });
 
@@ -129568,9 +129610,9 @@ async function syncFiveSimProducts(triggeredBy = "scheduler") {
         AND ABS(price::numeric - ROUND(provider_price::numeric * (1.0 + margin::numeric / 100.0))) > 10
     `);
     const [{ existingCount }] = await db.select({ existingCount: sql`count(*)::int` }).from(servicesTable);
-    const BATCH_SIZE = 100;
-    for (let i2 = 0; i2 < productList.length; i2 += BATCH_SIZE) {
-      const batch = productList.slice(i2, i2 + BATCH_SIZE);
+    const BATCH_SIZE4 = 100;
+    for (let i2 = 0; i2 < productList.length; i2 += BATCH_SIZE4) {
+      const batch = productList.slice(i2, i2 + BATCH_SIZE4);
       const rows = batch.map(([slug, info]) => {
         const priceInFcfa = Math.round(info.price * eurRate);
         const priceWithMarkup = Math.round(priceInFcfa * (1 + markup / 100));
@@ -135550,16 +135592,37 @@ var RechargeWalletBody = objectType({
   methodSlug: stringType(),
   phoneNumber: stringType().optional(),
   countryCode: stringType().optional(),
-  dialCode: stringType().optional()
+  dialCode: stringType().optional(),
+  currencyCode: stringType().optional(),
+  operatorOtp: stringType().optional()
 });
-var RechargeWalletResponse = objectType({
+var RechargeResponse = objectType({
   id: stringType(),
   type: enumType(["recharge", "purchase", "refund"]),
   amount: numberType(),
   status: enumType(["pending", "completed", "failed"]),
   method: stringType().optional(),
   description: stringType().optional(),
+  externalDepositId: stringType().optional(),
+  pending: booleanType().optional(),
+  depositId: stringType().optional(),
+  gateway: stringType().optional(),
+  paymentMode: enumType(["API"]).optional(),
+  payment_url: stringType().nullish(),
+  operatorPaymentUrl: stringType().nullish(),
+  paymentOtp: stringType().nullish(),
+  message: stringType().nullish(),
   createdAt: coerce.date()
+});
+var GetWalletPaymentOptionsParams = objectType({
+  countryCode: stringType(),
+  methodSlug: stringType()
+});
+var GetWalletPaymentOptionsResponse = objectType({
+  gateway: stringType(),
+  requiresOtp: booleanType(),
+  instruction: stringType().nullable(),
+  operatorCode: stringType().nullable()
 });
 var ListTransactionsResponseItem = objectType({
   id: stringType(),
@@ -135568,6 +135631,15 @@ var ListTransactionsResponseItem = objectType({
   status: enumType(["pending", "completed", "failed"]),
   method: stringType().optional(),
   description: stringType().optional(),
+  externalDepositId: stringType().optional(),
+  pending: booleanType().optional(),
+  depositId: stringType().optional(),
+  gateway: stringType().optional(),
+  paymentMode: enumType(["API"]).optional(),
+  payment_url: stringType().nullish(),
+  operatorPaymentUrl: stringType().nullish(),
+  paymentOtp: stringType().nullish(),
+  message: stringType().nullish(),
   createdAt: coerce.date()
 });
 var ListTransactionsResponse = arrayType(ListTransactionsResponseItem);
@@ -153585,8 +153657,8 @@ var AutomationRuns = class {
     const queryString = buildPaginationQuery(options);
     const searchParams = new URLSearchParams(queryString);
     if (options.status) {
-      const statusValue = Array.isArray(options.status) ? options.status.join(",") : options.status;
-      searchParams.set("status", statusValue);
+      const statusValue2 = Array.isArray(options.status) ? options.status.join(",") : options.status;
+      searchParams.set("status", statusValue2);
     }
     const qs2 = searchParams.toString();
     const url2 = qs2 ? `/automations/${options.automationId}/runs?${qs2}` : `/automations/${options.automationId}/runs`;
@@ -157982,7 +158054,439 @@ var import_express11 = __toESM(require_express2(), 1);
 init_drizzle_orm();
 init_src();
 init_pawapay();
+
+// src/lib/pawapay-settlement.ts
+init_drizzle_orm();
+init_src();
+init_pawapay();
+init_gateway_credentials();
+function parsePawaPayMeta(value) {
+  if (typeof value !== "string" || !value) return {};
+  try {
+    const parsed = JSON.parse(value);
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return {};
+    const meta = parsed;
+    return {
+      ...meta,
+      expectedAmount: meta.expectedAmount ?? (typeof meta.amount === "string" || typeof meta.amount === "number" ? meta.amount : void 0),
+      expectedCurrency: meta.expectedCurrency ?? (typeof meta.currency === "string" ? meta.currency : void 0),
+      expectedProvider: meta.expectedProvider ?? (typeof meta.provider === "string" ? meta.provider : void 0),
+      expectedPhoneNumber: meta.expectedPhoneNumber ?? (typeof meta.phoneNumber === "string" ? meta.phoneNumber : void 0),
+      expectedCountry: meta.expectedCountry ?? (typeof meta.country === "string" ? meta.country : void 0)
+    };
+  } catch {
+    return {};
+  }
+}
+function normalizePawaPayExpected(deposit, fx) {
+  const meta = parsePawaPayMeta(deposit.gatewayMeta);
+  const hasAmount = meta.expectedAmount !== void 0 && meta.expectedAmount !== null;
+  const legacyFxAmount = fx ? Number(fx.localAmount) : void 0;
+  const amount = hasAmount ? Number(meta.expectedAmount) : legacyFxAmount !== void 0 && Number.isFinite(legacyFxAmount) ? legacyFxAmount : Number(deposit.amount);
+  if (!Number.isFinite(amount) || amount <= 0) return null;
+  const fxCurrency = fx?.currency?.trim().toUpperCase();
+  const expectedCurrency = String(meta.expectedCurrency ?? fxCurrency ?? "").trim().toUpperCase() || void 0;
+  const expectedCountry = String(meta.expectedCountry ?? "").trim().toUpperCase() || void 0;
+  const expectedProvider = String(meta.expectedProvider ?? "").trim().toUpperCase() || void 0;
+  const expectedPhone = String(meta.expectedPhoneNumber ?? "").replace(/\D/g, "") || void 0;
+  return {
+    amount,
+    currency: expectedCurrency,
+    provider: expectedProvider,
+    phoneNumber: expectedPhone,
+    country: expectedCountry,
+    // New deposits store the complete expected tuple before initiation. Older rows
+    // lack this trusted evidence; validate every value they do contain.
+    requireAllEvidence: hasAmount && Boolean(expectedCurrency && expectedProvider && expectedPhone && expectedCountry)
+  };
+}
+function readRemoteIdentity(data) {
+  return {
+    depositId: String(data.depositId ?? ""),
+    amount: Number(data.amount),
+    currency: String(data.currency ?? "").trim().toUpperCase(),
+    country: String(data.country ?? "").trim().toUpperCase(),
+    provider: String(data.payer?.accountDetails?.provider ?? "").trim().toUpperCase(),
+    phoneNumber: String(data.payer?.accountDetails?.phoneNumber ?? "").replace(/\D/g, "")
+  };
+}
+function pawaPayStatusMatches(externalDepositId, expected, data) {
+  const remote = readRemoteIdentity(data);
+  if (remote.depositId !== externalDepositId || !Number.isFinite(remote.amount) || remote.amount !== expected.amount) {
+    return false;
+  }
+  const checks = [
+    [expected.currency, remote.currency, (a, b3) => a === b3],
+    [expected.provider, remote.provider, (a, b3) => a === b3],
+    [expected.phoneNumber, remote.phoneNumber, (a, b3) => a === b3],
+    [expected.country, remote.country, (a, b3) => {
+      if (a === b3) return true;
+      const alpha3 = ISO2_TO_ISO3[a];
+      return alpha3 === b3;
+    }]
+  ];
+  for (const [wanted, actual, equal] of checks) {
+    if (wanted && (!actual || !equal(wanted, actual))) return false;
+  }
+  if (expected.requireAllEvidence && checks.some(([wanted, actual]) => Boolean(wanted) && !actual)) return false;
+  return true;
+}
+async function getFxExpectedAmount(database, transactionId) {
+  const [fx] = await database.select({
+    currency: fxProfitsTable.currency,
+    localAmount: fxProfitsTable.localAmount
+  }).from(fxProfitsTable).where(eq(fxProfitsTable.transactionId, transactionId)).orderBy(desc(fxProfitsTable.createdAt)).limit(1);
+  return fx ?? void 0;
+}
+function makePawaPayGatewayMeta(input) {
+  const country = input.countryCode.trim().toUpperCase();
+  return JSON.stringify({
+    expectedAmount: String(input.amount),
+    expectedCurrency: input.currency.trim().toUpperCase(),
+    expectedProvider: input.provider.trim().toUpperCase(),
+    expectedPhoneNumber: input.phoneNumber.replace(/\D/g, ""),
+    expectedCountry: ISO2_TO_ISO3[country] ?? country,
+    gatewayConfigId: input.gatewayConfigId ?? null
+  });
+}
+async function getPawaPayClientForDeposit(deposit, database = db) {
+  const gatewayConfigId = parsePawaPayMeta(deposit.gatewayMeta).gatewayConfigId;
+  if (gatewayConfigId) {
+    const [gateway] = await database.select({
+      id: paymentGatewaysTable.id,
+      slug: paymentGatewaysTable.slug,
+      apiKey: paymentGatewaysTable.apiKey,
+      active: paymentGatewaysTable.active
+    }).from(paymentGatewaysTable).where(eq(paymentGatewaysTable.id, gatewayConfigId)).limit(1);
+    if (!gateway || !gateway.active || !gateway.slug.toLowerCase().includes("pawapay") || !gateway.apiKey?.trim()) {
+      return null;
+    }
+    const credentials2 = await resolvePawaPayCredentials(gateway.apiKey);
+    return credentials2 ? new PawaPayClient(credentials2.token, credentials2.env) : null;
+  }
+  const credentials = await resolvePawaPayCredentials();
+  return credentials ? new PawaPayClient(credentials.token, credentials.env) : null;
+}
+async function settleVerifiedPawaPayDeposit(externalDepositId, data, database = db) {
+  return database.transaction(async (tx) => {
+    const [deposit] = await tx.select().from(transactionsTable).where(and(
+      eq(transactionsTable.externalDepositId, externalDepositId),
+      eq(transactionsTable.type, "recharge")
+    )).for("update");
+    if (!deposit || deposit.status !== "pending") {
+      return { settled: false, failed: false, ignored: true };
+    }
+    const fx = await getFxExpectedAmount(tx, deposit.id);
+    const expected = normalizePawaPayExpected(deposit, fx);
+    if (!expected || !pawaPayStatusMatches(externalDepositId, expected, data)) {
+      return { settled: false, failed: false, ignored: true };
+    }
+    if (data.status !== "COMPLETED" && data.status !== "FAILED") {
+      return { settled: false, failed: false, ignored: false };
+    }
+    const finalStatus = data.status === "COMPLETED" ? "completed" : "failed";
+    const [updated] = await tx.update(transactionsTable).set({ status: finalStatus }).where(and(
+      eq(transactionsTable.id, deposit.id),
+      eq(transactionsTable.status, "pending")
+    )).returning({ id: transactionsTable.id });
+    if (!updated) return { settled: false, failed: false, ignored: true };
+    if (finalStatus === "completed") {
+      await tx.update(usersTable).set({ balance: sql`${usersTable.balance} + ${deposit.amount}` }).where(eq(usersTable.id, deposit.userId));
+      await tx.update(fxProfitsTable).set({ status: "completed" }).where(eq(fxProfitsTable.transactionId, deposit.id));
+      return {
+        settled: true,
+        failed: false,
+        ignored: false,
+        transactionId: deposit.id,
+        userId: deposit.userId,
+        amount: deposit.amount
+      };
+    }
+    await tx.update(fxProfitsTable).set({ status: "failed" }).where(eq(fxProfitsTable.transactionId, deposit.id));
+    return { settled: false, failed: true, ignored: false, transactionId: deposit.id };
+  });
+}
+async function failPawaPayDeposit(externalDepositId, database = db) {
+  return database.transaction(async (tx) => {
+    const [deposit] = await tx.select().from(transactionsTable).where(and(
+      eq(transactionsTable.externalDepositId, externalDepositId),
+      eq(transactionsTable.type, "recharge")
+    )).for("update");
+    if (!deposit || deposit.status !== "pending") return false;
+    const [failed] = await tx.update(transactionsTable).set({ status: "failed" }).where(and(
+      eq(transactionsTable.id, deposit.id),
+      eq(transactionsTable.status, "pending")
+    )).returning({ id: transactionsTable.id });
+    if (!failed) return false;
+    await tx.update(fxProfitsTable).set({ status: "failed" }).where(eq(fxProfitsTable.transactionId, deposit.id));
+    return true;
+  });
+}
+async function verifyAndSettlePawaPayDeposit(externalDepositId, client, database = db) {
+  const result = await client.getDepositStatus(externalDepositId);
+  if (result.status !== "FOUND" || !result.data) {
+    return { settled: false, failed: false, ignored: false };
+  }
+  return settleVerifiedPawaPayDeposit(externalDepositId, result.data, database);
+}
+
+// src/lib/wallet-deposit.ts
+init_src();
+function isValidClapayLocalAmount(amount) {
+  return Number.isFinite(amount) && amount > 0 && Number.isInteger(amount);
+}
+async function createPendingDepositWithFx(transaction, fxProfit, database = db) {
+  return database.transaction(async (tx) => {
+    const [deposit] = await tx.insert(transactionsTable).values(transaction).returning();
+    if (!deposit) throw new Error("Pending deposit transaction was not created");
+    if (fxProfit) {
+      await tx.insert(fxProfitsTable).values({ ...fxProfit, transactionId: deposit.id });
+    }
+    return deposit;
+  });
+}
+
+// src/routes/wallet.ts
 init_clapay();
+
+// src/lib/clapay-settlement.ts
+init_drizzle_orm();
+init_src();
+init_clapay();
+var STATUS_CACHE_MS = 3e3;
+var STATUS_CACHE_MAX_ENTRIES = 1e3;
+var statusInFlight = /* @__PURE__ */ new Map();
+var statusCache = /* @__PURE__ */ new Map();
+function normalizeClapayMetaFromStoredDeposit(deposit, source, fxAmount) {
+  const externalDepositId = deposit.externalDepositId ?? "";
+  if (!externalDepositId.startsWith("clapay:") || !source.clapaySignature) return null;
+  const trackingId = externalDepositId.slice("clapay:".length);
+  if (!trackingId || source.trackingId && source.trackingId !== trackingId) return null;
+  if (source.method && source.method !== "MERCHANT") return null;
+  const country = String(source.clapayCountry ?? "").trim().toUpperCase();
+  if (!country) return null;
+  const storedCurrency = String(source.clapayCurrency ?? "").trim().toUpperCase();
+  let currency;
+  let localAmount;
+  if (storedCurrency === "XOF" || storedCurrency === "XAF") {
+    currency = storedCurrency;
+    localAmount = source.localAmount === void 0 ? Number(deposit.amount) : Number(source.localAmount);
+  } else {
+    if (!fxAmount) return null;
+    currency = String(fxAmount.currency).trim().toUpperCase();
+    localAmount = Math.floor(Number(fxAmount.localAmount));
+    if (!currency || storedCurrency && storedCurrency !== currency) return null;
+    if (source.localAmount !== void 0 && Number(source.localAmount) !== localAmount) return null;
+  }
+  if (!Number.isFinite(localAmount) || localAmount <= 0) return null;
+  const createdAt = deposit.createdAt instanceof Date ? deposit.createdAt : new Date(deposit.createdAt);
+  const initiatedAt = source.initiatedAt ?? (Number.isNaN(createdAt.getTime()) ? "" : createdAt.toISOString());
+  if (!initiatedAt) return null;
+  return {
+    ...source,
+    clapaySignature: source.clapaySignature,
+    clapayCurrency: currency,
+    clapayCountry: country,
+    localAmount,
+    operatorCode: source.operatorCode,
+    trackingId,
+    method: "MERCHANT",
+    initiatedAt
+  };
+}
+function mergeClapayGatewayMeta(current, incoming) {
+  if (current.clapaySignature && incoming.clapaySignature && current.clapaySignature !== incoming.clapaySignature) return null;
+  const merged = { ...current };
+  for (const [key, value] of Object.entries(incoming)) {
+    if (value !== void 0 && value !== null) {
+      merged[key] = value;
+    }
+  }
+  return merged;
+}
+async function loadStoredClapayContext(externalDepositId, incoming = {}, database = db) {
+  const [deposit] = await database.select().from(transactionsTable).where(and(
+    eq(transactionsTable.externalDepositId, externalDepositId),
+    eq(transactionsTable.type, "recharge")
+  )).limit(1);
+  if (!deposit || deposit.status !== "pending") return null;
+  const current = parseClapayMeta(deposit.gatewayMeta);
+  if (!current) return null;
+  const merged = mergeClapayGatewayMeta(current, incoming);
+  if (!merged) return null;
+  let fxAmount;
+  const currency = String(merged.clapayCurrency ?? "").toUpperCase();
+  if (currency !== "XOF" && currency !== "XAF") {
+    const [fx] = await database.select({
+      currency: fxProfitsTable.currency,
+      localAmount: fxProfitsTable.localAmount
+    }).from(fxProfitsTable).where(eq(fxProfitsTable.transactionId, deposit.id)).orderBy(desc(fxProfitsTable.createdAt)).limit(1);
+    if (fx) fxAmount = fx;
+  }
+  const meta = normalizeClapayMetaFromStoredDeposit(deposit, merged, fxAmount);
+  return meta ? { deposit, meta } : null;
+}
+async function getClapayDepositMeta(externalDepositId, incoming = {}) {
+  return loadStoredClapayContext(externalDepositId, incoming);
+}
+async function persistClapayDepositMeta(externalDepositId, incoming = {}) {
+  for (let attempt = 0; attempt < 4; attempt++) {
+    const context = await loadStoredClapayContext(externalDepositId, incoming);
+    if (!context) return null;
+    const serialized = JSON.stringify(context.meta);
+    if (context.deposit.gatewayMeta === serialized) return context.meta;
+    const [updated] = await db.update(transactionsTable).set({ gatewayMeta: serialized }).where(and(
+      eq(transactionsTable.id, context.deposit.id),
+      eq(transactionsTable.externalDepositId, externalDepositId),
+      eq(transactionsTable.status, "pending"),
+      context.deposit.gatewayMeta === null ? isNull(transactionsTable.gatewayMeta) : eq(transactionsTable.gatewayMeta, context.deposit.gatewayMeta)
+    )).returning({ id: transactionsTable.id });
+    if (updated) return context.meta;
+  }
+  return null;
+}
+async function queryClapayStatus(client, signature, force = false) {
+  const now = Date.now();
+  for (const [cachedSignature, cachedStatus] of statusCache) {
+    if (now - cachedStatus.at >= 6e4) statusCache.delete(cachedSignature);
+  }
+  const cached = statusCache.get(signature);
+  if (!force && cached && now - cached.at < STATUS_CACHE_MS) return cached.value;
+  const pending = statusInFlight.get(signature);
+  if (pending) return pending;
+  const request = client.checkPaymentStatus(signature).then((value) => {
+    statusCache.set(signature, { at: Date.now(), value });
+    while (statusCache.size > STATUS_CACHE_MAX_ENTRIES) {
+      statusCache.delete(statusCache.keys().next().value);
+    }
+    return value;
+  }).finally(() => statusInFlight.delete(signature));
+  statusInFlight.set(signature, request);
+  return request;
+}
+function statusValue(status, ...keys) {
+  for (const key of keys) {
+    if (status[key] !== void 0 && status[key] !== null) return status[key];
+  }
+  return void 0;
+}
+function validateClapayStatus(status, meta, trackingId) {
+  const responseStatus = String(status.status ?? status.status_payment ?? "UNKNOWN").trim().toUpperCase();
+  const normalized = normalizeClapayStatus(responseStatus);
+  if (responseStatus === "UNKNOWN" || responseStatus === "NOT_FOUND") {
+    return { status: "pending", responseStatus };
+  }
+  const transactionId = statusValue(status, "transaction_id", "transactionId");
+  const signature = statusValue(status, "signature");
+  if (String(signature ?? "") !== meta.clapaySignature || String(transactionId ?? "") !== trackingId) {
+    throw new Error("Clapay status response does not match the stored payment");
+  }
+  const amountValue = statusValue(status, "amount");
+  const currencyValue = statusValue(status, "currency");
+  const methodValue = statusValue(status, "method", "transaction_method");
+  const countryValue = statusValue(status, "country", "transaction_country_code");
+  const amount = Number(amountValue);
+  const currency = String(currencyValue ?? "").toUpperCase();
+  const method = String(methodValue ?? "").toUpperCase();
+  const country = String(countryValue ?? "").toUpperCase();
+  if (normalized === "pending") {
+    if (amountValue !== void 0 && (!Number.isFinite(amount) || amount !== Number(meta.localAmount)) || currencyValue !== void 0 && currency !== meta.clapayCurrency.toUpperCase() || methodValue !== void 0 && method !== "MERCHANT" || countryValue !== void 0 && country !== meta.clapayCountry.toUpperCase()) {
+      throw new Error("Clapay status response does not match the stored payment");
+    }
+    return { status: "pending", responseStatus };
+  }
+  if (!Number.isFinite(amount) || amount !== Number(meta.localAmount) || currency !== meta.clapayCurrency.toUpperCase() || method !== "MERCHANT" || country !== meta.clapayCountry.toUpperCase()) {
+    throw new Error("Clapay status response does not match the stored payment");
+  }
+  return { status: normalized, responseStatus };
+}
+async function getVerifiedClapayStatus(client, meta, trackingId, force = false) {
+  if (!meta.clapaySignature) return null;
+  const result = await queryClapayStatus(client, meta.clapaySignature, force);
+  const responseStatus = String(result.status ?? result.status_payment ?? "").toUpperCase();
+  if (responseStatus === "UNKNOWN" || responseStatus === "NOT_FOUND") return null;
+  return validateClapayStatus(result, meta, trackingId);
+}
+function getClapayActionFields(meta) {
+  return {
+    gateway: "clapay",
+    paymentMode: "API",
+    payment_url: null,
+    operatorPaymentUrl: meta?.operatorPaymentUrl ?? null,
+    paymentOtp: meta?.paymentOtp ?? null,
+    message: meta?.message ?? null
+  };
+}
+async function settleVerifiedClapayDeposit(externalDepositId, database = db) {
+  return database.transaction(async (tx) => {
+    const [deposit] = await tx.select().from(transactionsTable).where(and(
+      eq(transactionsTable.externalDepositId, externalDepositId),
+      eq(transactionsTable.type, "recharge")
+    )).for("update");
+    if (!deposit || deposit.status !== "pending" || !deposit.externalDepositId?.startsWith("clapay:")) {
+      return { settled: false };
+    }
+    const stored = parseClapayMeta(deposit.gatewayMeta);
+    if (!stored) {
+      return { settled: false };
+    }
+    let fxAmount;
+    const currency = String(stored.clapayCurrency ?? "").toUpperCase();
+    if (currency !== "XOF" && currency !== "XAF") {
+      const [fx] = await tx.select({
+        currency: fxProfitsTable.currency,
+        localAmount: fxProfitsTable.localAmount
+      }).from(fxProfitsTable).where(eq(fxProfitsTable.transactionId, deposit.id)).orderBy(desc(fxProfitsTable.createdAt)).limit(1);
+      if (fx) fxAmount = fx;
+    }
+    const meta = normalizeClapayMetaFromStoredDeposit(deposit, stored, fxAmount);
+    if (!meta) return { settled: false };
+    const normalizedGatewayMeta = JSON.stringify(meta);
+    if (deposit.gatewayMeta !== normalizedGatewayMeta) {
+      const [upgraded] = await tx.update(transactionsTable).set({ gatewayMeta: normalizedGatewayMeta }).where(and(
+        eq(transactionsTable.id, deposit.id),
+        eq(transactionsTable.status, "pending"),
+        deposit.gatewayMeta === null ? isNull(transactionsTable.gatewayMeta) : eq(transactionsTable.gatewayMeta, deposit.gatewayMeta)
+      )).returning({ id: transactionsTable.id });
+      if (!upgraded) return { settled: false };
+    }
+    const [completed] = await tx.update(transactionsTable).set({ status: "completed" }).where(and(
+      eq(transactionsTable.id, deposit.id),
+      eq(transactionsTable.status, "pending"),
+      like(transactionsTable.externalDepositId, "clapay:%")
+    )).returning({ id: transactionsTable.id });
+    if (!completed) return { settled: false };
+    await tx.update(usersTable).set({ balance: sql`${usersTable.balance} + ${deposit.amount}` }).where(eq(usersTable.id, deposit.userId));
+    await tx.update(fxProfitsTable).set({ status: "completed" }).where(eq(fxProfitsTable.transactionId, deposit.id));
+    return {
+      settled: true,
+      transactionId: deposit.id,
+      userId: deposit.userId,
+      amount: deposit.amount
+    };
+  });
+}
+async function failClapayDeposit(externalDepositId, database = db) {
+  return database.transaction(async (tx) => {
+    const [deposit] = await tx.select().from(transactionsTable).where(and(
+      eq(transactionsTable.externalDepositId, externalDepositId),
+      eq(transactionsTable.type, "recharge"),
+      eq(transactionsTable.status, "pending"),
+      like(transactionsTable.externalDepositId, "clapay:%")
+    )).for("update");
+    if (!deposit) return false;
+    const [failed] = await tx.update(transactionsTable).set({ status: "failed" }).where(and(
+      eq(transactionsTable.id, deposit.id),
+      eq(transactionsTable.status, "pending"),
+      like(transactionsTable.externalDepositId, "clapay:%")
+    )).returning({ id: transactionsTable.id });
+    if (!failed) return false;
+    await tx.update(fxProfitsTable).set({ status: "failed" }).where(eq(fxProfitsTable.transactionId, deposit.id));
+    return true;
+  });
+}
+
+// src/routes/wallet.ts
 init_logger2();
 
 // src/lib/payment-router.ts
@@ -158926,15 +159430,21 @@ async function resolveOperatorSlugFromDb(methodSlug) {
   }
   return null;
 }
+var GatewayRouteUnavailableError = class extends Error {
+  constructor(message) {
+    super(message);
+    this.name = "GatewayRouteUnavailableError";
+  }
+};
 async function buildPawaPayClient(route) {
   const creds = await resolvePawaPayCredentials(route.apiKey);
   if (!creds) return null;
   return new PawaPayClient(creds.token, creds.env);
 }
 async function buildClapayClient(route) {
-  const creds = await resolveClapayCredentials(route.apiKey, route.apiUrl);
-  if (!creds) return null;
-  return new ClapayClient(creds.token, creds.baseUrl);
+  const token2 = route.apiKey?.trim();
+  if (!token2) return null;
+  return new ClapayClient(token2, route.apiUrl ?? void 0);
 }
 async function resolveGateway(countryCode, methodSlug, _amount) {
   const country = countryCode.toUpperCase();
@@ -158956,18 +159466,32 @@ async function resolveGateway(countryCode, methodSlug, _amount) {
       logger.warn({ routeId: route.routeId }, "[PaymentRouter] PawaPay route found but no API token available");
       return null;
     }
-    return { type: "pawapay", client, gatewaySlug: route.gatewaySlug, gatewayName: route.gatewayName, routeId: route.routeId, priority: route.priority };
+    return { type: "pawapay", client, gatewayId: route.gatewayId, gatewaySlug: route.gatewaySlug, gatewayName: route.gatewayName, routeId: route.routeId, priority: route.priority };
   }
   if (slug.includes("clapay") || slug === "clapay") {
     const client = await buildClapayClient(route);
     if (!client) {
       logger.warn({ routeId: route.routeId }, "[PaymentRouter] Clapay route found but no API token available");
-      return null;
+      throw new GatewayRouteUnavailableError("La passerelle Clapay s\xE9lectionn\xE9e ne poss\xE8de pas de cl\xE9 API d\xE9di\xE9e.");
     }
-    return { type: "clapay", client, gatewaySlug: route.gatewaySlug, gatewayName: route.gatewayName, routeId: route.routeId, priority: route.priority };
+    return { type: "clapay", client, gatewayId: route.gatewayId, gatewaySlug: route.gatewaySlug, gatewayName: route.gatewayName, routeId: route.routeId, priority: route.priority };
   }
   logger.warn({ gatewaySlug: route.gatewaySlug }, "[PaymentRouter] Unknown gateway slug \u2014 cannot build client");
-  return null;
+  throw new GatewayRouteUnavailableError("La passerelle s\xE9lectionn\xE9e n'est pas prise en charge.");
+}
+
+// src/lib/wallet-payment-classification.ts
+function normalize3(value) {
+  return value.toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+function matchesMobileOperatorMethod(methodSlug, methodName, operatorSlug, operatorName) {
+  const slug = normalize3(methodSlug);
+  const name3 = normalize3(methodName);
+  const operatorSlugNormalized = normalize3(operatorSlug);
+  const operatorNameNormalized = normalize3(operatorName);
+  const slugTokens = methodSlug.toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
+  const nameTokens = methodName.toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
+  return slug === operatorSlugNormalized || name3 === operatorNameNormalized || slug === operatorNameNormalized || name3 === operatorSlugNormalized || slugTokens.includes(operatorSlug.toLowerCase()) || nameTokens.includes(operatorSlug.toLowerCase()) || operatorNameNormalized.length > 3 && (slug.includes(operatorNameNormalized) || name3.includes(operatorNameNormalized));
 }
 
 // src/routes/wallet.ts
@@ -159021,8 +159545,8 @@ async function getPawaPayClient() {
   if (!creds) return null;
   return { client: new PawaPayClient(creds.token, creds.env), env: creds.env };
 }
-async function getClapayClient() {
-  const creds = await resolveClapayCredentials();
+async function getClapayClient(gatewayConfigId) {
+  const creds = gatewayConfigId ? await resolveClapayGatewayCredentials(gatewayConfigId) : await resolveClapayCredentials();
   if (!creds) return null;
   return { client: new ClapayClient(creds.token, creds.baseUrl) };
 }
@@ -159032,20 +159556,84 @@ async function getGatewayPreference() {
   const rows = await db.select().from(systemSettingsTable).where(eq(systemSettingsTable.key, "mobile_money_gateway")).limit(1);
   return rows[0]?.value ?? "pawapay";
 }
+async function resolveWalletGateway(countryCode, methodSlug, amountXof) {
+  let pawaPayCtx = null;
+  let clapayCtx = null;
+  let gatewayConfigId = null;
+  let gateway = null;
+  let routingSource = "legacy";
+  let dynamicRoute;
+  try {
+    dynamicRoute = await resolveGateway(countryCode, methodSlug, amountXof);
+  } catch (error) {
+    if (!(error instanceof GatewayRouteUnavailableError)) throw error;
+    return {
+      gateway: null,
+      pawaPayCtx: null,
+      clapayCtx: null,
+      gatewayConfigId: null,
+      routingSource: "dynamic",
+      unavailableReason: error.message
+    };
+  }
+  if (dynamicRoute) {
+    routingSource = "dynamic";
+    if (dynamicRoute.type === "pawapay") {
+      pawaPayCtx = { client: dynamicRoute.client, env: process.env.PAWAPAY_ENV ?? "sandbox" };
+      gateway = "pawapay";
+    } else {
+      clapayCtx = { client: dynamicRoute.client };
+      gateway = "clapay";
+    }
+    gatewayConfigId = dynamicRoute.gatewayId;
+  }
+  if (!gateway) {
+    const gatewayPref = await getGatewayPreference();
+    const isAuto = gatewayPref.startsWith("auto_");
+    const legacyPawaPay = gatewayPref === "pawapay" || isAuto ? await getPawaPayClient() : null;
+    const legacyClapay = gatewayPref === "clapay" || isAuto ? await getClapayClient() : null;
+    if (gatewayPref === "pawapay") gateway = legacyPawaPay ? "pawapay" : null;
+    else if (gatewayPref === "clapay") gateway = legacyClapay ? "clapay" : null;
+    else if (gatewayPref === "auto_pawapay_first") gateway = legacyPawaPay ? "pawapay" : legacyClapay ? "clapay" : null;
+    else if (gatewayPref === "auto_clapay_first") gateway = legacyClapay ? "clapay" : legacyPawaPay ? "pawapay" : null;
+    if (gateway === "pawapay") pawaPayCtx = legacyPawaPay;
+    if (gateway === "clapay") clapayCtx = legacyClapay;
+  }
+  return { gateway, pawaPayCtx, clapayCtx, gatewayConfigId, routingSource, unavailableReason: null };
+}
+function serializeWalletTransaction(tx) {
+  const base = toTransaction(tx);
+  if (!isClapayDeposit(tx.externalDepositId ?? "")) return base;
+  const meta = parseClapayMeta(tx.gatewayMeta);
+  return {
+    ...base,
+    ...getClapayActionFields(meta),
+    ...tx.status === "pending" && !meta?.clapaySignature ? {
+      uncertainPaymentInstruction: "La confirmation Clapay est encore incertaine. Ne relancez pas le paiement; attendez le callback ou contactez le support avec cette r\xE9f\xE9rence."
+    } : {}
+  };
+}
 function getClapayWebhookSecret() {
   const key = process.env.CLAPAY_PRIVATE_KEY?.trim();
   if (!key) return null;
-  const { createHash: createHash11 } = require("node:crypto");
-  return createHash11("sha256").update(`clapay-whs:${key}`).digest("hex").slice(0, 40);
+  const { createHash: createHash12 } = require("node:crypto");
+  return createHash12("sha256").update(`clapay-whs:${key}`).digest("hex").slice(0, 40);
 }
 async function getClapayCallbackUrl() {
-  if (process.env.CLAPAY_CALLBACK_URL) return process.env.CLAPAY_CALLBACK_URL;
-  const rows = await db.select().from(systemSettingsTable).where(eq(systemSettingsTable.key, "clapay_callback_url")).limit(1);
-  if (rows[0]?.value?.trim()) return rows[0].value.trim();
-  const appUrl = process.env.APP_URL?.replace(/\/$/, "") ?? "https://simix.site";
-  const base = `${appUrl}/api/wallet/clapay/webhook`;
+  let base = process.env.CLAPAY_CALLBACK_URL?.trim() || "";
+  if (!base) {
+    const rows = await db.select().from(systemSettingsTable).where(eq(systemSettingsTable.key, "clapay_callback_url")).limit(1);
+    base = rows[0]?.value?.trim() ?? "";
+  }
+  if (!base) {
+    const appUrl = process.env.APP_URL?.replace(/\/$/, "") ?? "https://simix.site";
+    base = `${appUrl}/api/wallet/clapay/webhook`;
+  }
   const secret = getClapayWebhookSecret();
-  return secret ? `${base}?whs=${secret}` : base;
+  if (!secret) return base;
+  const callback = new URL(base);
+  callback.searchParams.set("whs", secret);
+  return callback.toString();
 }
 async function getClapayReturnUrl() {
   if (process.env.CLAPAY_RETURN_URL) return process.env.CLAPAY_RETURN_URL;
@@ -159054,38 +159642,67 @@ async function getClapayReturnUrl() {
   const appUrl = process.env.APP_URL?.replace(/\/$/, "") ?? "https://simix.site";
   return `${appUrl}/wallet`;
 }
-var MOBILE_MONEY_KEYWORDS = [
-  "orange",
-  "mtn",
-  "wave",
-  "moov",
-  "airtel",
-  "mpesa",
-  "m-pesa",
-  "free",
-  "expresso",
-  "tmoney",
-  "flooz",
-  "mvola",
-  "mobile",
-  "vodacom",
-  "vodafone",
-  "tigo",
-  "zamtel",
-  "africell",
-  "econet",
-  "ecocash",
-  "tnm",
-  "unitel",
-  "mpamba"
-];
-function isMobileMoneySlug(slug) {
-  const s3 = slug.toLowerCase();
-  return MOBILE_MONEY_KEYWORDS.some((k3) => s3.includes(k3));
+async function getEnabledMobileOperator(methodSlug, methodName, countryCode) {
+  const operators = await db.select().from(mobileOperatorsTable).where(and(
+    eq(mobileOperatorsTable.active, true),
+    sql`${mobileOperatorsTable.countryCodes} @> ${JSON.stringify([countryCode.toUpperCase()])}::jsonb`
+  ));
+  return operators.find(
+    (operator) => matchesMobileOperatorMethod(methodSlug, methodName, operator.slug, operator.name)
+  ) ?? null;
 }
 router10.get("/wallet", requireAuth, async (req, res) => {
   const user = req.user;
   res.json({ balance: user.balance, currency: "FCFA" });
+});
+router10.get("/wallet/payment-options", requireAuth, async (req, res) => {
+  const countryCode = typeof req.query.countryCode === "string" ? req.query.countryCode.trim().toUpperCase() : "";
+  const methodSlug = typeof req.query.methodSlug === "string" ? req.query.methodSlug.trim() : "";
+  if (!countryCode || !methodSlug) {
+    res.status(400).json({ error: "countryCode et methodSlug sont requis" });
+    return;
+  }
+  try {
+    const [method] = await db.select().from(paymentMethodsTable).where(eq(paymentMethodsTable.slug, methodSlug)).limit(1);
+    const [enabledMethod] = method ? await db.select({ id: countryPaymentConfigsTable.id }).from(countryPaymentConfigsTable).where(and(
+      eq(countryPaymentConfigsTable.countryCode, countryCode),
+      eq(countryPaymentConfigsTable.methodSlug, methodSlug),
+      eq(countryPaymentConfigsTable.enabled, true)
+    )).limit(1) : [];
+    const operator = method && enabledMethod ? await getEnabledMobileOperator(methodSlug, method.name, countryCode) : null;
+    if (!method || !enabledMethod || !operator) {
+      res.status(422).json({ error: "Mode Mobile Money inconnu ou non activ\xE9 pour ce pays." });
+      return;
+    }
+    const selected = await resolveWalletGateway(countryCode, methodSlug, 0);
+    if (!selected.gateway) {
+      res.status(503).json({
+        error: selected.unavailableReason ?? "Aucune passerelle de paiement n'est configur\xE9e pour ce mode de paiement."
+      });
+      return;
+    }
+    if (selected.gateway !== "clapay") {
+      res.json({ gateway: selected.gateway, requiresOtp: false, instruction: null, operatorCode: null });
+      return;
+    }
+    const clapayOperator = await selected.clapayCtx.client.resolveOperator(countryCode, methodSlug);
+    if (!clapayOperator) {
+      res.status(422).json({ error: `Op\xE9rateur Clapay non disponible pour ${countryCode} / ${methodSlug}.` });
+      return;
+    }
+    const operatorInstruction = clapayOperator.instruction;
+    const instructionValue = operatorInstruction?.MERCHANT ?? operatorInstruction?.merchant;
+    const instruction = typeof instructionValue === "string" ? instructionValue : null;
+    res.json({
+      gateway: "clapay",
+      requiresOtp: clapayOperatorRequiresOtp(clapayOperator),
+      instruction,
+      operatorCode: clapayOperator.codeoperator
+    });
+  } catch (error) {
+    logger.warn({ countryCode, methodSlug, error: error.message }, "[Clapay] Payment options lookup failed");
+    res.status(502).json({ error: "Impossible de charger les options de paiement aupr\xE8s de Clapay. R\xE9essayez plus tard." });
+  }
 });
 router10.post(
   "/wallet/recharge",
@@ -159099,20 +159716,34 @@ router10.post(
     const user = req.user;
     const { amount, methodSlug, phoneNumber, countryCode, dialCode } = parsed.data;
     const rawBody = req.body;
-    const currencyCode = typeof rawBody.currencyCode === "string" ? rawBody.currencyCode.toUpperCase() : "XOF";
+    const currencyCode = typeof rawBody.currencyCode === "string" ? rawBody.currencyCode.trim().toUpperCase() : "XOF";
     const isXofCurrency = currencyCode === "XOF" || currencyCode === "XAF";
     let amountXof = amount;
     let localAmount = amount;
     let fxMeta = null;
     if (!isXofCurrency) {
-      const [currRow] = await db.select().from(currenciesTable).where(eq(currenciesTable.countryCode, (countryCode ?? "").toUpperCase())).limit(1);
-      if (currRow && currRow.active) {
-        const clientRate = Number(currRow.clientRate);
-        const realRate = Number(currRow.realRate);
-        localAmount = amount;
-        amountXof = Math.floor(amount * clientRate);
-        fxMeta = { realRate, clientRate, profitXof: Math.floor(amount * (clientRate - realRate)) };
+      if (!countryCode) {
+        res.status(400).json({ error: "Code pays requis pour convertir la devise du d\xE9p\xF4t." });
+        return;
       }
+      const [currRow] = await db.select().from(currenciesTable).where(and(
+        eq(currenciesTable.countryCode, countryCode.toUpperCase()),
+        eq(currenciesTable.currencyCode, currencyCode),
+        eq(currenciesTable.active, true)
+      )).limit(1);
+      if (!currRow) {
+        res.status(422).json({ error: `La devise ${currencyCode} n'est pas activ\xE9e pour ${countryCode.toUpperCase()}.` });
+        return;
+      }
+      const clientRate = Number(currRow.clientRate);
+      const realRate = Number(currRow.realRate);
+      if (!Number.isFinite(clientRate) || clientRate <= 0 || !Number.isFinite(realRate) || realRate <= 0) {
+        res.status(503).json({ error: "Les taux de conversion de cette devise ne sont pas disponibles." });
+        return;
+      }
+      localAmount = amount;
+      amountXof = Math.floor(amount * clientRate);
+      fxMeta = { realRate, clientRate, profitXof: Math.floor(amount * (clientRate - realRate)) };
     }
     const minDeposit = await getMinDepositFcfa();
     if (amountXof < minDeposit) {
@@ -159126,62 +159757,54 @@ router10.post(
       return;
     }
     const [method] = await db.select().from(paymentMethodsTable).where(eq(paymentMethodsTable.slug, methodSlug)).limit(1);
+    if (!method) {
+      res.status(400).json({ error: "Mode de paiement inconnu." });
+      return;
+    }
+    if (!countryCode) {
+      res.status(400).json({ error: "Code pays requis pour une recharge v\xE9rifi\xE9e." });
+      return;
+    }
+    const [enabledMethod] = await db.select({ id: countryPaymentConfigsTable.id }).from(countryPaymentConfigsTable).where(and(
+      eq(countryPaymentConfigsTable.countryCode, countryCode.toUpperCase()),
+      eq(countryPaymentConfigsTable.methodSlug, methodSlug),
+      eq(countryPaymentConfigsTable.enabled, true)
+    )).limit(1);
+    if (!enabledMethod) {
+      res.status(422).json({ error: "Ce mode de paiement n'est pas activ\xE9 pour ce pays." });
+      return;
+    }
+    const mobileOperator = await getEnabledMobileOperator(methodSlug, method.name, countryCode);
+    if (!mobileOperator) {
+      res.status(422).json({
+        error: "Ce mode de paiement ne dispose pas d'un flux Mobile Money v\xE9rifi\xE9. Utilisez le d\xE9p\xF4t crypto d\xE9di\xE9 ou contactez le support."
+      });
+      return;
+    }
     const phoneDisplay = phoneNumber ? ` \u2014 ${dialCode ?? ""}${phoneNumber}` : "";
-    const description = method ? `Recharge via ${method.name}${phoneDisplay}` : `Recharge du portefeuille${phoneDisplay}`;
-    const isMobileMoney = isMobileMoneySlug(methodSlug);
-    if (isMobileMoney) {
+    const description = `Recharge via ${method.name}${phoneDisplay}`;
+    if (mobileOperator) {
       if (!phoneNumber || !countryCode) {
         res.status(400).json({ error: "Num\xE9ro de t\xE9l\xE9phone et code pays requis pour le Mobile Money." });
         return;
       }
       const [depositCountry] = await db.select({ enabled: countriesTable.enabled }).from(countriesTable).where(eq(countriesTable.code, countryCode.toUpperCase())).limit(1);
-      if (depositCountry && depositCountry.enabled === false) {
+      if (!depositCountry || depositCountry.enabled === false) {
         res.status(400).json({ error: "Les d\xE9p\xF4ts ne sont pas disponibles pour ce pays pour le moment." });
         return;
       }
-      let pawaPayCtx = null;
-      let clapayCtx = null;
-      let activeGateway = null;
-      let routingSource = "legacy";
-      const dynamicRoute = await resolveGateway(countryCode, methodSlug, amountXof);
-      if (dynamicRoute) {
-        routingSource = "dynamic";
-        if (dynamicRoute.type === "pawapay") {
-          pawaPayCtx = { client: dynamicRoute.client, env: process.env.PAWAPAY_ENV ?? "sandbox" };
-          activeGateway = "pawapay";
-        } else if (dynamicRoute.type === "clapay") {
-          clapayCtx = { client: dynamicRoute.client };
-          activeGateway = "clapay";
-        }
-        logger.info(
-          { countryCode, methodSlug, gateway: activeGateway, priority: dynamicRoute.priority, routeId: dynamicRoute.routeId },
-          "[Payment] Dynamic route resolved"
-        );
-      }
-      if (!activeGateway) {
-        const gatewayPref = await getGatewayPreference();
-        const isAuto = gatewayPref.startsWith("auto_");
-        const legacyPawaPay = gatewayPref === "pawapay" || isAuto ? await getPawaPayClient() : null;
-        const legacyClapay = gatewayPref === "clapay" || isAuto ? await getClapayClient() : null;
-        if (gatewayPref === "pawapay") {
-          activeGateway = legacyPawaPay ? "pawapay" : null;
-        } else if (gatewayPref === "clapay") {
-          activeGateway = legacyClapay ? "clapay" : null;
-        } else if (gatewayPref === "auto_pawapay_first") {
-          activeGateway = legacyPawaPay ? "pawapay" : legacyClapay ? "clapay" : null;
-        } else if (gatewayPref === "auto_clapay_first") {
-          activeGateway = legacyClapay ? "clapay" : legacyPawaPay ? "pawapay" : null;
-        }
-        if (activeGateway === "pawapay" && legacyPawaPay) pawaPayCtx = legacyPawaPay;
-        if (activeGateway === "clapay" && legacyClapay) clapayCtx = legacyClapay;
-        if (activeGateway) {
-          logger.info({ countryCode, methodSlug, gateway: activeGateway, gatewayPref }, "[Payment] Legacy gateway fallback used");
-        }
-      }
+      const {
+        gateway: activeGateway,
+        pawaPayCtx,
+        clapayCtx,
+        gatewayConfigId,
+        routingSource,
+        unavailableReason
+      } = await resolveWalletGateway(countryCode, methodSlug, amountXof);
       if (!activeGateway) {
         logger.error({ methodSlug, routingSource }, "[Payment] No gateway configured \u2014 cannot process mobile money");
         res.status(503).json({
-          error: "Le paiement Mobile Money est temporairement indisponible. Contactez le support."
+          error: unavailableReason ?? "Le paiement Mobile Money est temporairement indisponible. Contactez le support."
         });
         return;
       }
@@ -159210,28 +159833,32 @@ router10.post(
           return;
         }
         const depositId = generateDepositId();
-        const [pendingTx] = await db.insert(transactionsTable).values({
+        const pendingTx = await createPendingDepositWithFx({
           userId: user.id,
           type: "recharge",
           amount: amountXof,
           status: "pending",
           method: method?.name ?? methodSlug,
           description,
-          externalDepositId: depositId
-        }).returning();
+          externalDepositId: depositId,
+          gatewayMeta: makePawaPayGatewayMeta({
+            amount: localAmount,
+            currency,
+            provider,
+            phoneNumber: msisdn,
+            countryCode,
+            gatewayConfigId
+          })
+        }, fxMeta && !isXofCurrency ? {
+          currency: currencyCode,
+          localAmount: String(localAmount),
+          realRate: String(fxMeta.realRate),
+          clientRate: String(fxMeta.clientRate),
+          amountXof: String(amountXof),
+          profitXof: String(fxMeta.profitXof),
+          status: "pending"
+        } : void 0);
         auditLog({ userId: user.id, userName: user.fullName, action: "deposit_initiated", entity: "transaction", entityId: pendingTx.id, ip: req.ip ?? "unknown", userAgent: req.headers["user-agent"] ?? "", severity: "info", description: `Recharge ${amountXof} FCFA via PawaPay (${methodSlug})` });
-        if (fxMeta && !isXofCurrency) {
-          await db.insert(fxProfitsTable).values({
-            transactionId: pendingTx.id,
-            currency: currencyCode,
-            localAmount: String(localAmount),
-            realRate: String(fxMeta.realRate),
-            clientRate: String(fxMeta.clientRate),
-            amountXof: String(amountXof),
-            profitXof: String(fxMeta.profitXof),
-            status: "pending"
-          });
-        }
         let depositRes;
         try {
           depositRes = await client.initiateDeposit({
@@ -159246,9 +159873,11 @@ router10.post(
         } catch (e3) {
           const errMsg = e3.message ?? "Erreur inconnue";
           logger.error({ error: errMsg, depositId, userId: user.id }, "[PawaPay] Deposit request failed");
-          const isApiError = /^PawaPay\s+\d+/.test(errMsg) || e3.code?.match(/^[345]\d\d$/) !== null;
-          if (isApiError) {
-            await db.update(transactionsTable).set({ status: "failed" }).where(eq(transactionsTable.id, pendingTx.id));
+          const pawaStatus = Number(errMsg.match(/^PawaPay\s+(\d{3})/)?.[1]);
+          const nodeStatus = Number(e3.code?.match(/^[45]\d\d$/)?.[0]);
+          const isDefinitiveClientRejection = Number.isFinite(pawaStatus) && pawaStatus >= 400 && pawaStatus < 500 && ![408, 425, 429].includes(pawaStatus) || Number.isFinite(nodeStatus) && nodeStatus >= 400 && nodeStatus < 500 && ![408, 425, 429].includes(nodeStatus);
+          if (isDefinitiveClientRejection) {
+            await failPawaPayDeposit(depositId);
             res.status(422).json({ error: `D\xE9p\xF4t refus\xE9 par l'op\xE9rateur. ${errMsg}` });
           } else {
             res.status(502).json({
@@ -159275,17 +159904,39 @@ router10.post(
           res.json({ ...toTransaction(pendingTx), pending: true, depositId, message: "Ce d\xE9p\xF4t est d\xE9j\xE0 en cours de traitement." });
           return;
         }
-        await db.update(transactionsTable).set({ status: "failed" }).where(eq(transactionsTable.id, pendingTx.id));
-        const reason = depositRes.failureReason?.failureMessage ?? depositRes.failureReason?.failureCode ?? "Rejet\xE9 par l'op\xE9rateur";
-        logger.warn({ depositRes, provider, msisdn, depositId }, "[PawaPay] Deposit REJECTED");
-        res.status(422).json({ error: `D\xE9p\xF4t refus\xE9 : ${reason}. V\xE9rifiez votre num\xE9ro et r\xE9essayez.` });
+        if (depositRes.status === "REJECTED") {
+          await failPawaPayDeposit(depositId);
+          const reason = depositRes.failureReason?.failureMessage ?? depositRes.failureReason?.failureCode ?? "Rejet\xE9 par l'op\xE9rateur";
+          logger.warn({ depositRes, provider, msisdn, depositId }, "[PawaPay] Deposit REJECTED");
+          res.status(422).json({ error: `D\xE9p\xF4t refus\xE9 : ${reason}. V\xE9rifiez votre num\xE9ro et r\xE9essayez.` });
+          return;
+        }
+        res.status(502).json({
+          error: "R\xE9ponse d'initiation incertaine. Le d\xE9p\xF4t reste en attente; ne le soumettez pas \xE0 nouveau avant de v\xE9rifier l'historique.",
+          depositId,
+          pending: true
+        });
         return;
       }
       if (activeGateway === "clapay") {
         const { client } = clapayCtx;
+        if (!isValidClapayLocalAmount(localAmount)) {
+          res.status(422).json({
+            error: "Clapay accepte uniquement les montants entiers dans la devise locale. Modifiez le montant avant de r\xE9essayer.",
+            code: "CLAPAY_INTEGER_AMOUNT_REQUIRED"
+          });
+          return;
+        }
         const clapayT0 = Date.now();
-        const operatorCode = await client.resolveOperatorCode(countryCode.toUpperCase(), methodSlug);
-        if (!operatorCode) {
+        let operator;
+        try {
+          operator = await client.resolveOperator(countryCode.toUpperCase(), methodSlug);
+        } catch (e3) {
+          logger.warn({ countryCode, methodSlug, error: e3.message }, "[Clapay] Operator catalogue request failed");
+          res.status(502).json({ error: "Impossible de charger les op\xE9rateurs Clapay. R\xE9essayez plus tard." });
+          return;
+        }
+        if (!operator) {
           await db.insert(paymentRouteLogsTable).values({
             eventType: "payment",
             status: "error",
@@ -159298,31 +159949,47 @@ router10.post(
           });
           return;
         }
+        const operatorCode = operator.codeoperator;
+        const operatorOtp = typeof req.body.operatorOtp === "string" ? String(req.body.operatorOtp).trim() : "";
+        const requiresOtp = clapayOperatorRequiresOtp(operator);
+        if (requiresOtp && !operatorOtp) {
+          res.status(400).json({ error: "Le code OTP op\xE9rateur est requis pour ce mode de paiement.", requiresOtp: true });
+          return;
+        }
         logger.info({ country: countryCode, methodSlug, operatorCode }, "[Clapay] Resolved operator code");
         const trackingId = generateDepositId();
         const externalDepositId = makeClapayDepositId(trackingId);
-        const [pendingTx] = await db.insert(transactionsTable).values({
+        const localCurrency = currencyCode.toUpperCase();
+        const clapayAmount = localAmount;
+        const initialMeta = serializeClapayMeta({
+          clapayCurrency: localCurrency,
+          clapayCountry: countryCode.toUpperCase(),
+          localAmount: clapayAmount,
+          operatorCode,
+          trackingId,
+          method: "MERCHANT",
+          initiatedAt: (/* @__PURE__ */ new Date()).toISOString(),
+          gatewayConfigId
+        });
+        const pendingTx = await createPendingDepositWithFx({
           userId: user.id,
           type: "recharge",
           amount: amountXof,
           status: "pending",
           method: method?.name ?? methodSlug,
           description,
-          externalDepositId
-        }).returning();
+          externalDepositId,
+          gatewayMeta: initialMeta
+        }, fxMeta && !isXofCurrency ? {
+          currency: currencyCode,
+          localAmount: String(localAmount),
+          realRate: String(fxMeta.realRate),
+          clientRate: String(fxMeta.clientRate),
+          amountXof: String(amountXof),
+          profitXof: String(fxMeta.profitXof),
+          status: "pending"
+        } : void 0);
         auditLog({ userId: user.id, userName: user.fullName, action: "deposit_initiated", entity: "transaction", entityId: pendingTx.id, ip: req.ip ?? "unknown", userAgent: req.headers["user-agent"] ?? "", severity: "info", description: `Recharge ${amountXof} FCFA via Clapay (${methodSlug})` });
-        if (fxMeta && !isXofCurrency) {
-          await db.insert(fxProfitsTable).values({
-            transactionId: pendingTx.id,
-            currency: currencyCode,
-            localAmount: String(localAmount),
-            realRate: String(fxMeta.realRate),
-            clientRate: String(fxMeta.clientRate),
-            amountXof: String(amountXof),
-            profitXof: String(fxMeta.profitXof),
-            status: "pending"
-          });
-        }
         const [callbackUrl, returnUrl] = await Promise.all([getClapayCallbackUrl(), getClapayReturnUrl()]);
         let clapayRes;
         try {
@@ -159334,14 +160001,15 @@ router10.post(
               customer_lastname: user.fullName?.split(" ").slice(1).join(" ") ?? void 0,
               customer_email: user.email ?? void 0
             },
-            amount: localAmount,
+            amount: clapayAmount,
             /* local currency amount sent to Clapay */
             callback_url: callbackUrl,
             return_url: returnUrl,
             country_code: countryCode.toUpperCase(),
             operators_code: [operatorCode],
             method: "MERCHANT",
-            tunnel: "CHECKOUTPAGE"
+            tunnel: "API",
+            ...requiresOtp ? { operator_otp: operatorOtp } : {}
           });
         } catch (e3) {
           const errMsg = e3.message ?? "Erreur inconnue";
@@ -159365,9 +160033,10 @@ router10.post(
             }
           }).catch(() => {
           });
-          const isClapayApiError = /^Clapay\s+\d+/.test(errMsg);
-          if (isClapayApiError) {
-            await db.update(transactionsTable).set({ status: "failed" }).where(eq(transactionsTable.id, pendingTx.id));
+          const statusCode = Number(e3.code);
+          const explicitClientRejection = statusCode >= 400 && statusCode < 500 && ![408, 425, 429].includes(statusCode);
+          if (explicitClientRejection) {
+            await failClapayDeposit(externalDepositId);
             const userMsg = errMsg.replace(/^Clapay\s+\d+:\s*/, "");
             res.status(422).json({ error: `Paiement refus\xE9 par l'op\xE9rateur : ${userMsg}` });
           } else {
@@ -159379,8 +160048,27 @@ router10.post(
           }
           return;
         }
+        const initStatus = String(clapayRes.status_payment ?? "").toUpperCase();
+        if (normalizeClapayStatus(initStatus) === "failed" || clapayRes.observation_error) {
+          await failClapayDeposit(externalDepositId);
+          const refusal = clapayRes.observation_error || clapayRes.message || `Paiement refus\xE9 (${initStatus}).`;
+          res.status(422).json({ error: refusal });
+          return;
+        }
+        const knownSuccessfulInit = CLAPAY_TERMINAL_SUCCESS.has(initStatus);
+        const ambiguousInitStatus = initStatus !== "INITIATED" && !knownSuccessfulInit;
+        if (!clapayRes.signature) {
+          logger.error({ trackingId, userId: user.id }, "[Clapay] Init response missing a payment signature; leaving deposit pending");
+          res.status(502).json({
+            error: "R\xE9ponse Clapay incompl\xE8te. Votre d\xE9p\xF4t reste incertain; ne relancez pas le paiement. Attendez le callback ou contactez le support avec cette r\xE9f\xE9rence.",
+            depositId: externalDepositId,
+            pending: true,
+            uncertainPayment: true
+          });
+          return;
+        }
         logger.info(
-          { trackingId, userId: user.id, amount: localAmount, amountXof, operatorCode, signature: clapayRes.signature, currency: clapayRes.currency },
+          { trackingId, userId: user.id, amount: clapayAmount, amountXof, operatorCode, status: initStatus },
           "[Clapay] Payment initiated"
         );
         await db.insert(paymentRouteLogsTable).values({
@@ -159393,65 +160081,60 @@ router10.post(
             country: countryCode,
             methodSlug,
             operatorCode,
-            amountLocal: localAmount,
+            amountLocal: clapayAmount,
             amountXof,
-            phone: `${dialCode ?? ""}${phoneNumber}`,
             trackingId,
-            signature: clapayRes.signature,
-            payment_url: clapayRes.payment_url ?? null,
-            currency: clapayRes.currency,
+            status: initStatus,
+            currency: localCurrency,
             routingSource
           }
         }).catch(() => {
         });
-        const gatewayMeta = serializeClapayMeta({
+        const message = clapayRes.message ?? (clapayRes.payment_otp ? `Saisissez le code ${clapayRes.payment_otp} dans votre application mobile money pour confirmer le paiement.` : `Confirmez le paiement sur votre t\xE9l\xE9phone (${method?.name ?? methodSlug}). Votre solde sera cr\xE9dit\xE9 apr\xE8s v\xE9rification.`);
+        const persistedMeta = await persistClapayDepositMeta(externalDepositId, {
           clapaySignature: clapayRes.signature,
-          clapayCurrency: clapayRes.currency,
-          clapayCountry: clapayRes.country,
-          initiatedAt: (/* @__PURE__ */ new Date()).toISOString()
+          operatorPaymentUrl: clapayRes.payment_url_operator ?? null,
+          paymentOtp: clapayRes.payment_otp ?? null,
+          message
         });
-        await db.update(transactionsTable).set({ gatewayMeta }).where(eq(transactionsTable.id, pendingTx.id));
+        if (!persistedMeta) {
+          const [latest] = await db.select().from(transactionsTable).where(eq(transactionsTable.id, pendingTx.id)).limit(1);
+          if (latest && latest.status !== "pending") {
+            res.json(serializeWalletTransaction(latest));
+          } else {
+            res.status(502).json({
+              error: "La r\xE9ponse Clapay ne correspond pas \xE0 la signature d\xE9j\xE0 associ\xE9e. Le d\xE9p\xF4t reste en attente de v\xE9rification.",
+              depositId: externalDepositId,
+              pending: true
+            });
+          }
+          return;
+        }
+        if (ambiguousInitStatus) {
+          res.status(502).json({
+            error: "Clapay a renvoy\xE9 un statut d'initialisation inconnu. Le d\xE9p\xF4t reste en attente de v\xE9rification.",
+            depositId: externalDepositId,
+            pending: true
+          });
+          return;
+        }
         res.json({
           ...toTransaction(pendingTx),
           pending: true,
           depositId: externalDepositId,
           gateway: "clapay",
-          payment_url: clapayRes.payment_url ?? null,
-          message: clapayRes.payment_url ? `Finalisez le paiement sur la page Clapay. Votre solde sera cr\xE9dit\xE9 automatiquement d\xE8s confirmation.` : `En attente de confirmation de paiement (${method?.name ?? methodSlug}). Votre solde sera cr\xE9dit\xE9 automatiquement.`
+          paymentMode: "API",
+          payment_url: null,
+          operatorPaymentUrl: persistedMeta.operatorPaymentUrl ?? null,
+          paymentOtp: persistedMeta.paymentOtp ?? null,
+          message: persistedMeta.message ?? message
         });
         return;
       }
     }
-    await db.update(usersTable).set({ balance: sql`${usersTable.balance} + ${amountXof}` }).where(eq(usersTable.id, user.id));
-    const [tx] = await db.insert(transactionsTable).values({
-      userId: user.id,
-      type: "recharge",
-      amount: amountXof,
-      status: "completed",
-      method: method?.name ?? methodSlug,
-      description
-    }).returning();
-    if (tx && user.email) {
-      const newBalanceAfter = user.balance + amountXof;
-      sendDepositConfirmationEmail({
-        userEmail: user.email,
-        userFullName: user.fullName ?? "Utilisateur",
-        amount: amountXof,
-        method: method?.name ?? methodSlug,
-        phoneNumber: phoneNumber ? `${dialCode ?? ""}${phoneNumber}` : null,
-        transactionId: String(tx.id),
-        depositId: null,
-        createdAt: tx.createdAt ? new Date(tx.createdAt) : /* @__PURE__ */ new Date(),
-        newBalance: newBalanceAfter
-      }).catch((e3) => logger.warn({ error: e3.message }, "[email] Deposit confirmation (manual) non-critical error"));
-    }
-    void creditReferralDepositCommission({
-      depositorId: user.id,
-      referredBy: user.referredBy,
-      depositAmount: amountXof,
-      sourceLabel: method?.name ?? methodSlug
+    res.status(422).json({
+      error: "Aucun flux de paiement v\xE9rifi\xE9 n'est disponible pour ce mode. Le solde n'a pas \xE9t\xE9 cr\xE9dit\xE9."
     });
-    res.json(toTransaction(tx));
   }
 );
 router10.post("/wallet/predict-provider", requireAuth, async (req, res) => {
@@ -159474,14 +160157,13 @@ router10.post("/wallet/predict-provider", requireAuth, async (req, res) => {
   }
 });
 router10.post("/wallet/pawapay/webhook", async (req, res) => {
-  res.status(200).json({ received: true });
   try {
     const contentDigest = req.headers["content-digest"];
     if (contentDigest) {
-      const rawBody = req.rawBody ?? JSON.stringify(req.body);
-      const digestOk = verifyContentDigest(rawBody, contentDigest);
+      const digestOk = Boolean(req.rawBody) && verifyContentDigest(req.rawBody, contentDigest);
       if (!digestOk) {
         logger.error({ contentDigest, hasRawBody: !!req.rawBody }, "[PawaPay Webhook] Content-Digest MISMATCH \u2014 possible tampering, ignoring");
+        res.status(400).json({ error: "Invalid Content-Digest" });
         return;
       }
       logger.info("[PawaPay Webhook] Content-Digest verified \u2713");
@@ -159493,97 +160175,85 @@ router10.post("/wallet/pawapay/webhook", async (req, res) => {
     for (const item of items) {
       await processDepositCallback(item);
     }
+    res.status(200).json({ received: true });
   } catch (e3) {
     logger.error({ error: e3.message }, "[PawaPay Webhook] Error processing deposit callback");
+    res.status(503).json({ error: "Unable to verify or process deposit status; retry later." });
   }
 });
 async function processDepositCallback(payload) {
-  const { depositId, status, amount, failureReason } = payload;
+  if (!payload || typeof payload !== "object") {
+    logger.warn("[PawaPay Webhook] Invalid callback payload ignored");
+    return;
+  }
+  const { depositId, status } = payload;
   if (!depositId || !status) {
     logger.warn({ payload }, "[PawaPay Webhook] Invalid payload \u2014 missing depositId or status");
     return;
   }
-  logger.info({ depositId, status, amount }, "[PawaPay Webhook] Processing deposit callback");
-  if (status === "COMPLETED") {
-    const [tx] = await db.select().from(transactionsTable).where(and(
-      eq(transactionsTable.externalDepositId, depositId),
-      eq(transactionsTable.status, "pending")
-    )).limit(1);
-    if (!tx) {
-      logger.warn({ depositId }, "[PawaPay Webhook] Transaction not found or already processed");
-      return;
-    }
-    const creditAmount = tx.amount;
-    const [justCompleted] = await db.update(transactionsTable).set({ status: "completed" }).where(and(
-      eq(transactionsTable.id, tx.id),
-      eq(transactionsTable.status, "pending")
-    )).returning();
-    if (!justCompleted) {
-      logger.info({ depositId }, "[PawaPay Webhook] Already processed \u2014 skipping double-credit");
-      return;
-    }
-    await db.update(usersTable).set({ balance: sql`${usersTable.balance} + ${creditAmount}` }).where(eq(usersTable.id, tx.userId));
-    logger.info({ depositId, userId: tx.userId, creditAmount }, "[PawaPay Webhook] Deposit COMPLETED \u2014 balance credited \u2713");
-    try {
-      await db.update(fxProfitsTable).set({ status: "completed" }).where(eq(fxProfitsTable.transactionId, tx.id));
-    } catch {
-    }
-    try {
-      const [notif] = await db.insert(notificationsTable).values({
-        userId: tx.userId,
-        title: "\u{1F4B0} Solde recharg\xE9",
-        body: `Votre solde a \xE9t\xE9 cr\xE9dit\xE9 de ${creditAmount.toLocaleString("fr-FR")} FCFA avec succ\xE8s.`,
-        type: "deposit",
-        icon: "wallet",
-        link: `/wallet`,
-        metadata: { amount: creditAmount, depositId }
-      }).returning();
-      if (notif) broadcastNotification(notif);
-    } catch {
-    }
+  logger.info({ depositId, status }, "[PawaPay Webhook] Callback received as a status hint");
+  if (status !== "COMPLETED" && status !== "FAILED") return;
+  const [deposit] = await db.select().from(transactionsTable).where(and(
+    eq(transactionsTable.externalDepositId, depositId),
+    eq(transactionsTable.type, "recharge")
+  )).limit(1);
+  if (!deposit || deposit.status !== "pending") {
+    logger.info({ depositId }, "[PawaPay Webhook] Unknown or already processed deposit ignored");
+    return;
+  }
+  const client = await getPawaPayClientForDeposit(deposit);
+  if (!client) throw new Error("PawaPay credentials for the initiating gateway are unavailable");
+  const outcome = await verifyAndSettlePawaPayDeposit(depositId, client);
+  if (outcome.ignored) {
+    logger.warn({ depositId }, "[PawaPay Webhook] Authoritative status did not match stored deposit evidence");
+  }
+  if (outcome.failed) {
+    logger.warn({ depositId }, "[PawaPay Webhook] Verified failed deposit atomically marked failed");
+  }
+  if (!outcome.settled || !outcome.userId || outcome.amount === void 0 || !outcome.transactionId) return;
+  try {
+    const [notif] = await db.insert(notificationsTable).values({
+      userId: outcome.userId,
+      title: "\u{1F4B0} Solde recharg\xE9",
+      body: `Votre solde a \xE9t\xE9 cr\xE9dit\xE9 de ${outcome.amount.toLocaleString("fr-FR")} FCFA avec succ\xE8s.`,
+      type: "deposit",
+      icon: "wallet",
+      link: "/wallet",
+      metadata: { amount: outcome.amount, depositId, gateway: "pawapay" }
+    }).returning();
+    if (notif) broadcastNotification(notif);
+  } catch (error) {
+    logger.warn({ depositId, error: error.message }, "[PawaPay Webhook] Notification failed after settlement");
+  }
+  try {
     const [userRow] = await db.select({
       email: usersTable.email,
       fullName: usersTable.fullName,
       balance: usersTable.balance,
       referredBy: usersTable.referredBy
-    }).from(usersTable).where(eq(usersTable.id, tx.userId)).limit(1);
-    try {
-      if (userRow?.email) {
-        const phoneMatch = tx.description?.match(/[\+\d]{8,}/);
-        await sendDepositConfirmationEmail({
-          userEmail: userRow.email,
-          userFullName: userRow.fullName ?? "Utilisateur",
-          amount: creditAmount,
-          method: tx.method ?? "Mobile Money",
-          phoneNumber: phoneMatch?.[0] ?? null,
-          transactionId: String(tx.id),
-          depositId: tx.externalDepositId ?? depositId,
-          createdAt: tx.createdAt ? new Date(tx.createdAt) : /* @__PURE__ */ new Date(),
-          newBalance: userRow.balance
-        });
-        logger.info({ userId: tx.userId, depositId }, "[email] Deposit confirmation email sent \u2713");
-      }
-    } catch (e3) {
-      logger.warn({ error: e3.message, depositId }, "[email] Failed to send deposit confirmation email (non-critical)");
+    }).from(usersTable).where(eq(usersTable.id, outcome.userId)).limit(1);
+    if (userRow?.email) {
+      const phoneMatch = deposit.description?.match(/[\+\d]{8,}/);
+      await sendDepositConfirmationEmail({
+        userEmail: userRow.email,
+        userFullName: userRow.fullName ?? "Utilisateur",
+        amount: outcome.amount,
+        method: deposit.method ?? "Mobile Money",
+        phoneNumber: phoneMatch?.[0] ?? null,
+        transactionId: outcome.transactionId,
+        depositId,
+        createdAt: deposit.createdAt ? new Date(deposit.createdAt) : /* @__PURE__ */ new Date(),
+        newBalance: userRow.balance
+      });
     }
     void creditReferralDepositCommission({
-      depositorId: tx.userId,
+      depositorId: outcome.userId,
       referredBy: userRow?.referredBy,
-      depositAmount: creditAmount,
-      sourceLabel: tx.method ?? "Mobile Money"
+      depositAmount: outcome.amount,
+      sourceLabel: deposit.method ?? "Mobile Money"
     });
-  } else if (status === "FAILED") {
-    const updated = await db.update(transactionsTable).set({ status: "failed" }).where(and(
-      eq(transactionsTable.externalDepositId, depositId),
-      eq(transactionsTable.status, "pending")
-    )).returning();
-    if (updated.length > 0) {
-      logger.warn({ depositId, failureReason }, "[PawaPay Webhook] Deposit FAILED \u2014 transaction marked failed");
-    } else {
-      logger.warn({ depositId }, "[PawaPay Webhook] FAILED callback \u2014 transaction not found or already processed");
-    }
-  } else {
-    logger.info({ depositId, status }, "[PawaPay Webhook] Non-final status received, ignoring");
+  } catch (error) {
+    logger.warn({ depositId, error: error.message }, "[PawaPay Webhook] Post-settlement email/referral lookup failed");
   }
 }
 router10.post("/wallet/pawapay/refund-webhook", async (req, res) => {
@@ -159613,112 +160283,155 @@ router10.post("/wallet/clapay/webhook", async (req, res) => {
       valid = false;
     }
     if (!valid) {
-      logger.warn({ ip: req.ip, receivedToken: received.slice(0, 8) }, "[Clapay Webhook] Invalid or missing webhook token \u2014 rejected");
+      logger.warn({ ip: req.ip }, "[Clapay Webhook] Invalid or missing webhook token \u2014 rejected");
       res.status(401).json({ error: "Unauthorized" });
       return;
     }
   }
   res.status(200).json({ received: true });
-  const receivedAt = (/* @__PURE__ */ new Date()).toISOString();
   try {
     const payload = req.body;
-    const { status, transaction_id, amount, signature, currency } = payload;
-    if (!transaction_id || !status) {
-      logger.warn({ payload, receivedAt }, "[Clapay Webhook] Invalid payload \u2014 missing transaction_id or status");
+    const transactionId = payload.transaction_id;
+    if (!transactionId || !payload.signature) {
+      logger.warn({ hasTransactionId: Boolean(transactionId), hasSignature: Boolean(payload.signature) }, "[Clapay Webhook] Invalid payload");
       return;
     }
-    logger.info(
-      { transaction_id, status, amount, currency, signature, receivedAt },
-      "[Clapay Webhook] Callback received"
-    );
-    const externalDepositId = makeClapayDepositId(transaction_id);
-    const normalizedStatus = status.toUpperCase();
-    if (normalizedStatus === "COMPLETED") {
-      const [tx] = await db.select().from(transactionsTable).where(and(
-        eq(transactionsTable.externalDepositId, externalDepositId),
-        eq(transactionsTable.status, "pending")
-      )).limit(1);
-      if (!tx) {
-        logger.warn({ transaction_id, externalDepositId }, "[Clapay Webhook] Transaction not found or already processed");
-        return;
-      }
-      const creditAmount = tx.amount;
-      const [justCompleted] = await db.update(transactionsTable).set({ status: "completed" }).where(and(
-        eq(transactionsTable.id, tx.id),
-        eq(transactionsTable.status, "pending")
-      )).returning();
-      if (!justCompleted) {
-        logger.info({ transaction_id }, "[Clapay Webhook] Already processed \u2014 skipping double-credit");
-        return;
-      }
-      await db.update(usersTable).set({ balance: sql`${usersTable.balance} + ${creditAmount}` }).where(eq(usersTable.id, tx.userId));
-      logger.info(
-        { transaction_id, userId: tx.userId, creditAmount, clapayAmount: amount, clapayCurrency: currency },
-        "[Clapay Webhook] Deposit COMPLETED \u2014 balance credited \u2713"
-      );
-      try {
-        await db.update(fxProfitsTable).set({ status: "completed" }).where(eq(fxProfitsTable.transactionId, tx.id));
-      } catch {
-      }
-      try {
-        const [notif] = await db.insert(notificationsTable).values({
-          userId: tx.userId,
-          title: "\u{1F4B0} Solde recharg\xE9",
-          body: `Votre solde a \xE9t\xE9 cr\xE9dit\xE9 de ${creditAmount.toLocaleString("fr-FR")} FCFA avec succ\xE8s.`,
-          type: "deposit",
-          icon: "wallet",
-          link: "/wallet",
-          metadata: { amount: creditAmount, depositId: transaction_id, gateway: "clapay" }
-        }).returning();
-        if (notif) broadcastNotification(notif);
-      } catch {
-      }
-      const [userRow] = await db.select({
-        email: usersTable.email,
-        fullName: usersTable.fullName,
-        balance: usersTable.balance,
-        referredBy: usersTable.referredBy
-      }).from(usersTable).where(eq(usersTable.id, tx.userId)).limit(1);
-      try {
-        if (userRow?.email) {
-          const phoneMatch = tx.description?.match(/[\+\d]{8,}/);
-          await sendDepositConfirmationEmail({
-            userEmail: userRow.email,
-            userFullName: userRow.fullName ?? "Utilisateur",
-            amount: creditAmount,
-            method: tx.method ?? "Mobile Money",
-            phoneNumber: phoneMatch?.[0] ?? null,
-            transactionId: String(tx.id),
-            depositId: transaction_id,
-            createdAt: tx.createdAt ? new Date(tx.createdAt) : /* @__PURE__ */ new Date(),
-            newBalance: userRow.balance
-          });
-          logger.info({ userId: tx.userId, transaction_id }, "[Clapay Webhook] Deposit confirmation email sent \u2713");
-        }
-      } catch (e3) {
-        logger.warn({ error: e3.message, transaction_id }, "[Clapay Webhook] Email failed (non-critical)");
-      }
-      void creditReferralDepositCommission({
-        depositorId: tx.userId,
-        referredBy: userRow?.referredBy,
-        depositAmount: creditAmount,
-        sourceLabel: tx.method ?? "Mobile Money"
-      });
-    } else if (CLAPAY_TERMINAL_FAILURE.has(normalizedStatus)) {
-      const updated = await db.update(transactionsTable).set({ status: "failed" }).where(and(
-        eq(transactionsTable.externalDepositId, externalDepositId),
-        eq(transactionsTable.status, "pending")
-      )).returning();
-      if (updated.length > 0) {
-        logger.warn({ transaction_id, status: normalizedStatus }, "[Clapay Webhook] Payment terminal failure \u2014 transaction marked failed");
-      } else {
-        logger.warn({ transaction_id, status: normalizedStatus }, "[Clapay Webhook] Failure callback \u2014 transaction not found or already processed");
-      }
-    } else {
-      logger.info({ transaction_id, status: normalizedStatus }, "[Clapay Webhook] Non-terminal status received \u2014 waiting for final callback");
+    const externalDepositId = makeClapayDepositId(transactionId);
+    const [deposit] = await db.select().from(transactionsTable).where(eq(transactionsTable.externalDepositId, externalDepositId)).limit(1);
+    if (!deposit || deposit.status !== "pending") return;
+    const context = await getClapayDepositMeta(externalDepositId, { clapaySignature: payload.signature });
+    if (!context || context.meta.trackingId !== transactionId) {
+      logger.warn({ transactionId }, "[Clapay Webhook] Callback identity does not match stored payment");
+      return;
     }
+    const meta = context.meta;
+    const clientContext = await getClapayClient(meta.gatewayConfigId);
+    if (!clientContext) {
+      logger.warn({ transactionId }, "[Clapay Webhook] Cannot verify status because Clapay is not configured");
+      return;
+    }
+    const verified = await getVerifiedClapayStatus(clientContext.client, meta, transactionId, true);
+    if (!verified) {
+      logger.warn({ transactionId }, "[Clapay Webhook] Signature is unknown to status API; deposit remains pending");
+      return;
+    }
+    const persistedMeta = await persistClapayDepositMeta(externalDepositId, { clapaySignature: payload.signature });
+    if (!persistedMeta) {
+      logger.warn({ transactionId }, "[Clapay Webhook] Could not safely persist verified signature metadata");
+      return;
+    }
+    if (verified.status === "failed") {
+      await failClapayDeposit(externalDepositId);
+      return;
+    }
+    if (verified.status !== "completed") return;
+    const outcome = await settleVerifiedClapayDeposit(externalDepositId);
+    if (!outcome.settled || !outcome.userId || outcome.amount === void 0 || !outcome.transactionId) return;
+    const [userRow] = await db.select({
+      email: usersTable.email,
+      fullName: usersTable.fullName,
+      balance: usersTable.balance,
+      referredBy: usersTable.referredBy
+    }).from(usersTable).where(eq(usersTable.id, outcome.userId)).limit(1);
+    try {
+      const [notif] = await db.insert(notificationsTable).values({
+        userId: outcome.userId,
+        title: "\u{1F4B0} Solde recharg\xE9",
+        body: `Votre solde a \xE9t\xE9 cr\xE9dit\xE9 de ${outcome.amount.toLocaleString("fr-FR")} FCFA avec succ\xE8s.`,
+        type: "deposit",
+        icon: "wallet",
+        link: "/wallet",
+        metadata: { amount: outcome.amount, depositId: transactionId, gateway: "clapay" }
+      }).returning();
+      if (notif) broadcastNotification(notif);
+    } catch {
+    }
+    if (userRow?.email) {
+      const phoneMatch = deposit.description?.match(/[\+\d]{8,}/);
+      await sendDepositConfirmationEmail({
+        userEmail: userRow.email,
+        userFullName: userRow.fullName ?? "Utilisateur",
+        amount: outcome.amount,
+        method: deposit.method ?? "Mobile Money",
+        phoneNumber: phoneMatch?.[0] ?? null,
+        transactionId: outcome.transactionId,
+        depositId: transactionId,
+        createdAt: deposit.createdAt,
+        newBalance: userRow.balance
+      }).catch((e3) => logger.warn({ error: e3.message, transactionId }, "[Clapay Webhook] Email failed"));
+    }
+    void creditReferralDepositCommission({
+      depositorId: outcome.userId,
+      referredBy: userRow?.referredBy,
+      depositAmount: outcome.amount,
+      sourceLabel: deposit.method ?? "Mobile Money"
+    });
   } catch (e3) {
     logger.error({ error: e3.message }, "[Clapay Webhook] Unhandled error processing callback");
+  }
+});
+router10.post("/wallet/deposit/:depositId/cancel", requireAuth, async (req, res) => {
+  const depositId = String(req.params.depositId);
+  const [tx] = await db.select().from(transactionsTable).where(and(
+    eq(transactionsTable.externalDepositId, depositId),
+    eq(transactionsTable.userId, req.user.id),
+    eq(transactionsTable.type, "recharge")
+  )).limit(1);
+  if (!tx) {
+    res.status(404).json({ error: "D\xE9p\xF4t introuvable" });
+    return;
+  }
+  if (!isClapayDeposit(depositId)) {
+    res.status(400).json({ error: "L'annulation est disponible uniquement pour les paiements Clapay." });
+    return;
+  }
+  if (tx.status !== "pending") {
+    res.json(serializeWalletTransaction(tx));
+    return;
+  }
+  const meta = await persistClapayDepositMeta(depositId);
+  if (!meta?.clapaySignature) {
+    res.status(409).json({ error: "La signature ou les donn\xE9es v\xE9rifiables du paiement ne sont pas encore disponibles." });
+    return;
+  }
+  const clapayContext = await getClapayClient(meta.gatewayConfigId);
+  if (!clapayContext) {
+    res.status(503).json({ error: "Clapay n'est pas configur\xE9." });
+    return;
+  }
+  try {
+    const verified = await getVerifiedClapayStatus(
+      clapayContext.client,
+      meta,
+      extractClapayTransactionId(depositId),
+      true
+    );
+    if (verified?.status === "completed") {
+      await settleVerifiedClapayDeposit(depositId);
+    } else if (verified?.status === "failed") {
+      await failClapayDeposit(depositId);
+    } else if (verified?.status === "pending") {
+      const cancellation = await clapayContext.client.cancelPayment(meta.clapaySignature);
+      if (!isClapayCancellationAcknowledged(cancellation)) {
+        res.status(502).json({
+          error: cancellation.message ?? "Clapay n'a pas confirm\xE9 l'annulation. Le paiement reste en attente.",
+          pending: true
+        });
+        return;
+      }
+      await failClapayDeposit(depositId);
+    } else {
+      res.status(409).json({
+        error: "Clapay ne confirme pas que ce paiement est toujours initi\xE9; il n'a pas \xE9t\xE9 annul\xE9.",
+        pending: true
+      });
+      return;
+    }
+    const [updated] = await db.select().from(transactionsTable).where(eq(transactionsTable.id, tx.id)).limit(1);
+    res.json(serializeWalletTransaction(updated ?? tx));
+  } catch (error) {
+    logger.warn({ depositId, error: error.message }, "[Clapay Cancel] Status check or cancellation failed");
+    res.status(502).json({ error: "Impossible de v\xE9rifier ou d'annuler ce paiement aupr\xE8s de Clapay.", pending: true });
   }
 });
 router10.get("/wallet/deposit/:depositId/status", requireAuth, async (req, res) => {
@@ -159726,60 +160439,65 @@ router10.get("/wallet/deposit/:depositId/status", requireAuth, async (req, res) 
   const user = req.user;
   const [tx] = await db.select().from(transactionsTable).where(and(
     eq(transactionsTable.externalDepositId, depositId),
-    eq(transactionsTable.userId, user.id)
+    eq(transactionsTable.userId, user.id),
+    eq(transactionsTable.type, "recharge")
   )).limit(1);
   if (!tx) {
     res.status(404).json({ error: "D\xE9p\xF4t introuvable" });
     return;
   }
+  const clapayDeposit = isClapayDeposit(depositId);
+  let clapayMeta = null;
   if (tx.status === "pending") {
-    if (isClapayDeposit(depositId)) {
-      res.json({ ...toTransaction(tx), gateway: "clapay" });
-      return;
-    }
-    const pawaPayCtx = await getPawaPayClient();
-    if (pawaPayCtx) {
-      try {
-        const result = await pawaPayCtx.client.getDepositStatus(depositId);
-        if (result.status === "FOUND" && result.data) {
-          const depositStatus = result.data.status;
-          if (depositStatus === "COMPLETED") {
-            const creditAmount = result.data.amount ? Math.round(Number(result.data.amount)) : tx.amount;
-            const [justCompleted] = await db.update(transactionsTable).set({ status: "completed" }).where(and(
-              eq(transactionsTable.id, tx.id),
-              eq(transactionsTable.status, "pending")
-            )).returning();
-            if (justCompleted) {
-              await db.update(usersTable).set({ balance: sql`${usersTable.balance} + ${creditAmount}` }).where(eq(usersTable.id, user.id));
-              logger.info({ depositId, userId: user.id, creditAmount }, "[PawaPay Poll] Deposit COMPLETED via polling \u2014 balance credited \u2713");
+    if (clapayDeposit) {
+      clapayMeta = await persistClapayDepositMeta(depositId);
+      const clapayContext = await getClapayClient(clapayMeta?.gatewayConfigId);
+      if (clapayContext && clapayMeta?.clapaySignature) {
+        try {
+          const trackingId = extractClapayTransactionId(depositId);
+          const verified = await getVerifiedClapayStatus(clapayContext.client, clapayMeta, trackingId);
+          if (verified?.status === "completed") {
+            const outcome = await settleVerifiedClapayDeposit(depositId);
+            if (outcome.settled && outcome.userId && outcome.amount !== void 0) {
               void creditReferralDepositCommission({
-                depositorId: user.id,
+                depositorId: outcome.userId,
                 referredBy: user.referredBy,
-                depositAmount: creditAmount,
+                depositAmount: outcome.amount,
                 sourceLabel: tx.method ?? "Mobile Money"
               });
-            } else {
-              logger.info({ depositId }, "[PawaPay Poll] Already processed by webhook \u2014 skipping double-credit");
             }
-            const [updated] = await db.select().from(transactionsTable).where(eq(transactionsTable.id, tx.id)).limit(1);
-            res.json(toTransaction(updated ?? tx));
-            return;
-          } else if (depositStatus === "FAILED") {
-            await db.update(transactionsTable).set({ status: "failed" }).where(eq(transactionsTable.id, tx.id));
-            const [updated] = await db.select().from(transactionsTable).where(eq(transactionsTable.id, tx.id)).limit(1);
-            res.json(toTransaction(updated ?? { ...tx, status: "failed" }));
-            return;
-          } else if (depositStatus === "PROCESSING" || depositStatus === "ACCEPTED") {
-            res.json({ ...toTransaction(tx), pawapayStatus: depositStatus });
-            return;
+          } else if (verified?.status === "failed") {
+            await failClapayDeposit(depositId);
           }
+        } catch (error) {
+          logger.warn({ depositId, error: error.message }, "[Clapay Poll] Status verification failed; transaction remains pending");
+        }
+      }
+      const [updated2] = await db.select().from(transactionsTable).where(eq(transactionsTable.id, tx.id)).limit(1);
+      res.json(serializeWalletTransaction(updated2 ?? tx));
+      return;
+    }
+    const pawaPayClient = await getPawaPayClientForDeposit(tx);
+    if (pawaPayClient) {
+      try {
+        const outcome = await verifyAndSettlePawaPayDeposit(depositId, pawaPayClient);
+        if (outcome.settled && outcome.userId && outcome.amount !== void 0) {
+          void creditReferralDepositCommission({
+            depositorId: outcome.userId,
+            referredBy: user.referredBy,
+            depositAmount: outcome.amount,
+            sourceLabel: tx.method ?? "Mobile Money"
+          });
         }
       } catch (e3) {
         logger.warn({ error: e3.message }, "[PawaPay Poll] Status check failed");
       }
     }
+    const [updated] = await db.select().from(transactionsTable).where(eq(transactionsTable.id, tx.id)).limit(1);
+    res.json(serializeWalletTransaction(updated ?? tx));
+    return;
   }
-  res.json(toTransaction(tx));
+  res.json(serializeWalletTransaction(tx));
 });
 router10.get(
   "/wallet/transactions",
@@ -159787,7 +160505,7 @@ router10.get(
   async (req, res) => {
     const user = req.user;
     const rows = await db.select().from(transactionsTable).where(eq(transactionsTable.userId, user.id)).orderBy(desc(transactionsTable.createdAt)).limit(100);
-    res.json(rows.map(toTransaction));
+    res.json(rows.map(serializeWalletTransaction));
   }
 );
 router10.get(
@@ -164360,11 +165078,11 @@ router17.post("/admin/emails/send", requireAdmin5, async (req, res) => {
     status: "pending"
   })));
   res.status(202).json({ campaignId: campaign.id, totalRecipients: recipients.length, message: "Envoi en cours..." });
-  const BATCH_SIZE = 10;
+  const BATCH_SIZE4 = 10;
   const BATCH_DELAY = 1200;
   const sleep = (ms2) => new Promise((r3) => setTimeout(r3, ms2));
-  for (let i2 = 0; i2 < recipients.length; i2 += BATCH_SIZE) {
-    const batch = recipients.slice(i2, i2 + BATCH_SIZE).filter((r3) => !!r3.email);
+  for (let i2 = 0; i2 < recipients.length; i2 += BATCH_SIZE4) {
+    const batch = recipients.slice(i2, i2 + BATCH_SIZE4).filter((r3) => !!r3.email);
     if (batch.length === 0) continue;
     await Promise.all(batch.map(async (recipient) => {
       try {
@@ -164394,7 +165112,7 @@ router17.post("/admin/emails/send", requireAdmin5, async (req, res) => {
         ));
       }
     }));
-    if (i2 + BATCH_SIZE < recipients.length) {
+    if (i2 + BATCH_SIZE4 < recipients.length) {
       await sleep(BATCH_DELAY);
     }
   }
@@ -165346,6 +166064,510 @@ var import_express20 = __toESM(require_express2(), 1);
 init_drizzle_orm();
 init_src();
 init_logger2();
+var import_node_crypto14 = require("node:crypto");
+init_pawapay();
+
+// src/lib/payout-service.ts
+var import_node_crypto13 = require("node:crypto");
+init_drizzle_orm();
+init_src();
+init_pawapay();
+init_clapay();
+init_gateway_credentials();
+init_logger2();
+
+// src/lib/payout-ledger-core.ts
+var import_node_crypto12 = require("node:crypto");
+function canonicalPayoutAmount(amount) {
+  const number = Number(amount);
+  return Number.isFinite(number) ? number.toFixed(3).replace(/\.?0+$/, "") : amount;
+}
+function payoutFingerprint(identity) {
+  const stable = {
+    gateway: identity.gateway,
+    phone: identity.phone,
+    provider: identity.provider,
+    country: identity.country.toUpperCase(),
+    currency: identity.currency.toUpperCase(),
+    amount: canonicalPayoutAmount(identity.amount),
+    referralWithdrawalId: identity.referralWithdrawalId ?? null
+  };
+  return (0, import_node_crypto12.createHash)("sha256").update(JSON.stringify(stable)).digest("hex");
+}
+async function registerPayoutInStore(store2, identity, generated, now = /* @__PURE__ */ new Date()) {
+  const fingerprint = payoutFingerprint(identity);
+  const record = {
+    id: generated.id,
+    idempotencyKey: identity.idempotencyKey,
+    requestFingerprint: fingerprint,
+    gateway: identity.gateway,
+    externalId: generated.externalId,
+    signature: null,
+    gatewayConfigId: identity.gatewayConfigId ?? null,
+    referralWithdrawalId: identity.referralWithdrawalId ?? null,
+    actorId: identity.actorId,
+    phone: identity.phone,
+    provider: identity.provider,
+    country: identity.country.toUpperCase(),
+    currency: identity.currency.toUpperCase(),
+    amount: canonicalPayoutAmount(identity.amount),
+    status: "pending",
+    failureReason: null,
+    createdAt: now,
+    updatedAt: now,
+    completedAt: null,
+    initiationClaimedAt: null
+  };
+  const created = await store2.insertIfAbsent(record);
+  if (created) return { kind: "created", payout: created };
+  const existing = await store2.findByIdempotencyKey(identity.idempotencyKey);
+  if (!existing) return { kind: "conflict" };
+  if (existing.requestFingerprint !== fingerprint) return { kind: "conflict", payout: existing };
+  return { kind: "existing", payout: existing };
+}
+async function claimInitialPayoutInitiation(store2, payoutId, at3 = /* @__PURE__ */ new Date()) {
+  return store2.claimInitialInitiation(payoutId, at3);
+}
+async function claimExpiredPawaPayoutRecovery(store2, payoutId, at3 = /* @__PURE__ */ new Date(), leaseMs = 12e4) {
+  return store2.claimExpiredPawaRecovery(payoutId, new Date(at3.getTime() - leaseMs), at3);
+}
+async function finalizePayoutInStore(store2, payoutId, status, failureReason, at3 = /* @__PURE__ */ new Date()) {
+  return store2.transaction(async (tx) => {
+    const payout = await tx.lockPayout(payoutId);
+    if (!payout || payout.status !== "pending") return payout;
+    const updated = await tx.markPayoutTerminal(
+      payoutId,
+      status,
+      status === "failed" ? failureReason ?? "Provider payout failed" : null,
+      at3
+    );
+    if (!updated) return payout;
+    if (payout.referralWithdrawalId) {
+      const withdrawal = await tx.lockReferralWithdrawal(payout.referralWithdrawalId);
+      if (withdrawal?.status === "pending") {
+        const changed = await tx.markReferralWithdrawalTerminal(
+          withdrawal.id,
+          status === "completed" ? "paid" : "rejected",
+          status === "failed" ? failureReason ?? "Payout failed" : withdrawal.adminNote,
+          payout.actorId,
+          at3
+        );
+        if (changed && status === "failed") {
+          await tx.refundReferralBalance(withdrawal.userId, withdrawal.amount);
+        }
+      }
+    }
+    return updated;
+  });
+}
+var CLAPAY_SUCCESS = /* @__PURE__ */ new Set(["SUCCESS", "SUCCESSFUL", "COMPLETED"]);
+var CLAPAY_FAILURE = /* @__PURE__ */ new Set(["FAILED", "CANCELLED", "CANCELED", "REJECTED", "REFUSED", "DECLINED", "TIMEOUT", "EXPIRED"]);
+function clapyFieldStatus(value) {
+  const status = value.trim().toUpperCase();
+  if (CLAPAY_SUCCESS.has(status)) return "completed";
+  if (CLAPAY_FAILURE.has(status)) return "failed";
+  return "pending";
+}
+function matchesClapayStatusIdentity(payout, status, signature, requireAll) {
+  const transactionId = status.transaction_id ?? status.transactionId;
+  if (transactionId !== payout.externalId || status.signature !== signature) return false;
+  const amount = status.amount;
+  const currency = status.currency;
+  const method = status.method ?? status.transaction_method;
+  const country = status.country ?? status.transaction_country_code ?? status.country_code;
+  const observed = [
+    [amount, payout.amount, (a, b3) => canonicalPayoutAmount(a) === canonicalPayoutAmount(b3)],
+    [currency, payout.currency, (a, b3) => a.toUpperCase() === b3.toUpperCase()],
+    [method, "CASHIN", (a, b3) => a.toUpperCase() === b3],
+    [country, payout.country, (a, b3) => a.toUpperCase() === b3.toUpperCase()]
+  ];
+  for (const [observedValue, expectedValue, compare2] of observed) {
+    if (observedValue === void 0 || observedValue === null || observedValue === "") {
+      if (requireAll) return false;
+      continue;
+    }
+    if (!compare2(String(observedValue), String(expectedValue))) return false;
+  }
+  return true;
+}
+async function reconcileClapaySignature(store2, payout, callbackSignature, queryStatus) {
+  if (payout.gateway !== "clapay" || payout.status !== "pending") return payout;
+  if (payout.signature && callbackSignature && payout.signature !== callbackSignature) return payout;
+  const signature = payout.signature ?? callbackSignature;
+  if (!signature) return payout;
+  let response;
+  try {
+    response = await queryStatus(signature);
+  } catch {
+    return payout;
+  }
+  const statusValue2 = String(response.status ?? response.status_payment ?? "");
+  const terminalStatus = clapyFieldStatus(statusValue2);
+  const terminal = terminalStatus !== "pending";
+  if (!matchesClapayStatusIdentity(payout, response, signature, terminal)) return payout;
+  let current = payout;
+  if (!payout.signature) {
+    const persisted = await store2.persistSignatureIfUnclaimed(payout.id, signature);
+    if (!persisted || persisted.signature !== signature || persisted.status !== "pending") {
+      return await store2.getPayout(payout.id) ?? payout;
+    }
+    current = persisted;
+  }
+  if (terminal) {
+    return await store2.finalizePayout(
+      payout.id,
+      terminalStatus,
+      terminalStatus === "failed" ? String(response.message ?? response.observation_error ?? statusValue2) : void 0
+    ) ?? current;
+  }
+  return await store2.getPayout(payout.id) ?? current;
+}
+
+// src/lib/payout-service.ts
+var canonicalAmount = canonicalPayoutAmount;
+function normalizePayoutRecord(payout) {
+  return {
+    id: payout.id,
+    gateway: payout.gateway,
+    status: payout.status,
+    amount: payout.amount,
+    currency: payout.currency,
+    countryCode: payout.country,
+    phoneNumber: payout.phone,
+    providerCode: payout.provider,
+    externalId: payout.externalId,
+    ...payout.signature ? { signature: payout.signature } : {},
+    ...payout.failureReason ? { failureReason: payout.failureReason } : {},
+    createdAt: payout.createdAt,
+    updatedAt: payout.updatedAt,
+    ...payout.referralWithdrawalId ? { referralWithdrawalId: payout.referralWithdrawalId } : {}
+  };
+}
+async function registerPayout(identity) {
+  return registerPayoutInStore(payoutLedgerStore, identity, {
+    id: (0, import_node_crypto13.randomUUID)(),
+    externalId: (0, import_node_crypto13.randomUUID)()
+  });
+}
+var payoutLedgerStore = {
+  async insertIfAbsent(record) {
+    const [inserted] = await db.insert(payoutsTable).values(record).onConflictDoNothing().returning();
+    return inserted ?? null;
+  },
+  async findByIdempotencyKey(key) {
+    const [record] = await db.select().from(payoutsTable).where(eq(payoutsTable.idempotencyKey, key)).limit(1);
+    return record ?? null;
+  }
+};
+var payoutInitiationClaims = {
+  async claimInitialInitiation(payoutId, at3) {
+    const [claimed] = await db.update(payoutsTable).set({
+      initiationClaimedAt: at3,
+      updatedAt: at3
+    }).where(and(
+      eq(payoutsTable.id, payoutId),
+      eq(payoutsTable.status, "pending"),
+      isNull(payoutsTable.initiationClaimedAt)
+    )).returning({ id: payoutsTable.id });
+    return Boolean(claimed);
+  },
+  async claimExpiredPawaRecovery(payoutId, expiredBefore, at3) {
+    const [claimed] = await db.update(payoutsTable).set({
+      initiationClaimedAt: at3,
+      updatedAt: at3
+    }).where(and(
+      eq(payoutsTable.id, payoutId),
+      eq(payoutsTable.gateway, "pawapay"),
+      eq(payoutsTable.status, "pending"),
+      lt(payoutsTable.initiationClaimedAt, expiredBefore)
+    )).returning({ id: payoutsTable.id });
+    return Boolean(claimed);
+  }
+};
+async function getPayoutById(id) {
+  const [payout] = await db.select().from(payoutsTable).where(eq(payoutsTable.id, id)).limit(1);
+  return payout ?? null;
+}
+async function initiatePayout(payout, operatorOtp, mode = "initial") {
+  if (payout.status !== "pending") return;
+  if (payout.gateway === "pawapay") {
+    const credentials2 = await resolvePawaPayCredentials();
+    if (!credentials2) throw new Error("PawaPay non configur\xE9");
+    const claim = mode === "pawa-recovery" ? await claimExpiredPawaPayoutRecovery(payoutInitiationClaims, payout.id) : await claimInitialPayoutInitiation(payoutInitiationClaims, payout.id);
+    if (!claim) return;
+    const client2 = new PawaPayClient(credentials2.token, credentials2.env);
+    try {
+      const result = await client2.initiatePayout({
+        payoutId: payout.externalId,
+        amount: canonicalAmount(payout.amount),
+        currency: payout.currency,
+        recipient: {
+          type: "MMO",
+          accountDetails: { phoneNumber: payout.phone, provider: payout.provider }
+        },
+        customerMessage: "Simix retrait",
+        metadata: [{ type: "admin_payout", payout_id: payout.id }]
+      });
+      if (result.status === "REJECTED") {
+        await finalizePayout(payout.id, "failed", result.failureReason?.failureMessage ?? "PawaPay rejected payout");
+      }
+    } catch (error) {
+      logger.warn({ payoutId: payout.externalId, err: error.message }, "[payout] PawaPay initiation outcome unknown");
+      throw error;
+    }
+    return;
+  }
+  if (payout.signature) return;
+  const credentials = await resolveClapayCredentials();
+  if (!credentials) throw new Error("Clapay non configur\xE9");
+  const claimed = await claimInitialPayoutInitiation(payoutInitiationClaims, payout.id);
+  if (!claimed) return;
+  const client = new ClapayClient(credentials.token, credentials.baseUrl);
+  const appUrl = process.env.APP_URL?.replace(/\/$/, "") ?? "https://simix.site";
+  let response;
+  try {
+    response = await client.initiateCashout({
+      transaction_id: payout.externalId,
+      additional_infos: { customer_phone: payout.phone },
+      amount: Math.floor(Number(payout.amount)),
+      callback_url: `${appUrl}/api/payouts/clapay/webhook`,
+      return_url: `${appUrl}/admin/payouts`,
+      country_code: payout.country,
+      operators_code: [payout.provider],
+      method: "CASHIN",
+      tunnel: "API",
+      ...operatorOtp ? { operator_otp: operatorOtp } : {}
+    });
+  } catch (error) {
+    logger.warn({ payoutId: payout.id, err: error.message }, "[payout] Clapay initiation outcome unknown; retained pending");
+    throw error;
+  }
+  if (!response.signature) {
+    logger.warn({ payoutId: payout.id }, "[payout] Clapay returned no signature; retained pending");
+    return;
+  }
+  const [saved] = await db.update(payoutsTable).set({
+    signature: response.signature,
+    updatedAt: /* @__PURE__ */ new Date()
+  }).where(and(
+    eq(payoutsTable.id, payout.id),
+    eq(payoutsTable.status, "pending"),
+    isNull(payoutsTable.signature)
+  )).returning({ signature: payoutsTable.signature });
+  if (!saved) {
+    const current = await getPayoutById(payout.id);
+    if (current?.signature !== response.signature) {
+      logger.error({ payoutId: payout.id }, "[payout] Clapay response signature conflicts with already verified signature");
+    }
+  }
+}
+function exactAmount(left2, right2) {
+  return canonicalAmount(String(left2)) === canonicalAmount(String(right2));
+}
+function pawaIdentityMatches(payout, data) {
+  return data.payoutId === payout.externalId && data.recipient?.accountDetails?.phoneNumber === payout.phone && data.recipient?.accountDetails?.provider === payout.provider && exactAmount(data.amount, payout.amount) && data.currency.toUpperCase() === payout.currency && data.country.toUpperCase() === (ISO2_TO_ISO3[payout.country] ?? payout.country).toUpperCase();
+}
+async function finalizePayout(payoutId, status, failureReason) {
+  return finalizePayoutInStore(payoutSettlementStore, payoutId, status, failureReason);
+}
+var payoutSettlementStore = {
+  transaction: (work) => db.transaction(async (tx) => work({
+    async lockPayout(id) {
+      const [payout] = await tx.select().from(payoutsTable).where(eq(payoutsTable.id, id)).for("update");
+      return payout ?? null;
+    },
+    async markPayoutTerminal(id, status, reason, at3) {
+      const [payout] = await tx.update(payoutsTable).set({
+        status,
+        failureReason: reason,
+        updatedAt: at3,
+        completedAt: at3
+      }).where(and(eq(payoutsTable.id, id), eq(payoutsTable.status, "pending"))).returning();
+      return payout ?? null;
+    },
+    async lockReferralWithdrawal(id) {
+      const [withdrawal] = await tx.select({
+        id: referralWithdrawalsTable.id,
+        userId: referralWithdrawalsTable.userId,
+        amount: referralWithdrawalsTable.amount,
+        status: referralWithdrawalsTable.status,
+        adminNote: referralWithdrawalsTable.adminNote
+      }).from(referralWithdrawalsTable).where(eq(referralWithdrawalsTable.id, id)).for("update");
+      return withdrawal ?? null;
+    },
+    async markReferralWithdrawalTerminal(id, status, adminNote, actorId, at3) {
+      const changed = await tx.update(referralWithdrawalsTable).set({
+        status,
+        adminNote,
+        processedBy: actorId,
+        processedAt: at3
+      }).where(and(
+        eq(referralWithdrawalsTable.id, id),
+        eq(referralWithdrawalsTable.status, "pending")
+      )).returning({ id: referralWithdrawalsTable.id });
+      return changed.length > 0;
+    },
+    async refundReferralBalance(userId, amount) {
+      await tx.update(usersTable).set({ referralBalance: sql`${usersTable.referralBalance} + ${amount}` }).where(eq(usersTable.id, userId));
+    }
+  }))
+};
+var clapaySignatureRecoveryStore = {
+  async persistSignatureIfUnclaimed(payoutId, signature) {
+    const [persisted] = await db.update(payoutsTable).set({
+      signature,
+      updatedAt: /* @__PURE__ */ new Date()
+    }).where(and(
+      eq(payoutsTable.id, payoutId),
+      eq(payoutsTable.gateway, "clapay"),
+      eq(payoutsTable.status, "pending"),
+      isNull(payoutsTable.signature)
+    )).returning();
+    return persisted ?? getPayoutById(payoutId);
+  },
+  getPayout: getPayoutById,
+  finalizePayout
+};
+async function refreshPayout(payoutId, callbackSignature) {
+  const payout = await getPayoutById(payoutId);
+  if (!payout || payout.status !== "pending") return payout;
+  try {
+    if (payout.gateway === "pawapay") {
+      const credentials = await resolvePawaPayCredentials();
+      if (!credentials) throw new Error("PawaPay non configur\xE9");
+      const client = new PawaPayClient(credentials.token, credentials.env);
+      const result = await client.getPayoutStatus(payout.externalId);
+      if (result.status === "NOT_FOUND") {
+        await initiatePayout(
+          payout,
+          void 0,
+          payout.initiationClaimedAt ? "pawa-recovery" : "initial"
+        );
+      } else if (result.status === "FOUND" && result.data) {
+        if (!pawaIdentityMatches(payout, result.data)) {
+          logger.error({ payoutId, externalId: payout.externalId }, "[payout] PawaPay payout identity mismatch; no transition");
+        } else if (result.data.status === "COMPLETED") {
+          await finalizePayout(payout.id, "completed");
+        } else if (result.data.status === "FAILED") {
+          await finalizePayout(payout.id, "failed", result.data.failureReason?.failureMessage);
+        }
+      }
+    } else if (payout.signature || callbackSignature) {
+      const credentials = await resolveClapayCredentials();
+      if (!credentials) throw new Error("Clapay non configur\xE9");
+      const client = new ClapayClient(credentials.token, credentials.baseUrl);
+      await reconcileClapaySignature(
+        clapaySignatureRecoveryStore,
+        payout,
+        callbackSignature,
+        async (signature) => client.checkPaymentStatus(signature)
+      );
+    }
+  } catch (error) {
+    logger.warn({ payoutId, gateway: payout.gateway, err: error.message }, "[payout] Reconciliation check failed");
+  } finally {
+    await db.update(payoutsTable).set({ updatedAt: /* @__PURE__ */ new Date() }).where(and(eq(payoutsTable.id, payout.id), eq(payoutsTable.status, "pending")));
+  }
+  return getPayoutById(payoutId);
+}
+async function validatePawaPayRecipient(input) {
+  const iso2 = input.countryIso2.trim().toUpperCase();
+  const [countryRecord] = await db.select({ dialCode: countriesTable.dialCode }).from(countriesTable).where(eq(countriesTable.code, iso2)).limit(1);
+  const credentials = await resolvePawaPayCredentials();
+  if (!credentials) throw new Error("PawaPay non configur\xE9");
+  const client = new PawaPayClient(credentials.token, credentials.env);
+  const msisdn = buildMSISDN(input.phoneNumber);
+  const dialPrefix = countryRecord?.dialCode?.replace(/\D/g, "");
+  if (!dialPrefix || !msisdn.startsWith(dialPrefix)) {
+    throw new PayoutValidationError("Le num\xE9ro doit \xEAtre saisi au format international complet pour le pays s\xE9lectionn\xE9.", 422);
+  }
+  if (!/^[1-9][0-9]{7,17}$/.test(msisdn)) {
+    throw new PayoutValidationError("Num\xE9ro de t\xE9l\xE9phone invalide. Utilisez le format international complet.", 422);
+  }
+  const provider = normalizePawaPayProvider(iso2, input.provider);
+  const amountString = String(input.amount).trim();
+  const amountNumber = Number(amountString);
+  if (!Number.isFinite(amountNumber) || amountNumber <= 0 || !/^([0]|([1-9][0-9]{0,17}))([.][0-9]{0,3}[1-9])?$/.test(amountString)) {
+    throw new PayoutValidationError("Format du montant invalide pour PawaPay", 400);
+  }
+  const predicted = await client.predictProvider(msisdn);
+  if (!predicted?.phoneNumber || !predicted.provider) {
+    throw new PayoutValidationError("PawaPay n'a pas pu valider ce num\xE9ro.", 422);
+  }
+  if (predicted.provider !== provider) {
+    throw new PayoutValidationError(`Ce num\xE9ro est identifi\xE9 par PawaPay comme ${predicted.provider}, mais l'op\xE9rateur s\xE9lectionn\xE9 est ${provider}.`, 422);
+  }
+  const iso3 = ISO2_TO_ISO3[iso2] ?? iso2;
+  const config = await client.getActiveConfiguration({ country: iso3, operationType: "PAYOUT" });
+  const configuredCountry = config.countries.find((c2) => c2.country === iso3 || c2.country === iso2);
+  const providerConfig = configuredCountry?.providers.find((p) => p.provider === provider);
+  const payoutCurrency = providerConfig?.currencies.find(
+    (c2) => c2.currency === input.currency.trim().toUpperCase() && getPawaPayOperationConfig(c2.operationTypes, "PAYOUT")
+  );
+  const payoutConfig = payoutCurrency ? getPawaPayOperationConfig(payoutCurrency.operationTypes, "PAYOUT") : void 0;
+  if (!providerConfig || !payoutCurrency || !payoutConfig) {
+    throw new PayoutValidationError(`Le retrait PawaPay n'est pas activ\xE9 pour ${provider}.`, 422);
+  }
+  const min2 = Number(payoutConfig.minTransactionLimit ?? payoutConfig.minAmount);
+  const max2 = Number(payoutConfig.maxTransactionLimit ?? payoutConfig.maxAmount);
+  if (Number.isFinite(min2) && amountNumber < min2) throw new PayoutValidationError(`Le montant minimum est ${min2} ${input.currency}.`, 422);
+  if (Number.isFinite(max2) && amountNumber > max2) throw new PayoutValidationError(`Le montant maximum est ${max2} ${input.currency}.`, 422);
+  if (payoutConfig.decimalsInAmount === "NONE" && amountString.includes(".")) {
+    throw new PayoutValidationError("Les d\xE9cimales ne sont pas autoris\xE9es pour cet op\xE9rateur.", 422);
+  }
+  return {
+    phone: predicted.phoneNumber,
+    provider,
+    country: iso2,
+    currency: input.currency.trim().toUpperCase(),
+    amount: amountString
+  };
+}
+var PayoutValidationError = class extends Error {
+  constructor(message, httpStatus) {
+    super(message);
+    this.httpStatus = httpStatus;
+  }
+  httpStatus;
+};
+async function resolveClapayReferralPayout(countryCode, operatorSlug, phone, amount) {
+  const country = countryCode.trim().toUpperCase();
+  const credentials = await resolveClapayCredentials();
+  if (!credentials) throw new Error("Clapay non configur\xE9");
+  const client = new ClapayClient(credentials.token, credentials.baseUrl);
+  const [countryRecord] = await db.select({ dialCode: countriesTable.dialCode }).from(countriesTable).where(eq(countriesTable.code, country)).limit(1);
+  if (!countryRecord) throw new PayoutValidationError("Pays introuvable", 422);
+  const normalize4 = (value) => value.toLowerCase().replace(/[^a-z0-9]/g, "");
+  const wanted = normalize4(operatorSlug);
+  if (!wanted) throw new PayoutValidationError("Op\xE9rateur invalide", 422);
+  const operators = await client.getOperators(country);
+  const eligible = operators.filter((op) => op.active && Boolean(op.codeoperator) && Boolean(op.code?.CASHIN) && op.code.CASHIN.toLowerCase() !== "none");
+  const operator = eligible.find((op) => normalize4(op.codeoperator) === wanted) ?? eligible.find((op) => {
+    const code = normalize4(op.codeoperator);
+    const name3 = normalize4(op.name);
+    return wanted === name3 || wanted.includes(name3) || name3.includes(wanted) || code.length > 2 && (wanted.startsWith(code) || wanted.endsWith(code));
+  });
+  if (!operator || !operator.codeoperator || !operator.code?.CASHIN || operator.code.CASHIN.toLowerCase() === "none") {
+    throw new PayoutValidationError("L'op\xE9rateur Clapay s\xE9lectionn\xE9 ne prend pas en charge les payouts CASHIN.", 422);
+  }
+  const formattedPhone = formatClapayPhone(phone, countryRecord.dialCode, country);
+  if (!formattedPhone.replace(/\D/g, "").length) throw new PayoutValidationError("Num\xE9ro de t\xE9l\xE9phone invalide", 422);
+  const countries = await client.getCountries(country);
+  const countryCurrency = countries.find((c2) => c2.code.toUpperCase() === country)?.currency;
+  const currency = countryCurrency || COUNTRY_CURRENCY[country];
+  if (!currency) throw new PayoutValidationError("Devise du pays non disponible", 422);
+  if (!Number.isSafeInteger(amount) || amount <= 0) throw new PayoutValidationError("Montant invalide", 400);
+  return {
+    phone: formattedPhone,
+    provider: operator.codeoperator,
+    country,
+    currency: currency.toUpperCase(),
+    amount: String(amount),
+    operatorRequiresOtp: operator.otpstarter?.CASHIN === true
+  };
+}
+
+// src/routes/admin-referral-withdrawals.ts
 var router19 = (0, import_express20.Router)();
 router19.use(requireAdminJwt);
 function requireAdmin6(req, res, next) {
@@ -165389,38 +166611,240 @@ router19.get("/admin/referral-withdrawals", requireAdmin6, async (req, res) => {
     countryName: countriesTable.name,
     countryFlag: countriesTable.flag,
     operatorName: mobileOperatorsTable.name,
-    operatorColor: mobileOperatorsTable.color
-  }).from(referralWithdrawalsTable).innerJoin(usersTable, eq(referralWithdrawalsTable.userId, usersTable.id)).leftJoin(countriesTable, eq(referralWithdrawalsTable.countryCode, countriesTable.code)).leftJoin(mobileOperatorsTable, eq(referralWithdrawalsTable.operatorSlug, mobileOperatorsTable.slug)).where(status ? eq(referralWithdrawalsTable.status, status) : void 0).orderBy(desc(referralWithdrawalsTable.createdAt)).limit(200);
+    operatorColor: mobileOperatorsTable.color,
+    payoutId: payoutsTable.id,
+    payoutGateway: payoutsTable.gateway,
+    payoutStatus: payoutsTable.status,
+    payoutAmount: payoutsTable.amount,
+    payoutCurrency: payoutsTable.currency,
+    payoutCountry: payoutsTable.country,
+    payoutPhone: payoutsTable.phone,
+    payoutProvider: payoutsTable.provider,
+    payoutExternalId: payoutsTable.externalId,
+    payoutSignature: payoutsTable.signature,
+    payoutFailureReason: payoutsTable.failureReason,
+    payoutCreatedAt: payoutsTable.createdAt,
+    payoutUpdatedAt: payoutsTable.updatedAt
+  }).from(referralWithdrawalsTable).innerJoin(usersTable, eq(referralWithdrawalsTable.userId, usersTable.id)).leftJoin(countriesTable, eq(referralWithdrawalsTable.countryCode, countriesTable.code)).leftJoin(mobileOperatorsTable, eq(referralWithdrawalsTable.operatorSlug, mobileOperatorsTable.slug)).leftJoin(payoutsTable, eq(payoutsTable.referralWithdrawalId, referralWithdrawalsTable.id)).where(status ? eq(referralWithdrawalsTable.status, status) : void 0).orderBy(desc(referralWithdrawalsTable.createdAt)).limit(200);
   const [pendingCountRow] = await db.select({ c: sql`count(*)::int` }).from(referralWithdrawalsTable).where(eq(referralWithdrawalsTable.status, "pending"));
-  res.json({ withdrawals: rows, pendingCount: pendingCountRow?.c ?? 0 });
-});
-router19.post("/admin/referral-withdrawals/:id/approve", requireAdmin6, async (req, res) => {
-  const { id } = req.params;
-  const outcome = await db.transaction(async (tx) => {
-    const [withdrawal] = await tx.select().from(referralWithdrawalsTable).where(eq(referralWithdrawalsTable.id, id)).for("update");
-    if (!withdrawal) return { error: "NOT_FOUND" };
-    if (withdrawal.status !== "pending") return { error: "ALREADY_PROCESSED" };
-    await tx.update(referralWithdrawalsTable).set({ status: "paid", processedBy: adminId3(req), processedAt: /* @__PURE__ */ new Date() }).where(and(eq(referralWithdrawalsTable.id, id), eq(referralWithdrawalsTable.status, "pending")));
-    return { withdrawal };
+  res.json({
+    withdrawals: rows.map((row) => {
+      const payout = row.payoutId ? {
+        id: row.payoutId,
+        gateway: row.payoutGateway,
+        status: row.payoutStatus,
+        amount: row.payoutAmount,
+        currency: row.payoutCurrency,
+        countryCode: row.payoutCountry,
+        phoneNumber: row.payoutPhone,
+        providerCode: row.payoutProvider,
+        externalId: row.payoutExternalId,
+        ...row.payoutSignature ? { signature: row.payoutSignature } : {},
+        ...row.payoutFailureReason ? { failureReason: row.payoutFailureReason } : {},
+        createdAt: row.payoutCreatedAt,
+        updatedAt: row.payoutUpdatedAt,
+        referralWithdrawalId: row.id
+      } : null;
+      return {
+        id: row.id,
+        userId: row.userId,
+        amount: row.amount,
+        countryCode: row.countryCode,
+        operatorSlug: row.operatorSlug,
+        phone: row.phone,
+        status: row.status,
+        adminNote: row.adminNote,
+        processedBy: row.processedBy,
+        processedAt: row.processedAt,
+        createdAt: row.createdAt,
+        userName: row.userName,
+        userPhone: row.userPhone,
+        userEmail: row.userEmail,
+        countryName: row.countryName,
+        countryFlag: row.countryFlag,
+        operatorName: row.operatorName,
+        operatorColor: row.operatorColor,
+        payout,
+        payoutInProgress: row.status === "pending" && row.payoutStatus === "pending"
+      };
+    }),
+    pendingCount: pendingCountRow?.c ?? 0
   });
-  if (outcome.error === "NOT_FOUND") {
-    res.status(404).json({ error: "Demande introuvable" });
+});
+router19.post("/admin/referral-withdrawals/:id/send", requireAdmin6, async (req, res) => {
+  const id = Array.isArray(req.params.id) ? req.params.id[0] ?? "" : req.params.id ?? "";
+  const { gateway, idempotencyKey, operatorOtp } = req.body ?? {};
+  if (gateway !== "pawapay" && gateway !== "clapay" || !idempotencyKey?.trim()) {
+    res.status(400).json({ error: "Champs requis : gateway (pawapay|clapay), idempotencyKey" });
     return;
   }
-  if (outcome.error === "ALREADY_PROCESSED") {
-    res.status(400).json({ error: "Cette demande a d\xE9j\xE0 \xE9t\xE9 trait\xE9e" });
-    return;
+  try {
+    const [snapshot] = await db.select().from(referralWithdrawalsTable).where(eq(referralWithdrawalsTable.id, id)).limit(1);
+    if (!snapshot) {
+      res.status(404).json({ error: "Demande introuvable" });
+      return;
+    }
+    if (snapshot.status !== "pending") {
+      res.status(409).json({ error: "Cette demande de retrait a d\xE9j\xE0 \xE9t\xE9 trait\xE9e." });
+      return;
+    }
+    let prepared;
+    let operatorRequiresOtp = false;
+    if (gateway === "pawapay") {
+      const country = snapshot.countryCode.toUpperCase();
+      const currency = COUNTRY_CURRENCY[country];
+      if (!currency) throw new PayoutValidationError("Devise PawaPay inconnue pour ce pays.", 422);
+      const provider = normalizePawaPayProvider(country, snapshot.operatorSlug);
+      prepared = await validatePawaPayRecipient({
+        phoneNumber: snapshot.phone,
+        countryIso2: country,
+        provider,
+        currency,
+        amount: snapshot.amount
+      });
+    } else {
+      const clapay = await resolveClapayReferralPayout(
+        snapshot.countryCode,
+        snapshot.operatorSlug,
+        snapshot.phone,
+        snapshot.amount
+      );
+      prepared = clapay;
+      operatorRequiresOtp = clapay.operatorRequiresOtp;
+    }
+    if (operatorRequiresOtp && !operatorOtp?.trim()) {
+      res.status(422).json({ error: "Un code OTP op\xE9rateur est requis pour ce payout." });
+      return;
+    }
+    const outcome = await db.transaction(async (tx) => {
+      const [withdrawal] = await tx.select().from(referralWithdrawalsTable).where(eq(referralWithdrawalsTable.id, id)).for("update");
+      if (!withdrawal) return { kind: "missing" };
+      if (withdrawal.status !== "pending") return { kind: "processed" };
+      if (withdrawal.phone !== snapshot.phone || withdrawal.amount !== snapshot.amount || withdrawal.countryCode !== snapshot.countryCode || withdrawal.operatorSlug !== snapshot.operatorSlug) {
+        return { kind: "changed" };
+      }
+      const [linkedPayout] = await tx.select().from(payoutsTable).where(eq(payoutsTable.referralWithdrawalId, id)).limit(1);
+      const identity = {
+        gateway,
+        actorId: adminId3(req),
+        idempotencyKey: idempotencyKey.trim(),
+        phone: prepared.phone,
+        provider: prepared.provider,
+        country: prepared.country,
+        currency: prepared.currency,
+        amount: prepared.amount,
+        referralWithdrawalId: id
+      };
+      const fingerprint = payoutFingerprint(identity);
+      if (linkedPayout) {
+        if (linkedPayout.idempotencyKey !== identity.idempotencyKey || linkedPayout.requestFingerprint !== fingerprint) {
+          return { kind: "linked", payout: linkedPayout };
+        }
+        return { kind: "existing", payout: linkedPayout };
+      }
+      const [payout] = await tx.insert(payoutsTable).values({
+        idempotencyKey: identity.idempotencyKey,
+        requestFingerprint: fingerprint,
+        gateway,
+        externalId: (0, import_node_crypto14.randomUUID)(),
+        referralWithdrawalId: id,
+        actorId: identity.actorId,
+        phone: identity.phone,
+        provider: identity.provider,
+        country: identity.country.toUpperCase(),
+        currency: identity.currency.toUpperCase(),
+        amount: identity.amount,
+        status: "pending"
+      }).onConflictDoNothing().returning();
+      if (payout) return { kind: "created", payout };
+      const [sameKey] = await tx.select().from(payoutsTable).where(eq(payoutsTable.idempotencyKey, identity.idempotencyKey)).limit(1);
+      if (sameKey?.requestFingerprint === fingerprint) return { kind: "existing", payout: sameKey };
+      return { kind: "conflict" };
+    });
+    if (outcome.kind === "missing") {
+      res.status(404).json({ error: "Demande introuvable" });
+      return;
+    }
+    if (outcome.kind === "processed") {
+      res.status(409).json({ error: "Cette demande de retrait a d\xE9j\xE0 \xE9t\xE9 trait\xE9e." });
+      return;
+    }
+    if (outcome.kind === "changed") {
+      res.status(409).json({ error: "Les donn\xE9es du retrait ont chang\xE9. Rechargez la liste." });
+      return;
+    }
+    if (outcome.kind === "linked") {
+      res.status(409).json({ error: "Cette demande est d\xE9j\xE0 li\xE9e \xE0 un payout; aucun deuxi\xE8me transfert ne sera cr\xE9\xE9." });
+      return;
+    }
+    if (outcome.kind === "conflict") {
+      res.status(409).json({ error: "Cette cl\xE9 d'idempotence a d\xE9j\xE0 \xE9t\xE9 utilis\xE9e pour une autre demande." });
+      return;
+    }
+    if (outcome.kind === "created") {
+      try {
+        await initiatePayout(outcome.payout, operatorOtp?.trim());
+      } catch (err) {
+        logger.warn({ payoutId: outcome.payout.id, err: err.message }, "[referral-payout] Initiation outcome unknown; payout remains pending");
+      }
+    } else if (outcome.payout.status === "pending" && !outcome.payout.initiationClaimedAt) {
+      try {
+        await initiatePayout(outcome.payout, operatorOtp?.trim());
+      } catch (err) {
+        logger.warn({ payoutId: outcome.payout.id, err: err.message }, "[referral-payout] Unclaimed initiation outcome unknown; payout remains pending");
+      }
+    } else if (outcome.payout.status === "pending") {
+      await refreshPayout(outcome.payout.id);
+    }
+    const [current] = await db.select().from(payoutsTable).where(eq(payoutsTable.id, outcome.payout.id)).limit(1);
+    if (outcome.kind === "created") {
+      await logAdminAction2(adminId3(req), "referral_withdrawal_payout_sent", req.ip, "referral_withdrawal", id, {
+        gateway,
+        amount: snapshot.amount,
+        userId: snapshot.userId,
+        payoutId: outcome.payout.id
+      });
+    }
+    res.json(normalizeReferralPayout(current ?? outcome.payout));
+  } catch (err) {
+    if (err instanceof PayoutValidationError) {
+      res.status(err.httpStatus).json({ error: err.message });
+      return;
+    }
+    logger.error({ err: err.message, withdrawalId: id }, "[referral-payout] Send failed");
+    res.status(503).json({ error: err.message });
   }
-  await logAdminAction2(adminId3(req), "referral_withdrawal_approved", req.ip, "referral_withdrawal", id, { amount: outcome.withdrawal.amount, userId: outcome.withdrawal.userId });
-  res.json({ success: true });
+});
+function normalizeReferralPayout(payout) {
+  return {
+    id: payout.id,
+    gateway: payout.gateway,
+    status: payout.status,
+    amount: payout.amount,
+    currency: payout.currency,
+    countryCode: payout.country,
+    phoneNumber: payout.phone,
+    providerCode: payout.provider,
+    externalId: payout.externalId,
+    ...payout.signature ? { signature: payout.signature } : {},
+    ...payout.failureReason ? { failureReason: payout.failureReason } : {},
+    createdAt: payout.createdAt,
+    updatedAt: payout.updatedAt,
+    referralWithdrawalId: payout.referralWithdrawalId
+  };
+}
+router19.post("/admin/referral-withdrawals/:id/approve", requireAdmin6, async (_req, res) => {
+  res.status(409).json({ error: "Un retrait ne peut pas \xEAtre marqu\xE9 pay\xE9 manuellement. Envoyez-le via l\u2019action agr\xE9gateur." });
 });
 router19.post("/admin/referral-withdrawals/:id/reject", requireAdmin6, async (req, res) => {
-  const { id } = req.params;
+  const id = Array.isArray(req.params.id) ? req.params.id[0] ?? "" : req.params.id ?? "";
   const { reason } = req.body ?? {};
   const outcome = await db.transaction(async (tx) => {
     const [withdrawal] = await tx.select().from(referralWithdrawalsTable).where(eq(referralWithdrawalsTable.id, id)).for("update");
     if (!withdrawal) return { error: "NOT_FOUND" };
     if (withdrawal.status !== "pending") return { error: "ALREADY_PROCESSED" };
+    const [activePayout] = await tx.select({ status: payoutsTable.status }).from(payoutsTable).where(eq(payoutsTable.referralWithdrawalId, id));
+    if (activePayout?.status === "pending") return { error: "PAYOUT_IN_FLIGHT" };
     const updated = await tx.update(referralWithdrawalsTable).set({ status: "rejected", adminNote: reason ?? null, processedBy: adminId3(req), processedAt: /* @__PURE__ */ new Date() }).where(and(eq(referralWithdrawalsTable.id, id), eq(referralWithdrawalsTable.status, "pending"))).returning({ id: referralWithdrawalsTable.id });
     if (updated.length === 0) return { error: "ALREADY_PROCESSED" };
     await tx.update(usersTable).set({ referralBalance: sql`${usersTable.referralBalance} + ${withdrawal.amount}` }).where(eq(usersTable.id, withdrawal.userId));
@@ -165428,6 +166852,10 @@ router19.post("/admin/referral-withdrawals/:id/reject", requireAdmin6, async (re
   });
   if (outcome.error === "NOT_FOUND") {
     res.status(404).json({ error: "Demande introuvable" });
+    return;
+  }
+  if (outcome.error === "PAYOUT_IN_FLIGHT") {
+    res.status(409).json({ error: "Un payout est en cours; il ne peut pas \xEAtre rejet\xE9 manuellement." });
     return;
   }
   if (outcome.error === "ALREADY_PROCESSED") {
@@ -165876,6 +167304,25 @@ init_gateway_credentials();
 init_logger2();
 init_src();
 var router21 = (0, import_express22.Router)();
+router21.post("/payouts/clapay/webhook", async (req, res) => {
+  const payload = req.body ?? {};
+  const transactionId = String(payload.transaction_id ?? "");
+  const signature = String(payload.signature ?? "");
+  const [payout] = await db.select().from(payoutsTable).where(
+    transactionId ? eq(payoutsTable.externalId, transactionId) : eq(payoutsTable.signature, signature)
+  ).limit(1);
+  if (payout?.gateway === "clapay") {
+    await refreshPayout(payout.id, signature || void 0);
+  }
+  res.status(202).json({ received: true });
+});
+router21.post("/payouts/pawapay/webhook", async (req, res) => {
+  const payload = req.body ?? {};
+  const payoutId = String(payload.payoutId ?? payload.payout_id ?? "");
+  const [payout] = payoutId ? await db.select().from(payoutsTable).where(eq(payoutsTable.externalId, payoutId)).limit(1) : [];
+  if (payout?.gateway === "pawapay") await refreshPayout(payout.id);
+  res.status(202).json({ received: true });
+});
 router21.use(requireAdminJwt);
 function requireAdmin7(req, res, next) {
   if (req.adminPayload) {
@@ -166027,126 +167474,51 @@ router21.get("/admin/payouts/pawapay/config", requireAdmin7, async (req, res) =>
   }
 });
 router21.post("/admin/payouts/pawapay", requireAdmin7, async (req, res) => {
-  const { phoneNumber, countryIso2, provider, currency, amount } = req.body;
-  if (!phoneNumber || !countryIso2 || !provider || !currency || !amount) {
-    res.status(400).json({ error: "Champs requis : phoneNumber, countryIso2, provider, currency, amount" });
-    return;
-  }
-  const amountNum = Number(amount);
-  if (!Number.isFinite(amountNum) || amountNum <= 0) {
-    res.status(400).json({ error: "Montant invalide" });
+  const { phoneNumber, countryIso2, provider, currency, amount, idempotencyKey } = req.body ?? {};
+  if (!phoneNumber || !countryIso2 || !provider || !currency || amount === void 0 || !idempotencyKey?.trim()) {
+    res.status(400).json({ error: "Champs requis : phoneNumber, countryIso2, provider, currency, amount, idempotencyKey" });
     return;
   }
   try {
-    const iso2 = countryIso2.trim().toUpperCase();
-    const [country] = await db.select({ dialCode: countriesTable.dialCode }).from(countriesTable).where(eq(countriesTable.code, iso2)).limit(1);
-    const creds = await resolvePawaPayCredentials();
-    if (!creds) {
-      res.status(503).json({ error: "PawaPay non configur\xE9" });
-      return;
-    }
-    const client = new PawaPayClient(creds.token, creds.env);
-    const msisdn = buildMSISDN(phoneNumber);
-    const expectedDialCode = country?.dialCode?.replace(/\D/g, "");
-    if (!expectedDialCode || !msisdn.startsWith(expectedDialCode)) {
-      res.status(422).json({
-        error: `Le num\xE9ro doit \xEAtre saisi au format international complet pour ${iso2}, par exemple ${country?.dialCode ?? "+237"}683677872.`
-      });
-      return;
-    }
-    if (!/^[1-9][0-9]{7,17}$/.test(msisdn)) {
-      res.status(422).json({
-        error: "Num\xE9ro de t\xE9l\xE9phone invalide. Utilisez le format international, par exemple +237683677872."
-      });
-      return;
-    }
-    const pawapayProvider = normalizePawaPayProvider(iso2, provider);
-    const payoutCurrencyCode = currency.trim().toUpperCase();
-    const amountString = String(amount).trim();
-    const iso3 = ISO2_TO_ISO3[iso2] ?? iso2;
-    if (!/^([0]|([1-9][0-9]{0,17}))([.][0-9]{0,3}[1-9])?$/.test(amountString)) {
-      res.status(400).json({ error: "Format du montant invalide pour PawaPay" });
-      return;
-    }
-    const predicted = await client.predictProvider(msisdn);
-    if (!predicted?.phoneNumber || !predicted.provider) {
-      res.status(422).json({
-        error: "PawaPay n'a pas pu valider ce num\xE9ro. V\xE9rifiez le num\xE9ro et l'indicatif du pays."
-      });
-      return;
-    }
-    if (predicted.provider !== pawapayProvider) {
-      res.status(422).json({
-        error: `Ce num\xE9ro est identifi\xE9 par PawaPay comme ${predicted.provider}, mais l'op\xE9rateur s\xE9lectionn\xE9 est ${pawapayProvider}. S\xE9lectionnez l'op\xE9rateur correspondant.`
-      });
-      return;
-    }
-    const payoutPhoneNumber = predicted.phoneNumber;
-    try {
-      const config = await client.getActiveConfiguration({
-        country: iso3,
-        operationType: "PAYOUT"
-      });
-      const country2 = config.countries.find(
-        (c2) => c2.country === iso3 || c2.country === iso2
-      );
-      const providerConfig = country2?.providers.find((p) => p.provider === pawapayProvider);
-      const payoutCurrency = providerConfig?.currencies.find(
-        (c2) => c2.currency === payoutCurrencyCode && getPawaPayOperationConfig(c2.operationTypes, "PAYOUT")
-      );
-      const payoutConfig = payoutCurrency ? getPawaPayOperationConfig(payoutCurrency.operationTypes, "PAYOUT") : void 0;
-      if (!providerConfig || !payoutCurrency || !payoutConfig) {
-        res.status(422).json({
-          error: `Le retrait PawaPay n'est pas activ\xE9 pour ${pawapayProvider} dans votre compte. Activez ce fournisseur dans la configuration Payouts PawaPay ou choisissez un op\xE9rateur autoris\xE9.`
-        });
-        return;
-      }
-      const minAmount = Number(payoutConfig.minTransactionLimit ?? payoutConfig.minAmount);
-      const maxAmount = Number(payoutConfig.maxTransactionLimit ?? payoutConfig.maxAmount);
-      if (Number.isFinite(minAmount) && amountNum < minAmount) {
-        res.status(422).json({ error: `Le montant minimum pour ${pawapayProvider} est ${minAmount} ${payoutCurrencyCode}.` });
-        return;
-      }
-      if (Number.isFinite(maxAmount) && amountNum > maxAmount) {
-        res.status(422).json({ error: `Le montant maximum pour ${pawapayProvider} est ${maxAmount} ${payoutCurrencyCode}.` });
-        return;
-      }
-      if (payoutConfig.decimalsInAmount === "NONE" && amountString.includes(".")) {
-        res.status(422).json({ error: `Les d\xE9cimales ne sont pas autoris\xE9es pour ${pawapayProvider}.` });
-        return;
-      }
-    } catch (err) {
-      logger.error({ err, provider: pawapayProvider, countryIso2: iso2 }, "[admin-payouts] PawaPay payout configuration check failed");
-      res.status(503).json({
-        error: "Impossible de v\xE9rifier la configuration des retraits PawaPay. Aucun retrait n'a \xE9t\xE9 envoy\xE9, veuillez r\xE9essayer."
-      });
-      return;
-    }
-    const payoutId = crypto.randomUUID();
-    logger.info({ payoutId, msisdn: payoutPhoneNumber, countryIso2, provider: pawapayProvider, currency: payoutCurrencyCode, amount: amountString }, "[admin-payouts] Initiating PawaPay payout");
-    const result = await client.initiatePayout({
-      payoutId,
-      amount: amountString,
-      currency: payoutCurrencyCode,
-      recipient: {
-        type: "MMO",
-        accountDetails: {
-          phoneNumber: payoutPhoneNumber,
-          provider: pawapayProvider
-        }
-      },
-      customerMessage: "Simix retrait",
-      metadata: [{ type: "admin_payout" }]
+    const prepared = await validatePawaPayRecipient({
+      phoneNumber,
+      countryIso2,
+      provider,
+      currency,
+      amount
     });
-    logger.info({ payoutId, status: result.status }, "[admin-payouts] PawaPay payout initiated");
-    res.json({ payoutId, status: result.status, created: result.created, failureReason: result.failureReason });
+    const registered = await registerPayout({
+      ...prepared,
+      gateway: "pawapay",
+      actorId: req.adminPayload?.sub ?? req.user?.id ?? "unknown",
+      idempotencyKey: idempotencyKey.trim()
+    });
+    if (registered.kind === "conflict") {
+      res.status(409).json({ error: "Cette cl\xE9 d'idempotence a d\xE9j\xE0 \xE9t\xE9 utilis\xE9e pour une demande diff\xE9rente." });
+      return;
+    }
+    if (registered.kind === "created" && registered.payout.status === "pending") {
+      try {
+        await initiatePayout(registered.payout);
+      } catch (err) {
+        logger.warn({ payoutId: registered.payout.externalId, err: err.message }, "[admin-payouts] PawaPay outcome unknown; record remains pending");
+      }
+    } else if (registered.payout.status === "pending") {
+      await refreshPayout(registered.payout.id);
+    }
+    const payout = await getPayoutById(registered.payout.id);
+    res.json(normalizePayoutRecord(payout ?? registered.payout));
   } catch (err) {
-    logger.error({ err }, "[admin-payouts] PawaPay payout failed");
-    res.status(500).json({ error: err.message });
+    if (err instanceof PayoutValidationError) {
+      res.status(err.httpStatus).json({ error: err.message });
+      return;
+    }
+    logger.error({ err: err.message }, "[admin-payouts] PawaPay payout validation failed");
+    res.status(503).json({ error: "Impossible de valider la configuration PawaPay. Aucun payout n'a \xE9t\xE9 enregistr\xE9." });
   }
 });
 router21.get("/admin/payouts/pawapay/status/:payoutId", requireAdmin7, async (req, res) => {
-  const { payoutId } = req.params;
+  const payoutId = Array.isArray(req.params.payoutId) ? req.params.payoutId[0] ?? "" : req.params.payoutId ?? "";
   try {
     const creds = await resolvePawaPayCredentials();
     if (!creds) {
@@ -166177,7 +167549,7 @@ router21.get("/admin/payouts/clapay/countries", requireAdmin7, async (req, res) 
   }
 });
 router21.get("/admin/payouts/clapay/operators/:country", requireAdmin7, async (req, res) => {
-  const { country } = req.params;
+  const country = Array.isArray(req.params.country) ? req.params.country[0] ?? "" : req.params.country ?? "";
   try {
     const creds = await resolveClapayCredentials();
     if (!creds) {
@@ -166186,30 +167558,34 @@ router21.get("/admin/payouts/clapay/operators/:country", requireAdmin7, async (r
     }
     const client = new ClapayClient(creds.token, creds.baseUrl);
     const all2 = await client.getOperators(country);
-    const cashoutOps = all2.filter((op) => op.active).map((op) => ({
+    const payoutOperators = all2.filter((op) => op.active).map((op) => ({
       name: op.name,
       codeoperator: op.codeoperator,
+      operatorCode: op.codeoperator,
+      payoutCode: op.codeoperator,
+      cashinCode: op.code?.CASHIN && op.code.CASHIN !== "none" ? op.code.CASHIN : null,
       cashoutCode: op.code?.CASHOUT && op.code.CASHOUT !== "none" ? op.code.CASHOUT : null,
       merchantCode: op.code?.MERCHANT && op.code.MERCHANT !== "none" ? op.code.MERCHANT : null,
       logo: op.logo,
-      requiresOtp: op.otpstarter?.CASHOUT ?? false,
+      requiresOtp: op.otpstarter?.CASHIN ?? false,
+      supportsPayout: !!(op.code?.CASHIN && op.code.CASHIN !== "none"),
       supportsCashout: !!(op.code?.CASHOUT && op.code.CASHOUT !== "none")
     }));
-    res.json({ operators: cashoutOps });
+    res.json({ operators: payoutOperators });
   } catch (err) {
     logger.error({ err, country }, "[admin-payouts] Clapay operators fetch failed");
     res.status(500).json({ error: err.message });
   }
 });
 router21.post("/admin/payouts/clapay", requireAdmin7, async (req, res) => {
-  const { phoneNumber, dialCode, countryCode, cashoutCode, amount } = req.body;
-  if (!phoneNumber || !countryCode || !cashoutCode || !amount) {
-    res.status(400).json({ error: "Champs requis : phoneNumber, countryCode, cashoutCode, amount" });
+  const { phoneNumber, dialCode, countryCode, operatorCode, amount, idempotencyKey, operatorOtp } = req.body ?? {};
+  if (!phoneNumber || !countryCode || !operatorCode || amount === void 0 || !idempotencyKey?.trim()) {
+    res.status(400).json({ error: "Champs requis : phoneNumber, countryCode, operatorCode, amount, idempotencyKey" });
     return;
   }
   const amountNum = Number(amount);
-  if (!Number.isFinite(amountNum) || amountNum <= 0) {
-    res.status(400).json({ error: "Montant invalide" });
+  if (!Number.isSafeInteger(amountNum) || amountNum <= 0) {
+    res.status(400).json({ error: "Le montant Clapay doit \xEAtre un entier positif." });
     return;
   }
   try {
@@ -166219,26 +167595,72 @@ router21.post("/admin/payouts/clapay", requireAdmin7, async (req, res) => {
       return;
     }
     const client = new ClapayClient(creds.token, creds.baseUrl);
-    const formattedPhone = formatClapayPhone(phoneNumber, dialCode, countryCode);
-    const transactionId = crypto.randomUUID();
-    logger.info({ transactionId, formattedPhone, countryCode, cashoutCode, amount: amountNum }, "[admin-payouts] Initiating Clapay cashout");
-    const appUrl = process.env.APP_URL?.replace(/\/$/, "") ?? "https://simix.site";
-    const result = await client.initiateCashout({
-      transaction_id: transactionId,
-      additional_infos: { customer_phone: formattedPhone },
-      amount: amountNum,
-      callback_url: `${appUrl}/api/wallet/clapay/webhook`,
-      return_url: `${appUrl}/admin/payouts`,
-      country_code: countryCode.toUpperCase(),
-      operators_code: [cashoutCode],
-      method: "CASHOUT"
+    const countryCodeNormalized = countryCode.trim().toUpperCase();
+    const operators = await client.getOperators(countryCodeNormalized);
+    const operator = operators.find((op) => op.active && op.codeoperator.toLowerCase() === operatorCode.trim().toLowerCase());
+    if (!operator || !operator.codeoperator || !operator.code?.CASHIN || operator.code.CASHIN.toLowerCase() === "none") {
+      res.status(422).json({ error: "L'op\xE9rateur s\xE9lectionn\xE9 ne prend pas en charge les payouts CASHIN." });
+      return;
+    }
+    if (operator.otpstarter?.CASHIN && !operatorOtp?.trim()) {
+      res.status(422).json({ error: "Un code OTP op\xE9rateur est requis pour ce payout." });
+      return;
+    }
+    const countries = await client.getCountries(countryCodeNormalized);
+    const country = countries.find((item) => item.code.toUpperCase() === countryCodeNormalized);
+    if (!country?.currency) {
+      res.status(422).json({ error: "Clapay ne fournit aucune devise pour ce pays." });
+      return;
+    }
+    const formattedPhone = formatClapayPhone(phoneNumber, dialCode, countryCodeNormalized);
+    const registered = await registerPayout({
+      gateway: "clapay",
+      actorId: req.adminPayload?.sub ?? req.user?.id ?? "unknown",
+      idempotencyKey: idempotencyKey.trim(),
+      phone: formattedPhone,
+      provider: operator.codeoperator,
+      country: countryCodeNormalized,
+      currency: country.currency.toUpperCase(),
+      amount: String(amountNum)
     });
-    logger.info({ transactionId, signature: result.signature }, "[admin-payouts] Clapay cashout initiated");
-    res.json({ transactionId, signature: result.signature, currency: result.currency, status: result.status });
+    if (registered.kind === "conflict") {
+      res.status(409).json({ error: "Cette cl\xE9 d'idempotence a d\xE9j\xE0 \xE9t\xE9 utilis\xE9e pour une demande diff\xE9rente." });
+      return;
+    }
+    if (registered.kind === "created") {
+      try {
+        await initiatePayout(registered.payout, operatorOtp?.trim());
+      } catch (err) {
+        logger.warn({ payoutId: registered.payout.id, err: err.message }, "[admin-payouts] Clapay outcome unknown; record remains pending");
+      }
+    } else if (registered.payout.status === "pending" && !registered.payout.initiationClaimedAt) {
+      try {
+        await initiatePayout(registered.payout, operatorOtp?.trim());
+      } catch (err) {
+        logger.warn({ payoutId: registered.payout.id, err: err.message }, "[admin-payouts] Clapay first attempt outcome unknown; record remains pending");
+      }
+    } else if (registered.payout.status === "pending") {
+      await refreshPayout(registered.payout.id);
+    }
+    const payout = await getPayoutById(registered.payout.id);
+    res.json(normalizePayoutRecord(payout ?? registered.payout));
   } catch (err) {
-    logger.error({ err }, "[admin-payouts] Clapay cashout failed");
-    res.status(500).json({ error: err.message });
+    logger.error({ err: err.message }, "[admin-payouts] Clapay payout validation failed");
+    res.status(503).json({ error: err.message });
   }
+});
+router21.get("/admin/payouts/history", requireAdmin7, async (_req, res) => {
+  const rows = await db.select().from(payoutsTable).orderBy(desc(payoutsTable.createdAt)).limit(250);
+  res.json({ payouts: rows.map(normalizePayoutRecord) });
+});
+router21.post("/admin/payouts/:id/refresh", requireAdmin7, async (req, res) => {
+  const id = Array.isArray(req.params.id) ? req.params.id[0] ?? "" : req.params.id ?? "";
+  const payout = await refreshPayout(id);
+  if (!payout) {
+    res.status(404).json({ error: "Payout introuvable" });
+    return;
+  }
+  res.json(normalizePayoutRecord(payout));
 });
 var admin_payouts_default = router21;
 
@@ -169745,73 +171167,76 @@ init_logger2();
 init_clapay();
 init_gateway_credentials();
 var RECONCILE_INTERVAL_MS = 5 * 60 * 1e3;
-var FAIL_AFTER_MS = 2 * 60 * 60 * 1e3;
-var HEALTH_CHECK_COUNTRY = "CI";
-async function getClapayClientForReconcile() {
-  const creds = await resolveClapayCredentials();
-  if (!creds) return null;
-  return new ClapayClient(creds.token, creds.baseUrl);
-}
+var BATCH_SIZE = 50;
+var reconcileCursor = null;
 async function reconcilePendingClapayTransactions() {
-  const clapay = await getClapayClientForReconcile();
-  if (!clapay) return;
-  const now = /* @__PURE__ */ new Date();
-  const failBefore = new Date(now.getTime() - FAIL_AFTER_MS);
-  const stale = await db.select({ id: transactionsTable.id, userId: transactionsTable.userId, amount: transactionsTable.amount }).from(transactionsTable).where(
+  const cursorCondition = reconcileCursor ? or(
+    gt(transactionsTable.createdAt, reconcileCursor.createdAt),
     and(
-      eq(transactionsTable.status, "pending"),
-      eq(transactionsTable.type, "recharge"),
-      like(transactionsTable.externalDepositId, "clapay:%"),
-      lt(transactionsTable.createdAt, failBefore)
+      eq(transactionsTable.createdAt, reconcileCursor.createdAt),
+      gt(transactionsTable.id, reconcileCursor.id)
     )
-  ).limit(50);
-  if (stale.length > 0) {
-    logger.warn({ count: stale.length }, "[Clapay Reconcile] Expiring stale pending transactions (> 2h)");
-    for (const tx of stale) {
-      const [updated] = await db.update(transactionsTable).set({ status: "failed" }).where(and(
-        eq(transactionsTable.id, tx.id),
-        eq(transactionsTable.status, "pending")
-        // guard against race with webhook
-      )).returning();
-      if (updated) {
-        logger.info({ txId: tx.id, userId: tx.userId }, "[Clapay Reconcile] Stale transaction marked failed");
-        try {
-          const [notif] = await db.insert(notificationsTable).values({
-            userId: tx.userId,
-            title: "\u23F1 Paiement expir\xE9",
-            body: `Votre tentative de recharge de ${tx.amount.toLocaleString("fr-FR")} FCFA n'a pas abouti. Veuillez r\xE9essayer.`,
-            type: "deposit",
-            icon: "alert",
-            link: "/wallet",
-            metadata: { amount: tx.amount, txId: tx.id, gateway: "clapay", source: "timeout" }
-          }).returning();
-          if (notif) broadcastNotification(notif);
-        } catch {
-        }
-      }
-    }
+  ) : void 0;
+  const filters = [
+    eq(transactionsTable.status, "pending"),
+    eq(transactionsTable.type, "recharge"),
+    like(transactionsTable.externalDepositId, "clapay:%"),
+    like(transactionsTable.gatewayMeta, '%"clapaySignature"%')
+  ];
+  if (cursorCondition) filters.push(cursorCondition);
+  const pending = await db.select().from(transactionsTable).where(and(...filters)).orderBy(asc(transactionsTable.createdAt), asc(transactionsTable.id)).limit(BATCH_SIZE);
+  if (!pending.length) {
+    reconcileCursor = null;
+    return;
   }
-  try {
-    await clapay.getBalance(HEALTH_CHECK_COUNTRY);
-    logger.debug("[Clapay Reconcile] Merchant balance health check OK");
-  } catch (e3) {
-    const msg = e3.message ?? "";
-    if (!msg.includes("400")) {
-      logger.warn({ error: msg }, "[Clapay Reconcile] Health check failed \u2014 Clapay may be unreachable");
+  const last = pending[pending.length - 1];
+  reconcileCursor = { createdAt: last.createdAt, id: last.id };
+  for (const deposit of pending) {
+    const externalDepositId = deposit.externalDepositId;
+    const trackingId = externalDepositId.slice("clapay:".length);
+    const context = await getClapayDepositMeta(externalDepositId);
+    if (!context?.meta.clapaySignature) continue;
+    const meta = await persistClapayDepositMeta(externalDepositId);
+    if (!meta?.clapaySignature) continue;
+    const credentials = meta.gatewayConfigId ? await resolveClapayGatewayCredentials(meta.gatewayConfigId) : await resolveClapayCredentials();
+    if (!credentials) continue;
+    const clapay = new ClapayClient(credentials.token, credentials.baseUrl);
+    try {
+      const status = await getVerifiedClapayStatus(clapay, meta, trackingId);
+      if (status?.status === "completed") {
+        const outcome = await settleVerifiedClapayDeposit(externalDepositId);
+        if (outcome.settled && outcome.userId && outcome.amount !== void 0) {
+          const [owner] = await db.select({
+            referredBy: usersTable.referredBy
+          }).from(usersTable).where(eq(usersTable.id, outcome.userId)).limit(1);
+          void creditReferralDepositCommission({
+            depositorId: outcome.userId,
+            referredBy: owner?.referredBy,
+            depositAmount: outcome.amount,
+            sourceLabel: deposit.method ?? "Mobile Money"
+          });
+          logger.info({ transactionId: deposit.id }, "[Clapay Reconcile] Verified payment settled");
+        }
+      } else if (status?.status === "failed") {
+        const updated = await failClapayDeposit(externalDepositId);
+        if (updated) logger.info({ transactionId: deposit.id }, "[Clapay Reconcile] Verified payment failure recorded");
+      }
+    } catch (error) {
+      logger.warn({ transactionId: deposit.id, error: error.message }, "[Clapay Reconcile] Status verification failed; remains pending");
     }
   }
 }
 var reconcileTimer = null;
+var reconcileRunning = false;
 function startClapayReconciliation() {
   if (reconcileTimer) return;
-  logger.info(
-    { intervalMs: RECONCILE_INTERVAL_MS, failAfterMs: FAIL_AFTER_MS },
-    "[Clapay Reconcile] Background reconciliation started"
-  );
+  logger.info({ intervalMs: RECONCILE_INTERVAL_MS }, "[Clapay Reconcile] Background reconciliation started");
   reconcileTimer = setInterval(() => {
-    reconcilePendingClapayTransactions().catch(
-      (e3) => logger.error({ error: e3.message }, "[Clapay Reconcile] Unhandled error")
-    );
+    if (reconcileRunning) return;
+    reconcileRunning = true;
+    reconcilePendingClapayTransactions().catch((error) => logger.error({ error: error.message }, "[Clapay Reconcile] Unhandled error")).finally(() => {
+      reconcileRunning = false;
+    });
   }, RECONCILE_INTERVAL_MS);
 }
 
@@ -169819,145 +171244,144 @@ function startClapayReconciliation() {
 init_drizzle_orm();
 init_src();
 init_logger2();
-init_pawapay();
-init_gateway_credentials();
 var RECONCILE_INTERVAL_MS2 = 30 * 1e3;
 var MIN_AGE_MS = 30 * 1e3;
-var MAX_AGE_MS = 24 * 60 * 60 * 1e3;
-async function getPawaPayClientForReconcile() {
-  const creds = await resolvePawaPayCredentials();
-  if (!creds) return null;
-  return new PawaPayClient(creds.token, creds.env);
+var BATCH_SIZE2 = 50;
+var DEPOSIT_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+var reconcileTimer2 = null;
+var cursor = null;
+async function notifySettledDeposit(tx, amount) {
+  try {
+    const [notif] = await db.insert(notificationsTable).values({
+      userId: tx.userId,
+      title: "\u{1F4B0} Solde recharg\xE9",
+      body: `Votre solde a \xE9t\xE9 cr\xE9dit\xE9 de ${amount.toLocaleString("fr-FR")} FCFA avec succ\xE8s.`,
+      type: "deposit",
+      icon: "wallet",
+      link: "/wallet",
+      metadata: { amount, depositId: tx.externalDepositId, gateway: "pawapay", source: "reconciliation" }
+    }).returning();
+    if (notif) broadcastNotification(notif);
+  } catch (error) {
+    logger.warn({ depositId: tx.externalDepositId, error: error.message }, "[PawaPay Reconcile] Notification failed after settlement");
+  }
+  try {
+    const [userRow] = await db.select({
+      email: usersTable.email,
+      fullName: usersTable.fullName,
+      balance: usersTable.balance,
+      referredBy: usersTable.referredBy
+    }).from(usersTable).where(eq(usersTable.id, tx.userId)).limit(1);
+    if (userRow?.email) {
+      const phoneMatch = tx.description?.match(/[\+\d]{8,}/);
+      await sendDepositConfirmationEmail({
+        userEmail: userRow.email,
+        userFullName: userRow.fullName ?? "Utilisateur",
+        amount,
+        method: tx.method ?? "Mobile Money",
+        phoneNumber: phoneMatch?.[0] ?? null,
+        transactionId: String(tx.id),
+        depositId: tx.externalDepositId ?? "",
+        createdAt: tx.createdAt ? new Date(tx.createdAt) : /* @__PURE__ */ new Date(),
+        newBalance: userRow.balance
+      });
+    }
+    void creditReferralDepositCommission({
+      depositorId: tx.userId,
+      referredBy: userRow?.referredBy,
+      depositAmount: amount,
+      sourceLabel: tx.method ?? "Mobile Money"
+    });
+  } catch (error) {
+    logger.warn({ depositId: tx.externalDepositId, error: error.message }, "[PawaPay Reconcile] Post-settlement email/referral lookup failed");
+  }
 }
 async function reconcilePendingPawaPayTransactions() {
-  const client = await getPawaPayClientForReconcile();
-  if (!client) return;
-  const now = /* @__PURE__ */ new Date();
-  const minCreatedAt = new Date(now.getTime() - MAX_AGE_MS);
-  const maxCreatedAt = new Date(now.getTime() - MIN_AGE_MS);
-  const pending = await db.select().from(transactionsTable).where(
-    and(
-      eq(transactionsTable.status, "pending"),
-      eq(transactionsTable.type, "recharge"),
-      not(like(transactionsTable.externalDepositId, "clapay:%")),
-      gte(transactionsTable.createdAt, minCreatedAt),
-      lt(transactionsTable.createdAt, maxCreatedAt)
-    )
-  ).limit(50);
+  const cutoff = new Date(Date.now() - MIN_AGE_MS);
+  const conditions = [
+    eq(transactionsTable.status, "pending"),
+    eq(transactionsTable.type, "recharge"),
+    not(like(transactionsTable.externalDepositId, "clapay:%")),
+    lt(transactionsTable.createdAt, cutoff)
+  ];
+  if (cursor) {
+    conditions.push(gt(transactionsTable.id, cursor));
+  }
+  const pending = await db.select().from(transactionsTable).where(and(...conditions)).orderBy(asc(transactionsTable.id)).limit(BATCH_SIZE2);
+  if (pending.length === 0) {
+    cursor = null;
+    return;
+  }
+  const last = pending[pending.length - 1];
+  cursor = last.id;
+  if (pending.length < BATCH_SIZE2) cursor = null;
   const pawaPayPending = pending.filter(
-    (tx) => tx.externalDepositId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(tx.externalDepositId)
+    (tx) => tx.externalDepositId && DEPOSIT_ID_PATTERN.test(tx.externalDepositId)
   );
-  if (pawaPayPending.length === 0) return;
+  if (!pawaPayPending.length) return;
   logger.info({ count: pawaPayPending.length }, "[PawaPay Reconcile] Checking pending deposits");
   for (const tx of pawaPayPending) {
     const depositId = tx.externalDepositId;
     try {
-      const result = await client.getDepositStatus(depositId);
-      if (result.status !== "FOUND" || !result.data) {
-        logger.debug({ depositId }, "[PawaPay Reconcile] Deposit not found \u2014 will retry next cycle");
+      const client = await getPawaPayClientForDeposit(tx);
+      if (!client) {
+        logger.warn({ depositId }, "[PawaPay Reconcile] Initiating gateway credentials unavailable; deposit remains pending");
         continue;
       }
-      const depositStatus = result.data.status;
-      if (depositStatus === "COMPLETED") {
-        const creditAmount = tx.amount;
-        const [justCompleted] = await db.update(transactionsTable).set({ status: "completed" }).where(and(
-          eq(transactionsTable.id, tx.id),
-          eq(transactionsTable.status, "pending")
-        )).returning();
-        if (!justCompleted) {
-          logger.info({ depositId }, "[PawaPay Reconcile] Already processed by webhook \u2014 skipping");
-          continue;
-        }
-        await db.update(usersTable).set({ balance: sql`${usersTable.balance} + ${creditAmount}` }).where(eq(usersTable.id, tx.userId));
-        logger.info(
-          { depositId, userId: tx.userId, creditAmount },
-          "[PawaPay Reconcile] Deposit COMPLETED via polling \u2014 balance credited \u2713"
-        );
-        try {
-          const [notif] = await db.insert(notificationsTable).values({
-            userId: tx.userId,
-            title: "\u{1F4B0} Solde recharg\xE9",
-            body: `Votre solde a \xE9t\xE9 cr\xE9dit\xE9 de ${creditAmount.toLocaleString("fr-FR")} FCFA avec succ\xE8s.`,
-            type: "deposit",
-            icon: "wallet",
-            link: "/wallet",
-            metadata: { amount: creditAmount, depositId, gateway: "pawapay", source: "reconciliation" }
-          }).returning();
-          if (notif) broadcastNotification(notif);
-        } catch {
-        }
-        const [userRow] = await db.select({
-          email: usersTable.email,
-          fullName: usersTable.fullName,
-          balance: usersTable.balance,
-          referredBy: usersTable.referredBy
-        }).from(usersTable).where(eq(usersTable.id, tx.userId)).limit(1);
-        try {
-          if (userRow?.email) {
-            const phoneMatch = tx.description?.match(/[\+\d]{8,}/);
-            await sendDepositConfirmationEmail({
-              userEmail: userRow.email,
-              userFullName: userRow.fullName ?? "Utilisateur",
-              amount: creditAmount,
-              method: tx.method ?? "Mobile Money",
-              phoneNumber: phoneMatch?.[0] ?? null,
-              transactionId: String(tx.id),
-              depositId,
-              createdAt: tx.createdAt ? new Date(tx.createdAt) : /* @__PURE__ */ new Date(),
-              newBalance: userRow.balance
-            });
-          }
-        } catch {
-        }
-        void creditReferralDepositCommission({
-          depositorId: tx.userId,
-          referredBy: userRow?.referredBy,
-          depositAmount: creditAmount,
-          sourceLabel: tx.method ?? "Mobile Money"
-        });
-      } else if (depositStatus === "FAILED" || depositStatus === "IN_RECONCILIATION") {
-        if (depositStatus === "FAILED") {
-          const [updated] = await db.update(transactionsTable).set({ status: "failed" }).where(and(
-            eq(transactionsTable.id, tx.id),
-            eq(transactionsTable.status, "pending")
-          )).returning();
-          if (updated) {
-            logger.warn(
-              { depositId, pawaPayStatus: depositStatus },
-              "[PawaPay Reconcile] Deposit FAILED \u2014 transaction marked failed"
-            );
-          }
-        } else {
-          logger.info({ depositId }, "[PawaPay Reconcile] Deposit IN_RECONCILIATION \u2014 will retry");
-        }
-      } else {
-        logger.debug({ depositId, pawaPayStatus: depositStatus }, "[PawaPay Reconcile] Still in progress \u2014 will retry");
+      const outcome = await verifyAndSettlePawaPayDeposit(depositId, client);
+      if (outcome.settled && outcome.amount !== void 0) {
+        logger.info({ depositId, userId: tx.userId, creditAmount: outcome.amount }, "[PawaPay Reconcile] Deposit settled atomically");
+        await notifySettledDeposit(tx, outcome.amount);
+      } else if (outcome.failed) {
+        logger.warn({ depositId }, "[PawaPay Reconcile] Verified deposit failure marked atomically");
       }
-    } catch (e3) {
-      logger.warn(
-        { error: e3.message, depositId, txId: tx.id },
-        "[PawaPay Reconcile] Error checking deposit"
-      );
+    } catch (error) {
+      logger.warn({ error: error.message, depositId, txId: tx.id }, "[PawaPay Reconcile] Status check failed; deposit remains pending");
     }
   }
 }
-var reconcileTimer2 = null;
 function startPawaPayReconciliation() {
   if (reconcileTimer2) return;
-  logger.info(
-    { intervalMs: RECONCILE_INTERVAL_MS2 },
-    "[PawaPay Reconcile] Background polling started (no webhook required)"
-  );
+  logger.info({ intervalMs: RECONCILE_INTERVAL_MS2 }, "[PawaPay Reconcile] Background polling started (no webhook required)");
   reconcileTimer2 = setInterval(() => {
     reconcilePendingPawaPayTransactions().catch(
-      (e3) => logger.error({ error: e3.message }, "[PawaPay Reconcile] Unhandled error")
+      (error) => logger.error({ error: error.message }, "[PawaPay Reconcile] Unhandled error")
     );
   }, RECONCILE_INTERVAL_MS2);
   setTimeout(() => {
     reconcilePendingPawaPayTransactions().catch(
-      (e3) => logger.error({ error: e3.message }, "[PawaPay Reconcile] Startup run error")
+      (error) => logger.error({ error: error.message }, "[PawaPay Reconcile] Startup run error")
     );
   }, 6e4);
+}
+
+// src/lib/payout-reconciliation.ts
+init_drizzle_orm();
+init_src();
+init_logger2();
+var RECONCILE_INTERVAL_MS3 = 3e4;
+var BATCH_SIZE3 = 100;
+var reconcileTimer3 = null;
+var reconciling = false;
+async function reconcilePendingPayouts() {
+  if (reconciling) return;
+  reconciling = true;
+  try {
+    const pending = await db.select({ id: payoutsTable.id }).from(payoutsTable).where(eq(payoutsTable.status, "pending")).orderBy(asc(payoutsTable.updatedAt), asc(payoutsTable.createdAt)).limit(BATCH_SIZE3);
+    for (const item of pending) {
+      await refreshPayout(item.id);
+    }
+  } catch (error) {
+    logger.error({ err: error.message }, "[payout-reconcile] Scan failed");
+  } finally {
+    reconciling = false;
+  }
+}
+function startPayoutReconciliation() {
+  if (reconcileTimer3) return;
+  logger.info({ intervalMs: RECONCILE_INTERVAL_MS3 }, "[payout-reconcile] Background reconciliation started");
+  void reconcilePendingPayouts();
+  reconcileTimer3 = setInterval(() => void reconcilePendingPayouts(), RECONCILE_INTERVAL_MS3);
 }
 
 // src/lib/seed-payment-methods.ts
@@ -170595,9 +172019,10 @@ if (Number.isNaN(port) || port <= 0) {
   throw new Error(`Invalid PORT value: "${rawPort}"`);
 }
 async function start() {
+  const isReplitDevEnvironment = Boolean(process.env["REPL_ID"] || process.env["REPLIT_DEV_DOMAIN"]);
   const currentDir = globalThis.__dirname ?? __dirname;
   const migrationsFolder = import_node_path2.default.join(currentDir, "migrations");
-  try {
+  if (!isReplitDevEnvironment) try {
     logger.info({ migrationsFolder }, "[startup] Running database migrations\u2026");
     await migrate(db, { migrationsFolder });
     logger.info("[startup] Database migrations applied \u2713");
@@ -170617,20 +172042,23 @@ async function start() {
       logger.info({ url: getAppUrl() }, "[startup] app_url loaded from DB \u2713");
     } else {
       const defaultUrl = process.env["APP_URL"] ?? "https://simix.site";
-      await db.insert(systemSettingsTable).values({ key: "app_url", value: defaultUrl, description: "URL publique de l'application (ex: https://simix.site)" }).onConflictDoNothing();
+      if (!isReplitDevEnvironment) {
+        await db.insert(systemSettingsTable).values({ key: "app_url", value: defaultUrl, description: "URL publique de l'application (ex: https://simix.site)" }).onConflictDoNothing();
+      }
       setAppUrl(defaultUrl);
       logger.info({ url: defaultUrl }, "[startup] app_url seeded in DB \u2713");
     }
   } catch (e3) {
     logger.warn({ err: e3.message }, "[startup] app_url DB load failed \u2014 using env/default");
   }
-  void seedPaymentMethods();
-  void seedCountryPaymentConfigs();
-  void seedRoutingData();
-  const isReplitDevEnvironment = Boolean(process.env["REPL_ID"] || process.env["REPLIT_DEV_DOMAIN"]);
+  if (!isReplitDevEnvironment) {
+    void seedPaymentMethods();
+    void seedCountryPaymentConfigs();
+    void seedRoutingData();
+  }
   if (isReplitDevEnvironment) {
     logger.warn(
-      "[startup] Environnement Replit d\xE9tect\xE9 \u2014 workers de fond (5sim, emails, r\xE9conciliation) d\xE9sactiv\xE9s pour \xE9viter tout conflit avec le serveur de production Plesk"
+      "[startup] Environnement Replit d\xE9tect\xE9 \u2014 migrations, seeds et workers de fond d\xE9sactiv\xE9s pour prot\xE9ger la base partag\xE9e avec Plesk"
     );
   } else {
     void seedProvidersFromEnv().then(() => seedEmailProvidersFromEnv()).then(() => {
@@ -170639,6 +172067,7 @@ async function start() {
         startFiveSimSyncScheduler();
         startClapayReconciliation();
         startPawaPayReconciliation();
+        startPayoutReconciliation();
         emailService.startBackgroundWorkers();
         void (async () => {
           try {

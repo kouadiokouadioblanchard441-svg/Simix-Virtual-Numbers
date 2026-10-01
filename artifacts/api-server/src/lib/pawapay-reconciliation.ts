@@ -1,216 +1,138 @@
 /**
- * PawaPay Reconciliation Job
- *
- * PawaPay supports two ways to get deposit status:
- *  1. Webhook callbacks (optional — requires a callback URL configured in PawaPay dashboard)
- *  2. Polling via GET /v2/deposits/:depositId  ← this job uses this
- *
- * Since webhooks are optional (not required), this background job ensures that
- * every pending PawaPay deposit is eventually confirmed, even if no webhook is
- * configured in the PawaPay dashboard. It polls the PawaPay API every 30 seconds
- * for deposits pending between 30s and 24h.
- *
- * CRITICAL: Always credit tx.amount (stored XOF/FCFA), never the API `amount` field
- * (which is in the payer's LOCAL currency after FX conversion).
+ * Reconciles pending PawaPay deposits through the same authoritative status
+ * verification and atomic settlement used by callbacks and user polling.
  */
-
-import { and, eq, gte, lt, sql, not, like } from "drizzle-orm";
+import { and, asc, eq, gt, like, lt, not } from "drizzle-orm";
 import { db, transactionsTable, usersTable, notificationsTable } from "@workspace/db";
 import { logger } from "./logger";
-import { PawaPayClient } from "./pawapay";
-import { resolvePawaPayCredentials } from "./gateway-credentials";
+import { getPawaPayClientForDeposit, verifyAndSettlePawaPayDeposit } from "./pawapay-settlement";
 import { broadcastNotification } from "../routes/notifications";
 import { sendDepositConfirmationEmail } from "./email";
 import { creditReferralDepositCommission } from "./referral-commission";
 
-const RECONCILE_INTERVAL_MS = 30 * 1000;      // poll every 30 seconds
-const MIN_AGE_MS             = 30 * 1000;      // skip deposits < 30s old (may still be processing)
-const MAX_AGE_MS             = 24 * 60 * 60 * 1000; // skip deposits > 24h old (stale)
+const RECONCILE_INTERVAL_MS = 30 * 1000;
+const MIN_AGE_MS = 30 * 1000;
+const BATCH_SIZE = 50;
+const DEPOSIT_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-/* ── Load PawaPay client — see lib/gateway-credentials.ts for the single
- * documented priority order shared by every PawaPay code path. ── */
-async function getPawaPayClientForReconcile(): Promise<PawaPayClient | null> {
-  const creds = await resolvePawaPayCredentials();
-  if (!creds) return null;
-  return new PawaPayClient(creds.token, creds.env);
+let reconcileTimer: NodeJS.Timeout | null = null;
+let cursor: string | null = null;
+
+async function notifySettledDeposit(tx: typeof transactionsTable.$inferSelect, amount: number): Promise<void> {
+  try {
+    const [notif] = await db.insert(notificationsTable).values({
+      userId: tx.userId,
+      title: "💰 Solde rechargé",
+      body: `Votre solde a été crédité de ${amount.toLocaleString("fr-FR")} FCFA avec succès.`,
+      type: "deposit",
+      icon: "wallet",
+      link: "/wallet",
+      metadata: { amount, depositId: tx.externalDepositId, gateway: "pawapay", source: "reconciliation" },
+    }).returning();
+    if (notif) broadcastNotification(notif);
+  } catch (error) {
+    logger.warn({ depositId: tx.externalDepositId, error: (error as Error).message }, "[PawaPay Reconcile] Notification failed after settlement");
+  }
+
+  try {
+    const [userRow] = await db.select({
+      email: usersTable.email,
+      fullName: usersTable.fullName,
+      balance: usersTable.balance,
+      referredBy: usersTable.referredBy,
+    }).from(usersTable).where(eq(usersTable.id, tx.userId)).limit(1);
+    if (userRow?.email) {
+      const phoneMatch = tx.description?.match(/[\+\d]{8,}/);
+      await sendDepositConfirmationEmail({
+        userEmail: userRow.email,
+        userFullName: userRow.fullName ?? "Utilisateur",
+        amount,
+        method: tx.method ?? "Mobile Money",
+        phoneNumber: phoneMatch?.[0] ?? null,
+        transactionId: String(tx.id),
+        depositId: tx.externalDepositId ?? "",
+        createdAt: tx.createdAt ? new Date(tx.createdAt) : new Date(),
+        newBalance: userRow.balance,
+      });
+    }
+    void creditReferralDepositCommission({
+      depositorId: tx.userId,
+      referredBy: userRow?.referredBy,
+      depositAmount: amount,
+      sourceLabel: tx.method ?? "Mobile Money",
+    });
+  } catch (error) {
+    logger.warn({ depositId: tx.externalDepositId, error: (error as Error).message }, "[PawaPay Reconcile] Post-settlement email/referral lookup failed");
+  }
 }
 
 async function reconcilePendingPawaPayTransactions(): Promise<void> {
-  const client = await getPawaPayClientForReconcile();
-  if (!client) return; // PawaPay not configured — skip silently
+  const cutoff = new Date(Date.now() - MIN_AGE_MS);
+  const conditions = [
+    eq(transactionsTable.status, "pending"),
+    eq(transactionsTable.type, "recharge"),
+    not(like(transactionsTable.externalDepositId, "clapay:%")),
+    lt(transactionsTable.createdAt, cutoff),
+  ];
+  if (cursor) {
+    conditions.push(gt(transactionsTable.id, cursor));
+  }
 
-  const now = new Date();
-  const minCreatedAt = new Date(now.getTime() - MAX_AGE_MS);
-  const maxCreatedAt = new Date(now.getTime() - MIN_AGE_MS);
+  const pending = await db.select().from(transactionsTable)
+    .where(and(...conditions))
+    .orderBy(asc(transactionsTable.id))
+    .limit(BATCH_SIZE);
 
-  /* Find pending PawaPay transactions in the age window.
-   * PawaPay depositIds are plain UUIDs (no prefix).
-   * Clapay deposits are prefixed with "clapay:" — exclude those. */
-  const pending = await db
-    .select()
-    .from(transactionsTable)
-    .where(
-      and(
-        eq(transactionsTable.status, "pending"),
-        eq(transactionsTable.type, "recharge"),
-        not(like(transactionsTable.externalDepositId, "clapay:%")),
-        gte(transactionsTable.createdAt, minCreatedAt),
-        lt(transactionsTable.createdAt, maxCreatedAt),
-      ),
-    )
-    .limit(50);
+  if (pending.length === 0) {
+    cursor = null;
+    return;
+  }
+
+  const last = pending[pending.length - 1];
+  cursor = last.id;
+  if (pending.length < BATCH_SIZE) cursor = null;
 
   const pawaPayPending = pending.filter(tx =>
-    tx.externalDepositId &&
-    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(tx.externalDepositId),
+    tx.externalDepositId && DEPOSIT_ID_PATTERN.test(tx.externalDepositId),
   );
-
-  if (pawaPayPending.length === 0) return;
+  if (!pawaPayPending.length) return;
 
   logger.info({ count: pawaPayPending.length }, "[PawaPay Reconcile] Checking pending deposits");
-
   for (const tx of pawaPayPending) {
     const depositId = tx.externalDepositId!;
-
     try {
-      const result = await client.getDepositStatus(depositId);
-
-      if (result.status !== "FOUND" || !result.data) {
-        logger.debug({ depositId }, "[PawaPay Reconcile] Deposit not found — will retry next cycle");
+      const client = await getPawaPayClientForDeposit(tx);
+      if (!client) {
+        logger.warn({ depositId }, "[PawaPay Reconcile] Initiating gateway credentials unavailable; deposit remains pending");
         continue;
       }
-
-      const depositStatus = result.data.status;
-
-      if (depositStatus === "COMPLETED") {
-        /* ALWAYS use stored XOF amount — not the API amount (which is in LOCAL currency) */
-        const creditAmount = tx.amount;
-
-        /* Atomic transition pending → completed (guards against race with webhook) */
-        const [justCompleted] = await db
-          .update(transactionsTable)
-          .set({ status: "completed" })
-          .where(and(
-            eq(transactionsTable.id, tx.id),
-            eq(transactionsTable.status, "pending"),
-          ))
-          .returning();
-
-        if (!justCompleted) {
-          logger.info({ depositId }, "[PawaPay Reconcile] Already processed by webhook — skipping");
-          continue;
-        }
-
-        await db
-          .update(usersTable)
-          .set({ balance: sql`${usersTable.balance} + ${creditAmount}` })
-          .where(eq(usersTable.id, tx.userId));
-
-        logger.info(
-          { depositId, userId: tx.userId, creditAmount },
-          "[PawaPay Reconcile] Deposit COMPLETED via polling — balance credited ✓",
-        );
-
-        /* Push real-time notification */
-        try {
-          const [notif] = await db.insert(notificationsTable).values({
-            userId: tx.userId,
-            title: "💰 Solde rechargé",
-            body: `Votre solde a été crédité de ${creditAmount.toLocaleString("fr-FR")} FCFA avec succès.`,
-            type: "deposit",
-            icon: "wallet",
-            link: "/wallet",
-            metadata: { amount: creditAmount, depositId, gateway: "pawapay", source: "reconciliation" },
-          }).returning();
-          if (notif) broadcastNotification(notif);
-        } catch { /* non-critical */ }
-
-        /* ── Fetch depositor (email + referral) once, used below ── */
-        const [userRow] = await db.select({
-          email: usersTable.email,
-          fullName: usersTable.fullName,
-          balance: usersTable.balance,
-          referredBy: usersTable.referredBy,
-        }).from(usersTable).where(eq(usersTable.id, tx.userId)).limit(1);
-
-        /* Send confirmation email */
-        try {
-          if (userRow?.email) {
-            const phoneMatch = tx.description?.match(/[\+\d]{8,}/);
-            await sendDepositConfirmationEmail({
-              userEmail: userRow.email,
-              userFullName: userRow.fullName ?? "Utilisateur",
-              amount: creditAmount,
-              method: tx.method ?? "Mobile Money",
-              phoneNumber: phoneMatch?.[0] ?? null,
-              transactionId: String(tx.id),
-              depositId,
-              createdAt: tx.createdAt ? new Date(tx.createdAt) : new Date(),
-              newBalance: userRow.balance,
-            });
-          }
-        } catch { /* non-critical */ }
-
-        /* ── Referral commission — credit parrain on this deposit ── */
-        void creditReferralDepositCommission({
-          depositorId: tx.userId,
-          referredBy: userRow?.referredBy,
-          depositAmount: creditAmount,
-          sourceLabel: tx.method ?? "Mobile Money",
-        });
-
-      } else if (depositStatus === "FAILED" || depositStatus === "IN_RECONCILIATION") {
-        if (depositStatus === "FAILED") {
-          const [updated] = await db
-            .update(transactionsTable)
-            .set({ status: "failed" })
-            .where(and(
-              eq(transactionsTable.id, tx.id),
-              eq(transactionsTable.status, "pending"),
-            ))
-            .returning();
-
-          if (updated) {
-            logger.warn(
-              { depositId, pawaPayStatus: depositStatus },
-              "[PawaPay Reconcile] Deposit FAILED — transaction marked failed",
-            );
-          }
-        } else {
-          /* IN_RECONCILIATION = PawaPay is investigating — leave pending, retry later */
-          logger.info({ depositId }, "[PawaPay Reconcile] Deposit IN_RECONCILIATION — will retry");
-        }
-      } else {
-        /* ACCEPTED / PROCESSING — still in progress */
-        logger.debug({ depositId, pawaPayStatus: depositStatus }, "[PawaPay Reconcile] Still in progress — will retry");
+      const outcome = await verifyAndSettlePawaPayDeposit(depositId, client);
+      if (outcome.settled && outcome.amount !== undefined) {
+        logger.info({ depositId, userId: tx.userId, creditAmount: outcome.amount }, "[PawaPay Reconcile] Deposit settled atomically");
+        await notifySettledDeposit(tx, outcome.amount);
+      } else if (outcome.failed) {
+        logger.warn({ depositId }, "[PawaPay Reconcile] Verified deposit failure marked atomically");
       }
-    } catch (e) {
-      logger.warn(
-        { error: (e as Error).message, depositId, txId: tx.id },
-        "[PawaPay Reconcile] Error checking deposit",
-      );
+      // NOT_FOUND, in-progress and mismatched evidence remain pending for a
+      // later authoritative status query; age alone never changes status.
+    } catch (error) {
+      logger.warn({ error: (error as Error).message, depositId, txId: tx.id }, "[PawaPay Reconcile] Status check failed; deposit remains pending");
     }
   }
 }
 
-let reconcileTimer: NodeJS.Timeout | null = null;
-
 export function startPawaPayReconciliation(): void {
-  if (reconcileTimer) return; // already running
-  logger.info(
-    { intervalMs: RECONCILE_INTERVAL_MS },
-    "[PawaPay Reconcile] Background polling started (no webhook required)",
-  );
+  if (reconcileTimer) return;
+  logger.info({ intervalMs: RECONCILE_INTERVAL_MS }, "[PawaPay Reconcile] Background polling started (no webhook required)");
   reconcileTimer = setInterval(() => {
-    reconcilePendingPawaPayTransactions().catch(e =>
-      logger.error({ error: (e as Error).message }, "[PawaPay Reconcile] Unhandled error"),
+    reconcilePendingPawaPayTransactions().catch(error =>
+      logger.error({ error: (error as Error).message }, "[PawaPay Reconcile] Unhandled error"),
     );
   }, RECONCILE_INTERVAL_MS);
 
-  /* First run after 60s (give new deposits time to reach ACCEPTED status) */
   setTimeout(() => {
-    reconcilePendingPawaPayTransactions().catch(e =>
-      logger.error({ error: (e as Error).message }, "[PawaPay Reconcile] Startup run error"),
+    reconcilePendingPawaPayTransactions().catch(error =>
+      logger.error({ error: (error as Error).message }, "[PawaPay Reconcile] Startup run error"),
     );
   }, 60_000);
 }
@@ -220,4 +142,5 @@ export function stopPawaPayReconciliation(): void {
     clearInterval(reconcileTimer);
     reconcileTimer = null;
   }
+  cursor = null;
 }

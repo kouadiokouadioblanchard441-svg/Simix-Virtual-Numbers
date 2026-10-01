@@ -31,3 +31,4 @@ export * from "./referrals";
 export * from "./push_subscriptions";
 export * from "./audit_logs";
 export * from "./email_providers";
+export * from "./payouts";

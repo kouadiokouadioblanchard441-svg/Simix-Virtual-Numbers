@@ -28,6 +28,7 @@ import type {
   NumberQuote,
   PaymentMethod,
   RechargeInput,
+  RechargeResponse,
   RegisterInput,
   RequestNumberInput,
   Service,
@@ -37,6 +38,7 @@ import type {
   User,
   VirtualNumber,
   Wallet,
+  WalletPaymentOptions,
 } from "./api.schemas";
 
 import { customFetch } from "../custom-fetch";
@@ -1514,6 +1516,40 @@ export function useGetWallet<
   return { ...query, queryKey: queryOptions.queryKey };
 }
 
+export interface GetWalletPaymentOptionsParams {
+  countryCode: string;
+  methodSlug: string;
+}
+
+export const getGetWalletPaymentOptionsUrl = (params: GetWalletPaymentOptionsParams) =>
+  `/api/wallet/payment-options?countryCode=${encodeURIComponent(params.countryCode)}&methodSlug=${encodeURIComponent(params.methodSlug)}`;
+
+export const getWalletPaymentOptions = async (
+  params: GetWalletPaymentOptionsParams,
+  options?: RequestInit,
+): Promise<WalletPaymentOptions> => customFetch<WalletPaymentOptions>(
+  getGetWalletPaymentOptionsUrl(params),
+  { ...options, method: "GET" },
+);
+
+export const getGetWalletPaymentOptionsQueryKey = (params: GetWalletPaymentOptionsParams) =>
+  [getGetWalletPaymentOptionsUrl(params)] as const;
+
+export const useGetWalletPaymentOptions = <
+  TData = Awaited<ReturnType<typeof getWalletPaymentOptions>>,
+  TError = ErrorType<unknown>,
+>(params: GetWalletPaymentOptionsParams, options?: {
+  query?: UseQueryOptions<Awaited<ReturnType<typeof getWalletPaymentOptions>>, TError, TData>;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+  const queryKey = queryOptions?.queryKey ?? getGetWalletPaymentOptionsQueryKey(params);
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getWalletPaymentOptions>>> =
+    ({ signal }) => getWalletPaymentOptions(params, { signal, ...requestOptions });
+  const result = useQuery({ queryKey, queryFn, ...queryOptions }) as UseQueryResult<TData, TError> & { queryKey: QueryKey };
+  return { ...result, queryKey };
+};
+
 /**
  * @summary Recharge the wallet with a chosen payment method
  */
@@ -1524,8 +1560,8 @@ export const getRechargeWalletUrl = () => {
 export const rechargeWallet = async (
   rechargeInput: RechargeInput,
   options?: RequestInit,
-): Promise<Transaction> => {
-  return customFetch<Transaction>(getRechargeWalletUrl(), {
+): Promise<RechargeResponse> => {
+  return customFetch<RechargeResponse>(getRechargeWalletUrl(), {
     ...options,
     method: "POST",
     headers: { "Content-Type": "application/json", ...options?.headers },
@@ -1599,6 +1635,51 @@ export const useRechargeWallet = <
 > => {
   return useMutation(getRechargeWalletMutationOptions(options));
 };
+
+export const getWalletDepositStatus = async (
+  depositId: string,
+  options?: RequestInit,
+): Promise<RechargeResponse> => customFetch<RechargeResponse>(
+  `/api/wallet/deposit/${encodeURIComponent(depositId)}/status`,
+  { ...options, method: "GET" },
+);
+
+export const getWalletDepositStatusQueryKey = (depositId: string) =>
+  [`/api/wallet/deposit/${encodeURIComponent(depositId)}/status`] as const;
+
+export const useWalletDepositStatus = <
+  TData = Awaited<ReturnType<typeof getWalletDepositStatus>>,
+  TError = ErrorType<unknown>,
+>(depositId: string, options?: {
+  query?: UseQueryOptions<Awaited<ReturnType<typeof getWalletDepositStatus>>, TError, TData>;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+  const queryKey = queryOptions?.queryKey ?? getWalletDepositStatusQueryKey(depositId);
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getWalletDepositStatus>>> =
+    ({ signal }) => getWalletDepositStatus(depositId, { signal, ...requestOptions });
+  const result = useQuery({ queryKey, queryFn, ...queryOptions }) as UseQueryResult<TData, TError> & { queryKey: QueryKey };
+  return { ...result, queryKey };
+};
+
+export const cancelWalletDeposit = async (
+  depositId: string,
+  options?: RequestInit,
+): Promise<RechargeResponse> => customFetch<RechargeResponse>(
+  `/api/wallet/deposit/${encodeURIComponent(depositId)}/cancel`,
+  {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+  },
+);
+
+export const useCancelWalletDeposit = <TError = ErrorType<unknown>, TContext = unknown>(
+  options?: UseMutationOptions<RechargeResponse, TError, { depositId: string }, TContext>,
+) => useMutation({
+  mutationFn: ({ depositId }) => cancelWalletDeposit(depositId),
+  ...options,
+});
 
 /**
  * @summary List the user's wallet transactions

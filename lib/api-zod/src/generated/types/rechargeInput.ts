@@ -10,4 +10,9 @@ export interface RechargeInput {
   /** @minimum 100 */
   amount: number;
   methodSlug: string;
+  phoneNumber?: string;
+  countryCode?: string;
+  dialCode?: string;
+  currencyCode?: string;
+  operatorOtp?: string;
 }

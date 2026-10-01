@@ -530,17 +530,44 @@ export const RechargeWalletBody = zod.object({
   phoneNumber: zod.string().optional(),
   countryCode: zod.string().optional(),
   dialCode: zod.string().optional(),
+  currencyCode: zod.string().optional(),
+  operatorOtp: zod.string().optional(),
 });
 
-export const RechargeWalletResponse = zod.object({
+export const RechargeResponse = zod.object({
   id: zod.string(),
   type: zod.enum(["recharge", "purchase", "refund"]),
   amount: zod.number(),
   status: zod.enum(["pending", "completed", "failed"]),
   method: zod.string().optional(),
   description: zod.string().optional(),
+  externalDepositId: zod.string().optional(),
+  pending: zod.boolean().optional(),
+  depositId: zod.string().optional(),
+  gateway: zod.string().optional(),
+  paymentMode: zod.enum(["API"]).optional(),
+  payment_url: zod.string().nullish(),
+  operatorPaymentUrl: zod.string().nullish(),
+  paymentOtp: zod.string().nullish(),
+  message: zod.string().nullish(),
   createdAt: zod.coerce.date(),
 });
+export const RechargeWalletResponse = RechargeResponse;
+
+export const GetWalletPaymentOptionsParams = zod.object({
+  countryCode: zod.string(),
+  methodSlug: zod.string(),
+});
+
+export const GetWalletPaymentOptionsResponse = zod.object({
+  gateway: zod.string(),
+  requiresOtp: zod.boolean(),
+  instruction: zod.string().nullable(),
+  operatorCode: zod.string().nullable(),
+});
+
+export const GetWalletDepositStatusResponse = RechargeWalletResponse;
+export const CancelWalletDepositResponse = RechargeWalletResponse;
 
 /**
  * @summary List the user's wallet transactions
@@ -552,6 +579,15 @@ export const ListTransactionsResponseItem = zod.object({
   status: zod.enum(["pending", "completed", "failed"]),
   method: zod.string().optional(),
   description: zod.string().optional(),
+  externalDepositId: zod.string().optional(),
+  pending: zod.boolean().optional(),
+  depositId: zod.string().optional(),
+  gateway: zod.string().optional(),
+  paymentMode: zod.enum(["API"]).optional(),
+  payment_url: zod.string().nullish(),
+  operatorPaymentUrl: zod.string().nullish(),
+  paymentOtp: zod.string().nullish(),
+  message: zod.string().nullish(),
   createdAt: zod.coerce.date(),
 });
 export const ListTransactionsResponse = zod.array(ListTransactionsResponseItem);

@@ -15,5 +15,14 @@ export interface Transaction {
   status: TransactionStatus;
   method?: string;
   description?: string;
+  externalDepositId?: string;
+  pending?: boolean;
+  depositId?: string;
+  gateway?: string;
+  paymentMode?: "API";
+  payment_url?: string | null;
+  operatorPaymentUrl?: string | null;
+  paymentOtp?: string | null;
+  message?: string | null;
   createdAt: Date;
 }

@@ -4,6 +4,7 @@
 - [Auto-refund bug and sweep](auto-refund-sweep.md) — handleExpiredOrder never refunded (bug fixed); 30-min sweep runs every 5 min via triggerAutoRefundSweep(); admin endpoint POST /admin/fivesim/trigger-refund-sweep for manual trigger.
 - [Sync price protection architecture](sync-price-protection.md) — services use admin_price_modified flag; countries have same flag + popular/sortOrder excluded from conflict set; never put margin in sync SET clause.
 - [Clapay CI/BJ phone format](clapay-ci-phone-format.md) — CI and BJ reject E.164 (+2250595857098); Clapay expects local 10-digit format (0595857098). Fixed in formatClapayPhone() via LOCAL_FORMAT_ONLY_COUNTRIES set.
+- [Clapay official contract](clapay-official-contract.md) — direct mode is API, not DIRECT; use official initiation/status guides over contradictory legacy comments and checkout DTO examples.
 - [Admin country picker pattern](admin-country-picker-pattern.md) — never use free-text ISO code inputs for admin country selection; use searchable button/chip picker from GET /admin/countries.
 - [Seed idempotency rules](seed-idempotency.md) — seed functions must use onConflictDoNothing for admin-owned fields; only technical fields (name, dialCode, flag, color, category) may be updated on conflict.
 - [SIMIA multilingual support chat](simia-multilingual-chat.md) — language detection lives in the system prompt, not hard-coded branches; models narrate language switches unless explicitly forbidden; Groq has 12k TPM shared limit.
