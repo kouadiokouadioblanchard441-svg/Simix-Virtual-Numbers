@@ -129059,7 +129059,8 @@ function serializeClapayMeta(meta) {
 function parseClapayMeta(raw) {
   if (!raw) return null;
   try {
-    return JSON.parse(raw);
+    const value = JSON.parse(raw);
+    return value !== null && typeof value === "object" && !Array.isArray(value) ? value : null;
   } catch {
     return null;
   }
@@ -158262,12 +158263,20 @@ var STATUS_CACHE_MS = 3e3;
 var STATUS_CACHE_MAX_ENTRIES = 1e3;
 var statusInFlight = /* @__PURE__ */ new Map();
 var statusCache = /* @__PURE__ */ new Map();
+async function loadStoredFxAmount(deposit, database) {
+  const records = await database.select({
+    currency: fxProfitsTable.currency,
+    localAmount: fxProfitsTable.localAmount,
+    amountXof: fxProfitsTable.amountXof
+  }).from(fxProfitsTable).where(eq(fxProfitsTable.transactionId, deposit.id)).limit(2);
+  return records.length === 1 ? records[0] : void 0;
+}
 function normalizeClapayMetaFromStoredDeposit(deposit, source, fxAmount) {
   const externalDepositId = deposit.externalDepositId ?? "";
   if (!externalDepositId.startsWith("clapay:") || !source.clapaySignature) return null;
   const trackingId = externalDepositId.slice("clapay:".length);
-  if (!trackingId || source.trackingId && source.trackingId !== trackingId) return null;
-  if (source.method && source.method !== "MERCHANT") return null;
+  if (!trackingId || source.trackingId !== void 0 && source.trackingId !== trackingId) return null;
+  if (source.method !== void 0 && source.method !== "MERCHANT") return null;
   const country = String(source.clapayCountry ?? "").trim().toUpperCase();
   if (!country) return null;
   const storedCurrency = String(source.clapayCurrency ?? "").trim().toUpperCase();
@@ -158277,13 +158286,13 @@ function normalizeClapayMetaFromStoredDeposit(deposit, source, fxAmount) {
     currency = storedCurrency;
     localAmount = source.localAmount === void 0 ? Number(deposit.amount) : Number(source.localAmount);
   } else {
-    if (!fxAmount) return null;
+    if (!fxAmount || Number(fxAmount.amountXof) !== deposit.amount) return null;
     currency = String(fxAmount.currency).trim().toUpperCase();
     localAmount = Math.floor(Number(fxAmount.localAmount));
     if (!currency || storedCurrency && storedCurrency !== currency) return null;
     if (source.localAmount !== void 0 && Number(source.localAmount) !== localAmount) return null;
   }
-  if (!Number.isFinite(localAmount) || localAmount <= 0) return null;
+  if (!Number.isSafeInteger(localAmount) || localAmount <= 0 || source.localAmount === null) return null;
   const createdAt = deposit.createdAt instanceof Date ? deposit.createdAt : new Date(deposit.createdAt);
   const initiatedAt = source.initiatedAt ?? (Number.isNaN(createdAt.getTime()) ? "" : createdAt.toISOString());
   if (!initiatedAt) return null;
@@ -158322,11 +158331,7 @@ async function loadStoredClapayContext(externalDepositId, incoming = {}, databas
   let fxAmount;
   const currency = String(merged.clapayCurrency ?? "").toUpperCase();
   if (currency !== "XOF" && currency !== "XAF") {
-    const [fx] = await database.select({
-      currency: fxProfitsTable.currency,
-      localAmount: fxProfitsTable.localAmount
-    }).from(fxProfitsTable).where(eq(fxProfitsTable.transactionId, deposit.id)).orderBy(desc(fxProfitsTable.createdAt)).limit(1);
-    if (fx) fxAmount = fx;
+    fxAmount = await loadStoredFxAmount(deposit, database);
   }
   const meta = normalizeClapayMetaFromStoredDeposit(deposit, merged, fxAmount);
   return meta ? { deposit, meta } : null;
@@ -158438,11 +158443,7 @@ async function settleVerifiedClapayDeposit(externalDepositId, database = db) {
     let fxAmount;
     const currency = String(stored.clapayCurrency ?? "").toUpperCase();
     if (currency !== "XOF" && currency !== "XAF") {
-      const [fx] = await tx.select({
-        currency: fxProfitsTable.currency,
-        localAmount: fxProfitsTable.localAmount
-      }).from(fxProfitsTable).where(eq(fxProfitsTable.transactionId, deposit.id)).orderBy(desc(fxProfitsTable.createdAt)).limit(1);
-      if (fx) fxAmount = fx;
+      fxAmount = await loadStoredFxAmount(deposit, tx);
     }
     const meta = normalizeClapayMetaFromStoredDeposit(deposit, stored, fxAmount);
     if (!meta) return { settled: false };
@@ -171171,42 +171172,44 @@ init_src();
 init_logger2();
 init_clapay();
 init_gateway_credentials();
+
+// artifacts/api-server/src/lib/rotating-batch.ts
+function createRotatingBatchReader(fetchAfter, batchSize) {
+  let afterId = null;
+  return async () => {
+    let batch = await fetchAfter(afterId, batchSize);
+    if (batch.length === 0 && afterId !== null) {
+      afterId = null;
+      batch = await fetchAfter(null, batchSize);
+    }
+    if (batch.length > 0) afterId = batch[batch.length - 1].id;
+    return batch;
+  };
+}
+
+// artifacts/api-server/src/lib/clapay-reconciliation.ts
 var RECONCILE_INTERVAL_MS = 5 * 60 * 1e3;
 var BATCH_SIZE = 50;
-var reconcileCursor = null;
+var readPendingBatch = createRotatingBatchReader(async (afterId, limit) => db.select().from(transactionsTable).where(and(
+  eq(transactionsTable.status, "pending"),
+  eq(transactionsTable.type, "recharge"),
+  like(transactionsTable.externalDepositId, "clapay:%"),
+  like(transactionsTable.gatewayMeta, '%"clapaySignature"%'),
+  afterId ? gt(transactionsTable.id, afterId) : void 0
+)).orderBy(asc(transactionsTable.id)).limit(limit), BATCH_SIZE);
 async function reconcilePendingClapayTransactions() {
-  const cursorCondition = reconcileCursor ? or(
-    gt(transactionsTable.createdAt, reconcileCursor.createdAt),
-    and(
-      eq(transactionsTable.createdAt, reconcileCursor.createdAt),
-      gt(transactionsTable.id, reconcileCursor.id)
-    )
-  ) : void 0;
-  const filters = [
-    eq(transactionsTable.status, "pending"),
-    eq(transactionsTable.type, "recharge"),
-    like(transactionsTable.externalDepositId, "clapay:%"),
-    like(transactionsTable.gatewayMeta, '%"clapaySignature"%')
-  ];
-  if (cursorCondition) filters.push(cursorCondition);
-  const pending = await db.select().from(transactionsTable).where(and(...filters)).orderBy(asc(transactionsTable.createdAt), asc(transactionsTable.id)).limit(BATCH_SIZE);
-  if (!pending.length) {
-    reconcileCursor = null;
-    return;
-  }
-  const last = pending[pending.length - 1];
-  reconcileCursor = { createdAt: last.createdAt, id: last.id };
+  const pending = await readPendingBatch();
   for (const deposit of pending) {
     const externalDepositId = deposit.externalDepositId;
     const trackingId = externalDepositId.slice("clapay:".length);
-    const context = await getClapayDepositMeta(externalDepositId);
-    if (!context?.meta.clapaySignature) continue;
-    const meta = await persistClapayDepositMeta(externalDepositId);
-    if (!meta?.clapaySignature) continue;
-    const credentials = meta.gatewayConfigId ? await resolveClapayGatewayCredentials(meta.gatewayConfigId) : await resolveClapayCredentials();
-    if (!credentials) continue;
-    const clapay = new ClapayClient(credentials.token, credentials.baseUrl);
     try {
+      const context = await getClapayDepositMeta(externalDepositId);
+      if (!context?.meta.clapaySignature) continue;
+      const meta = await persistClapayDepositMeta(externalDepositId);
+      if (!meta?.clapaySignature) continue;
+      const credentials = meta.gatewayConfigId ? await resolveClapayGatewayCredentials(meta.gatewayConfigId) : await resolveClapayCredentials();
+      if (!credentials) continue;
+      const clapay = new ClapayClient(credentials.token, credentials.baseUrl);
       const status = await getVerifiedClapayStatus(clapay, meta, trackingId);
       if (status?.status === "completed") {
         const outcome = await settleVerifiedClapayDeposit(externalDepositId);

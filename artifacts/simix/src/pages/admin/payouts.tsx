@@ -251,7 +251,7 @@ function PawaPayForm({ history }: { history: AdminPayoutRecord[] }) {
         provider: providerCode,
         currency,
         amount: amountNumber,
-        idempotencyKeyUUID: attempt.idempotencyKey,
+        idempotencyKey: attempt.idempotencyKey,
       });
       setRecord(result);
       await updatePayoutAttempt("merchant", payload, { status: result.status, recordId: result.id });

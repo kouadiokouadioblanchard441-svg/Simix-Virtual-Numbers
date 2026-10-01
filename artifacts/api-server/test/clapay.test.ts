@@ -16,6 +16,7 @@ import {
   settleVerifiedClapayDeposit,
 } from "../src/lib/clapay-settlement";
 import { matchesMobileOperatorMethod } from "../src/lib/wallet-payment-classification";
+import { createRotatingBatchReader } from "../src/lib/rotating-batch";
 
 const originalFetch = globalThis.fetch;
 afterEach(() => { globalThis.fetch = originalFetch; });
@@ -201,7 +202,7 @@ test("legacy XOF metadata recovers local amount and tracking ID from stored depo
       createdAt: new Date("2025-01-01T00:00:00.000Z"),
     } as never,
     { clapaySignature: "sig-fx", clapayCountry: "KE" },
-    { currency: "KES", localAmount: "1000.75" },
+    { currency: "KES", localAmount: "1000.75", amountXof: "7250" },
   );
   assert.equal(foreign?.clapayCurrency, "KES");
   assert.equal(foreign?.localAmount, 1000);
@@ -259,7 +260,8 @@ test("cancellation uses the signature endpoint and only explicit acknowledgement
   assert.equal(isClapayCancellationAcknowledged({ message: "accepted" }), false);
 });
 
-test("settlement atomically transitions pending once and guards duplicate settlement", async () => {
+for (const legacy of [false, true]) {
+test(`settlement atomically credits ${legacy ? "legacy" : "current"} deposits once`, async () => {
   const deposit = {
     id: "tx-1",
     userId: "user-1",
@@ -270,7 +272,7 @@ test("settlement atomically transitions pending once and guards duplicate settle
     createdAt: new Date(0),
     gatewayMeta: JSON.stringify({
       clapaySignature: "sig-1", clapayCurrency: "XOF", clapayCountry: "CI",
-      localAmount: 700, operatorCode: "OM", trackingId: "track-1", method: "MERCHANT",
+      ...(legacy ? {} : { localAmount: 700, operatorCode: "OM", trackingId: "track-1", method: "MERCHANT" }),
       initiatedAt: new Date(0).toISOString(),
     }),
   };
@@ -284,9 +286,13 @@ test("settlement atomically transitions pending once and guards duplicate settle
       }),
     }),
     update: (table: unknown) => ({
-      set: (values: { status?: string }) => {
+      set: (values: { status?: string; gatewayMeta?: string }) => {
         const builder = {
           returning: async () => {
+            if (values.gatewayMeta && deposit.status === "pending") {
+              deposit.gatewayMeta = values.gatewayMeta;
+              return [{ id: deposit.id }];
+            }
             if (values.status !== "completed" || deposit.status !== "pending") return [];
             deposit.status = "completed";
             return [{ id: deposit.id }];
@@ -310,4 +316,54 @@ test("settlement atomically transitions pending once and guards duplicate settle
   assert.equal(second.settled, false);
   assert.equal(deposit.status, "completed");
   assert.equal(credits, 1);
+  assert.equal(JSON.parse(deposit.gatewayMeta).localAmount, 700);
+  assert.equal(JSON.parse(deposit.gatewayMeta).trackingId, "track-1");
+  assert.equal(JSON.parse(deposit.gatewayMeta).method, "MERCHANT");
+});
+}
+
+test("legacy verification never accepts mismatched provider identity or amounts", () => {
+  const deposit = { externalDepositId: "clapay:legacy-track", amount: 2500, createdAt: new Date(0) } as never;
+  const source = { clapaySignature: "legacy-signature", clapayCurrency: "XOF", clapayCountry: "CI" };
+  const meta = normalizeClapayMetaFromStoredDeposit(deposit, source);
+  assert.ok(meta);
+  const response = {
+    status: "SUCCESS", transaction_id: "legacy-track", signature: "legacy-signature",
+    amount: "2500", currency: "XOF", method: "MERCHANT", country: "CI",
+  };
+  assert.equal(validateClapayStatus(response, meta, "legacy-track").status, "completed");
+  for (const mismatch of [
+    { transaction_id: "other" }, { signature: "other" }, { amount: "1" },
+    { currency: "USD" }, { country: "SN" }, { method: "CASHOUT" },
+  ]) {
+    assert.throws(() => validateClapayStatus({ ...response, ...mismatch }, meta, "legacy-track"), /does not match/);
+  }
+  assert.equal(normalizeClapayMetaFromStoredDeposit(deposit, { ...source, trackingId: "other" }), null);
+});
+
+test("legacy foreign-currency deposits require matching original FX evidence", () => {
+  const deposit = { externalDepositId: "clapay:legacy-track", amount: 2500, createdAt: new Date(0) } as never;
+  const source = { clapaySignature: "sig", clapayCurrency: "KES", clapayCountry: "KE" };
+  const fx = { currency: "KES", localAmount: "600.80", amountXof: "2500" };
+  assert.equal(normalizeClapayMetaFromStoredDeposit(deposit, source, fx)?.localAmount, 600);
+  assert.equal(normalizeClapayMetaFromStoredDeposit(deposit, source), null);
+  for (const mismatch of [{ currency: "USD" }, { localAmount: "NaN" }, { amountXof: "999" }]) {
+    assert.equal(normalizeClapayMetaFromStoredDeposit(deposit, source, { ...fx, ...mismatch }), null);
+  }
+});
+
+test("rotating reconciliation reaches all 121 unresolved deposits and wraps safely", async () => {
+  const pending = Array.from({ length: 121 }, (_, index) => ({ id: String(index).padStart(4, "0") }));
+  const read = createRotatingBatchReader(async (after, limit) =>
+    pending.filter(item => after === null || item.id > after).slice(0, limit), 50);
+  const first = await read();
+  const second = await read();
+  const third = await read();
+  assert.equal(first.length, 50);
+  assert.equal(second.length, 50);
+  assert.equal(third.length, 21);
+  assert.equal(new Set([...first, ...second, ...third].map(item => item.id)).size, 121);
+  assert.deepEqual(await read(), first);
+  pending.splice(0, 50);
+  assert.deepEqual(await read(), second);
 });

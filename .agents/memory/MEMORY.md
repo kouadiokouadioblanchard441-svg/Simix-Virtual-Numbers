@@ -22,3 +22,6 @@
 - [Shared email encryption key](shared-email-encryption-key.md) — API environments sharing email_providers must share ENCRYPTION_KEY; ciphertext presence does not prove decryptability.
 - [Brevo authorized IPs](brevo-authorized-ips.md) — Brevo API keys can be valid but return 401 until each server egress IP is added to Brevo's authorized IP list.
 - [Plesk admin JWT isolation](plesk-admin-jwt-isolation.md) — Replit's admin signing secret cannot authenticate against production; live admin checks require a real Plesk session.
+- [Security override compatibility](security-override-compatibility.md) — patched transitive versions must preserve each parent's export API; test older and newer consumers separately.
+- [Clapay legacy reconciliation](clapay-legacy-reconciliation.md) — reconstruct old payment expectations from the initiation ledger, not callbacks; rotate pending batches to avoid starvation.
+- [Bundle merge validation](merge-marker-validation.md) — separator comments in generated dependencies may be mistaken for unresolved conflict markers.

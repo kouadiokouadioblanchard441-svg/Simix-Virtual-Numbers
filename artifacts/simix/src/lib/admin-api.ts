@@ -475,7 +475,7 @@ export const adminApi = {
     provider: string;
     currency: string;
     amount: number;
-    idempotencyKeyUUID: string;
+    idempotencyKey: string;
   }) => req<AdminPayoutRecord>("POST", "/admin/payouts/pawapay", data),
 
   getPayoutHistory: () =>

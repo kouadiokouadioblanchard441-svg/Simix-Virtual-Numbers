@@ -1,4 +1,4 @@
-import { and, desc, eq, isNull, like, sql } from "drizzle-orm";
+import { and, eq, isNull, like, sql } from "drizzle-orm";
 import { db, fxProfitsTable, transactionsTable, usersTable } from "@workspace/db";
 import type { ClapayClient, ClapayGatewayMeta, ClapayPaymentStatusResponse } from "./clapay";
 import { normalizeClapayStatus, parseClapayMeta } from "./clapay";
@@ -19,7 +19,19 @@ export type NormalizedClapayGatewayMeta = ClapayGatewayMeta & {
 };
 
 type StoredClapayDeposit = typeof transactionsTable.$inferSelect;
-type StoredFxAmount = { currency: string; localAmount: string };
+type StoredFxAmount = { currency: string; localAmount: string; amountXof: string };
+
+async function loadStoredFxAmount(
+  deposit: StoredClapayDeposit,
+  database: Pick<typeof db, "select">,
+): Promise<StoredFxAmount | undefined> {
+  const records = await database.select({
+    currency: fxProfitsTable.currency,
+    localAmount: fxProfitsTable.localAmount,
+    amountXof: fxProfitsTable.amountXof,
+  }).from(fxProfitsTable).where(eq(fxProfitsTable.transactionId, deposit.id)).limit(2);
+  return records.length === 1 ? records[0] : undefined;
+}
 
 export function normalizeClapayMetaFromStoredDeposit(
   deposit: StoredClapayDeposit,
@@ -30,8 +42,8 @@ export function normalizeClapayMetaFromStoredDeposit(
   if (!externalDepositId.startsWith("clapay:") || !source.clapaySignature) return null;
 
   const trackingId = externalDepositId.slice("clapay:".length);
-  if (!trackingId || (source.trackingId && source.trackingId !== trackingId)) return null;
-  if (source.method && source.method !== "MERCHANT") return null;
+  if (!trackingId || (source.trackingId !== undefined && source.trackingId !== trackingId)) return null;
+  if (source.method !== undefined && source.method !== "MERCHANT") return null;
 
   const country = String(source.clapayCountry ?? "").trim().toUpperCase();
   if (!country) return null;
@@ -43,13 +55,13 @@ export function normalizeClapayMetaFromStoredDeposit(
     currency = storedCurrency;
     localAmount = source.localAmount === undefined ? Number(deposit.amount) : Number(source.localAmount);
   } else {
-    if (!fxAmount) return null;
+    if (!fxAmount || Number(fxAmount.amountXof) !== deposit.amount) return null;
     currency = String(fxAmount.currency).trim().toUpperCase();
     localAmount = Math.floor(Number(fxAmount.localAmount));
     if (!currency || (storedCurrency && storedCurrency !== currency)) return null;
     if (source.localAmount !== undefined && Number(source.localAmount) !== localAmount) return null;
   }
-  if (!Number.isFinite(localAmount) || localAmount <= 0) return null;
+  if (!Number.isSafeInteger(localAmount) || localAmount <= 0 || source.localAmount === null) return null;
 
   const createdAt = deposit.createdAt instanceof Date ? deposit.createdAt : new Date(deposit.createdAt);
   const initiatedAt = source.initiatedAt ?? (Number.isNaN(createdAt.getTime()) ? "" : createdAt.toISOString());
@@ -108,14 +120,7 @@ async function loadStoredClapayContext(
   let fxAmount: StoredFxAmount | undefined;
   const currency = String(merged.clapayCurrency ?? "").toUpperCase();
   if (currency !== "XOF" && currency !== "XAF") {
-    const [fx] = await database.select({
-      currency: fxProfitsTable.currency,
-      localAmount: fxProfitsTable.localAmount,
-    }).from(fxProfitsTable)
-      .where(eq(fxProfitsTable.transactionId, deposit.id))
-      .orderBy(desc(fxProfitsTable.createdAt))
-      .limit(1);
-    if (fx) fxAmount = fx;
+    fxAmount = await loadStoredFxAmount(deposit, database);
   }
 
   const meta = normalizeClapayMetaFromStoredDeposit(deposit, merged, fxAmount);
@@ -287,14 +292,7 @@ export async function settleVerifiedClapayDeposit(
     let fxAmount: StoredFxAmount | undefined;
     const currency = String(stored.clapayCurrency ?? "").toUpperCase();
     if (currency !== "XOF" && currency !== "XAF") {
-      const [fx] = await tx.select({
-        currency: fxProfitsTable.currency,
-        localAmount: fxProfitsTable.localAmount,
-      }).from(fxProfitsTable)
-        .where(eq(fxProfitsTable.transactionId, deposit.id))
-        .orderBy(desc(fxProfitsTable.createdAt))
-        .limit(1);
-      if (fx) fxAmount = fx;
+      fxAmount = await loadStoredFxAmount(deposit, tx);
     }
     const meta = normalizeClapayMetaFromStoredDeposit(deposit, stored, fxAmount);
     if (!meta) return { settled: false };

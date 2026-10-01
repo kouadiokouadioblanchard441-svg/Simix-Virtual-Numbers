@@ -3,7 +3,7 @@
  * NoWallet signature-status API. Unknown signatures and API failures remain
  * pending; age alone is never treated as evidence of a failed payment.
  */
-import { and, eq, like, asc, gt, or } from "drizzle-orm";
+import { and, eq, like, asc, gt } from "drizzle-orm";
 import { db, transactionsTable, usersTable } from "@workspace/db";
 import { logger } from "./logger";
 import { ClapayClient } from "./clapay";
@@ -16,54 +16,38 @@ import {
 } from "./clapay-settlement";
 import { resolveClapayCredentials, resolveClapayGatewayCredentials } from "./gateway-credentials";
 import { creditReferralDepositCommission } from "./referral-commission";
+import { createRotatingBatchReader } from "./rotating-batch";
 
 const RECONCILE_INTERVAL_MS = 5 * 60 * 1000;
 const BATCH_SIZE = 50;
-let reconcileCursor: { createdAt: Date; id: string } | null = null;
+const readPendingBatch = createRotatingBatchReader(async (afterId, limit) =>
+  db.select().from(transactionsTable)
+    .where(and(
+      eq(transactionsTable.status, "pending"),
+      eq(transactionsTable.type, "recharge"),
+      like(transactionsTable.externalDepositId, "clapay:%"),
+      like(transactionsTable.gatewayMeta, '%"clapaySignature"%'),
+      afterId ? gt(transactionsTable.id, afterId) : undefined,
+    ))
+    .orderBy(asc(transactionsTable.id))
+    .limit(limit), BATCH_SIZE);
 
 async function reconcilePendingClapayTransactions(): Promise<void> {
-  const cursorCondition = reconcileCursor
-    ? or(
-        gt(transactionsTable.createdAt, reconcileCursor.createdAt),
-        and(
-          eq(transactionsTable.createdAt, reconcileCursor.createdAt),
-          gt(transactionsTable.id, reconcileCursor.id),
-        ),
-      )
-    : undefined;
-  const filters = [
-    eq(transactionsTable.status, "pending"),
-    eq(transactionsTable.type, "recharge"),
-    like(transactionsTable.externalDepositId, "clapay:%"),
-    like(transactionsTable.gatewayMeta, '%"clapaySignature"%'),
-  ];
-  if (cursorCondition) filters.push(cursorCondition);
-  const pending = await db.select().from(transactionsTable)
-    .where(and(...filters))
-    .orderBy(asc(transactionsTable.createdAt), asc(transactionsTable.id))
-    .limit(BATCH_SIZE);
-
-  if (!pending.length) {
-    reconcileCursor = null;
-    return;
-  }
-  const last = pending[pending.length - 1]!;
-  reconcileCursor = { createdAt: last.createdAt, id: last.id };
+  const pending = await readPendingBatch();
 
   for (const deposit of pending) {
     const externalDepositId = deposit.externalDepositId!;
     const trackingId = externalDepositId.slice("clapay:".length);
-    const context = await getClapayDepositMeta(externalDepositId);
-    if (!context?.meta.clapaySignature) continue;
-    const meta = await persistClapayDepositMeta(externalDepositId);
-    if (!meta?.clapaySignature) continue;
-    const credentials = meta.gatewayConfigId
-      ? await resolveClapayGatewayCredentials(meta.gatewayConfigId)
-      : await resolveClapayCredentials();
-    if (!credentials) continue;
-    const clapay = new ClapayClient(credentials.token, credentials.baseUrl);
-
     try {
+      const context = await getClapayDepositMeta(externalDepositId);
+      if (!context?.meta.clapaySignature) continue;
+      const meta = await persistClapayDepositMeta(externalDepositId);
+      if (!meta?.clapaySignature) continue;
+      const credentials = meta.gatewayConfigId
+        ? await resolveClapayGatewayCredentials(meta.gatewayConfigId)
+        : await resolveClapayCredentials();
+      if (!credentials) continue;
+      const clapay = new ClapayClient(credentials.token, credentials.baseUrl);
       const status = await getVerifiedClapayStatus(clapay, meta, trackingId);
       if (status?.status === "completed") {
         const outcome = await settleVerifiedClapayDeposit(externalDepositId);

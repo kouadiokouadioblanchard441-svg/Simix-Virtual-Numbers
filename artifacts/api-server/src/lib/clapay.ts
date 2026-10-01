@@ -341,7 +341,10 @@ export function serializeClapayMeta(meta: ClapayGatewayMeta): string {
 export function parseClapayMeta(raw: string | null | undefined): ClapayGatewayMeta | null {
   if (!raw) return null;
   try {
-    return JSON.parse(raw) as ClapayGatewayMeta;
+    const value: unknown = JSON.parse(raw);
+    return value !== null && typeof value === "object" && !Array.isArray(value)
+      ? value as ClapayGatewayMeta
+      : null;
   } catch {
     return null;
   }
