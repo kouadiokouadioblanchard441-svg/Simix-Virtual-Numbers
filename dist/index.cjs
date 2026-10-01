@@ -129013,7 +129013,7 @@ function clapayOperatorRequiresOtp(operator) {
   return operator.otpstarter?.MERCHANT === true;
 }
 function clapayOperatorSupportsMethod(operator, method) {
-  if (!operator.active || !operator.codeoperator?.trim()) return false;
+  if (operator.active !== true || typeof operator.codeoperator !== "string" || !operator.codeoperator.trim()) return false;
   if (!operator.code || !Object.hasOwn(operator.code, method)) return true;
   const capability = operator.code[method];
   return typeof capability === "string" && capability.trim().length > 0 && capability.trim().toLowerCase() !== "none";
@@ -129074,11 +129074,15 @@ function isClapayDeposit(externalDepositId) {
 function extractClapayTransactionId(externalDepositId) {
   return externalDepositId.slice(CLAPAY_PREFIX.length);
 }
-var LOCAL_FORMAT_ONLY_COUNTRIES, KEEP_LEADING_ZERO_COUNTRIES, CLAPAY_TERMINAL_SUCCESS, CLAPAY_TERMINAL_FAILURE, ClapayClient, CLAPAY_PREFIX;
+var CLAPAY_OPERATOR_BRANDS, LOCAL_FORMAT_ONLY_COUNTRIES, KEEP_LEADING_ZERO_COUNTRIES, CLAPAY_TERMINAL_SUCCESS, CLAPAY_TERMINAL_FAILURE, ClapayClient, CLAPAY_PREFIX;
 var init_clapay = __esm({
   "artifacts/api-server/src/lib/clapay.ts"() {
     "use strict";
     init_logger2();
+    CLAPAY_OPERATOR_BRANDS = {
+      GH: [["airtel", "airtelmoney", "airteltigo", "airteltigomoney", "atmoney"]],
+      TG: [["flooz", "moov", "moovmoney", "moovafrica", "moovmoneyflooz"]]
+    };
     LOCAL_FORMAT_ONLY_COUNTRIES = /* @__PURE__ */ new Set(["CI", "BJ"]);
     KEEP_LEADING_ZERO_COUNTRIES = /* @__PURE__ */ new Set(["CI", "BJ"]);
     CLAPAY_TERMINAL_SUCCESS = /* @__PURE__ */ new Set(["SUCCESS", "SUCCESSFUL", "COMPLETED"]);
@@ -129233,7 +129237,7 @@ var init_clapay = __esm({
       /**
        * Resolve the correct operator code for a given method slug and country.
        * Dynamically fetches operators from Clapay for the country and finds
-        * the matching one by name/codeoperator. Never invents a fallback code.
+       * the matching one by name/codeoperator. Never invents a fallback code.
        *
        * @param country  ISO alpha-2 country code (e.g. "CI", "CM")
        * @param methodSlug  e.g. "orange", "mtn", "wave"
@@ -129242,12 +129246,14 @@ var init_clapay = __esm({
         const operators = await this.getOperators(country);
         const normalize4 = (value) => value.toLowerCase().replace(/[^a-z0-9]/g, "");
         const slug = normalize4(methodSlug);
+        if (!slug) return null;
         const eligible = operators.filter((op) => clapayOperatorSupportsMethod(op, "MERCHANT"));
+        const brandAliases = CLAPAY_OPERATOR_BRANDS[country.trim().toUpperCase()]?.find((aliases) => aliases.includes(slug));
         return eligible.find((op) => normalize4(op.codeoperator) === slug) ?? eligible.find((op) => {
           const code = normalize4(op.codeoperator);
-          const name3 = normalize4(op.name);
-          return slug === name3 || slug.includes(name3) || name3.includes(slug) || code.length > 2 && (slug.startsWith(code) || slug.endsWith(code));
-        }) ?? null;
+          const name3 = normalize4(typeof op.name === "string" ? op.name : "");
+          return name3.length > 0 && (slug === name3 || slug.includes(name3) || name3.includes(slug)) || code.length > 2 && (slug.startsWith(code) || slug.endsWith(code));
+        }) ?? eligible.find((op) => brandAliases?.includes(normalize4(op.codeoperator)) || brandAliases?.includes(normalize4(typeof op.name === "string" ? op.name : ""))) ?? null;
       }
       async resolveOperatorCode(country, methodSlug) {
         return (await this.resolveOperator(country, methodSlug))?.codeoperator ?? null;

@@ -56,12 +56,75 @@ test("missing legacy metadata does not bypass explicit denials or inactive catal
   } as ClapayOperator;
   assert.equal(clapayOperatorSupportsMethod(operator, "MERCHANT"), true);
   assert.equal(clapayOperatorSupportsMethod({ ...operator, active: false }, "MERCHANT"), false);
+  assert.equal(clapayOperatorSupportsMethod({ ...operator, active: "false" as unknown as boolean }, "MERCHANT"), false);
   assert.equal(clapayOperatorSupportsMethod({ ...operator, codeoperator: "" }, "MERCHANT"), false);
+  assert.equal(clapayOperatorSupportsMethod({ ...operator, codeoperator: 1 as unknown as string }, "MERCHANT"), false);
   for (const denied of ["none", " NONE ", "", null]) {
     assert.equal(clapayOperatorSupportsMethod({ ...operator, code: { MERCHANT: denied } }, "MERCHANT"), false);
     assert.equal(clapayOperatorSupportsMethod({ ...operator, code: { CASHIN: denied } }, "CASHIN"), false);
   }
   assert.equal(clapayOperatorSupportsMethod({ ...operator, code: { MERCHANT: "ORANGEBF" } }, "MERCHANT"), true);
+});
+
+test("deposit resolution handles catalogue metadata without legacy codes across configured countries", async () => {
+  const cases = [
+    ["BF", "moov_money", "MOOV"], ["BF", "orange_money", "OM"], ["BF", "wave", "WAVE"],
+    ["BJ", "moov_money", "MOOV"], ["BJ", "mtn_money", "MTN"],
+    ["CG", "airtel_money", "AIRTEL"], ["CG", "mtn_money", "MTN"],
+    ["CI", "moov_money", "MOOV"], ["CI", "mtn_money", "MTN"], ["CI", "orange_money", "OM"], ["CI", "wave", "WAVE"],
+    ["CM", "mtn_money", "MTN"], ["CM", "orange_money", "OM"],
+    ["GA", "airtel_money", "AIRTEL"], ["GH", "mtn_money", "MTN"],
+    ["GN", "mtn_money", "MTN"], ["GN", "orange_money", "OM"],
+    ["KE", "airtel_money", "AIRTEL"], ["KE", "mpesa", "MPESA"],
+    ["ML", "moov_money", "MOOV"], ["ML", "orange_money", "OM"], ["ML", "wave", "WAVE"],
+    ["NE", "moov_money", "MOOV"], ["RW", "airtel_money", "AIRTEL"], ["RW", "mtn_money", "MTN"],
+    ["SN", "free_money", "FREEMONEY"], ["SN", "orange_money", "OM"], ["SN", "wave", "WAVE"],
+    ["TG", "moov_money", "MOOV"], ["TG", "tmoney", "TMONEY"], ["TZ", "airtel_money", "AIRTEL"],
+    ["GH", "airtel_money", "AIRTELTIGO"], ["TG", "flooz", "MOOV"],
+  ] as const;
+  for (const [country, method, shortcode] of cases) {
+    const requiresOtp = shortcode === "OM" && country !== "CM";
+    const name = shortcode === "OM" ? "ORANGE MONEY"
+      : shortcode === "MOOV" ? "MOOV MONEY"
+      : shortcode === "MTN" ? "MTN MOBILE MONEY"
+      : shortcode;
+    globalThis.fetch = async () => new Response(JSON.stringify([{
+      name, codeoperator: shortcode, active: true,
+      otpstarter: { MERCHANT: requiresOtp },
+      instruction: { MERCHANT: requiresOtp ? "Code OTP requis." : null },
+    }]), { status: 200, headers: { "Content-Type": "application/json" } });
+    const resolved = await new ClapayClient("test-only-token").resolveOperator(country, method);
+    assert.equal(resolved?.codeoperator, shortcode, `${country}/${method}`);
+    assert.equal(clapayOperatorRequiresOtp(resolved!), requiresOtp, `${country}/${method}: OTP`);
+  }
+});
+
+test("local brand aliases never invent identifiers or bypass country and eligibility checks", async () => {
+  const client = new ClapayClient("test-only-token");
+  const moov = { name: "MOOV MONEY", codeoperator: "ACTUAL-MOOV-CODE", active: true };
+  const airtelTigo = { name: "AIRTELTIGO", codeoperator: "ACTUAL-AIRTELTIGO-CODE", active: true };
+  let catalogue: unknown[] = [moov];
+  globalThis.fetch = async () => new Response(JSON.stringify(catalogue), {
+    status: 200, headers: { "Content-Type": "application/json" },
+  });
+  assert.equal((await client.resolveOperator("TG", "flooz"))?.codeoperator, moov.codeoperator);
+  assert.equal(await client.resolveOperator("BF", "flooz"), null);
+  assert.equal(await client.resolveOperator("TG", ""), null);
+  catalogue = [{ ...moov, active: false }];
+  assert.equal(await client.resolveOperator("TG", "flooz"), null);
+  catalogue = [{ ...moov, code: { MERCHANT: "none" } }];
+  assert.equal(await client.resolveOperator("TG", "flooz"), null);
+  catalogue = [airtelTigo];
+  assert.equal((await client.resolveOperator("GH", "airtel_money"))?.codeoperator, airtelTigo.codeoperator);
+  assert.equal(await client.resolveOperator("NG", "airtel_money"), null);
+  catalogue = [];
+  assert.equal(await client.resolveOperator("GH", "airtel_money"), null);
+  catalogue = [{ name: "MTN MOBILE MONEY", codeoperator: "MTN", active: true }];
+  assert.equal(await client.resolveOperator("CG", "orange_money"), null);
+  catalogue = [{ name: "", codeoperator: "MTN", active: true }];
+  assert.equal(await client.resolveOperator("CG", "orange_money"), null);
+  catalogue = [{ codeoperator: "MTN", active: true }];
+  assert.equal(await client.resolveOperator("CG", "orange_money"), null);
 });
 
 test("Clapay init uses API/MERCHANT and one current catalogue short operator code", async () => {

@@ -20,3 +20,9 @@ The live operator catalogue can omit the entire legacy `code` object while retai
 **Why:** A real BF catalogue returned active Orange Money with short code `OM` and `otpstarter.MERCHANT: true`, but no `code` property. Requiring `code.MERCHANT` rejected a valid configured deposit method despite the documented initiation using only the short identifier.
 
 **How to apply:** Verify the actual metadata endpoint shape, not just its richer documentation example. Preserve the returned OTP requirement and use the returned short code; never fabricate a provider identifier or regard catalogue eligibility as confirmed payment success.
+
+Site-enabled deposit methods do not establish Clapay coverage. Check the selected account's country and operator catalogues before treating every unavailable-method error as the same bug. Brand aliases must be verified and scoped to their country; they may select only a real eligible catalogue entry.
+
+**Why:** A cross-country check found both legitimate local brand-name differences and site-enabled countries absent from Clapay's country list, whose operator endpoints returned 404. Fixing optional metadata did not make those missing countries/operators available.
+
+**How to apply:** Distinguish matching errors, explicit operator denials, missing provider countries/operators and failed catalogue requests. Do not invent codes, change ISO codes, disable site configurations or switch gateways merely to make the error disappear.

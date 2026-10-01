@@ -148,13 +148,22 @@ export function clapayOperatorSupportsMethod(
   operator: ClapayOperator,
   method: "MERCHANT" | "CASHIN" | "CASHOUT",
 ): boolean {
-  if (!operator.active || !operator.codeoperator?.trim()) return false;
+  if (operator.active !== true || typeof operator.codeoperator !== "string" || !operator.codeoperator.trim()) return false;
   if (!operator.code || !Object.hasOwn(operator.code, method)) return true;
   const capability = operator.code[method];
   return typeof capability === "string"
     && capability.trim().length > 0
     && capability.trim().toLowerCase() !== "none";
 }
+
+// Verified local brand names, not fallback payment identifiers. Resolution
+// still requires an eligible operator returned by this country's catalogue.
+// https://www.at.com.gh/airteltigo-money/home
+// https://moov-africa.tg/moov-money/application-mobile-moov-money-flooz/
+const CLAPAY_OPERATOR_BRANDS: Record<string, readonly (readonly string[])[]> = {
+  GH: [["airtel", "airtelmoney", "airteltigo", "airteltigomoney", "atmoney"]],
+  TG: [["flooz", "moov", "moovmoney", "moovafrica", "moovmoneyflooz"]],
+};
 
 export interface ClapayFees {
   fee_cashin: number;
@@ -515,7 +524,7 @@ export class ClapayClient {
   /**
    * Resolve the correct operator code for a given method slug and country.
    * Dynamically fetches operators from Clapay for the country and finds
-    * the matching one by name/codeoperator. Never invents a fallback code.
+   * the matching one by name/codeoperator. Never invents a fallback code.
    *
    * @param country  ISO alpha-2 country code (e.g. "CI", "CM")
    * @param methodSlug  e.g. "orange", "mtn", "wave"
@@ -524,15 +533,20 @@ export class ClapayClient {
     const operators = await this.getOperators(country);
     const normalize = (value: string) => value.toLowerCase().replace(/[^a-z0-9]/g, "");
     const slug = normalize(methodSlug);
+    if (!slug) return null;
     const eligible = operators.filter(op => clapayOperatorSupportsMethod(op, "MERCHANT"));
+    const brandAliases = CLAPAY_OPERATOR_BRANDS[country.trim().toUpperCase()]
+      ?.find(aliases => aliases.includes(slug));
 
     return eligible.find(op => normalize(op.codeoperator) === slug)
       ?? eligible.find(op => {
         const code = normalize(op.codeoperator);
-        const name = normalize(op.name);
-        return slug === name || slug.includes(name) || name.includes(slug) ||
+        const name = normalize(typeof op.name === "string" ? op.name : "");
+        return (name.length > 0 && (slug === name || slug.includes(name) || name.includes(slug))) ||
           (code.length > 2 && (slug.startsWith(code) || slug.endsWith(code)));
       })
+      ?? eligible.find(op => brandAliases?.includes(normalize(op.codeoperator))
+        || brandAliases?.includes(normalize(typeof op.name === "string" ? op.name : "")))
       ?? null;
   }
 
