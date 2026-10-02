@@ -409,7 +409,7 @@ router.post("/admin/support/provider-tokens", requireAdmin, async (req, res): Pr
   res.status(201).json(tokenResponse(token!));
 });
 
-router.put("/admin/support/provider-tokens/:id", requireAdmin, async (req, res): Promise<void> => {
+router.put("/admin/support/provider-tokens/:id", requireAdmin, async (req: Request<{ id: string }>, res): Promise<void> => {
   const body = req.body as { label?: string; apiKey?: string; model?: string; priority?: number; isActive?: boolean };
   const updates: Record<string, unknown> = { updatedAt: new Date() };
   if (body.label !== undefined) updates.label = body.label.trim();
@@ -422,12 +422,12 @@ router.put("/admin/support/provider-tokens/:id", requireAdmin, async (req, res):
   res.json(tokenResponse(token));
 });
 
-router.delete("/admin/support/provider-tokens/:id", requireAdmin, async (req, res): Promise<void> => {
+router.delete("/admin/support/provider-tokens/:id", requireAdmin, async (req: Request<{ id: string }>, res): Promise<void> => {
   await db.delete(aiProviderTokensTable).where(eq(aiProviderTokensTable.id, req.params.id));
   res.json({ success: true });
 });
 
-router.post("/admin/support/provider-tokens/:id/check", requireAdmin, async (req, res): Promise<void> => {
+router.post("/admin/support/provider-tokens/:id/check", requireAdmin, async (req: Request<{ id: string }>, res): Promise<void> => {
   const [token] = await db.select().from(aiProviderTokensTable).where(eq(aiProviderTokensTable.id, req.params.id)).limit(1);
   if (!token) { res.status(404).json({ error: "Token not found" }); return; }
   try { res.json(tokenResponse(await checkToken(token))); } catch { res.status(422).json({ error: "Stored token cannot be checked" }); }

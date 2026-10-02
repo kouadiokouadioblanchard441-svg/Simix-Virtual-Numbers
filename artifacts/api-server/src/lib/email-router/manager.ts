@@ -26,6 +26,7 @@ import {
   CONSECUTIVE_ERROR_DEGRADED,
   retryDelayMs,
   ProviderSendError,
+  type AdapterSendResult,
   type EmailPayload,
   type SendResult,
   type ResolvedProvider,

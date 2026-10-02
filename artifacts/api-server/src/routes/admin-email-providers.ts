@@ -165,7 +165,7 @@ router.post("/admin/email-providers", async (req: Request, res: Response): Promi
 });
 
 /* ── PUT /admin/email-providers/:id ─────────────────────────── */
-router.put("/admin/email-providers/:id", async (req: Request, res: Response): Promise<void> => {
+router.put("/admin/email-providers/:id", async (req: Request<{ id: string }>, res: Response): Promise<void> => {
   const { id } = req.params;
   const { name, slug, priority, active, apiKey, apiSecret, domain, region, config, senderEmail, senderName } = req.body as {
     name?: string; slug?: string; priority?: number; active?: boolean;
@@ -225,7 +225,7 @@ router.put("/admin/email-providers/:id", async (req: Request, res: Response): Pr
 });
 
 /* ── DELETE /admin/email-providers/:id ──────────────────────── */
-router.delete("/admin/email-providers/:id", async (req: Request, res: Response): Promise<void> => {
+router.delete("/admin/email-providers/:id", async (req: Request<{ id: string }>, res: Response): Promise<void> => {
   const { id } = req.params;
   await db.delete(emailProvidersTable).where(eq(emailProvidersTable.id, id));
   emailService.invalidateCache();
@@ -234,7 +234,7 @@ router.delete("/admin/email-providers/:id", async (req: Request, res: Response):
 });
 
 /* ── POST /admin/email-providers/:id/toggle ─────────────────── */
-router.post("/admin/email-providers/:id/toggle", async (req: Request, res: Response): Promise<void> => {
+router.post("/admin/email-providers/:id/toggle", async (req: Request<{ id: string }>, res: Response): Promise<void> => {
   const { id } = req.params;
   const [current] = await db.select({
     active: emailProvidersTable.active,
@@ -257,8 +257,8 @@ router.post("/admin/email-providers/:id/toggle", async (req: Request, res: Respo
 });
 
 /* ── POST /admin/email-providers/:id/test ───────────────────── */
-router.post("/admin/email-providers/:id/test", async (req: Request, res: Response): Promise<void> => {
-  const id = String(req.params.id);
+router.post("/admin/email-providers/:id/test", async (req: Request<{ id: string }>, res: Response): Promise<void> => {
+  const { id } = req.params;
   const { email } = req.body as { email?: string };
   if (!email) { res.status(400).json({ error: "email requis" }); return; }
 

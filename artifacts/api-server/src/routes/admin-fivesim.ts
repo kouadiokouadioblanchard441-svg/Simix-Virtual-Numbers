@@ -280,7 +280,7 @@ router.get("/admin/fivesim/missing-refunds", requireAdminJwt, async (_req, res):
 
 /* ─── Manual refund: rembourser manuellement un numéro précis ──── */
 
-router.post("/admin/fivesim/manual-refund/:numberId", requireAdminJwt, async (req, res): Promise<void> => {
+router.post("/admin/fivesim/manual-refund/:numberId", requireAdminJwt, async (req: Request<{ numberId: string }>, res): Promise<void> => {
   const { numberId } = req.params;
   try {
     /* Fetch the number */

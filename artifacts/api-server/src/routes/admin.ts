@@ -1819,7 +1819,7 @@ router.get("/admin/transactions", requireAdmin, async (req, res): Promise<void> 
 });
 
 /* GET /admin/transactions/:id — full detail for one transaction */
-router.get("/admin/transactions/:id", requireAdmin, async (req, res): Promise<void> => {
+router.get("/admin/transactions/:id", requireAdmin, async (req: Request<{ id: string }>, res): Promise<void> => {
   const { id } = req.params;
 
   const [row] = await db

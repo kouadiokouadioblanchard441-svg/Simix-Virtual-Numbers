@@ -109,7 +109,7 @@ function parseUserAgent(ua: string): { browser: string; os: string; device: stri
 export interface LoginAlertData {
   userId: string;
   userName: string;
-  userPhone: string;
+  userPhone: string | null;
   ip: string;
   userAgent: string;
   geo: Partial<GeoInfo>;
@@ -151,7 +151,7 @@ export async function sendLoginAlert(data: LoginAlertData): Promise<void> {
 export interface RegisterAlertData {
   userId: string;
   userName: string;
-  userPhone: string;
+  userPhone: string | null;
   countryCode: string;
   ip: string;
   geo: Partial<GeoInfo>;
@@ -212,7 +212,7 @@ export async function sendDepositAlert(data: DepositAlertData): Promise<void> {
 export interface NumberBuyAlertData {
   userId: string;
   userName: string;
-  userPhone: string;
+  userPhone: string | null;
   service: string;
   numberCountry: string;
   price: number;

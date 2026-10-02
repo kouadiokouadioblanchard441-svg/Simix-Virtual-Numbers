@@ -167287,7 +167287,7 @@ router20.post("/admin/email-providers/:id/toggle", async (req, res) => {
   res.json({ provider: safeProvider(row, row.active ? "primary" : null, await getFromEmail()) });
 });
 router20.post("/admin/email-providers/:id/test", async (req, res) => {
-  const id = String(req.params.id);
+  const { id } = req.params;
   const { email } = req.body;
   if (!email) {
     res.status(400).json({ error: "email requis" });
