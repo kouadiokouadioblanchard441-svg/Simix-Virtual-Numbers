@@ -21,11 +21,11 @@ The live operator catalogue can omit the entire legacy `code` object while retai
 
 **How to apply:** Verify the actual metadata endpoint shape, not just its richer documentation example. Preserve the returned OTP requirement and use the returned short code; never fabricate a provider identifier or regard catalogue eligibility as confirmed payment success.
 
-Site-enabled deposit methods do not establish Clapay coverage. Check the selected account's country and operator catalogues before treating every unavailable-method error as the same bug. Brand aliases must be verified and scoped to their country; they may select only a real eligible catalogue entry.
+Site-enabled deposit methods do not establish Clapay coverage. Conversely, successfully resolving a few configured methods does not establish that the site includes every provider-supported operator. Check the selected account's full country and operator catalogues. Brand aliases must be verified and scoped to their country; they may select only a real eligible catalogue entry.
 
-**Why:** A cross-country check found both legitimate local brand-name differences and site-enabled countries absent from Clapay's country list, whose operator endpoints returned 404. Fixing optional metadata did not make those missing countries/operators available.
+**Why:** A cross-country check found both legitimate local brand-name differences and site-enabled countries absent from Clapay's country list, whose operator endpoints returned 404. The user also corrected a completeness claim based on only two MTN checks: provider-supported operators can still be absent from the local deposit selector.
 
-**How to apply:** Distinguish matching errors, explicit operator denials, missing provider countries/operators and failed catalogue requests. Catalogue diagnostics must use the same per-country/operator account and routing resolution as deposits, not assume the global Clapay account. Do not invent codes, change ISO codes, disable site configurations or switch gateways merely to make the error disappear.
+**How to apply:** Compare the full eligible provider catalogue against visible country/method configuration, including operators with no local records; distinguish missing entries from intentional admin deactivation. Separate matching errors, explicit operator denials, missing provider countries/operators and failed catalogue requests. Use the same per-country/operator account and routing resolution as deposits, not assume the global Clapay account. Do not invent codes, change ISO codes, disable site configurations or switch gateways merely to make the error disappear.
 
 Do not switch Wave to hosted checkout merely because Clapay returns a field named `payment_url`. The official initiation guide allows both `payment_url` and `payment_url_operator` for operator payment completion, including Wave within the API tunnel.
 
