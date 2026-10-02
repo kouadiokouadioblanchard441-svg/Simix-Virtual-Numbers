@@ -53,7 +53,20 @@ export interface ClapayPaymentResponse {
   message?: string;
   observation_error?: string;
   payment_url_operator?: string;      // Optional operator deep link (not hosted checkout)
+  payment_url?: string;               // Also documented for Wave completion in the API tunnel
   payment_otp?: string;
+}
+
+/** Call only for API-tunnel responses: payment_url is an operator completion link here. */
+export function getClapayOperatorPaymentUrl(response: ClapayPaymentResponse): string | null {
+  for (const raw of [response.payment_url_operator, response.payment_url]) {
+    if (typeof raw !== "string" || !raw.trim()) continue;
+    try {
+      const url = new URL(raw.trim());
+      if (url.protocol === "https:" && !url.username && !url.password) return url.href;
+    } catch { /* Try the other documented field if this candidate is invalid. */ }
+  }
+  return null;
 }
 
 export interface ClapayPaymentStatusResponse {
@@ -477,7 +490,10 @@ export class ClapayClient {
   async initiatePayment(params: ClapayPaymentRequest): Promise<ClapayPaymentResponse> {
     /* Ensure amount is a whole integer — some operators reject decimals */
     const safeParams = { ...params, amount: Math.floor(params.amount) };
-    return this.request<ClapayPaymentResponse>("/nowallet/api/init/payment", "POST", safeParams);
+    const response = await this.request<ClapayPaymentResponse & { data?: ClapayPaymentResponse }>(
+      "/nowallet/api/init/payment", "POST", safeParams,
+    );
+    return !response.signature && response.data?.signature ? response.data : response;
   }
 
   /** POST /nowallet/api/check/status/payment */

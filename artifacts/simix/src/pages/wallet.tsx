@@ -745,8 +745,8 @@ function DepositContent() {
         return;
       }
       if (outcome.state === "pending" && outcome.depositId) {
-        const payUrl = safeHttpsUrl(result.payment_url);
         const act = toDirectAction(result);
+        const payUrl = act.operatorPaymentUrl ? null : safeHttpsUrl(result.payment_url);
         savePendingDeposit({
           depositId: outcome.depositId,
           paymentUrl: payUrl,
@@ -757,7 +757,7 @@ function DepositContent() {
           localAmount: parsedAmount,
           currencyCode,
         });
-        setPendingPaymentUrl(null);
+        setPendingPaymentUrl(payUrl);
         setPendingAction(act);
         setPendingAmbiguous(false);
         setPendingHidden(false);

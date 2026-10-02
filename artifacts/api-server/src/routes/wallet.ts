@@ -39,6 +39,7 @@ import {
   formatClapayPhone,
   isClapayCancellationAcknowledged,
   clapayOperatorRequiresOtp,
+  getClapayOperatorPaymentUrl,
   CLAPAY_TERMINAL_SUCCESS,
   normalizeClapayStatus,
   type ClapayWebhookPayload,
@@ -659,7 +660,7 @@ router.post(
             : `Confirmez le paiement sur votre téléphone (${method?.name ?? methodSlug}). Votre solde sera crédité après vérification.`);
         const persistedMeta = await persistClapayDepositMeta(externalDepositId, {
           clapaySignature: clapayRes.signature,
-          operatorPaymentUrl: clapayRes.payment_url_operator ?? null,
+          operatorPaymentUrl: getClapayOperatorPaymentUrl(clapayRes),
           paymentOtp: clapayRes.payment_otp ?? null,
           message,
         });

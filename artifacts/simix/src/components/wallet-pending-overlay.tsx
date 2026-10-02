@@ -189,8 +189,11 @@ export function WalletPendingOverlay(p: Props) {
               data-testid="link-operator-payment"
               className="mt-4 flex items-center justify-center gap-2 w-full py-3 rounded-2xl font-bold text-white text-sm hover:opacity-90"
               style={{ backgroundColor: p.methodColor }}>
-              <ExternalLink className="w-4 h-4" /> Ouvrir l'application {p.methodName}
+              <ExternalLink className="w-4 h-4" /> Ouvrir {p.methodName} pour payer
             </a>
+            <p className="mt-2 text-xs text-muted-foreground break-all select-all" data-testid="text-operator-payment-url">
+              {action.operatorPaymentUrl}
+            </p>
             </>
           )}
 

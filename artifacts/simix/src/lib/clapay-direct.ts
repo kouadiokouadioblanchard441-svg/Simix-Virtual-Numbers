@@ -43,7 +43,7 @@ export function safeHttpsUrl(raw: unknown): string | null {
   if (typeof raw !== "string" || !raw.trim()) return null;
   try {
     const u = new URL(raw.trim());
-    return u.protocol === "https:" ? u.href : null;
+    return u.protocol === "https:" && !u.username && !u.password ? u.href : null;
   } catch { return null; }
 }
 
@@ -52,14 +52,19 @@ export function asText(v: unknown): string | null {
 }
 
 export function toDirectAction(d: { operatorPaymentUrl?: unknown; paymentOtp?: unknown; message?: unknown } | Record<string, unknown> | null | undefined): DirectAction {
+  const fields = d as Record<string, unknown> | null | undefined;
   return {
-    operatorPaymentUrl: safeHttpsUrl(d?.operatorPaymentUrl),
+    operatorPaymentUrl: safeHttpsUrl(fields?.operatorPaymentUrl)
+      ?? safeHttpsUrl(fields?.payment_url_operator)
+      ?? (fields?.paymentMode === "API" ? safeHttpsUrl(fields?.payment_url) : null),
     paymentOtp: asText(d?.paymentOtp),
     message: asText(d?.message),
   };
 }
 
-const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
+function apiBase() {
+  return import.meta.env.BASE_URL.replace(/\/$/, "");
+}
 
 async function readError(res: Response, fallback: string): Promise<Error> {
   let msg = fallback;
@@ -72,7 +77,7 @@ async function readError(res: Response, fallback: string): Promise<Error> {
 
 export async function fetchPaymentOptions(countryCode: string, methodSlug: string): Promise<PaymentOptions> {
   const qs = new URLSearchParams({ countryCode, methodSlug });
-  const res = await fetch(`${BASE}/api/wallet/payment-options?${qs}`, { credentials: "include" });
+  const res = await fetch(`${apiBase()}/api/wallet/payment-options?${qs}`, { credentials: "include" });
   if (!res.ok) throw await readError(res, "Impossible de vérifier ce mode de paiement");
   const j = await res.json() as Partial<PaymentOptions>;
   return {
@@ -84,7 +89,7 @@ export async function fetchPaymentOptions(countryCode: string, methodSlug: strin
 }
 
 export async function fetchDepositStatus(depositId: string): Promise<Record<string, unknown> & { status: string }> {
-  const res = await fetch(`${BASE}/api/wallet/deposit/${encodeURIComponent(depositId)}/status`, { credentials: "include" });
+  const res = await fetch(`${apiBase()}/api/wallet/deposit/${encodeURIComponent(depositId)}/status`, { credentials: "include" });
   if (!res.ok) throw new Error(`status ${res.status}`);
   return res.json();
 }
@@ -95,7 +100,7 @@ export class CancelError extends Error {
 }
 
 export async function cancelDeposit(depositId: string): Promise<"completed" | "cancelled"> {
-  const res = await fetch(`${BASE}/api/wallet/deposit/${encodeURIComponent(depositId)}/cancel`, {
+  const res = await fetch(`${apiBase()}/api/wallet/deposit/${encodeURIComponent(depositId)}/cancel`, {
     method: "POST", credentials: "include",
   });
   if (res.ok) {

@@ -9,6 +9,8 @@ import {
   isClapayCancellationAcknowledged,
   normalizeClapayStatus,
   type ClapayGatewayMeta,
+  getClapayOperatorPaymentUrl,
+  type ClapayPaymentResponse,
 } from "../src/lib/clapay";
 import {
   mergeClapayGatewayMeta,
@@ -21,6 +23,40 @@ import { createRotatingBatchReader } from "../src/lib/rotating-batch";
 
 const originalFetch = globalThis.fetch;
 afterEach(() => { globalThis.fetch = originalFetch; });
+
+test("API Wave completion supports both documented URL fields and rejects unsafe links", () => {
+  const base = { country: "CI", currency: "XOF", signature: "test-signature", status_payment: "INITIATED" };
+  const operatorLink = "https://pay.wave.com/test-only-operator";
+  const alternativeLink = "https://pay.wave.com/test-only-alternative";
+  assert.equal(getClapayOperatorPaymentUrl({ ...base, payment_url_operator: operatorLink }), operatorLink);
+  assert.equal(getClapayOperatorPaymentUrl({ ...base, payment_url: alternativeLink }), alternativeLink);
+  assert.equal(getClapayOperatorPaymentUrl({ ...base, payment_url_operator: operatorLink, payment_url: alternativeLink }), operatorLink);
+  assert.equal(getClapayOperatorPaymentUrl({ ...base, payment_url_operator: "javascript:alert(1)", payment_url: alternativeLink }), alternativeLink);
+  for (const unsafe of ["javascript:alert(1)", "http://pay.wave.com/test", "//pay.wave.com/test", "https://user:pass@pay.wave.com/test", "invalid", ""]) {
+    assert.equal(getClapayOperatorPaymentUrl({ ...base, payment_url: unsafe }), null);
+  }
+  assert.equal(getClapayOperatorPaymentUrl(base), null);
+});
+
+test("Clapay initiation preserves flat and data-wrapped Wave completion responses", async () => {
+  const response: ClapayPaymentResponse = {
+    country: "CI", currency: "XOF", signature: "test-signature", status_payment: "INITIATED",
+    payment_url: "https://pay.wave.com/test-only-alternative",
+  };
+  for (const payload of [response, { data: response }]) {
+    globalThis.fetch = async (input) => {
+      assert.match(new URL(String(input)).pathname, /\/init\/payment$/);
+      return new Response(JSON.stringify(payload), { status: 200, headers: { "Content-Type": "application/json" } });
+    };
+    const result = await new ClapayClient("test-only-token").initiatePayment({
+      transaction_id: "test-wave", amount: 1000, country_code: "CI", operators_code: ["WAVE"],
+      callback_url: "https://example.invalid/callback", return_url: "https://example.invalid/return",
+      additional_infos: { customer_phone: "0700000000" }, method: "MERCHANT", tunnel: "API",
+    });
+    assert.equal(result.signature, response.signature);
+    assert.equal(getClapayOperatorPaymentUrl(result), response.payment_url);
+  }
+});
 
 test("live BF catalogue without legacy code metadata resolves Orange Money and preserves OTP", async () => {
   const [orange] = JSON.parse(readFileSync(

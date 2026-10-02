@@ -26,3 +26,9 @@ Site-enabled deposit methods do not establish Clapay coverage. Check the selecte
 **Why:** A cross-country check found both legitimate local brand-name differences and site-enabled countries absent from Clapay's country list, whose operator endpoints returned 404. Fixing optional metadata did not make those missing countries/operators available.
 
 **How to apply:** Distinguish matching errors, explicit operator denials, missing provider countries/operators and failed catalogue requests. Catalogue diagnostics must use the same per-country/operator account and routing resolution as deposits, not assume the global Clapay account. Do not invent codes, change ISO codes, disable site configurations or switch gateways merely to make the error disappear.
+
+Do not switch Wave to hosted checkout merely because Clapay returns a field named `payment_url`. The official initiation guide allows both `payment_url` and `payment_url_operator` for operator payment completion, including Wave within the API tunnel.
+
+**Why:** The response DTO and examples associate `payment_url` with hosted checkout, but the guide's operator-completion section explicitly permits either field. Treating the field name as the tunnel discards valid links or changes unrelated payment flows.
+
+**How to apply:** Interpret links using the actual request tunnel. Preserve the pending deposit before opening the supplied link, offer the documented QR/mobile opening action, and continue to require verified provider settlement before crediting the wallet.
