@@ -1,3 +1,4 @@
+import { DepositOperatorOtp } from "@/components/deposit-operator-otp";
 import { AppLayout } from "@/components/layout/app-layout";
 import { AuthGuard } from "@/components/auth-guard";
 import {
@@ -84,11 +85,11 @@ const OPERATOR_INSTRUCTIONS: Record<string, (amount: number, phone: string, dial
     `Composez *144# depuis le numéro ${p ? `${d} ${p}` : "Orange enregistré"}`,
     "Sélectionnez « 1 » → Paiement",
     `Entrez le montant : ${a.toLocaleString("fr-FR")} FCFA`,
-    "Validez avec votre code secret Orange Money",
+    "Autorisez la demande uniquement sur votre téléphone Orange Money, jamais avec votre PIN sur Simix",
   ],
   mtn_money: (a, p, d) => [
     `Une notification MoMo arrive sur ${p ? `${d} ${p}` : "votre téléphone MTN"}`,
-    "Entrez votre code PIN MTN MoMo à 4 chiffres",
+    "Autorisez la demande dans le menu MTN MoMo sur votre téléphone, jamais avec votre PIN sur Simix",
     `Confirmez le paiement de ${a.toLocaleString("fr-FR")} FCFA`,
     "Conservez votre SMS de confirmation",
   ],
@@ -102,17 +103,17 @@ const OPERATOR_INSTRUCTIONS: Record<string, (amount: number, phone: string, dial
     `Composez *155# depuis le numéro ${p ? `${d} ${p}` : "Moov enregistré"}`,
     "Choisissez « Payer une facture »",
     `Montant : ${a.toLocaleString("fr-FR")} FCFA`,
-    "Validez avec votre PIN Moov Money",
+    "Autorisez la demande uniquement sur votre téléphone Moov Money, jamais avec votre PIN sur Simix",
   ],
   free_money: (a, p, d) => [
     `Composez *555# depuis ${p ? `${d} ${p}` : "votre Free"}`,
     "Choisissez « Paiement »",
     `Montant : ${a.toLocaleString("fr-FR")} FCFA`,
-    "Validez avec votre code Free Money",
+    "Autorisez la demande uniquement sur votre téléphone Free Money, jamais avec votre PIN sur Simix",
   ],
   mpesa: (a, p, d) => [
     `Notification M-Pesa envoyée sur ${p ? `${d} ${p}` : "votre téléphone"}`,
-    "Entrez votre PIN M-Pesa à 4 chiffres",
+    "Autorisez la demande dans M-Pesa sur votre téléphone, jamais avec votre PIN sur Simix",
     `Confirmez le paiement de ${a.toLocaleString("fr-FR")} FCFA`,
     "SMS de confirmation M-Pesa reçu immédiatement",
   ],
@@ -120,16 +121,24 @@ const OPERATOR_INSTRUCTIONS: Record<string, (amount: number, phone: string, dial
     `Composez *185# depuis ${p ? `${d} ${p}` : "votre Airtel"}`,
     "Sélectionnez « Make Payment »",
     `Entrez ${a.toLocaleString("fr-FR")} FCFA`,
-    "Confirmez avec votre PIN Airtel Money",
+    "Autorisez la demande uniquement sur votre téléphone Airtel Money, jamais avec votre PIN sur Simix",
   ],
 };
 
-function getInstructions(slug: string, amount: number, phone: string, dialCode: string): string[] {
+function getInstructions(slug: string, amount: number, phone: string, dialCode: string, requiresOtp = false): string[] {
+  if (requiresOtp) {
+    return [
+      "Obtenez un code OTP temporaire auprès de votre opérateur en suivant ses instructions ci-dessus.",
+      "Saisissez ce code dans le champ « Code OTP opérateur ». Ne saisissez jamais votre PIN secret sur Simix.",
+      "Vérifiez le numéro et le montant, puis appuyez sur « Confirmer le dépôt ».",
+      "Attendez la confirmation du paiement avant de recommencer.",
+    ];
+  }
   const fn = OPERATOR_INSTRUCTIONS[slug];
   if (fn) return fn(amount, phone, dialCode);
   return [
     "Validez le paiement dans les 1-2 minutes après réception du SMS",
-    "Entrez votre code secret et validez",
+    "Autorisez la demande uniquement sur votre téléphone, jamais avec votre PIN sur Simix",
     `Confirmez le paiement de ${amount.toLocaleString("fr-FR")} FCFA`,
     "Conservez votre SMS de confirmation",
   ];
@@ -606,6 +615,7 @@ function DepositContent() {
   const [pendingAmbiguous, setPendingAmbiguous] = useState(false);
   const [pendingHidden, setPendingHidden] = useState(false);
   const [operatorOtp, setOperatorOtp] = useState("");
+  const [otpRequestedFor, setOtpRequestedFor] = useState<string | null>(null);
   const [currencyInfo, setCurrencyInfo] = useState<CurrencyInfo | null>(null);
 
   /* Restore pending Clapay checkout if user navigated back from payment page */
@@ -640,10 +650,14 @@ function DepositContent() {
   });
   const payOptions = optionsQuery.data;
   const optionsReady = !!payOptions && !optionsQuery.isFetching && !optionsQuery.isError;
-  const requiresOtp = optionsReady && payOptions.requiresOtp === true;
+  const paymentSelectionKey = `${selectedCountry?.code ?? ""}:${selectedMethod?.slug ?? ""}`;
+  const requiresOtp = payOptions?.requiresOtp === true || otpRequestedFor === paymentSelectionKey;
 
   /* Never keep the operator OTP across country/operator changes */
-  useEffect(() => { setOperatorOtp(""); }, [selectedCountry?.code, selectedMethod?.slug]);
+  useEffect(() => {
+    setOperatorOtp("");
+    setOtpRequestedFor(null);
+  }, [selectedCountry?.code, selectedMethod?.slug]);
 
   const prevCountry = useRef<string | null>(null);
   useEffect(() => {
@@ -675,7 +689,7 @@ function DepositContent() {
   /* Minimum displayed in local currency */
   const minLocal   = isFxCurrency ? Math.ceil(minDeposit / clientRate) : minDeposit;
   const amountValid = amountXof >= minDeposit;
-  const canConfirm = !!selectedCountry && !!selectedMethod && phone.length >= 6 && amountValid && !confirming && optionsReady && (!requiresOtp || operatorOtp.trim().length >= 3);
+  const canConfirm = !!selectedCountry && !!selectedMethod && phone.length >= 6 && amountValid && !confirming && optionsReady && (!requiresOtp || operatorOtp.trim().length > 0);
 
   const dialCode = selectedCountry?.dialCode ?? "";
 
@@ -771,6 +785,9 @@ function DepositContent() {
         setPendingHidden(false);
         setPendingDepositId(info.depositId);
       } else {
+        if (info.requiresOtp && (info.status === 400 || info.status === 422)) {
+          setOtpRequestedFor(paymentSelectionKey);
+        }
         toast({ variant: "destructive", title: "Paiement non abouti", description: info.message });
       }
     } finally {
@@ -1053,26 +1070,12 @@ function DepositContent() {
                       <p className="text-xs text-foreground/90 whitespace-pre-line break-words">{payOptions.instruction}</p>
                     </div>
                   )}
-                  {requiresOtp && (
-                    <div className="space-y-1.5">
-                      <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide px-0.5">
-                        Code de validation opérateur
-                      </label>
-                      <input
-                        type="text"
-                        inputMode="numeric"
-                        autoComplete="off"
-                        value={operatorOtp}
-                        onChange={e => setOperatorOtp(e.target.value.replace(/\D/g, "").slice(0, 10))}
-                        placeholder="Code reçu ou généré par l'opérateur"
-                        data-testid="input-operator-otp"
-                        className="w-full px-4 py-3 text-sm font-bold text-foreground bg-card border border-card-border rounded-2xl focus:outline-none focus:border-primary/50 placeholder:font-normal placeholder:text-muted-foreground"
-                      />
-                      <p className="text-[10px] text-muted-foreground px-1">N'entrez jamais votre code PIN ici.</p>
-                    </div>
-                  )}
                 </>
               ) : null}
+
+              {requiresOtp && (
+                <DepositOperatorOtp value={operatorOtp} onChange={setOperatorOtp} disabled={confirming} />
+              )}
 
               {/* Amount */}
               <div className="space-y-1.5">
@@ -1212,7 +1215,7 @@ function DepositContent() {
                       Suivez ces étapes pour payer
                     </p>
                     <div className="space-y-2.5">
-                      {getInstructions(selectedMethod.slug, parsedAmount, phone, dialCode).map((step, i) => (
+                      {getInstructions(selectedMethod.slug, parsedAmount, phone, dialCode, requiresOtp).map((step, i) => (
                         <div key={i} className="flex items-start gap-3">
                           <div
                             className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold text-white flex-shrink-0 mt-0.5"

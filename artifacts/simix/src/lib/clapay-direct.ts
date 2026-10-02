@@ -115,7 +115,7 @@ export async function cancelDeposit(depositId: string): Promise<"completed" | "c
 }
 
 /** Inspect generated mutator error (ApiError: status + data). */
-export function readRechargeError(e: unknown): { message: string; status: number | null; depositId: string | null; pending: boolean; action: DirectAction } {
+export function readRechargeError(e: unknown): { message: string; status: number | null; depositId: string | null; pending: boolean; requiresOtp: boolean; action: DirectAction } {
   const err = e as { message?: string; status?: number; data?: Record<string, unknown> | null };
   const data = err?.data && typeof err.data === "object" ? err.data : null;
   const depositId = data && typeof data.depositId === "string" ? data.depositId : null;
@@ -124,6 +124,7 @@ export function readRechargeError(e: unknown): { message: string; status: number
     status: typeof err?.status === "number" ? err.status : null,
     depositId,
     pending: data?.pending === true || !!depositId,
+    requiresOtp: data?.requiresOtp === true,
     action: toDirectAction(data),
   };
 }
