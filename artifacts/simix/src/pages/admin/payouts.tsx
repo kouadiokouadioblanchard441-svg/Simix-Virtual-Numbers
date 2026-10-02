@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { adminApi, type AdminPayoutRecord } from "@/lib/admin-api";
 import { beginPayoutAttempt, getPayoutAttempt, updatePayoutAttempt, type PayoutAttempt } from "@/lib/payout-attempts";
+import { DepositDiagnosticsPanel } from "@/components/deposit-diagnostics-panel";
 import { AdminGuard } from "@/components/admin-guard";
 import { AdminLayout } from "@/components/admin-layout";
 import {
@@ -566,6 +567,7 @@ function PayoutsContent() {
         </div>
         <div className="p-6">{gateway === "pawapay" ? <PawaPayForm history={payouts} /> : <ClapayForm history={payouts} />}</div>
       </div>
+      <DepositDiagnosticsPanel />
       <PayoutHistory
         payouts={payouts}
         isLoading={historyQuery.isLoading}

@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { logger } from "./logger";
 
 /**
@@ -164,6 +165,28 @@ const CLAPAY_OPERATOR_BRANDS: Record<string, readonly (readonly string[])[]> = {
   GH: [["airtel", "airtelmoney", "airteltigo", "airteltigomoney", "atmoney"]],
   TG: [["flooz", "moov", "moovmoney", "moovafrica", "moovmoneyflooz"]],
 };
+
+/** Shared country-scoped matching, including unavailable entries for diagnostics. */
+export function findClapayOperator(
+  operators: ClapayOperator[], country: string, methodSlug: string,
+): ClapayOperator | null {
+  const normalize = (value: string) => value.toLowerCase().replace(/[^a-z0-9]/g, "");
+  const slug = normalize(methodSlug);
+  if (!slug) return null;
+  const codeOf = (op: ClapayOperator) => normalize(typeof op.codeoperator === "string" ? op.codeoperator : "");
+  const nameOf = (op: ClapayOperator) => normalize(typeof op.name === "string" ? op.name : "");
+  const brandAliases = CLAPAY_OPERATOR_BRANDS[country.trim().toUpperCase()]
+    ?.find(aliases => aliases.includes(slug));
+  return operators.find(op => codeOf(op) === slug)
+    ?? operators.find(op => {
+      const code = codeOf(op);
+      const name = nameOf(op);
+      return (name.length > 0 && (slug === name || slug.includes(name) || name.includes(slug)))
+        || (code.length > 2 && (slug.startsWith(code) || slug.endsWith(code)));
+    })
+    ?? operators.find(op => brandAliases?.includes(codeOf(op)) || brandAliases?.includes(nameOf(op)))
+    ?? null;
+}
 
 export interface ClapayFees {
   fee_cashin: number;
@@ -366,6 +389,11 @@ export class ClapayClient {
   private token: string;
   private baseUrl: string;
 
+  /** Internal cache partition only; never return this fingerprint to the panel. */
+  getCatalogueCacheKey(): string {
+    return createHash("sha256").update(JSON.stringify([this.baseUrl, this.token])).digest("hex");
+  }
+
   constructor(token: string, baseUrl = "https://nw-api.clapay.app/nowallet/api") {
     this.token = token;
     // Normalize: strip trailing slash AND /nowallet/api suffix so we always have the root URL
@@ -531,23 +559,8 @@ export class ClapayClient {
    */
   async resolveOperator(country: string, methodSlug: string): Promise<ClapayOperator | null> {
     const operators = await this.getOperators(country);
-    const normalize = (value: string) => value.toLowerCase().replace(/[^a-z0-9]/g, "");
-    const slug = normalize(methodSlug);
-    if (!slug) return null;
     const eligible = operators.filter(op => clapayOperatorSupportsMethod(op, "MERCHANT"));
-    const brandAliases = CLAPAY_OPERATOR_BRANDS[country.trim().toUpperCase()]
-      ?.find(aliases => aliases.includes(slug));
-
-    return eligible.find(op => normalize(op.codeoperator) === slug)
-      ?? eligible.find(op => {
-        const code = normalize(op.codeoperator);
-        const name = normalize(typeof op.name === "string" ? op.name : "");
-        return (name.length > 0 && (slug === name || slug.includes(name) || name.includes(slug))) ||
-          (code.length > 2 && (slug.startsWith(code) || slug.endsWith(code)));
-      })
-      ?? eligible.find(op => brandAliases?.includes(normalize(op.codeoperator))
-        || brandAliases?.includes(normalize(typeof op.name === "string" ? op.name : "")))
-      ?? null;
+    return findClapayOperator(eligible, country, methodSlug);
   }
 
   async resolveOperatorCode(country: string, methodSlug: string): Promise<string | null> {

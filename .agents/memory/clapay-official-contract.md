@@ -25,4 +25,4 @@ Site-enabled deposit methods do not establish Clapay coverage. Check the selecte
 
 **Why:** A cross-country check found both legitimate local brand-name differences and site-enabled countries absent from Clapay's country list, whose operator endpoints returned 404. Fixing optional metadata did not make those missing countries/operators available.
 
-**How to apply:** Distinguish matching errors, explicit operator denials, missing provider countries/operators and failed catalogue requests. Do not invent codes, change ISO codes, disable site configurations or switch gateways merely to make the error disappear.
+**How to apply:** Distinguish matching errors, explicit operator denials, missing provider countries/operators and failed catalogue requests. Catalogue diagnostics must use the same per-country/operator account and routing resolution as deposits, not assume the global Clapay account. Do not invent codes, change ISO codes, disable site configurations or switch gateways merely to make the error disappear.

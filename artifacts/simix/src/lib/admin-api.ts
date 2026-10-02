@@ -66,7 +66,34 @@ export interface AdminPayoutRecord {
   referralWithdrawalId?: string | null;
 }
 
+export type DepositDiagnosticStatus =
+  | "catalogue_available" | "catalogue_access_failed" | "country_missing" | "operator_missing"
+  | "operator_inactive" | "method_denied" | "operator_code_missing" | "configuration_unavailable"
+  | "route_unavailable" | "not_clapay";
+
+export interface DepositDiagnosticRow {
+  countryCode: string;
+  methodSlug: string;
+  methodName: string;
+  gateway: "clapay" | "pawapay" | null;
+  routingSource: "dynamic" | "legacy" | null;
+  status: DepositDiagnosticStatus;
+  operatorCode: string | null;
+  metadataMissing: boolean;
+  requiresOtp: boolean | null;
+  checkedAt: string | null;
+}
+
+export interface DepositDiagnostics {
+  generatedAt: string;
+  cacheTtlSeconds: 60;
+  readOnly: true;
+  paymentVerified: false;
+  rows: DepositDiagnosticRow[];
+}
+
 export const adminApi = {
+  getDepositDiagnostics: () => req<DepositDiagnostics>("GET", "/admin/deposit-diagnostics"),
   getStats: () => req<AdminStats>("GET", "/admin/stats"),
   getAnalytics: (days = 30) => req<AdminAnalytics>("GET", `/admin/analytics?days=${days}`),
 

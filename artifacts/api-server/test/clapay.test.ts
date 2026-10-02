@@ -1,5 +1,6 @@
 import { strict as assert } from "node:assert";
 import { afterEach, test } from "node:test";
+import { readFileSync } from "node:fs";
 import {
   ClapayClient,
   clapayOperatorRequiresOtp,
@@ -22,16 +23,9 @@ const originalFetch = globalThis.fetch;
 afterEach(() => { globalThis.fetch = originalFetch; });
 
 test("live BF catalogue without legacy code metadata resolves Orange Money and preserves OTP", async () => {
-  const orange = {
-    name: "ORANGE MONEY",
-    codeoperator: "OM",
-    logo: "",
-    startwith: ["07"],
-    otpstarter: { MERCHANT: true, CASHIN: false, CASHOUT: false },
-    active: true,
-    secure: { MERCHANT: true, CASHIN: false, CASHOUT: false },
-    instruction: { MERCHANT: "Obtenez votre code OTP auprès de l'opérateur." },
-  } satisfies ClapayOperator;
+  const [orange] = JSON.parse(readFileSync(
+    new URL("./fixtures/clapay-bf-operators.json", import.meta.url), "utf8",
+  )) as ClapayOperator[];
   globalThis.fetch = async (input) => {
     const url = new URL(String(input));
     assert.match(url.pathname, /\/operators\/data$/);

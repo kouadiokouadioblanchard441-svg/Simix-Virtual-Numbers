@@ -20,6 +20,14 @@ author = "agent"
 task = "workflow.run"
 args = "Start application"
 
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "deposit-catalogue-regressions"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "deposit-panel-typecheck"
+
 [[workflows.workflow]]
 name = "Start application"
 author = "agent"
@@ -31,6 +39,28 @@ outputType = "webview"
 task = "shell.exec"
 args = "bash start-replit.sh"
 waitForPort = 5000
+
+[[workflows.workflow]]
+name = "deposit-catalogue-regressions"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "pnpm --filter @workspace/scripts exec tsx --test ../artifacts/api-server/test/deposit-diagnostics.test.ts ../artifacts/api-server/test/clapay.test.ts ../artifacts/api-server/test/wallet-gateway-extraction.test.ts ../artifacts/api-server/test/wallet-deposit.test.ts ../artifacts/simix/src/lib/deposit-diagnostics.test.ts"
+
+[workflows.workflow.metadata]
+isValidation = true
+
+[[workflows.workflow]]
+name = "deposit-panel-typecheck"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "pnpm --filter @workspace/simix typecheck"
+
+[workflows.workflow.metadata]
+isValidation = true
 
 [agent]
 stack = "BEST_EFFORT_FALLBACK"
