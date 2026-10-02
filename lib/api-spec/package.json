@@ -3,7 +3,8 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "codegen": "orval --config ./orval.config.ts && pnpm -w run typecheck:libs"
+    "codegen": "node --import ./scripts/register-orval-compat.mjs ./node_modules/orval/dist/bin/orval.mjs --config ./orval.config.ts && pnpm exec prettier --write ../api-client-react/src/generated ../api-zod/src/generated && pnpm -w run typecheck:libs",
+    "test": "node --test test/*.test.mjs && pnpm --filter @workspace/scripts exec tsx --test ../lib/api-spec/test/contracts.test.ts"
   },
   "devDependencies": {
     "orval": "^8.22.0"

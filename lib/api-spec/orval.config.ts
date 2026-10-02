@@ -57,6 +57,9 @@ export default defineConfig({
       prettier: true,
       override: {
         zod: {
+          // The workspace catalog uses Zod 3; Orval cannot resolve catalog:
+          // ranges and otherwise defaults to Zod 4-only helpers.
+          version: 3,
           coerce: {
             query: ['boolean', 'number', 'string'],
             param: ['boolean', 'number', 'string'],

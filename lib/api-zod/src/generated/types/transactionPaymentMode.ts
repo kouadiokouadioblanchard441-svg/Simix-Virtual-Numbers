@@ -6,10 +6,9 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export type LoginInputMethod =
-  (typeof LoginInputMethod)[keyof typeof LoginInputMethod];
+export type TransactionPaymentMode =
+  (typeof TransactionPaymentMode)[keyof typeof TransactionPaymentMode];
 
-export const LoginInputMethod = {
-  phone: "phone",
-  username: "username",
+export const TransactionPaymentMode = {
+  API: "API",
 } as const;

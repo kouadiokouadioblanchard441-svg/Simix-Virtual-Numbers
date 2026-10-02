@@ -135191,14 +135191,14 @@ var RegisterResponse = objectType({
     phone: stringType(),
     email: stringType(),
     username: stringType().optional(),
-    balance: numberType().describe("Balance in FCFA (whole units)"),
+    balance: numberType().int().describe("Balance in FCFA (whole units)"),
     verified: booleanType(),
     status: stringType().optional().describe("e.g. Standard / Premium"),
     createdAt: coerce.date(),
-    totalSpent: numberType().optional(),
-    transactionsCount: numberType().optional(),
+    totalSpent: numberType().int().optional(),
+    transactionsCount: numberType().int().optional(),
     isAdmin: booleanType().optional(),
-    riskScore: numberType().optional()
+    riskScore: numberType().int().optional()
   }),
   token: stringType()
 });
@@ -135214,14 +135214,14 @@ var LoginResponse = objectType({
     phone: stringType(),
     email: stringType(),
     username: stringType().optional(),
-    balance: numberType().describe("Balance in FCFA (whole units)"),
+    balance: numberType().int().describe("Balance in FCFA (whole units)"),
     verified: booleanType(),
     status: stringType().optional().describe("e.g. Standard / Premium"),
     createdAt: coerce.date(),
-    totalSpent: numberType().optional(),
-    transactionsCount: numberType().optional(),
+    totalSpent: numberType().int().optional(),
+    transactionsCount: numberType().int().optional(),
     isAdmin: booleanType().optional(),
-    riskScore: numberType().optional()
+    riskScore: numberType().int().optional()
   }),
   token: stringType()
 });
@@ -135234,14 +135234,14 @@ var GetMeResponse = objectType({
   phone: stringType(),
   email: stringType(),
   username: stringType().optional(),
-  balance: numberType().describe("Balance in FCFA (whole units)"),
+  balance: numberType().int().describe("Balance in FCFA (whole units)"),
   verified: booleanType(),
   status: stringType().optional().describe("e.g. Standard / Premium"),
   createdAt: coerce.date(),
-  totalSpent: numberType().optional(),
-  transactionsCount: numberType().optional(),
+  totalSpent: numberType().int().optional(),
+  transactionsCount: numberType().int().optional(),
   isAdmin: booleanType().optional(),
-  riskScore: numberType().optional()
+  riskScore: numberType().int().optional()
 });
 var ListServicesQueryParams = objectType({
   search: coerce.string().optional(),
@@ -135252,8 +135252,8 @@ var ListServicesResponseItem = objectType({
   name: stringType(),
   slug: stringType(),
   scope: stringType().describe("e.g. Global"),
-  price: numberType().describe("Price in FCFA"),
-  available: numberType().describe("Number of available numbers"),
+  price: numberType().int().describe("Price in FCFA"),
+  available: numberType().int().describe("Number of available numbers"),
   color: stringType().describe("Hex color used for the icon background"),
   category: stringType().optional(),
   popular: booleanType().optional()
@@ -135264,8 +135264,8 @@ var ListPopularServicesResponseItem = objectType({
   name: stringType(),
   slug: stringType(),
   scope: stringType().describe("e.g. Global"),
-  price: numberType().describe("Price in FCFA"),
-  available: numberType().describe("Number of available numbers"),
+  price: numberType().int().describe("Price in FCFA"),
+  available: numberType().int().describe("Number of available numbers"),
   color: stringType().describe("Hex color used for the icon background"),
   category: stringType().optional(),
   popular: booleanType().optional()
@@ -135283,8 +135283,8 @@ var ListCountriesResponseItem = objectType({
   code: stringType().describe("ISO country code"),
   dialCode: stringType().describe("e.g. +1, +33"),
   flag: stringType().describe("Emoji flag"),
-  available: numberType(),
-  price: numberType().describe("Price in FCFA"),
+  available: numberType().int(),
+  price: numberType().int().describe("Price in FCFA"),
   popular: booleanType().optional()
 });
 var ListCountriesResponse = arrayType(ListCountriesResponseItem);
@@ -135294,8 +135294,8 @@ var ListPopularCountriesResponseItem = objectType({
   code: stringType().describe("ISO country code"),
   dialCode: stringType().describe("e.g. +1, +33"),
   flag: stringType().describe("Emoji flag"),
-  available: numberType(),
-  price: numberType().describe("Price in FCFA"),
+  available: numberType().int(),
+  price: numberType().int().describe("Price in FCFA"),
   popular: booleanType().optional()
 });
 var ListPopularCountriesResponse = arrayType(
@@ -135311,8 +135311,8 @@ var GetNumberQuoteResponse = objectType({
     name: stringType(),
     slug: stringType(),
     scope: stringType().describe("e.g. Global"),
-    price: numberType().describe("Price in FCFA"),
-    available: numberType().describe("Number of available numbers"),
+    price: numberType().int().describe("Price in FCFA"),
+    available: numberType().int().describe("Number of available numbers"),
     color: stringType().describe("Hex color used for the icon background"),
     category: stringType().optional(),
     popular: booleanType().optional()
@@ -135323,16 +135323,16 @@ var GetNumberQuoteResponse = objectType({
     code: stringType().describe("ISO country code"),
     dialCode: stringType().describe("e.g. +1, +33"),
     flag: stringType().describe("Emoji flag"),
-    available: numberType(),
-    price: numberType().describe("Price in FCFA"),
+    available: numberType().int(),
+    price: numberType().int().describe("Price in FCFA"),
     popular: booleanType().optional()
   }),
-  available: numberType(),
+  available: numberType().int(),
   waitTime: stringType().describe('e.g. "20 - 60 sec"'),
-  price: numberType(),
-  fees: numberType(),
-  total: numberType(),
-  validityMinutes: numberType()
+  price: numberType().int(),
+  fees: numberType().int(),
+  total: numberType().int(),
+  validityMinutes: numberType().int()
 });
 var RequestNumberBody = objectType({
   serviceId: stringType(),
@@ -135344,14 +135344,14 @@ var RequestNumberResponse = objectType({
   status: enumType(["waiting", "received", "expired", "cancelled"]),
   expiresAt: coerce.date(),
   createdAt: coerce.date(),
-  price: numberType(),
+  price: numberType().int(),
   service: objectType({
     id: stringType(),
     name: stringType(),
     slug: stringType(),
     scope: stringType().describe("e.g. Global"),
-    price: numberType().describe("Price in FCFA"),
-    available: numberType().describe("Number of available numbers"),
+    price: numberType().int().describe("Price in FCFA"),
+    available: numberType().int().describe("Number of available numbers"),
     color: stringType().describe("Hex color used for the icon background"),
     category: stringType().optional(),
     popular: booleanType().optional()
@@ -135362,8 +135362,8 @@ var RequestNumberResponse = objectType({
     code: stringType().describe("ISO country code"),
     dialCode: stringType().describe("e.g. +1, +33"),
     flag: stringType().describe("Emoji flag"),
-    available: numberType(),
-    price: numberType().describe("Price in FCFA"),
+    available: numberType().int(),
+    price: numberType().int().describe("Price in FCFA"),
     popular: booleanType().optional()
   }),
   messages: arrayType(
@@ -135382,14 +135382,14 @@ var ListActiveNumbersResponseItem = objectType({
   status: enumType(["waiting", "received", "expired", "cancelled"]),
   expiresAt: coerce.date(),
   createdAt: coerce.date(),
-  price: numberType(),
+  price: numberType().int(),
   service: objectType({
     id: stringType(),
     name: stringType(),
     slug: stringType(),
     scope: stringType().describe("e.g. Global"),
-    price: numberType().describe("Price in FCFA"),
-    available: numberType().describe("Number of available numbers"),
+    price: numberType().int().describe("Price in FCFA"),
+    available: numberType().int().describe("Number of available numbers"),
     color: stringType().describe("Hex color used for the icon background"),
     category: stringType().optional(),
     popular: booleanType().optional()
@@ -135400,8 +135400,8 @@ var ListActiveNumbersResponseItem = objectType({
     code: stringType().describe("ISO country code"),
     dialCode: stringType().describe("e.g. +1, +33"),
     flag: stringType().describe("Emoji flag"),
-    available: numberType(),
-    price: numberType().describe("Price in FCFA"),
+    available: numberType().int(),
+    price: numberType().int().describe("Price in FCFA"),
     popular: booleanType().optional()
   }),
   messages: arrayType(
@@ -135423,14 +135423,14 @@ var ListNumberHistoryResponseItem = objectType({
   status: enumType(["waiting", "received", "expired", "cancelled"]),
   expiresAt: coerce.date(),
   createdAt: coerce.date(),
-  price: numberType(),
+  price: numberType().int(),
   service: objectType({
     id: stringType(),
     name: stringType(),
     slug: stringType(),
     scope: stringType().describe("e.g. Global"),
-    price: numberType().describe("Price in FCFA"),
-    available: numberType().describe("Number of available numbers"),
+    price: numberType().int().describe("Price in FCFA"),
+    available: numberType().int().describe("Number of available numbers"),
     color: stringType().describe("Hex color used for the icon background"),
     category: stringType().optional(),
     popular: booleanType().optional()
@@ -135441,8 +135441,8 @@ var ListNumberHistoryResponseItem = objectType({
     code: stringType().describe("ISO country code"),
     dialCode: stringType().describe("e.g. +1, +33"),
     flag: stringType().describe("Emoji flag"),
-    available: numberType(),
-    price: numberType().describe("Price in FCFA"),
+    available: numberType().int(),
+    price: numberType().int().describe("Price in FCFA"),
     popular: booleanType().optional()
   }),
   messages: arrayType(
@@ -135467,14 +135467,14 @@ var GetNumberResponse = objectType({
   status: enumType(["waiting", "received", "expired", "cancelled"]),
   expiresAt: coerce.date(),
   createdAt: coerce.date(),
-  price: numberType(),
+  price: numberType().int(),
   service: objectType({
     id: stringType(),
     name: stringType(),
     slug: stringType(),
     scope: stringType().describe("e.g. Global"),
-    price: numberType().describe("Price in FCFA"),
-    available: numberType().describe("Number of available numbers"),
+    price: numberType().int().describe("Price in FCFA"),
+    available: numberType().int().describe("Number of available numbers"),
     color: stringType().describe("Hex color used for the icon background"),
     category: stringType().optional(),
     popular: booleanType().optional()
@@ -135485,8 +135485,8 @@ var GetNumberResponse = objectType({
     code: stringType().describe("ISO country code"),
     dialCode: stringType().describe("e.g. +1, +33"),
     flag: stringType().describe("Emoji flag"),
-    available: numberType(),
-    price: numberType().describe("Price in FCFA"),
+    available: numberType().int(),
+    price: numberType().int().describe("Price in FCFA"),
     popular: booleanType().optional()
   }),
   messages: arrayType(
@@ -135521,14 +135521,14 @@ var ExtendNumberResponse = objectType({
   status: enumType(["waiting", "received", "expired", "cancelled"]),
   expiresAt: coerce.date(),
   createdAt: coerce.date(),
-  price: numberType(),
+  price: numberType().int(),
   service: objectType({
     id: stringType(),
     name: stringType(),
     slug: stringType(),
     scope: stringType().describe("e.g. Global"),
-    price: numberType().describe("Price in FCFA"),
-    available: numberType().describe("Number of available numbers"),
+    price: numberType().int().describe("Price in FCFA"),
+    available: numberType().int().describe("Number of available numbers"),
     color: stringType().describe("Hex color used for the icon background"),
     category: stringType().optional(),
     popular: booleanType().optional()
@@ -135539,8 +135539,8 @@ var ExtendNumberResponse = objectType({
     code: stringType().describe("ISO country code"),
     dialCode: stringType().describe("e.g. +1, +33"),
     flag: stringType().describe("Emoji flag"),
-    available: numberType(),
-    price: numberType().describe("Price in FCFA"),
+    available: numberType().int(),
+    price: numberType().int().describe("Price in FCFA"),
     popular: booleanType().optional()
   }),
   messages: arrayType(
@@ -135562,14 +135562,14 @@ var CancelNumberResponse = objectType({
   status: enumType(["waiting", "received", "expired", "cancelled"]),
   expiresAt: coerce.date(),
   createdAt: coerce.date(),
-  price: numberType(),
+  price: numberType().int(),
   service: objectType({
     id: stringType(),
     name: stringType(),
     slug: stringType(),
     scope: stringType().describe("e.g. Global"),
-    price: numberType().describe("Price in FCFA"),
-    available: numberType().describe("Number of available numbers"),
+    price: numberType().int().describe("Price in FCFA"),
+    available: numberType().int().describe("Number of available numbers"),
     color: stringType().describe("Hex color used for the icon background"),
     category: stringType().optional(),
     popular: booleanType().optional()
@@ -135580,8 +135580,8 @@ var CancelNumberResponse = objectType({
     code: stringType().describe("ISO country code"),
     dialCode: stringType().describe("e.g. +1, +33"),
     flag: stringType().describe("Emoji flag"),
-    available: numberType(),
-    price: numberType().describe("Price in FCFA"),
+    available: numberType().int(),
+    price: numberType().int().describe("Price in FCFA"),
     popular: booleanType().optional()
   }),
   messages: arrayType(
@@ -135595,26 +135595,29 @@ var CancelNumberResponse = objectType({
   )
 });
 var GetWalletResponse = objectType({
-  balance: numberType(),
+  balance: numberType().int(),
   currency: stringType()
 });
 var rechargeWalletBodyAmountMin = 100;
 var RechargeWalletBody = objectType({
-  amount: numberType().min(rechargeWalletBodyAmountMin),
+  amount: numberType().int().min(rechargeWalletBodyAmountMin),
   methodSlug: stringType(),
   phoneNumber: stringType().optional(),
   countryCode: stringType().optional(),
   dialCode: stringType().optional(),
   currencyCode: stringType().optional(),
-  operatorOtp: stringType().optional()
+  operatorOtp: stringType().optional().describe(
+    "Operator-provided one-time code, required only when the selected gateway/operator requires it"
+  )
 });
-var RechargeResponse = objectType({
+var RechargeWalletResponse = objectType({
   id: stringType(),
   type: enumType(["recharge", "purchase", "refund"]),
-  amount: numberType(),
+  amount: numberType().int(),
   status: enumType(["pending", "completed", "failed"]),
   method: stringType().optional(),
   description: stringType().optional(),
+  createdAt: coerce.date(),
   externalDepositId: stringType().optional(),
   pending: booleanType().optional(),
   depositId: stringType().optional(),
@@ -135623,12 +135626,22 @@ var RechargeResponse = objectType({
   payment_url: stringType().nullish(),
   operatorPaymentUrl: stringType().nullish(),
   paymentOtp: stringType().nullish(),
-  message: stringType().nullish(),
-  createdAt: coerce.date()
-});
-var GetWalletPaymentOptionsParams = objectType({
-  countryCode: stringType(),
-  methodSlug: stringType()
+  message: stringType().nullish()
+}).and(
+  objectType({
+    pending: booleanType().optional(),
+    depositId: stringType().optional(),
+    gateway: stringType().optional(),
+    paymentMode: enumType(["API"]).optional(),
+    payment_url: stringType().nullish(),
+    operatorPaymentUrl: stringType().nullish(),
+    paymentOtp: stringType().nullish(),
+    message: stringType().nullish()
+  })
+);
+var GetWalletPaymentOptionsQueryParams = objectType({
+  countryCode: coerce.string(),
+  methodSlug: coerce.string()
 });
 var GetWalletPaymentOptionsResponse = objectType({
   gateway: stringType(),
@@ -135636,13 +135649,17 @@ var GetWalletPaymentOptionsResponse = objectType({
   instruction: stringType().nullable(),
   operatorCode: stringType().nullable()
 });
-var ListTransactionsResponseItem = objectType({
+var GetWalletDepositStatusParams = objectType({
+  depositId: coerce.string()
+});
+var GetWalletDepositStatusResponse = objectType({
   id: stringType(),
   type: enumType(["recharge", "purchase", "refund"]),
-  amount: numberType(),
+  amount: numberType().int(),
   status: enumType(["pending", "completed", "failed"]),
   method: stringType().optional(),
   description: stringType().optional(),
+  createdAt: coerce.date(),
   externalDepositId: stringType().optional(),
   pending: booleanType().optional(),
   depositId: stringType().optional(),
@@ -135651,8 +135668,68 @@ var ListTransactionsResponseItem = objectType({
   payment_url: stringType().nullish(),
   operatorPaymentUrl: stringType().nullish(),
   paymentOtp: stringType().nullish(),
-  message: stringType().nullish(),
-  createdAt: coerce.date()
+  message: stringType().nullish()
+}).and(
+  objectType({
+    pending: booleanType().optional(),
+    depositId: stringType().optional(),
+    gateway: stringType().optional(),
+    paymentMode: enumType(["API"]).optional(),
+    payment_url: stringType().nullish(),
+    operatorPaymentUrl: stringType().nullish(),
+    paymentOtp: stringType().nullish(),
+    message: stringType().nullish()
+  })
+);
+var CancelWalletDepositParams = objectType({
+  depositId: coerce.string()
+});
+var CancelWalletDepositResponse = objectType({
+  id: stringType(),
+  type: enumType(["recharge", "purchase", "refund"]),
+  amount: numberType().int(),
+  status: enumType(["pending", "completed", "failed"]),
+  method: stringType().optional(),
+  description: stringType().optional(),
+  createdAt: coerce.date(),
+  externalDepositId: stringType().optional(),
+  pending: booleanType().optional(),
+  depositId: stringType().optional(),
+  gateway: stringType().optional(),
+  paymentMode: enumType(["API"]).optional(),
+  payment_url: stringType().nullish(),
+  operatorPaymentUrl: stringType().nullish(),
+  paymentOtp: stringType().nullish(),
+  message: stringType().nullish()
+}).and(
+  objectType({
+    pending: booleanType().optional(),
+    depositId: stringType().optional(),
+    gateway: stringType().optional(),
+    paymentMode: enumType(["API"]).optional(),
+    payment_url: stringType().nullish(),
+    operatorPaymentUrl: stringType().nullish(),
+    paymentOtp: stringType().nullish(),
+    message: stringType().nullish()
+  })
+);
+var ListTransactionsResponseItem = objectType({
+  id: stringType(),
+  type: enumType(["recharge", "purchase", "refund"]),
+  amount: numberType().int(),
+  status: enumType(["pending", "completed", "failed"]),
+  method: stringType().optional(),
+  description: stringType().optional(),
+  createdAt: coerce.date(),
+  externalDepositId: stringType().optional(),
+  pending: booleanType().optional(),
+  depositId: stringType().optional(),
+  gateway: stringType().optional(),
+  paymentMode: enumType(["API"]).optional(),
+  payment_url: stringType().nullish(),
+  operatorPaymentUrl: stringType().nullish(),
+  paymentOtp: stringType().nullish(),
+  message: stringType().nullish()
 });
 var ListTransactionsResponse = arrayType(ListTransactionsResponseItem);
 var ListPaymentMethodsResponseItem = objectType({
@@ -135668,10 +135745,10 @@ var ListPaymentMethodsResponse = arrayType(
   ListPaymentMethodsResponseItem
 );
 var GetDashboardSummaryResponse = objectType({
-  balance: numberType(),
+  balance: numberType().int(),
   currency: stringType(),
-  totalNumbers: numberType(),
-  totalSpent: numberType(),
+  totalNumbers: numberType().int(),
+  totalSpent: numberType().int(),
   recentNumbers: arrayType(
     objectType({
       id: stringType(),
@@ -135679,14 +135756,14 @@ var GetDashboardSummaryResponse = objectType({
       status: enumType(["waiting", "received", "expired", "cancelled"]),
       expiresAt: coerce.date(),
       createdAt: coerce.date(),
-      price: numberType(),
+      price: numberType().int(),
       service: objectType({
         id: stringType(),
         name: stringType(),
         slug: stringType(),
         scope: stringType().describe("e.g. Global"),
-        price: numberType().describe("Price in FCFA"),
-        available: numberType().describe("Number of available numbers"),
+        price: numberType().int().describe("Price in FCFA"),
+        available: numberType().int().describe("Number of available numbers"),
         color: stringType().describe("Hex color used for the icon background"),
         category: stringType().optional(),
         popular: booleanType().optional()
@@ -135697,8 +135774,8 @@ var GetDashboardSummaryResponse = objectType({
         code: stringType().describe("ISO country code"),
         dialCode: stringType().describe("e.g. +1, +33"),
         flag: stringType().describe("Emoji flag"),
-        available: numberType(),
-        price: numberType().describe("Price in FCFA"),
+        available: numberType().int(),
+        price: numberType().int().describe("Price in FCFA"),
         popular: booleanType().optional()
       }),
       messages: arrayType(
@@ -135716,11 +135793,20 @@ var GetDashboardSummaryResponse = objectType({
     objectType({
       id: stringType(),
       type: enumType(["recharge", "purchase", "refund"]),
-      amount: numberType(),
+      amount: numberType().int(),
       status: enumType(["pending", "completed", "failed"]),
       method: stringType().optional(),
       description: stringType().optional(),
-      createdAt: coerce.date()
+      createdAt: coerce.date(),
+      externalDepositId: stringType().optional(),
+      pending: booleanType().optional(),
+      depositId: stringType().optional(),
+      gateway: stringType().optional(),
+      paymentMode: enumType(["API"]).optional(),
+      payment_url: stringType().nullish(),
+      operatorPaymentUrl: stringType().nullish(),
+      paymentOtp: stringType().nullish(),
+      message: stringType().nullish()
     })
   )
 });

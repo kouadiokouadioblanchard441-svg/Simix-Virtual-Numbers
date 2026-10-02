@@ -14,6 +14,7 @@
     "build": "node artifacts/api-server/build.mjs && cd artifacts/simix && NODE_ENV=production node_modules/.bin/vite build --config vite.config.ts",
     "dev:api": "cd artifacts/api-server && PORT=3000 NODE_ENV=development pnpm run build && node --enable-source-maps ../../dist/index.cjs",
     "dev:front": "cd artifacts/simix && pnpm run dev",
+    "typecheck:libs": "tsc --build",
     "test:clapay": "NODE_ENV=production pnpm --filter @workspace/scripts exec tsx --test ../artifacts/api-server/test/clapay.test.ts"
   },
   "packageManager": "pnpm@10.26.1",

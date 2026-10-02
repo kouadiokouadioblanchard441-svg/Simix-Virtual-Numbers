@@ -14,3 +14,9 @@ After merging dependency changes, validate the lockfile with the package manager
 **Why:** A merge can duplicate YAML keys while installed-package scans still report no vulnerabilities. Existing node_modules and successful builds do not prove that a fresh install can consume the committed lockfile.
 
 **How to apply:** Check strict lockfile parsing and frozen installation against the final merged tree before declaring dependency remediation complete.
+
+If a security-required dependency removes an export needed by a build tool, adapt the consuming tool's import instead of lowering the protected minimum version.
+
+**Why:** Even newer Orval releases still expected js-yaml's removed ESM default export. Updating the generator alone did not solve the compatibility problem, and weakening the security override was explicitly disallowed.
+
+**How to apply:** Keep compatibility adapters local to the affected tool's execution, preserve the application's dependency behavior, and verify a second generation produces byte-identical output.
