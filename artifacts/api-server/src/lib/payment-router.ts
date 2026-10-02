@@ -27,6 +27,7 @@ const KNOWN_OPERATOR_SLUGS = [
 
 export function extractOperatorSlug(methodSlug: string): string {
   const s = methodSlug.toLowerCase().trim();
+  if (s.replace(/[^a-z0-9]/g, "") === "om") return "orange";
   for (const slug of KNOWN_OPERATOR_SLUGS) {
     if (
       s === slug ||

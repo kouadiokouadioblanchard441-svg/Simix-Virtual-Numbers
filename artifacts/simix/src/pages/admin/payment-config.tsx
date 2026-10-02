@@ -10,6 +10,7 @@ import {
   Trash2, Star, ArrowUpDown, CreditCard, MapPin, RefreshCw,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { ClapayCatalogueSync } from "@/components/clapay-catalogue-sync";
 
 
 /* ─── Operator Logo Component ─── */
@@ -729,6 +730,8 @@ function PaymentConfigContent() {
           </div>
         </div>
       </div>
+
+      <ClapayCatalogueSync />
 
       {/* Tabs */}
       <div className="flex gap-1 bg-zinc-900 border border-zinc-800 rounded-xl p-1 w-fit">

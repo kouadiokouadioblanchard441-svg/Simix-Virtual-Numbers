@@ -33,6 +33,7 @@ import { logger } from "../lib/logger";
 import { clearSettingsCache, getSettingInt } from "../lib/settings";
 import { setAppUrl, clearAppUrlCache } from "../lib/app-url";
 import { requireAdminJwt } from "../lib/admin-jwt-middleware";
+import { syncClapayCatalogue } from "../lib/clapay-catalogue-sync";
 
 const router: IRouter = Router();
 
@@ -899,6 +900,35 @@ router.get("/admin/payment-configs", requireAdmin, async (_req, res): Promise<vo
   }).from(countriesTable).orderBy(countriesTable.sortOrder, countriesTable.name);
   const methods = await db.select().from(paymentMethodsTable).orderBy(paymentMethodsTable.sortOrder);
   res.json({ configs, countries, methods });
+});
+
+router.post("/admin/payment-configs/clapay-sync", requireAdmin, async (req, res): Promise<void> => {
+  const body = req.body && typeof req.body === "object" ? req.body as Record<string, unknown> : {};
+  if (body.activate === true) {
+    res.status(400).json({ error: "Catalogue activation is reserved for the explicitly approved CLI sync." });
+    return;
+  }
+  if (body.activate !== undefined && body.activate !== false) {
+    res.status(400).json({ error: "activate must be false; future catalogue discoveries require manual review." });
+    return;
+  }
+  if (body.dryRun !== undefined && typeof body.dryRun !== "boolean") {
+    res.status(400).json({ error: "dryRun must be a boolean." });
+    return;
+  }
+  try {
+    const result = await syncClapayCatalogue({ activate: false, dryRun: body.dryRun === true });
+    res.json(result);
+  } catch {
+    res.status(500).json({
+      success: false, dryRun: body.dryRun === true, activate: false,
+      countriesChecked: 0, countriesAdded: 0, operatorsFound: 0, methodsAdded: 0, operatorsAdded: 0,
+      configsAdded: 0, configsActivated: 0, associationsAdded: 0, reviewRequired: 0,
+      defaultsUsed: [],
+      errors: [{ countryCode: null, message: "Clapay catalogue synchronization failed safely." }],
+      blocked: [],
+    });
+  }
 });
 
 router.put("/admin/payment-configs", requireAdmin, async (req, res): Promise<void> => {

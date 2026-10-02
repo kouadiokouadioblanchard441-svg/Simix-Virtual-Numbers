@@ -1,5 +1,19 @@
 import { adminToken } from "./admin-token";
 
+export interface ClapayCatalogueSyncResult {
+  success: boolean;
+  countriesChecked: number;
+  operatorsFound: number;
+  methodsAdded: number;
+  operatorsAdded: number;
+  configsAdded: number;
+  configsActivated: number;
+  associationsAdded: number;
+  reviewRequired: number;
+  errors: Array<{ countryCode: string | null; message: string }>;
+  blocked: Array<{ countryCode: string; operatorName: string; reason: string }>;
+}
+
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
 async function req<T>(method: string, path: string, body?: unknown): Promise<T> {
@@ -156,6 +170,7 @@ export const adminApi = {
   deletePaymentMethod: (id: string) => req("DELETE", `/admin/payment-methods/${id}`),
 
   getPaymentConfigs: () => req<PaymentConfigData>("GET", "/admin/payment-configs"),
+  syncClapayCatalogue: () => req<ClapayCatalogueSyncResult>("POST", "/admin/payment-configs/clapay-sync", { activate: false }),
   updatePaymentConfig: (data: { countryCode: string; methodSlug: string; enabled: boolean; minDeposit: number; feePercent: number }) =>
     req("PUT", "/admin/payment-configs", data),
   addDepositCountry: (countryCode: string) =>

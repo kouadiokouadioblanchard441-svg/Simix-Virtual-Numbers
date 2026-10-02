@@ -15364,7 +15364,7 @@ var require_type_is = __commonJS({
     module2.exports = typeofrequest;
     module2.exports.is = typeis;
     module2.exports.hasBody = hasbody;
-    module2.exports.normalize = normalize4;
+    module2.exports.normalize = normalize5;
     module2.exports.match = mimeMatch;
     function typeis(value, types_) {
       if (value && typeof value === "object") {
@@ -15387,7 +15387,7 @@ var require_type_is = __commonJS({
       }
       var type;
       for (i2 = 0; i2 < types5.length; i2++) {
-        if (mimeMatch(normalize4(type = types5[i2]), val)) {
+        if (mimeMatch(normalize5(type = types5[i2]), val)) {
           return type[0] === "+" || type.indexOf("*") !== -1 ? val : type;
         }
       }
@@ -15402,7 +15402,7 @@ var require_type_is = __commonJS({
       var value = req.headers["content-type"];
       return typeis(value, types5);
     }
-    function normalize4(type) {
+    function normalize5(type) {
       if (typeof type !== "string") {
         return false;
       }
@@ -21970,7 +21970,7 @@ var require_type_is2 = __commonJS({
     module2.exports = typeofrequest;
     module2.exports.is = typeis;
     module2.exports.hasBody = hasbody;
-    module2.exports.normalize = normalize4;
+    module2.exports.normalize = normalize5;
     module2.exports.match = mimeMatch;
     function typeis(value, types_) {
       var i2;
@@ -21990,7 +21990,7 @@ var require_type_is2 = __commonJS({
       }
       var type;
       for (i2 = 0; i2 < types5.length; i2++) {
-        if (mimeMatch(normalize4(type = types5[i2]), val)) {
+        if (mimeMatch(normalize5(type = types5[i2]), val)) {
           return type[0] === "+" || type.indexOf("*") !== -1 ? val : type;
         }
       }
@@ -22005,7 +22005,7 @@ var require_type_is2 = __commonJS({
       var value = req.headers["content-type"];
       return typeis(value, types5);
     }
-    function normalize4(type) {
+    function normalize5(type) {
       if (typeof type !== "string") {
         return false;
       }
@@ -22723,7 +22723,7 @@ var require_send = __commonJS({
     var util3 = require("util");
     var extname = path6.extname;
     var join = path6.join;
-    var normalize4 = path6.normalize;
+    var normalize5 = path6.normalize;
     var resolve = path6.resolve;
     var sep = path6.sep;
     var BYTES_RANGE_REGEXP = /^ *bytes=/;
@@ -22886,7 +22886,7 @@ var require_send = __commonJS({
       var parts;
       if (root !== null) {
         if (path7) {
-          path7 = normalize4("." + sep + path7);
+          path7 = normalize5("." + sep + path7);
         }
         if (UP_PATH_REGEXP.test(path7)) {
           debug('malicious path "%s"', path7);
@@ -22894,14 +22894,14 @@ var require_send = __commonJS({
           return res;
         }
         parts = path7.split(sep);
-        path7 = normalize4(join(root, path7));
+        path7 = normalize5(join(root, path7));
       } else {
         if (UP_PATH_REGEXP.test(path7)) {
           debug('malicious path "%s"', path7);
           this.error(403);
           return res;
         }
-        parts = normalize4(path7).split(sep);
+        parts = normalize5(path7).split(sep);
         path7 = resolve(path7);
       }
       if (containsDotFile(parts)) {
@@ -29747,11 +29747,11 @@ var require_pino = __commonJS({
       depthLimit: 5,
       edgeLimit: 100
     };
-    var normalize4 = createArgsNormalizer(defaultOptions);
+    var normalize5 = createArgsNormalizer(defaultOptions);
     var serializers = Object.assign(/* @__PURE__ */ Object.create(null), stdSerializers);
     function pino2(...args) {
       const instance = {};
-      const { opts, stream } = normalize4(instance, caller(), ...args);
+      const { opts, stream } = normalize5(instance, caller(), ...args);
       if (opts.level && typeof opts.level === "string" && DEFAULT_LEVELS[opts.level.toLowerCase()] !== void 0) opts.level = opts.level.toLowerCase();
       const {
         redact,
@@ -45239,7 +45239,7 @@ var require_tr46 = __commonJS({
       TRANSITIONAL: 0,
       NONTRANSITIONAL: 1
     };
-    function normalize4(str) {
+    function normalize5(str) {
       return str.split("\0").map(function(s3) {
         return s3.normalize("NFC");
       }).join("\0");
@@ -45319,7 +45319,7 @@ var require_tr46 = __commonJS({
         processing_option = PROCESSING_OPTIONS.NONTRANSITIONAL;
       }
       var error = false;
-      if (normalize4(label) !== label || label[3] === "-" && label[4] === "-" || label[0] === "-" || label[label.length - 1] === "-" || label.indexOf(".") !== -1 || label.search(combiningMarksRegex) === 0) {
+      if (normalize5(label) !== label || label[3] === "-" && label[4] === "-" || label[0] === "-" || label[label.length - 1] === "-" || label.indexOf(".") !== -1 || label.search(combiningMarksRegex) === 0) {
         error = true;
       }
       var len = countSymbols(label);
@@ -45337,7 +45337,7 @@ var require_tr46 = __commonJS({
     }
     function processing(domain_name, useSTD3, processing_option) {
       var result = mapChars(domain_name, useSTD3, processing_option);
-      result.string = normalize4(result.string);
+      result.string = normalize5(result.string);
       var labels = result.string.split(".");
       for (var i2 = 0; i2 < labels.length; ++i2) {
         try {
@@ -129032,13 +129032,14 @@ function clapayOperatorSupportsMethod(operator, method) {
   return typeof capability === "string" && capability.trim().length > 0 && capability.trim().toLowerCase() !== "none";
 }
 function findClapayOperator(operators, country, methodSlug) {
-  const normalize4 = (value) => value.toLowerCase().replace(/[^a-z0-9]/g, "");
-  const slug = normalize4(methodSlug);
+  const normalize5 = (value) => value.toLowerCase().replace(/[^a-z0-9]/g, "");
+  const slug = normalize5(methodSlug);
   if (!slug) return null;
-  const codeOf = (op) => normalize4(typeof op.codeoperator === "string" ? op.codeoperator : "");
-  const nameOf = (op) => normalize4(typeof op.name === "string" ? op.name : "");
+  const codeOf = (op) => normalize5(typeof op.codeoperator === "string" ? op.codeoperator : "");
+  const nameOf = (op) => normalize5(typeof op.name === "string" ? op.name : "");
+  const isOrangeAlias = (op) => codeOf(op) === "om" && (slug.includes("orange") || slug === "om");
   const brandAliases = CLAPAY_OPERATOR_BRANDS[country.trim().toUpperCase()]?.find((aliases) => aliases.includes(slug));
-  return operators.find((op) => codeOf(op) === slug) ?? operators.find((op) => {
+  return operators.find((op) => codeOf(op) === slug) ?? operators.find(isOrangeAlias) ?? operators.find((op) => {
     const code = codeOf(op);
     const name3 = nameOf(op);
     return name3.length > 0 && (slug === name3 || slug.includes(name3) || name3.includes(slug)) || code.length > 2 && (slug.startsWith(code) || slug.endsWith(code));
@@ -129126,12 +129127,14 @@ var init_clapay = __esm({
     ClapayClient = class {
       token;
       baseUrl;
+      requestTimeoutMs;
       /** Internal cache partition only; never return this fingerprint to the panel. */
       getCatalogueCacheKey() {
         return (0, import_node_crypto9.createHash)("sha256").update(JSON.stringify([this.baseUrl, this.token])).digest("hex");
       }
-      constructor(token2, baseUrl2 = "https://nw-api.clapay.app/nowallet/api") {
+      constructor(token2, baseUrl2 = "https://nw-api.clapay.app/nowallet/api", requestTimeoutMs = 3e4) {
         this.token = token2;
+        this.requestTimeoutMs = Math.min(3e4, Math.max(500, requestTimeoutMs));
         this.baseUrl = baseUrl2.replace(/\/$/, "").replace(/\/nowallet\/api$/, "");
       }
       buildUrl(path6, params) {
@@ -129156,8 +129159,7 @@ var init_clapay = __esm({
             Accept: "application/json"
           },
           body: body ? JSON.stringify(body) : void 0,
-          signal: AbortSignal.timeout(3e4)
-          // 30s hard timeout
+          signal: AbortSignal.timeout(this.requestTimeoutMs)
         });
         const elapsed = Date.now() - start2;
         const text2 = await res.text();
@@ -159544,6 +159546,7 @@ var KNOWN_OPERATOR_SLUGS = [
 ];
 function extractOperatorSlug(methodSlug) {
   const s3 = methodSlug.toLowerCase().trim();
+  if (s3.replace(/[^a-z0-9]/g, "") === "om") return "orange";
   for (const slug of KNOWN_OPERATOR_SLUGS) {
     if (s3 === slug || s3.startsWith(slug + "-") || s3.startsWith(slug + "_") || s3.includes("-" + slug + "-") || s3.includes("_" + slug + "_") || s3.endsWith("-" + slug) || s3.endsWith("_" + slug)) {
       return slug;
@@ -159626,7 +159629,8 @@ function matchesMobileOperatorMethod(methodSlug, methodName, operatorSlug, opera
   const operatorNameNormalized = normalize3(operatorName);
   const slugTokens = methodSlug.toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
   const nameTokens = methodName.toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
-  return slug === operatorSlugNormalized || name3 === operatorNameNormalized || slug === operatorNameNormalized || name3 === operatorSlugNormalized || slugTokens.includes(operatorSlug.toLowerCase()) || nameTokens.includes(operatorSlug.toLowerCase()) || operatorNameNormalized.length > 3 && (slug.includes(operatorNameNormalized) || name3.includes(operatorNameNormalized));
+  const clapayOrangeAlias = operatorSlugNormalized === "orange" && operatorNameNormalized === "om" && (slug.includes("orange") || name3.includes("orange"));
+  return slug === operatorSlugNormalized || name3 === operatorNameNormalized || slug === operatorNameNormalized || name3 === operatorSlugNormalized || clapayOrangeAlias || slugTokens.includes(operatorSlug.toLowerCase()) || nameTokens.includes(operatorSlug.toLowerCase()) || operatorNameNormalized.length > 3 && (slug.includes(operatorNameNormalized) || name3.includes(operatorNameNormalized));
 }
 
 // src/lib/wallet-gateway.ts
@@ -162308,6 +162312,409 @@ init_src();
 init_fivesim();
 init_logger2();
 init_settings();
+
+// src/lib/clapay-catalogue-sync.ts
+init_drizzle_orm();
+init_src();
+init_clapay();
+init_gateway_credentials();
+init_logger2();
+var OPERATOR_ALIASES = {
+  om: { slug: "orange", methodSlug: "orange_money", methodName: "Orange Money", operatorName: "Orange Money" },
+  orange: { slug: "orange", methodSlug: "orange_money", methodName: "Orange Money", operatorName: "Orange Money" },
+  orangemoney: { slug: "orange", methodSlug: "orange_money", methodName: "Orange Money", operatorName: "Orange Money" },
+  mtn: { slug: "mtn", methodSlug: "mtn_money", methodName: "MTN Mobile Money", operatorName: "MTN Mobile Money" },
+  wave: { slug: "wave", methodSlug: "wave", methodName: "Wave", operatorName: "Wave" },
+  airtel: { slug: "airtel", methodSlug: "airtel_money", methodName: "Airtel Money", operatorName: "Airtel Money" },
+  airtelmoney: { slug: "airtel", methodSlug: "airtel_money", methodName: "Airtel Money", operatorName: "Airtel Money" },
+  moov: { slug: "moov", methodSlug: "moov_money", methodName: "Moov Money", operatorName: "Moov Africa" },
+  flooz: { slug: "flooz", methodSlug: "flooz", methodName: "Flooz", operatorName: "Flooz" },
+  tmoney: { slug: "tmoney", methodSlug: "tmoney", methodName: "T-Money", operatorName: "T-Money" },
+  mpesa: { slug: "mpesa", methodSlug: "mpesa", methodName: "M-Pesa", operatorName: "M-Pesa" },
+  vodacom: { slug: "vodacom", methodSlug: "vodacom_mpesa", methodName: "Vodacom M-Pesa", operatorName: "Vodacom M-Pesa" },
+  vodafone: { slug: "vodafone", methodSlug: "vodafone_cash", methodName: "Vodafone Cash", operatorName: "Vodafone Cash" },
+  vodafonecash: { slug: "vodafone", methodSlug: "vodafone_cash", methodName: "Vodafone Cash", operatorName: "Vodafone Cash" },
+  tigo: { slug: "tigo", methodSlug: "tigo_money", methodName: "Tigo Cash", operatorName: "Tigo Cash" },
+  halotel: { slug: "halotel", methodSlug: "halotel_money", methodName: "Halotel Money", operatorName: "Halotel Money" },
+  telecel: { slug: "telecel", methodSlug: "telecel_cash", methodName: "Telecel Cash", operatorName: "Telecel Cash" },
+  wizall: { slug: "wizall", methodSlug: "wizall_money", methodName: "Wizall Money", operatorName: "Wizall Money" },
+  africell: { slug: "africell", methodSlug: "africell_money", methodName: "Africell", operatorName: "Africell" },
+  zamtel: { slug: "zamtel", methodSlug: "zamtel", methodName: "Zamtel Kwacha", operatorName: "Zamtel Kwacha" },
+  econet: { slug: "econet", methodSlug: "econet", methodName: "EcoCash", operatorName: "EcoCash" },
+  tnm: { slug: "tnm", methodSlug: "tnm_money", methodName: "TNM Mpamba", operatorName: "TNM Mpamba" },
+  opay: { slug: "opay", methodSlug: "opay", methodName: "OPay", operatorName: "OPay" },
+  mynita: { slug: "mynita", methodSlug: "mynita", methodName: "MyNita", operatorName: "MyNita" },
+  amana: { slug: "amana", methodSlug: "amana", methodName: "Amana", operatorName: "Amana" },
+  zamani: { slug: "zamani", methodSlug: "zamani", methodName: "Zamani", operatorName: "Zamani" }
+};
+function normalize4(value) {
+  return value.toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+function mapClapayOperator(operator) {
+  const code = normalize4(operator.codeoperator ?? "");
+  const name3 = normalize4(operator.name ?? "");
+  const known = OPERATOR_ALIASES[code] ?? OPERATOR_ALIASES[name3];
+  if (known) return { operatorSlug: known.slug, operatorName: known.operatorName, methodSlug: known.methodSlug, methodName: known.methodName };
+  if (!operator.name?.trim() || !operator.codeoperator?.trim()) return null;
+  const fallbackSlug = normalize4(operator.name);
+  if (!fallbackSlug) return null;
+  return {
+    operatorSlug: fallbackSlug,
+    operatorName: operator.name.trim(),
+    methodSlug: fallbackSlug,
+    methodName: operator.name.trim()
+  };
+}
+async function mapWithConcurrency(items, concurrency, fn2) {
+  const results = new Array(items.length);
+  let next = 0;
+  await Promise.all(Array.from({ length: Math.min(concurrency, items.length) }, async () => {
+    for (; ; ) {
+      const index2 = next++;
+      if (index2 >= items.length) return;
+      results[index2] = await fn2(items[index2]);
+    }
+  }));
+  return results;
+}
+async function syncClapayCatalogue(options = {}, dependencies) {
+  const activate = options.activate === true;
+  const dryRun = options.dryRun === true;
+  const result = {
+    success: true,
+    dryRun,
+    activate,
+    countriesChecked: 0,
+    countriesAdded: 0,
+    operatorsFound: 0,
+    methodsAdded: 0,
+    operatorsAdded: 0,
+    configsAdded: 0,
+    configsActivated: 0,
+    associationsAdded: 0,
+    reviewRequired: 0,
+    defaultsUsed: [],
+    errors: [],
+    blocked: []
+  };
+  const deps = dependencies ?? {
+    source: createClapayCatalogueSource(),
+    repository: createDatabaseRepository(),
+    verifyClapayRouting: async (countryCode, operatorSlug) => (await resolveWalletGateway(countryCode, operatorSlug, 0)).gateway === "clapay"
+  };
+  let countries;
+  try {
+    countries = await deps.source.getCountries();
+  } catch {
+    result.success = false;
+    result.errors.push({ countryCode: null, message: "Clapay country catalogue request failed or timed out." });
+    return result;
+  }
+  const uniqueCountries = /* @__PURE__ */ new Map();
+  for (const country of countries) {
+    const code = country.code?.trim().toUpperCase();
+    if (/^[A-Z]{2}$/.test(code ?? "") && country.currency?.trim()) uniqueCountries.set(code, { ...country, code });
+  }
+  result.countriesChecked = uniqueCountries.size;
+  await mapWithConcurrency(Array.from(uniqueCountries.values()), 2, async (country) => {
+    let operators;
+    try {
+      operators = await deps.source.getOperators(country.code);
+    } catch {
+      result.success = false;
+      result.errors.push({ countryCode: country.code, message: "Clapay operator catalogue request failed or timed out; no records changed for this country." });
+      return;
+    }
+    for (const operator of operators) {
+      if (!clapayOperatorSupportsMethod(operator, "MERCHANT")) continue;
+      result.operatorsFound++;
+      const routeBlock = operator.__syncBlockedReason;
+      if (routeBlock) {
+        result.reviewRequired++;
+        result.blocked.push({ countryCode: country.code, operatorName: String(operator.name ?? "Unknown operator").slice(0, 100), reason: routeBlock });
+        continue;
+      }
+      const mapped = mapClapayOperator(operator);
+      if (!mapped) {
+        result.reviewRequired++;
+        result.blocked.push({ countryCode: country.code, operatorName: String(operator.name ?? "Unknown operator").slice(0, 100), reason: "Cannot map this active operator to a stable local payment method." });
+        continue;
+      }
+      try {
+        if (deps.verifyClapayRouting && !await deps.verifyClapayRouting(country.code, mapped.operatorSlug)) {
+          result.reviewRequired++;
+          result.blocked.push({
+            countryCode: country.code,
+            operatorName: mapped.operatorName,
+            reason: "The current country/operator route does not resolve to a configured Clapay gateway; routing was left unchanged."
+          });
+          continue;
+        }
+        const change = await deps.repository.applyOperator({
+          country,
+          operator,
+          ...mapped,
+          activate,
+          dryRun
+        });
+        result.countriesAdded += Number(change.countryAdded ?? false);
+        result.methodsAdded += Number(change.methodAdded);
+        result.operatorsAdded += Number(change.operatorAdded);
+        result.configsAdded += Number(change.configAdded);
+        result.configsActivated += Number(change.configActivated);
+        result.associationsAdded += Number(change.associationAdded);
+        if (change.configAdded && change.configSettings?.usedDefaults) {
+          result.defaultsUsed.push({
+            countryCode: country.code,
+            methodSlug: mapped.methodSlug,
+            minDeposit: change.configSettings.minDeposit,
+            feePercent: change.configSettings.feePercent
+          });
+        }
+        if (change.blockedReason) {
+          result.reviewRequired++;
+          result.blocked.push({ countryCode: country.code, operatorName: mapped.operatorName, reason: change.blockedReason });
+        } else if (!activate && (change.methodAdded || change.operatorAdded || change.configAdded || change.associationAdded)) {
+          result.reviewRequired++;
+          result.blocked.push({
+            countryCode: country.code,
+            operatorName: mapped.operatorName,
+            reason: "New catalogue records were added inactive; administrator review is required before enabling them."
+          });
+        }
+      } catch {
+        result.success = false;
+        result.errors.push({ countryCode: country.code, message: "Could not safely synchronize this operator; its records were not overwritten." });
+      }
+    }
+  });
+  result.success = result.success && result.errors.length === 0;
+  return result;
+}
+function createClapayCatalogueSource() {
+  let globalClientPromise = null;
+  let activeProviderRequests = 0;
+  const requestQueue = [];
+  const withProviderLimit = async (request) => {
+    if (activeProviderRequests >= 2) await new Promise((resolve) => requestQueue.push(resolve));
+    activeProviderRequests++;
+    try {
+      return await request();
+    } finally {
+      activeProviderRequests--;
+      requestQueue.shift()?.();
+    }
+  };
+  const getGlobalClient = () => globalClientPromise ??= (async () => {
+    const creds = await resolveClapayCredentials();
+    if (!creds) throw new Error("Clapay global account is not configured");
+    return new ClapayClient(creds.token, creds.baseUrl, 12e3);
+  })();
+  return {
+    async getCountries() {
+      return withProviderLimit(async () => (await getGlobalClient()).getCountries());
+    },
+    async getOperators(countryCode) {
+      const known = await db.select({ slug: mobileOperatorsTable.slug }).from(mobileOperatorsTable);
+      const clients = /* @__PURE__ */ new Map();
+      const routing = /* @__PURE__ */ new Map();
+      for (const { slug } of known) {
+        const route = await resolvePaymentRoute(countryCode, slug, "deposit");
+        if (!route) continue;
+        if (!route.gatewaySlug.toLowerCase().includes("clapay") || !route.apiKey?.trim()) {
+          routing.set(slug, { kind: "other" });
+          continue;
+        }
+        const client = new ClapayClient(route.apiKey, route.apiUrl ?? void 0, 12e3);
+        const key = client.getCatalogueCacheKey();
+        clients.set(key, client);
+        routing.set(slug, { kind: "clapay", key });
+      }
+      let globalKey = null;
+      const defaultForUnroutedOperator = await resolveWalletGateway(countryCode, "clapay-catalogue-discovery", 0);
+      if (defaultForUnroutedOperator.gateway === "clapay") {
+        const global2 = await getGlobalClient();
+        globalKey = global2.getCatalogueCacheKey();
+        clients.set(globalKey, global2);
+      }
+      const all2 = [];
+      const byIdentity = /* @__PURE__ */ new Map();
+      await mapWithConcurrency(Array.from(clients.entries()), 2, async ([clientKey, client]) => {
+        const catalogue = await withProviderLimit(() => client.getOperators(countryCode));
+        for (const operator of catalogue) {
+          const identity = `${normalize4(operator.codeoperator ?? "")}:${normalize4(operator.name ?? "")}`;
+          const mapped = mapClapayOperator(operator);
+          const route = mapped ? routing.get(mapped.operatorSlug) : void 0;
+          let blockedReason;
+          if (route?.kind === "other") {
+            blockedReason = "This country/operator currently routes through another gateway; the sync will not switch its provider.";
+          } else if (route?.kind === "clapay" && route.key !== clientKey) {
+            continue;
+          } else if (!route && globalKey !== clientKey) {
+            continue;
+          }
+          const resultOperator = blockedReason ? { ...operator, __syncBlockedReason: blockedReason } : operator;
+          if (!byIdentity.has(identity) || !blockedReason) byIdentity.set(identity, resultOperator);
+        }
+      });
+      all2.push(...byIdentity.values());
+      return all2;
+    }
+  };
+}
+function createDatabaseRepository() {
+  return {
+    async applyOperator(input) {
+      return db.transaction(async (tx) => {
+        const countryCode = input.country.code.toUpperCase();
+        const [currency] = await tx.select({ currencyCode: currenciesTable.currencyCode }).from(currenciesTable).where(and(
+          eq(currenciesTable.countryCode, countryCode),
+          eq(currenciesTable.active, true),
+          eq(currenciesTable.currencyCode, input.country.currency.toUpperCase())
+        )).limit(1);
+        const hasMatchingFx = Boolean(currency);
+        let [country] = await tx.select().from(countriesTable).where(eq(countriesTable.code, countryCode)).limit(1);
+        let countryAdded = false;
+        if (!country) {
+          const [reference] = await tx.select({ price: countriesTable.price }).from(currenciesTable).innerJoin(countriesTable, eq(currenciesTable.countryCode, countriesTable.code)).where(and(
+            eq(currenciesTable.currencyCode, input.country.currency.toUpperCase()),
+            eq(currenciesTable.active, true)
+          )).limit(1);
+          if (!hasMatchingFx) {
+            return { methodAdded: false, operatorAdded: false, configAdded: false, configActivated: false, associationAdded: false, blockedReason: "An active matching country currency/FX row is missing; no country metadata or pricing was fabricated." };
+          }
+          if (!reference) {
+            return { methodAdded: false, operatorAdded: false, configAdded: false, configActivated: false, associationAdded: false, blockedReason: "No existing country price is available for this currency; country creation requires manual pricing review." };
+          }
+          const flag = [...countryCode].map((letter) => String.fromCodePoint(127397 + letter.charCodeAt(0))).join("");
+          const dialCode = input.country.indicatif.trim().startsWith("+") ? input.country.indicatif.trim() : `+${input.country.indicatif.trim()}`;
+          const inserted = input.dryRun ? [] : await tx.insert(countriesTable).values({
+            code: countryCode,
+            name: input.country.name,
+            dialCode,
+            flag,
+            price: reference.price,
+            available: 0,
+            enabled: false,
+            numbersEnabled: false
+          }).onConflictDoNothing().returning();
+          countryAdded = input.dryRun || inserted.length > 0;
+          [country] = await tx.select().from(countriesTable).where(eq(countriesTable.code, countryCode)).limit(1);
+          if (countryAdded || !country) {
+            return {
+              methodAdded: false,
+              operatorAdded: false,
+              configAdded: false,
+              configActivated: false,
+              associationAdded: false,
+              countryAdded,
+              blockedReason: "Country metadata was added disabled with a same-currency price reference; enable and review country pricing before adding deposit methods."
+            };
+          }
+        }
+        if (!country.enabled) {
+          return { methodAdded: false, operatorAdded: false, configAdded: false, configActivated: false, associationAdded: false, countryAdded, blockedReason: "Country is disabled in the admin country catalogue; its status was preserved." };
+        }
+        let methodAdded = false;
+        let operatorAdded = false;
+        let configAdded = false;
+        let configActivated = false;
+        let associationAdded = false;
+        let blockedReason = hasMatchingFx ? void 0 : "An active matching country currency/FX row is missing; catalogue records were imported, but the payment configuration remains disabled pending currency review.";
+        const [method] = await tx.select({ slug: paymentMethodsTable.slug }).from(paymentMethodsTable).where(eq(paymentMethodsTable.slug, input.methodSlug)).limit(1);
+        if (!method && !input.dryRun) {
+          const inserted = await tx.insert(paymentMethodsTable).values({
+            slug: input.methodSlug,
+            name: input.methodName,
+            description: `Mobile Money \xB7 ${input.methodName}`
+          }).onConflictDoNothing().returning({ slug: paymentMethodsTable.slug });
+          methodAdded = inserted.length > 0;
+        } else methodAdded = !method;
+        let [existingOperator] = await tx.select().from(mobileOperatorsTable).where(eq(mobileOperatorsTable.slug, input.operatorSlug)).limit(1);
+        if (!existingOperator) {
+          if (!input.dryRun) {
+            const inserted = await tx.insert(mobileOperatorsTable).values({
+              slug: input.operatorSlug,
+              name: input.operatorName,
+              countryCodes: [countryCode],
+              // The row is technical catalogue metadata. Future discoveries
+              // remain unavailable to customers because their country config
+              // is inserted disabled until admin approval.
+              active: true,
+              sortOrder: 100
+            }).onConflictDoNothing().returning({ slug: mobileOperatorsTable.slug });
+            operatorAdded = inserted.length > 0;
+            if (!operatorAdded) {
+              [existingOperator] = await tx.select().from(mobileOperatorsTable).where(eq(mobileOperatorsTable.slug, input.operatorSlug)).limit(1);
+            }
+          } else operatorAdded = true;
+          associationAdded = operatorAdded || input.dryRun;
+        }
+        if (existingOperator) {
+          const freshCountryCodes = Array.isArray(existingOperator.countryCodes) ? existingOperator.countryCodes : [];
+          const alreadyPresent = freshCountryCodes.some((code) => String(code).toUpperCase() === countryCode);
+          if (!alreadyPresent) {
+            associationAdded = true;
+            if (!input.dryRun) {
+              const updated = await tx.update(mobileOperatorsTable).set({
+                countryCodes: sql`CASE WHEN ${mobileOperatorsTable.countryCodes} @> ${JSON.stringify([countryCode])}::jsonb THEN ${mobileOperatorsTable.countryCodes} ELSE ${mobileOperatorsTable.countryCodes} || ${JSON.stringify([countryCode])}::jsonb END`
+              }).where(and(
+                eq(mobileOperatorsTable.id, existingOperator.id),
+                sql`NOT (${mobileOperatorsTable.countryCodes} @> ${JSON.stringify([countryCode])}::jsonb)`
+              )).returning({ id: mobileOperatorsTable.id });
+              associationAdded = updated.length > 0;
+            }
+          }
+          if (!existingOperator.active && input.activate && hasMatchingFx) {
+            const routes = await tx.select({
+              primaryGatewayId: paymentRoutesTable.primaryGatewayId,
+              secondaryGatewayId: paymentRoutesTable.secondaryGatewayId,
+              tertiaryGatewayId: paymentRoutesTable.tertiaryGatewayId
+            }).from(paymentRoutesTable).where(eq(paymentRoutesTable.operatorSlug, input.operatorSlug));
+            const routeGatewayIds = [...new Set(routes.flatMap((route) => [route.primaryGatewayId, route.secondaryGatewayId, route.tertiaryGatewayId].filter((id) => Boolean(id))))];
+            const gateways = routeGatewayIds.length ? await tx.select({ id: paymentGatewaysTable.id, slug: paymentGatewaysTable.slug }).from(paymentGatewaysTable).where(inArray(paymentGatewaysTable.id, routeGatewayIds)) : [];
+            if (gateways.some((gateway) => !gateway.slug.toLowerCase().includes("clapay"))) {
+              blockedReason = "The shared operator is inactive but also routes through another gateway; global reactivation requires separate admin review.";
+            } else {
+              if (!input.dryRun) await tx.update(mobileOperatorsTable).set({ active: true }).where(eq(mobileOperatorsTable.id, existingOperator.id));
+            }
+          }
+        }
+        const [config] = await tx.select().from(countryPaymentConfigsTable).where(and(
+          eq(countryPaymentConfigsTable.countryCode, countryCode),
+          eq(countryPaymentConfigsTable.methodSlug, input.methodSlug)
+        )).limit(1);
+        const localConfigs = !config ? await tx.select({
+          minDeposit: countryPaymentConfigsTable.minDeposit,
+          feePercent: countryPaymentConfigsTable.feePercent
+        }).from(countryPaymentConfigsTable).where(eq(countryPaymentConfigsTable.countryCode, countryCode)).limit(1) : [];
+        const configSettings = !config ? {
+          minDeposit: localConfigs[0]?.minDeposit ?? 500,
+          feePercent: localConfigs[0]?.feePercent ?? 0,
+          usedDefaults: localConfigs.length === 0
+        } : void 0;
+        if (!config) {
+          configAdded = true;
+          if (!input.dryRun) {
+            await tx.insert(countryPaymentConfigsTable).values({
+              countryCode,
+              methodSlug: input.methodSlug,
+              enabled: input.activate && hasMatchingFx && !blockedReason,
+              minDeposit: configSettings.minDeposit,
+              feePercent: configSettings.feePercent
+            }).onConflictDoNothing();
+          }
+        } else if (!config.enabled && input.activate && hasMatchingFx && !blockedReason) {
+          configActivated = true;
+          if (!input.dryRun) await tx.update(countryPaymentConfigsTable).set({ enabled: true }).where(eq(countryPaymentConfigsTable.id, config.id));
+        }
+        return { methodAdded, operatorAdded, configAdded, configActivated, associationAdded, countryAdded, configSettings, blockedReason };
+      });
+    }
+  };
+}
+
+// src/routes/admin.ts
 var router13 = (0, import_express14.Router)();
 router13.use(requireAdminJwt);
 function requireAdmin2(req, res, next) {
@@ -163091,6 +163498,43 @@ router13.get("/admin/payment-configs", requireAdmin2, async (_req, res) => {
   }).from(countriesTable).orderBy(countriesTable.sortOrder, countriesTable.name);
   const methods = await db.select().from(paymentMethodsTable).orderBy(paymentMethodsTable.sortOrder);
   res.json({ configs, countries, methods });
+});
+router13.post("/admin/payment-configs/clapay-sync", requireAdmin2, async (req, res) => {
+  const body = req.body && typeof req.body === "object" ? req.body : {};
+  if (body.activate === true) {
+    res.status(400).json({ error: "Catalogue activation is reserved for the explicitly approved CLI sync." });
+    return;
+  }
+  if (body.activate !== void 0 && body.activate !== false) {
+    res.status(400).json({ error: "activate must be false; future catalogue discoveries require manual review." });
+    return;
+  }
+  if (body.dryRun !== void 0 && typeof body.dryRun !== "boolean") {
+    res.status(400).json({ error: "dryRun must be a boolean." });
+    return;
+  }
+  try {
+    const result = await syncClapayCatalogue({ activate: false, dryRun: body.dryRun === true });
+    res.json(result);
+  } catch {
+    res.status(500).json({
+      success: false,
+      dryRun: body.dryRun === true,
+      activate: false,
+      countriesChecked: 0,
+      countriesAdded: 0,
+      operatorsFound: 0,
+      methodsAdded: 0,
+      operatorsAdded: 0,
+      configsAdded: 0,
+      configsActivated: 0,
+      associationsAdded: 0,
+      reviewRequired: 0,
+      defaultsUsed: [],
+      errors: [{ countryCode: null, message: "Clapay catalogue synchronization failed safely." }],
+      blocked: []
+    });
+  }
 });
 router13.put("/admin/payment-configs", requireAdmin2, async (req, res) => {
   const { countryCode, methodSlug, enabled, minDeposit, feePercent } = req.body;
@@ -166673,14 +167117,14 @@ async function resolveClapayReferralPayout(countryCode, operatorSlug, phone, amo
   const client = new ClapayClient(credentials.token, credentials.baseUrl);
   const [countryRecord] = await db.select({ dialCode: countriesTable.dialCode }).from(countriesTable).where(eq(countriesTable.code, country)).limit(1);
   if (!countryRecord) throw new PayoutValidationError("Pays introuvable", 422);
-  const normalize4 = (value) => value.toLowerCase().replace(/[^a-z0-9]/g, "");
-  const wanted = normalize4(operatorSlug);
+  const normalize5 = (value) => value.toLowerCase().replace(/[^a-z0-9]/g, "");
+  const wanted = normalize5(operatorSlug);
   if (!wanted) throw new PayoutValidationError("Op\xE9rateur invalide", 422);
   const operators = await client.getOperators(country);
   const eligible = operators.filter((op) => clapayOperatorSupportsMethod(op, "CASHIN"));
-  const operator = eligible.find((op) => normalize4(op.codeoperator) === wanted) ?? eligible.find((op) => {
-    const code = normalize4(op.codeoperator);
-    const name3 = normalize4(op.name);
+  const operator = eligible.find((op) => normalize5(op.codeoperator) === wanted) ?? eligible.find((op) => {
+    const code = normalize5(op.codeoperator);
+    const name3 = normalize5(op.name);
     return wanted === name3 || wanted.includes(name3) || name3.includes(wanted) || code.length > 2 && (wanted.startsWith(code) || wanted.endsWith(code));
   });
   if (!operator || !clapayOperatorSupportsMethod(operator, "CASHIN")) {

@@ -32,3 +32,9 @@ Do not switch Wave to hosted checkout merely because Clapay returns a field name
 **Why:** The response DTO and examples associate `payment_url` with hosted checkout, but the guide's operator-completion section explicitly permits either field. Treating the field name as the tunnel discards valid links or changes unrelated payment flows.
 
 **How to apply:** Interpret links using the actual request tunnel. Preserve the pending deposit before opening the supplied link, offer the documented QR/mobile opening action, and continue to require verified provider settlement before crediting the wallet.
+
+Future Clapay catalogue discoveries must be imported for administrator review, not automatically enabled for clients.
+
+**Why:** The user chose « Importer, puis valider dans l’admin » and separately requested activation for the initial import. That initial approval is not standing permission for automatic activation on later synchronizations.
+
+**How to apply:** Keep future import and activation separate. Preserve existing fees, minimums and gateway choices; require valid currency configuration before enabling newly discovered country/operator pairs.

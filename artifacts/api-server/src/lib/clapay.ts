@@ -188,9 +188,12 @@ export function findClapayOperator(
   if (!slug) return null;
   const codeOf = (op: ClapayOperator) => normalize(typeof op.codeoperator === "string" ? op.codeoperator : "");
   const nameOf = (op: ClapayOperator) => normalize(typeof op.name === "string" ? op.name : "");
+  const isOrangeAlias = (op: ClapayOperator) => codeOf(op) === "om"
+    && (slug.includes("orange") || slug === "om");
   const brandAliases = CLAPAY_OPERATOR_BRANDS[country.trim().toUpperCase()]
     ?.find(aliases => aliases.includes(slug));
   return operators.find(op => codeOf(op) === slug)
+    ?? operators.find(isOrangeAlias)
     ?? operators.find(op => {
       const code = codeOf(op);
       const name = nameOf(op);
@@ -401,14 +404,16 @@ export function parseClapayMeta(raw: string | null | undefined): ClapayGatewayMe
 export class ClapayClient {
   private token: string;
   private baseUrl: string;
+  private requestTimeoutMs: number;
 
   /** Internal cache partition only; never return this fingerprint to the panel. */
   getCatalogueCacheKey(): string {
     return createHash("sha256").update(JSON.stringify([this.baseUrl, this.token])).digest("hex");
   }
 
-  constructor(token: string, baseUrl = "https://nw-api.clapay.app/nowallet/api") {
+  constructor(token: string, baseUrl = "https://nw-api.clapay.app/nowallet/api", requestTimeoutMs = 30_000) {
     this.token = token;
+    this.requestTimeoutMs = Math.min(30_000, Math.max(500, requestTimeoutMs));
     // Normalize: strip trailing slash AND /nowallet/api suffix so we always have the root URL
     // (paths in each method already include /nowallet/api/...)
     this.baseUrl = baseUrl.replace(/\/$/, "").replace(/\/nowallet\/api$/, "");
@@ -452,7 +457,7 @@ export class ClapayClient {
         Accept: "application/json",
       },
       body: body ? JSON.stringify(body) : undefined,
-      signal: AbortSignal.timeout(30_000),   // 30s hard timeout
+      signal: AbortSignal.timeout(this.requestTimeoutMs),
     });
     const elapsed = Date.now() - start;
 
