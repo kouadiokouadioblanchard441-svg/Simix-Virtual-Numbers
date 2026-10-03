@@ -26,3 +26,4 @@
 - [Clapay legacy reconciliation](clapay-legacy-reconciliation.md) — reconstruct old payment expectations from the initiation ledger, not callbacks; rotate pending batches to avoid starvation.
 - [Bundle merge validation](merge-marker-validation.md) — separator comments in generated dependencies may be mistaken for unresolved conflict markers.
 - [Workflow reconciliation listeners](workflow-reconciliation-listeners.md) — task merges can leave older servers alive; check for stale listeners before changing artifact ports.
+- [Validation registration](validation-registration.md) — registering a validation also links it to Project; check before adding another reference.

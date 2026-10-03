@@ -28,6 +28,10 @@ args = "deposit-catalogue-regressions"
 task = "workflow.run"
 args = "deposit-panel-typecheck"
 
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "api-server-typecheck"
+
 [[workflows.workflow]]
 name = "Start application"
 author = "agent"
@@ -58,6 +62,17 @@ author = "agent"
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "pnpm --filter @workspace/simix typecheck"
+
+[workflows.workflow.metadata]
+isValidation = true
+
+[[workflows.workflow]]
+name = "api-server-typecheck"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "pnpm --filter @workspace/api-server typecheck"
 
 [workflows.workflow.metadata]
 isValidation = true
