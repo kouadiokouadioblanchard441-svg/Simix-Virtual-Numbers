@@ -3,14 +3,11 @@ name: Auto-refund bug and sweep
 description: Rules for atomic, exactly-once refunds after real number expiry, including activation and hosting safeguards.
 ---
 
-## The bug
-Provider terminal statuses can arrive before the Simix expiry after a paid extension. Expiry/refund decisions must therefore use the current persisted `expiresAt`, not the provider response or a creation-age fallback.
-
-## Expiry-based auto-refund
-- The persisted Simix expiry is authoritative, including paid extensions.
-- A provider `TIMEOUT` before that deadline leaves the number waiting; the sweep refunds only after the current deadline and only if no SMS is stored.
-- Terminal provider responses must save any included SMS before refund handling.
-- The worker checks expired numbers every minute and runs a sweep at startup.
+## Activation-order refunds
+- A terminal 5sim `TIMEOUT` is authoritative for activation orders. Save any SMS in the response first; if none is stored, atomically expire and refund once, regardless of the local 20-minute display timer.
+- Continue polling activation orders with a provider order ID after the local timer reaches zero, until 5sim reports a terminal result.
+- The local-expiry sweep is a safety net for hosting rentals and activation records without a provider order ID; it also recovers old terminal rows missing a refund.
+- The worker checks every 15 seconds and runs a refund sweep every minute, including at startup.
 - SMS persistence and refund decisions lock the virtual-number row, preventing a race from crediting a number whose SMS was saved at the same time.
 - A refund credits the original purchase price and links the refund transaction to the virtual number for exactly-once recovery.
 
@@ -20,6 +17,8 @@ Provider terminal statuses can arrive before the Simix expiry after a paid exten
 
 ## Frontend
 - `PendingRefundsPanel` component added to `/admin/diagnostics` — shows count, list, and manual sweep button
-- User-facing text must promise refund at the displayed expiry, not at a hard-coded duration
+- At local `00:00`, activation UI may wait for 5sim's final status; it must not claim a refund until the terminal result is processed.
 
-**Why:** The provider can time out independently of the app's extended deadline, and SMS arrival can race an expiry sweep. The local deadline and row lock keep refund decisions aligned with what the user was shown.
+**Why:** The user chose 5sim's terminal status as the source of truth and removed paid extensions; provider completion may differ from the local timer.
+
+**How to apply:** For activation orders with a provider ID, finalize on 5sim `TIMEOUT` (or definitive not-found), not merely on local time. Keep the local-expiry fallback for hosting and records with no provider order.

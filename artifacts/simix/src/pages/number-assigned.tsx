@@ -1,8 +1,8 @@
 import { AppLayout } from "@/components/layout/app-layout";
 import { AuthGuard } from "@/components/auth-guard";
-import { useGetNumber, getGetNumberQueryKey, useListNumberMessages, getListNumberMessagesQueryKey, useExtendNumber, getGetDashboardSummaryQueryKey, getGetWalletQueryKey, getListTransactionsQueryKey } from "@workspace/api-client-react";
+import { useGetNumber, getGetNumberQueryKey, useListNumberMessages, getListNumberMessagesQueryKey, getGetDashboardSummaryQueryKey, getGetWalletQueryKey, getListTransactionsQueryKey, getListNumberHistoryQueryKey, getListActiveNumbersQueryKey } from "@workspace/api-client-react";
 import { useLocation, Link } from "wouter";
-import { Copy, Clock, ArrowLeft, MessageSquare, Shield, CheckCircle2, Download, MoreVertical, RefreshCw, AlertTriangle, Lightbulb } from "lucide-react";
+import { Copy, ArrowLeft, MessageSquare, Shield, CheckCircle2, Download, MoreVertical, RefreshCw, AlertTriangle, Lightbulb } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useQueryClient, useMutation } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
@@ -28,7 +28,13 @@ function NumberAssignedContent({ id }: { id: string }) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  const { data: number, isLoading } = useGetNumber(id, { query: { enabled: !!id, queryKey: getGetNumberQueryKey(id) } });
+  const { data: number, isLoading } = useGetNumber(id, {
+    query: {
+      enabled: !!id,
+      queryKey: getGetNumberQueryKey(id),
+      refetchInterval: (query) => query.state.data?.status === "waiting" ? 4000 : false,
+    },
+  });
   
   // Poll for messages every 4s
   const { data: messages, refetch: refetchMessages, isFetching: isFetchingMessages } = useListNumberMessages(id, { 
@@ -38,8 +44,6 @@ function NumberAssignedContent({ id }: { id: string }) {
       refetchInterval: 4000,
     } 
   });
-
-  const extendMutation = useExtendNumber();
 
   /* On-demand 5sim poll — triggers the server to check 5sim immediately */
   const pollMutation = useMutation({
@@ -61,6 +65,17 @@ function NumberAssignedContent({ id }: { id: string }) {
   const [timeLeft, setTimeLeft] = useState(0);
 
   useEffect(() => {
+    if (number?.status !== "expired" && number?.status !== "received") return;
+    void queryClient.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() });
+    void queryClient.invalidateQueries({ queryKey: getListNumberHistoryQueryKey() });
+    void queryClient.invalidateQueries({ queryKey: getListActiveNumbersQueryKey() });
+    if (number.status === "expired") {
+      void queryClient.invalidateQueries({ queryKey: getGetWalletQueryKey() });
+      void queryClient.invalidateQueries({ queryKey: getListTransactionsQueryKey() });
+    }
+  }, [number?.status, queryClient]);
+
+  useEffect(() => {
     if (!number?.expiresAt || number.status !== 'waiting') return;
     const updateTimer = () => {
       const diff = differenceInSeconds(new Date(number.expiresAt), new Date());
@@ -78,19 +93,6 @@ function NumberAssignedContent({ id }: { id: string }) {
     }
   }
 
-  async function onExtend() {
-    try {
-      await extendMutation.mutateAsync({ numberId: id });
-      queryClient.invalidateQueries({ queryKey: getGetNumberQueryKey(id) });
-      queryClient.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() });
-      queryClient.invalidateQueries({ queryKey: getGetWalletQueryKey() });
-      queryClient.invalidateQueries({ queryKey: getListTransactionsQueryKey() });
-      toast({ title: "Prolongé", description: `Le temps a été prolongé de ${number?.extensionMinutes ?? 10} min.` });
-    } catch (e) {
-      toast({ variant: "destructive", title: "Prolongation impossible", description: (e as Error).message || "Votre solde est peut-être insuffisant ou le numéro a déjà expiré." });
-    }
-  }
-
   if (isLoading || !number) {
     return <div className="flex-1 flex items-center justify-center"><div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" /></div>;
   }
@@ -100,8 +102,6 @@ function NumberAssignedContent({ id }: { id: string }) {
     differenceInSeconds(new Date(number.expiresAt), new Date(number.createdAt)),
   );
   const validityMinutes = Math.ceil(totalSeconds / 60);
-  const extensionMinutes = number.extensionMinutes ?? 10;
-  const extensionFee = number.extensionFee ?? 50;
   const progress = Math.min(100, Math.max(0, (timeLeft / totalSeconds) * 100));
 
   return (
@@ -125,7 +125,7 @@ function NumberAssignedContent({ id }: { id: string }) {
         </div>
       </div>
 
-      <div className={`flex-1 overflow-y-auto overflow-x-hidden px-5 py-6 ${number.status === 'waiting' ? 'pb-48' : ''}`}>
+      <div className="flex-1 overflow-y-auto overflow-x-hidden px-5 py-6">
         
         {/* HERO CARD */}
         <div className="bg-gradient-to-br from-violet-700 to-violet-900 rounded-3xl p-5 mb-4 flex items-center relative overflow-hidden shadow-lg">
@@ -200,9 +200,13 @@ function NumberAssignedContent({ id }: { id: string }) {
               </div>
             </div>
             <div className="flex-1 py-1">
-              <h4 className="text-sm font-bold text-primary mb-1">Temps restant pour recevoir</h4>
+              <h4 className="text-sm font-bold text-primary mb-1">
+                {timeLeft > 0 ? "Temps restant pour recevoir" : "Vérification en cours"}
+              </h4>
               <p className="text-xs text-muted-foreground leading-relaxed mb-3">
-                Vous avez {validityMinutes} minutes pour recevoir votre SMS. Sans SMS à l'expiration, le remboursement est automatique.
+                {timeLeft > 0
+                  ? `Vous avez ${validityMinutes} minutes pour recevoir votre SMS. Si 5sim confirme un timeout sans SMS, le remboursement est automatique.`
+                  : "Le délai local est écoulé. Nous attendons la confirmation de 5sim ; sans SMS, le remboursement sera automatiquement crédité."}
               </p>
               <div className="bg-primary/10 border border-primary/20 rounded-lg p-2.5 flex items-start gap-2">
                  <Lightbulb className="w-4 h-4 text-primary shrink-0" />
@@ -212,6 +216,15 @@ function NumberAssignedContent({ id }: { id: string }) {
                  </div>
               </div>
             </div>
+          </div>
+        )}
+
+        {number.status === "expired" && (
+          <div role="status" className="bg-emerald-500/10 border border-emerald-500/30 rounded-2xl p-4 mb-8">
+            <h4 className="text-sm font-bold text-emerald-500 mb-1">Commande terminée — remboursement effectué</h4>
+            <p className="text-xs text-emerald-500/80 font-medium">
+              Aucun SMS n'a été reçu. Le prix du numéro a été crédité sur votre solde Simix.
+            </p>
           </div>
         )}
 
@@ -292,14 +305,6 @@ function NumberAssignedContent({ id }: { id: string }) {
 
       </div>
 
-      {number.status === 'waiting' && (
-        <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md p-5 bg-background/90 backdrop-blur-xl border-t border-card-border z-30 pb-safe">
-          <Button onClick={onExtend} disabled={extendMutation.isPending} className="h-14 w-full bg-gradient-to-r from-violet-600 to-indigo-600 hover:opacity-90 text-white rounded-xl shadow-lg shadow-primary/25 flex flex-col items-center justify-center pt-1 leading-none">
-            <span className="block text-sm font-bold mb-0.5 flex items-center gap-1"><Clock className="w-4 h-4"/> Prolonger le temps +{extensionMinutes} min</span>
-            <span className="block text-[10px] font-normal text-white/80">{extensionFee} FCFA</span>
-          </Button>
-        </div>
-      )}
     </div>
   );
 }

@@ -116,7 +116,7 @@ export default function LegalCGU() {
               </Section>
 
               <Section title="7. Remboursements">
-                <p>Un remboursement automatique du solde est effectué si aucun SMS n'est reçu pendant les 20 minutes de validité du numéro. Une prolongation payante peut ajouter du temps avant l'expiration ; sa durée et son prix sont affichés dans l'application. L'annulation manuelle n'est pas disponible.</p>
+                <p>Lorsqu'un numéro d'activation se termine sans SMS, notamment lorsque le fournisseur 5sim renvoie le statut TIMEOUT, le montant de l'achat est automatiquement recrédité sur le portefeuille Simix. Le délai habituel est de 20 minutes, mais le statut final du fournisseur clôt la commande. L'annulation manuelle n'est pas disponible.</p>
                 <p>• Le montant de l'achat est recrédité sur votre portefeuille Simix</p>
                 <p>• Le remboursement est lancé automatiquement après l'expiration du numéro</p>
                 <p>En revanche, les rechargements du portefeuille ne sont pas remboursables en espèces ou sur votre compte Mobile Money d'origine.</p>

@@ -259,8 +259,6 @@ async function upsertSystemSettings() {
     { key: "fraud_block_threshold",  value: "61" },
     /* Number settings */
     { key: "number_validity_minutes",value: "20" },
-    { key: "extend_minutes",         value: "10" },
-    { key: "extend_fee_fcfa",        value: "50" },
     /* Default margin applied to new services created by the 5sim sync.
        Admin can update this from the admin panel (system_settings). */
     { key: "default_margin",         value: "200" },

@@ -421,18 +421,18 @@ Fonctionnement étape par étape:
 5. Copier le code et l'utiliser
 
 Prix: variable selon le service et le pays, en général entre 100 et 2000 FCFA. WhatsApp: ~500 FCFA. Telegram: ~500 FCFA. Google: ~300 FCFA. Binance: ~1500 FCFA.
-Le délai initial est de 20 minutes. Une prolongation payante peut être proposée avant l'expiration ; sa durée et son prix sont affichés dans l'application.
-Aucune annulation manuelle n'est possible. Il faut attendre la réception du SMS ou l'expiration du numéro.
+Le délai habituel est d'environ 20 minutes. Le statut TIMEOUT de 5sim termine la commande ; si aucun SMS n'a été enregistré, le prix du numéro est automatiquement recrédité.
+Aucune annulation manuelle n'est possible. Il faut attendre le SMS ou le statut final de 5sim ; le compte à rebours local est indicatif et le contrôle final suit le fournisseur.
 Solde maximum: 500 000 FCFA. Dépôt minimum: 500 FCFA.
 
 Statuts des commandes:
 En attente = le numéro est actif, il attend le SMS. Normal, sois patient(e).
 Reçu = le code SMS est arrivé, il est visible sur le tableau de bord.
-Expiré = les 20 minutes sont passées. Si aucun SMS reçu → remboursement automatique.
+Expiré = 5sim a terminé la commande. Si aucun SMS n'a été enregistré → remboursement automatique du prix du numéro.
 Annulé = le fournisseur a terminé la commande. Si aucun SMS n'a été reçu, le remboursement automatique s'applique.
 
 Problèmes fréquents et solutions directes:
-SMS pas reçu → attendre la fin du délai (remboursement automatique garanti si aucun SMS). Si le délai est passé et pas de remboursement visible, contacter le support humain.
+SMS pas reçu → attendre le statut final de 5sim. TIMEOUT sans SMS déclenche le remboursement automatique. Si le statut est terminé mais que le crédit n'apparaît pas, contacter le support humain.
 Numéro refusé par l'application → essayer un autre pays ou un autre opérateur.
 Paiement Mobile Money échoué → vérifier le solde du compte Mobile Money, réessayer. Si le problème persiste, vérifier que le numéro Mobile Money est bien enregistré.
 Solde insuffisant → recharger d'abord via Mobile Money dans la section "Recharger".
@@ -904,21 +904,21 @@ router.post("/support/chat", async (req, res): Promise<void> => {
         {
           test: m => /rembours|refund/.test(m),
           responses: [
-            "Les remboursements sont automatiques : si aucun SMS n'est reçu avant l'expiration du numéro, le montant est recrédité sur votre solde Simix. Vérifiez votre historique de transactions pour confirmer.",
+            "Le remboursement est automatique lorsque 5sim termine la commande avec TIMEOUT et qu'aucun SMS n'a été enregistré. Le prix du numéro est alors recrédité sur votre solde Simix. Vérifiez votre historique de transactions pour confirmer.",
           ],
         },
         /* SMS / code */
         {
           test: m => /sms.*re[çc]u|sms.*arriv|code.*re[çc]u|code.*arriv|v[eé]rification/.test(m),
           responses: [
-            "Le code SMS peut prendre quelques minutes à arriver. Vérifiez la section « Mes numéros » dans votre tableau de bord — le code s'affiche automatiquement dès réception. Si les 20 minutes s'écoulent sans réception, vous êtes remboursé automatiquement.",
+            "Le code SMS peut prendre quelques minutes à arriver. Vérifiez la section « Mes numéros » dans votre tableau de bord — le code s'affiche automatiquement dès réception. Si 5sim termine la commande avec TIMEOUT sans SMS, le prix est remboursé automatiquement.",
           ],
         },
         /* Numéro pas reçu */
         {
           test: m => /num[eé]ro.*re[çc]u|num[eé]ro.*arriv|not received/.test(m),
           responses: [
-            "Si vous n'avez pas reçu votre numéro, vérifiez d'abord votre tableau de bord dans la section « Mes numéros ». Si le statut est « En attente », c'est normal — le numéro est actif. Si aucun SMS n'arrive dans les 20 minutes, il sera remboursé automatiquement.",
+            "Si vous n'avez pas reçu votre numéro, vérifiez d'abord votre tableau de bord dans la section « Mes numéros ». « En attente » signifie que 5sim n'a pas encore renvoyé son statut final. Si 5sim répond TIMEOUT sans SMS, le prix est remboursé automatiquement.",
           ],
         },
         /* Solde / compte */
@@ -948,14 +948,14 @@ router.post("/support/chat", async (req, res): Promise<void> => {
         {
           test: m => /whatsapp|telegram|facebook|google|instagram|twitter|tiktok|snapchat|discord|signal/.test(m),
           responses: [
-            "Simix supporte tous les grands services ! Pour obtenir un numéro virtuel, allez dans « Services », choisissez le service désiré, sélectionnez un pays, et le numéro vous est attribué instantanément. Vous aurez 20 minutes pour recevoir le code SMS.",
+            "Simix supporte tous les grands services ! Pour obtenir un numéro virtuel, allez dans « Services », choisissez le service désiré, sélectionnez un pays, et le numéro vous est attribué instantanément. Le compte à rebours est généralement de 20 minutes ; le résultat final suit le statut de 5sim.",
           ],
         },
         /* Fonctionnement général */
         {
           test: m => /comment [cç]a marche|how it works|fonctionnement|comment utiliser|comment [cç]a fonctionne/.test(m),
           responses: [
-            "C'est très simple en 4 étapes :\n1. Rechargez votre solde via Mobile Money\n2. Choisissez un service (WhatsApp, Google, etc.) et un pays\n3. Recevez un numéro virtuel valide 20 minutes\n4. Entrez ce numéro dans l'app → le code SMS arrive automatiquement dans votre tableau de bord. Copiez-le et c'est réglé !",
+            "C'est très simple en 4 étapes :\n1. Rechargez votre solde via Mobile Money\n2. Choisissez un service (WhatsApp, Google, etc.) et un pays\n3. Recevez un numéro avec un compte à rebours habituel de 20 minutes\n4. Entrez ce numéro dans l'app → le code SMS arrive automatiquement dans votre tableau de bord. Si 5sim renvoie TIMEOUT sans SMS, le prix est remboursé.",
           ],
         },
       ];

@@ -71,14 +71,8 @@ export const isRegistrationEnabled = () => getSettingBool("registration_enabled"
 /** Is SMS simulation mode active (dev/demo)? */
 export const isSmsSimulationEnabled = () => getSettingBool("sms_simulation", true);
 
-/** Fixed activation-number validity before the optional paid extension. */
+/** Fixed activation-number validity. */
 export const getNumberValidityMinutes = async () => 20;
-
-/** Extension duration in minutes */
-export const getExtendMinutes = () => getSettingInt("extend_minutes", 10);
-
-/** Extension fee in FCFA */
-export const getExtendFee = () => getSettingInt("extend_fee_fcfa", 50);
 
 /** Global minimum recharge amount in FCFA */
 export const getMinDepositFcfa = () => getSettingInt("min_deposit_fcfa", 500);

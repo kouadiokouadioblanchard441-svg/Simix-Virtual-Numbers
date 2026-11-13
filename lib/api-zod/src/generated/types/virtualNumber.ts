@@ -17,10 +17,6 @@ export interface VirtualNumber {
   expiresAt: Date;
   createdAt: Date;
   price: number;
-  /** Additional validity available before expiry */
-  extensionMinutes?: number;
-  /** Extension price in FCFA */
-  extensionFee?: number;
   service: Service;
   country: Country;
   messages: SmsMessage[];

@@ -36,11 +36,11 @@ const FAQ = [
   },
   {
     q: "Que faire si je ne reçois pas le SMS ?",
-    a: "Le numéro reste actif pendant 20 minutes. Une prolongation payante peut être proposée avant l'expiration ; sa durée et son prix sont affichés dans l'application. Si aucun SMS n'arrive avant son expiration, votre solde est remboursé automatiquement. Il n'est pas possible d'annuler le numéro manuellement.",
+    a: "Le numéro reste actif jusqu'à ce que 5sim confirme le SMS ou termine la commande. Si 5sim renvoie TIMEOUT sans SMS, le prix du numéro est automatiquement recrédité sur votre solde. Le délai habituel est de 20 minutes. L'annulation manuelle n'est pas disponible.",
   },
   {
     q: "Combien de temps dure un numéro virtuel ?",
-    a: "Un numéro reste actif pendant 20 minutes. Une prolongation payante peut être proposée avant l'expiration ; sa durée et son prix sont affichés dans l'application.",
+    a: "Un numéro d'activation reste actif jusqu'à la fin confirmée par 5sim, généralement environ 20 minutes. La commande se termine plus tôt ou plus tard selon le statut renvoyé par le fournisseur.",
   },
   {
     q: "Mon paiement est bloqué, que faire ?",

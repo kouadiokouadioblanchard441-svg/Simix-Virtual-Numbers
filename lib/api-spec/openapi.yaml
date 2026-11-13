@@ -296,25 +296,6 @@ paths:
                 items:
                   $ref: "#/components/schemas/SmsMessage"
 
-  /numbers/{numberId}/extend:
-    post:
-      operationId: extendNumber
-      tags: [numbers]
-      summary: Add the configured extension time to an active virtual number
-      parameters:
-        - name: numberId
-          in: path
-          required: true
-          schema:
-            type: string
-      responses:
-        "200":
-          description: Extended
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/VirtualNumber"
-
   /wallet:
     get:
       operationId: getWallet
@@ -596,7 +577,7 @@ components:
 
     NumberQuote:
       type: object
-      required: [service, country, available, waitTime, price, fees, total, validityMinutes, extensionMinutes, extensionFee]
+      required: [service, country, available, waitTime, price, fees, total, validityMinutes]
       properties:
         service:
           $ref: "#/components/schemas/Service"
@@ -615,13 +596,7 @@ components:
           type: integer
         validityMinutes:
           type: integer
-          description: Always 20 minutes for an activation number before optional extension
-        extensionMinutes:
-          type: integer
-          description: Additional validity available before expiry
-        extensionFee:
-          type: integer
-          description: Extension price in FCFA
+          description: Always 20 minutes for an activation number
 
     RequestNumberInput:
       type: object
@@ -651,12 +626,6 @@ components:
           format: date-time
         price:
           type: integer
-        extensionMinutes:
-          type: integer
-          description: Additional validity available before expiry
-        extensionFee:
-          type: integer
-          description: Extension price in FCFA
         service:
           $ref: "#/components/schemas/Service"
         country:

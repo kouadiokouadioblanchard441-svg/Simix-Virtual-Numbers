@@ -539,7 +539,7 @@ json.NewDecoder(resp.Body).Decode(&services)`,
     method: "GET",
     path: "/numbers/quote",
     title: "Obtenir un devis",
-    description: "Retourne le prix, la disponibilité, les 20 minutes initiales et les conditions de prolongation pour un service et un pays donnés. Ne nécessite pas d'authentification.",
+    description: "Retourne le prix, la disponibilité et les 20 minutes habituelles pour un service et un pays donnés. Ne nécessite pas d'authentification.",
     auth: false,
     queryParams: [
       { name: "serviceId", type: "string (UUID)", required: true, description: "ID du service", example: "uuid-service" },
@@ -562,9 +562,7 @@ json.NewDecoder(resp.Body).Decode(&services)`,
   "fees": 0,
   "total": 350,
   "waitTime": "10 - 60 sec",
-  "validityMinutes": 20,
-  "extensionMinutes": 10,
-  "extensionFee": 50
+  "validityMinutes": 20
 }`,
     codes: [
       { code: 200, label: "OK", desc: "Devis retourné" },
@@ -822,52 +820,6 @@ async function waitForSMS(numberId) {
 }`,
       go: `resp, _ := client.Post(
     "${BASE_URL}/numbers/UUID/poll", "", nil,
-)`,
-    },
-  },
-  {
-    id: "extend-number",
-    method: "POST",
-    path: "/numbers/:id/extend",
-    title: "Prolonger un numéro",
-    description: "Prolonge la durée de validité d'un numéro actif. Des FCFA sont déduits du solde (frais configurés par l'admin). Si le numéro est expiré, il repasse à `waiting`. Impossible si un SMS a déjà été reçu.",
-    auth: true,
-    response: `{
-  "id": "uuid-numero",
-  "phoneNumber": "+12025551234",
-  "service": "WhatsApp",
-  "status": "waiting",
-  "price": 350,
-  "expiresAt": "2026-01-01T00:40:00.000Z",
-  "messages": []
-}`,
-    codes: [
-      { code: 200, label: "OK", desc: "Numéro prolongé — nouvel expiresAt retourné" },
-      { code: 400, label: "Bad Request", desc: "Le numéro a déjà reçu un SMS (non prolongeable)" },
-      { code: 402, label: "Payment Required", desc: "Solde insuffisant pour les frais de prolongation" },
-      { code: 404, label: "Not Found", desc: "Numéro introuvable" },
-    ],
-    examples: {
-      curl: `curl -X POST ${BASE_URL}/numbers/UUID_NUMERO/extend \\
-  -b cookies.txt`,
-      javascript: `const updated = await fetch(\`${BASE_URL}/numbers/\${numberId}/extend\`, {
-  method: 'POST',
-  credentials: 'include',
-}).then(r => r.json());
-console.log('Expire à :', updated.expiresAt);`,
-      python: `updated = session.post(
-    f'${BASE_URL}/numbers/{number_id}/extend'
-).json()
-print(updated['expiresAt'])`,
-      php: `$ch = curl_init("${BASE_URL}/numbers/$numberId/extend");
-curl_setopt_array($ch, [
-    CURLOPT_RETURNTRANSFER => true,
-    CURLOPT_POST           => true,
-    CURLOPT_COOKIEFILE     => 'cookies.txt',
-]);
-$updated = json_decode(curl_exec($ch), true);`,
-      go: `resp, _ := client.Post(
-    "${BASE_URL}/numbers/UUID/extend", "", nil,
 )`,
     },
   },

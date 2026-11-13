@@ -27,7 +27,7 @@ import { broadcastNotification } from "../routes/notifications";
 const POLL_INTERVAL_MS     = 15_000;
 const ERROR_BACKOFF_MS     = 60_000;
 const MAX_CONCURRENT_POLLS = 10;
-/* Auto-refund: the persisted Simix expiry is authoritative, including extensions. */
+/* Auto-refund: provider TIMEOUT is final; local expiry is the safety-net fallback. */
 const SWEEP_INTERVAL_MS    = 60 * 1_000; /* vérifie chaque minute */
 
 let pollerTimer: ReturnType<typeof setTimeout> | null = null;
@@ -104,7 +104,10 @@ async function pollAll(): Promise<void> {
         and(
           eq(virtualNumbersTable.status, "waiting"),
           isNotNull(virtualNumbersTable.externalOrderId),
-          gt(virtualNumbersTable.expiresAt, new Date()),
+          or(
+            eq(virtualNumbersTable.numberType, "activation"),
+            gt(virtualNumbersTable.expiresAt, new Date()),
+          ),
         ),
       );
   } catch (e) {
@@ -148,6 +151,22 @@ async function pollSingleOrder(
   } else {
     await pollActivationOrder(client, vn, orderId);
   }
+}
+
+/** Poll one owned order on demand using the same terminal handling as the worker. */
+export async function pollNumberNow(
+  vn: typeof virtualNumbersTable.$inferSelect,
+): Promise<void> {
+  if (vn.status !== "waiting" || !vn.externalOrderId) return;
+
+  const [provider] = await db
+    .select()
+    .from(apiProvidersTable)
+    .where(and(eq(apiProvidersTable.slug, "5sim"), eq(apiProvidersTable.active, true)))
+    .limit(1);
+  if (!provider?.apiKey) return;
+
+  await pollSingleOrder(new FiveSimClient(provider.apiKey), vn);
 }
 
 /* ─── Activation number poll (one-shot) ────────────────────────── */
@@ -326,13 +345,11 @@ async function pushSmsNotification(
 async function handleExpiredOrder(vn: typeof virtualNumbersTable.$inferSelect): Promise<void> {
   let smsReceived = 0;
   let refundIssued = false;
-  let stillActive = false;
   try {
     await db.transaction(async (tx) => {
       const [current] = await tx
         .select({
           status: virtualNumbersTable.status,
-          expiresAt: virtualNumbersTable.expiresAt,
           userId: virtualNumbersTable.userId,
           price: virtualNumbersTable.price,
           createdAt: virtualNumbersTable.createdAt,
@@ -350,19 +367,12 @@ async function handleExpiredOrder(vn: typeof virtualNumbersTable.$inferSelect): 
         .where(eq(smsMessagesTable.numberId, vn.id));
       smsReceived = msgCount?.c ?? 0;
 
-      const outcome = getNumberExpiryOutcome(current.expiresAt, new Date(), smsReceived);
-      if (outcome === "still_active") {
-        /* A provider TIMEOUT must not override a Simix extension. */
-        stillActive = true;
-        return;
-      }
-
       await tx
         .update(virtualNumbersTable)
         .set({ status: smsReceived > 0 ? "received" : "expired" })
         .where(and(eq(virtualNumbersTable.id, vn.id), eq(virtualNumbersTable.status, "waiting")));
 
-      if (outcome === "expired_without_sms") {
+      if (smsReceived === 0) {
         const [existingRefund] = await tx
           .select({ id: transactionsTable.id })
           .from(transactionsTable)
@@ -409,14 +419,6 @@ async function handleExpiredOrder(vn: typeof virtualNumbersTable.$inferSelect): 
   } catch (txErr) {
     /* Transaction rolled back — status stays "waiting", sweep will retry */
     logger.error({ err: (txErr as Error).message, numberId: vn.id }, "[5sim-poller] handleExpiredOrder transaction failed — will retry on next sweep");
-    return;
-  }
-
-  if (stillActive) {
-    logger.info(
-      { numberId: vn.id, providerOrderId: vn.externalOrderId, expiresAt: vn.expiresAt },
-      "[5sim-poller] Provider order ended before the Simix expiry; keep waiting until local expiry",
-    );
     return;
   }
 
@@ -548,10 +550,11 @@ async function handleCancelledOrder(vn: typeof virtualNumbersTable.$inferSelect)
   }
 }
 
-/* ─── Auto-refund sweep (persisted local expiry) ────────────────── */
+/* ─── Auto-refund sweep (local-expiry safety net) ──────────────── */
 
 /**
- * Vérifie chaque minute les numéros dont l'échéance locale est passée ;
+ * Vérifie chaque minute les numéros sans ordre 5sim et les locations hosting
+ * dont l'échéance locale est passée ;
  *   - sont déjà "expired"/"cancelled" mais n'ont pas de remboursement associé
  *     (récupération de dossiers laissés incomplets par une ancienne version).
  * Dans les deux cas, aucun SMS ne doit avoir été enregistré.
@@ -569,6 +572,10 @@ export async function triggerAutoRefundSweep(): Promise<{ processed: number; ref
         and(
           eq(virtualNumbersTable.status, "waiting"),
           lte(virtualNumbersTable.expiresAt, now),
+          or(
+            isNull(virtualNumbersTable.externalOrderId),
+            eq(virtualNumbersTable.numberType, "hosting"),
+          ),
         ),
         and(
           or(
@@ -607,6 +614,7 @@ export async function triggerAutoRefundSweep(): Promise<{ processed: number; ref
         const [current] = await tx
           .select({
             status: virtualNumbersTable.status,
+            numberType: virtualNumbersTable.numberType,
             userId: virtualNumbersTable.userId,
             price: virtualNumbersTable.price,
             createdAt: virtualNumbersTable.createdAt,
@@ -618,6 +626,11 @@ export async function triggerAutoRefundSweep(): Promise<{ processed: number; ref
           .limit(1);
 
         if (!current || !["waiting", "expired", "cancelled"].includes(current.status)) return;
+        if (
+          current.status === "waiting"
+          && current.numberType !== "hosting"
+          && vn.externalOrderId
+        ) return;
         if (getNumberExpiryOutcome(current.expiresAt, new Date(), 0) === "still_active") return;
 
         const [currentSmsCount] = await tx

@@ -327,11 +327,11 @@ const FAQ_ITEMS = [
   },
   {
     q: "Que se passe-t-il si je ne reçois pas le SMS ?",
-    a: "Si aucun SMS n'est reçu dans les délais impartis, votre solde est remboursé automatiquement. Nous vous proposons également un autre numéro pour réessayer sans frais supplémentaires.",
+    a: "Lorsque 5sim termine la commande avec TIMEOUT sans SMS, le prix du numéro est automatiquement recrédité sur votre solde. Vous pouvez ensuite acheter un autre numéro.",
   },
   {
     q: "Combien de temps le numéro reste-t-il actif ?",
-    a: "Chaque numéro reste actif 20 minutes. Une prolongation payante peut être proposée avant l'expiration ; sa durée et son prix sont affichés dans l'application. Si aucun SMS n'est reçu à l'expiration, votre solde est remboursé automatiquement.",
+    a: "Un numéro d'activation reste actif jusqu'à ce que 5sim confirme la réception du SMS ou termine la commande. Si 5sim renvoie TIMEOUT sans SMS, le prix est automatiquement recrédité. Le délai habituel est de 20 minutes.",
   },
   {
     q: "Puis-je utiliser Simix sans carte bancaire ?",
