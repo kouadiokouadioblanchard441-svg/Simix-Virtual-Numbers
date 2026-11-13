@@ -9,7 +9,7 @@
  * Intervalle : 15s normal, 60s après erreur réseau/DB.
  */
 
-import { and, eq, gt, isNotNull, lt, lte, or, sql } from "drizzle-orm";
+import { and, eq, gt, isNotNull, isNull, lt, lte, or, sql } from "drizzle-orm";
 import {
   db,
   virtualNumbersTable,
@@ -43,7 +43,8 @@ export function startFiveSimPoller(): void {
   consecutiveDbErrors = 0;
   logger.info("[5sim-poller] Started background SMS polling (interval: 15s) + auto-refund sweep (5min)");
   schedule(POLL_INTERVAL_MS);
-  scheduleSweep(SWEEP_INTERVAL_MS);
+  /* Recover numbers left terminal by an older code path as soon as this worker starts. */
+  void runAutoRefundSweep();
 }
 
 export function stopFiveSimPoller(): void {
@@ -468,11 +469,11 @@ async function handleCancelledOrder(vn: typeof virtualNumbersTable.$inferSelect)
 /* ─── Auto-refund sweep (expiry + activation fallback) ───────── */
 
 /**
- * Vérifie toutes les 5 min les numéros "waiting" qui :
- *   1. ont dépassé expiresAt ; ou
- *   2. sont des activations âgées de plus de 30 min (garde-fou)
- *   2. n'ont reçu aucun SMS
- * → annule l'ordre sur 5sim (best-effort) → rembourse le solde.
+ * Vérifie toutes les 5 min les numéros qui :
+ *   - sont encore "waiting" après expiresAt (ou au-delà du garde-fou activation) ;
+ *   - sont déjà "expired"/"cancelled" mais n'ont pas de remboursement associé
+ *     (récupération de dossiers laissés incomplets par une ancienne version).
+ * Dans les deux cas, aucun SMS ne doit avoir été enregistré.
  *
  * Exporte également `triggerAutoRefundSweep` pour l'endpoint admin.
  */
@@ -488,15 +489,41 @@ export async function triggerAutoRefundSweep(): Promise<{ processed: number; ref
     .from(virtualNumbersTable)
     .where(
       and(
-        eq(virtualNumbersTable.status, "waiting"),
         isNotNull(virtualNumbersTable.externalOrderId),
         or(
-          lte(virtualNumbersTable.expiresAt, now),
           and(
-            eq(virtualNumbersTable.numberType, "activation"),
-            lt(virtualNumbersTable.createdAt, cutoff),
+            eq(virtualNumbersTable.status, "waiting"),
+            or(
+              lte(virtualNumbersTable.expiresAt, now),
+              and(
+                eq(virtualNumbersTable.numberType, "activation"),
+                lt(virtualNumbersTable.createdAt, cutoff),
+              ),
+            ),
+          ),
+          and(
+            or(
+              eq(virtualNumbersTable.status, "expired"),
+              eq(virtualNumbersTable.status, "cancelled"),
+            ),
+            lte(virtualNumbersTable.expiresAt, now),
           ),
         ),
+        /* Keep the query bounded and never retry a refund already recorded. */
+        sql`NOT EXISTS (
+          SELECT 1 FROM transactions t
+          WHERE t.type = 'refund'
+            AND (
+              t.virtual_number_id = ${virtualNumbersTable.id}
+              OR (
+                t.virtual_number_id IS NULL
+                AND t.user_id = ${virtualNumbersTable.userId}
+                AND t.amount = ${virtualNumbersTable.price}
+                AND t.created_at > ${virtualNumbersTable.createdAt}
+                AND t.created_at < ${virtualNumbersTable.createdAt} + interval '2 hours'
+              )
+            )
+        )`,
       ),
     );
 
@@ -522,32 +549,85 @@ export async function triggerAutoRefundSweep(): Promise<{ processed: number; ref
         continue;
       }
 
-      /* Tenter d'annuler sur 5sim (best-effort, avant la transaction DB) */
-      const client = await getFiveSimClient();
-      if (client && vn.externalOrderId) {
-        try {
-          await client.cancelOrder(Number(vn.externalOrderId));
-          logger.info({ orderId: vn.externalOrderId, numberId: vn.id }, "[5sim-poller] Order cancelled on 5sim (auto-refund sweep)");
-        } catch (e) {
-          logger.warn({ err: (e as Error).message, orderId: vn.externalOrderId }, "[5sim-poller] Could not cancel on 5sim (will still refund)");
+      /* Terminal rows are already closed on the provider; only waiting rows need cancellation. */
+      if (vn.status === "waiting") {
+        const client = await getFiveSimClient();
+        if (client && vn.externalOrderId) {
+          try {
+            await client.cancelOrder(Number(vn.externalOrderId));
+            logger.info({ orderId: vn.externalOrderId, numberId: vn.id }, "[5sim-poller] Order cancelled on 5sim (auto-refund sweep)");
+          } catch (e) {
+            logger.warn({ err: (e as Error).message, orderId: vn.externalOrderId }, "[5sim-poller] Could not cancel on 5sim (will still refund)");
+          }
         }
       }
 
-      /* Atomic transaction: status update + balance credit + transaction record.
-       * Previously the status was updated first, then the refund was inserted separately.
-       * If the refund INSERT failed, the number was stuck in "cancelled" with no refund
-       * and no recovery path. Now all three operations roll back together on any error. */
+      /* Lock, re-check eligibility, and commit state + credit + ledger row together.
+       * This also recovers terminal rows that an earlier code path left unrefunded. */
       let refundCommitted = false;
       await db.transaction(async (tx) => {
-        const updated = await tx
-          .update(virtualNumbersTable)
-          .set({ status: "cancelled", expiresAt: now })
-          .where(and(eq(virtualNumbersTable.id, vn.id), eq(virtualNumbersTable.status, "waiting")))
-          .returning({ id: virtualNumbersTable.id });
+        const [current] = await tx
+          .select({
+            status: virtualNumbersTable.status,
+            userId: virtualNumbersTable.userId,
+            price: virtualNumbersTable.price,
+            createdAt: virtualNumbersTable.createdAt,
+          })
+          .from(virtualNumbersTable)
+          .where(eq(virtualNumbersTable.id, vn.id))
+          .for("update")
+          .limit(1);
 
-        if (updated.length === 0) {
-          /* Un autre processus a déjà traité ce numéro — sortir sans erreur */
+        if (!current || !["waiting", "expired", "cancelled"].includes(current.status)) return;
+
+        const [currentSmsCount] = await tx
+          .select({ c: sql<number>`count(*)::int` })
+          .from(smsMessagesTable)
+          .where(eq(smsMessagesTable.numberId, vn.id));
+        if ((currentSmsCount?.c ?? 0) > 0) {
+          if (current.status === "waiting") {
+            await tx
+              .update(virtualNumbersTable)
+              .set({ status: "expired" })
+              .where(and(eq(virtualNumbersTable.id, vn.id), eq(virtualNumbersTable.status, "waiting")));
+          }
           return;
+        }
+
+        const [existingRefund] = await tx
+          .select({ id: transactionsTable.id })
+          .from(transactionsTable)
+          .where(and(
+            eq(transactionsTable.type, "refund"),
+            eq(transactionsTable.virtualNumberId, vn.id),
+          ))
+          .limit(1);
+        if (existingRefund) return;
+
+        /* Older refunds may predate virtual_number_id. Conservatively match the
+           same legacy heuristic used by the admin missing-refunds screen. */
+        const legacyRefundWindowEnd = new Date(current.createdAt.getTime() + 2 * 60 * 60 * 1_000);
+        const [legacyRefund] = await tx
+          .select({ id: transactionsTable.id })
+          .from(transactionsTable)
+          .where(and(
+            eq(transactionsTable.type, "refund"),
+            eq(transactionsTable.userId, current.userId),
+            eq(transactionsTable.amount, current.price),
+            isNull(transactionsTable.virtualNumberId),
+            gt(transactionsTable.createdAt, current.createdAt),
+            lt(transactionsTable.createdAt, legacyRefundWindowEnd),
+          ))
+          .limit(1);
+        if (legacyRefund) return;
+
+        if (current.status === "waiting") {
+          const updated = await tx
+            .update(virtualNumbersTable)
+            .set({ status: "cancelled", expiresAt: now })
+            .where(and(eq(virtualNumbersTable.id, vn.id), eq(virtualNumbersTable.status, "waiting")))
+            .returning({ id: virtualNumbersTable.id });
+          if (updated.length === 0) return;
         }
 
         await tx
@@ -573,7 +653,10 @@ export async function triggerAutoRefundSweep(): Promise<{ processed: number; ref
         continue;
       }
 
-      logger.info({ numberId: vn.id, userId: vn.userId, amount: vn.price }, "[5sim-poller] Auto-refund (30-min sweep)");
+      logger.info(
+        { numberId: vn.id, userId: vn.userId, amount: vn.price, recoveredTerminalStatus: vn.status !== "waiting" },
+        "[5sim-poller] Auto-refund sweep credited wallet",
+      );
 
       try {
         const [notif] = await db.insert(notificationsTable).values({
