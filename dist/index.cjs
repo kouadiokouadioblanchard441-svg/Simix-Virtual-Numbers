@@ -165837,11 +165837,18 @@ init_drizzle_orm();
 init_src();
 init_fivesim();
 init_logger2();
+
+// src/lib/number-expiry-policy.ts
+function getNumberExpiryOutcome(expiresAt, now, smsCount) {
+  if (now.getTime() < expiresAt.getTime()) return "still_active";
+  return smsCount > 0 ? "expired_with_sms" : "expired_without_sms";
+}
+
+// src/lib/fivesim-poller.ts
 var POLL_INTERVAL_MS = 15e3;
 var ERROR_BACKOFF_MS = 6e4;
 var MAX_CONCURRENT_POLLS = 10;
-var REFUND_TIMEOUT_MS = 30 * 60 * 1e3;
-var SWEEP_INTERVAL_MS = 5 * 60 * 1e3;
+var SWEEP_INTERVAL_MS = 60 * 1e3;
 var pollerTimer = null;
 var sweepTimer = null;
 var running = false;
@@ -165850,7 +165857,7 @@ function startFiveSimPoller() {
   if (running) return;
   running = true;
   consecutiveDbErrors = 0;
-  logger.info("[5sim-poller] Started background SMS polling (interval: 15s) + auto-refund sweep (5min)");
+  logger.info("[5sim-poller] Started background SMS polling (interval: 15s) + auto-refund sweep (1min)");
   schedule(POLL_INTERVAL_MS);
   void runAutoRefundSweep();
 }
@@ -165938,6 +165945,23 @@ async function pollSingleOrder(client, vn3) {
 async function pollActivationOrder(client, vn3, orderId) {
   try {
     const order = await client.checkOrder(orderId);
+    const { newSmsCount, hasStoredSms } = await saveNewSmsMessages(vn3.id, order.sms ?? []);
+    if (hasStoredSms) {
+      await db.update(virtualNumbersTable).set({ status: "received" }).where(and(
+        eq(virtualNumbersTable.id, vn3.id),
+        eq(virtualNumbersTable.status, "waiting")
+      ));
+      if (order.status === "RECEIVED") {
+        try {
+          await client.finishOrder(orderId);
+          logger.info({ orderId }, "[5sim-poller] Activation order finished on 5sim");
+        } catch {
+        }
+      }
+      if (newSmsCount > 0) {
+        await pushSmsNotification(vn3, order.sms ?? []);
+      }
+    }
     if (order.status === "TIMEOUT") {
       await handleExpiredOrder(vn3);
       return;
@@ -165945,22 +165969,6 @@ async function pollActivationOrder(client, vn3, orderId) {
     if (order.status === "CANCELED" || order.status === "BANNED") {
       await handleCancelledOrder(vn3);
       return;
-    }
-    if (order.sms && order.sms.length > 0) {
-      const newSmsCount = await saveNewSmsMessages(vn3.id, order.sms);
-      if (newSmsCount > 0 || order.status === "RECEIVED" || order.status === "FINISHED") {
-        await db.update(virtualNumbersTable).set({ status: "received" }).where(eq(virtualNumbersTable.id, vn3.id));
-        if (order.status === "RECEIVED") {
-          try {
-            await client.finishOrder(orderId);
-            logger.info({ orderId }, "[5sim-poller] Activation order finished on 5sim");
-          } catch {
-          }
-        }
-        if (newSmsCount > 0) {
-          await pushSmsNotification(vn3, order.sms);
-        }
-      }
     }
   } catch (e3) {
     if (e3 instanceof FiveSimError) {
@@ -165983,7 +165991,7 @@ async function pollHostingOrder(client, vn3, orderId) {
     if (!inbox?.Data || inbox.Data.length === 0) {
       return;
     }
-    const newSmsCount = await saveNewSmsMessages(vn3.id, inbox.Data);
+    const { newSmsCount } = await saveNewSmsMessages(vn3.id, inbox.Data);
     if (newSmsCount > 0) {
       logger.info({ orderId, numberId: vn3.id, newSmsCount }, "[5sim-poller] New SMS in hosting inbox");
       await pushSmsNotification(vn3, inbox.Data.slice(-newSmsCount));
@@ -166004,22 +166012,28 @@ async function pollHostingOrder(client, vn3, orderId) {
   }
 }
 async function saveNewSmsMessages(numberId, smsList) {
-  const existingMsgs = await db.select({ body: smsMessagesTable.body }).from(smsMessagesTable).where(eq(smsMessagesTable.numberId, numberId));
-  const existingBodies = new Set(existingMsgs.map((m2) => m2.body));
-  let newSmsCount = 0;
-  for (const sms of smsList) {
-    if (!existingBodies.has(sms.text)) {
-      await db.insert(smsMessagesTable).values({
+  return db.transaction(async (tx) => {
+    const [number] = await tx.select({ status: virtualNumbersTable.status }).from(virtualNumbersTable).where(eq(virtualNumbersTable.id, numberId)).for("update").limit(1);
+    if (!number || number.status !== "waiting") {
+      return { newSmsCount: 0, hasStoredSms: false };
+    }
+    const existingMsgs = await tx.select({ body: smsMessagesTable.body }).from(smsMessagesTable).where(eq(smsMessagesTable.numberId, numberId));
+    const existingBodies = new Set(existingMsgs.map((message) => message.body));
+    let newSmsCount = 0;
+    for (const sms of smsList) {
+      if (existingBodies.has(sms.text)) continue;
+      await tx.insert(smsMessagesTable).values({
         numberId,
         sender: sms.sender || "Unknown",
         body: sms.text,
         code: sms.code || extractCode2(sms.text) || ""
       });
+      existingBodies.add(sms.text);
       newSmsCount++;
       logger.info({ numberId, sender: sms.sender }, "[5sim-poller] New SMS saved");
     }
-  }
-  return newSmsCount;
+    return { newSmsCount, hasStoredSms: existingBodies.size > 0 };
+  });
 }
 async function pushSmsNotification(vn3, smsList) {
   try {
@@ -166041,20 +166055,48 @@ async function pushSmsNotification(vn3, smsList) {
   }
 }
 async function handleExpiredOrder(vn3) {
-  const [msgCount] = await db.select({ c: sql`count(*)::int` }).from(smsMessagesTable).where(eq(smsMessagesTable.numberId, vn3.id));
-  const smsReceived = msgCount?.c ?? 0;
+  let smsReceived = 0;
   let refundIssued = false;
+  let stillActive = false;
   try {
     await db.transaction(async (tx) => {
-      const [current] = await tx.select({ status: virtualNumbersTable.status }).from(virtualNumbersTable).where(eq(virtualNumbersTable.id, vn3.id)).limit(1);
+      const [current] = await tx.select({
+        status: virtualNumbersTable.status,
+        expiresAt: virtualNumbersTable.expiresAt,
+        userId: virtualNumbersTable.userId,
+        price: virtualNumbersTable.price,
+        createdAt: virtualNumbersTable.createdAt
+      }).from(virtualNumbersTable).where(eq(virtualNumbersTable.id, vn3.id)).for("update").limit(1);
       if (!current || current.status !== "waiting") return;
-      await tx.update(virtualNumbersTable).set({ status: "expired", expiresAt: /* @__PURE__ */ new Date() }).where(and(eq(virtualNumbersTable.id, vn3.id), eq(virtualNumbersTable.status, "waiting")));
-      if (smsReceived === 0) {
-        await tx.update(usersTable).set({ balance: sql`${usersTable.balance} + ${vn3.price}` }).where(eq(usersTable.id, vn3.userId));
+      const [msgCount] = await tx.select({ c: sql`count(*)::int` }).from(smsMessagesTable).where(eq(smsMessagesTable.numberId, vn3.id));
+      smsReceived = msgCount?.c ?? 0;
+      const outcome = getNumberExpiryOutcome(current.expiresAt, /* @__PURE__ */ new Date(), smsReceived);
+      if (outcome === "still_active") {
+        stillActive = true;
+        return;
+      }
+      await tx.update(virtualNumbersTable).set({ status: smsReceived > 0 ? "received" : "expired" }).where(and(eq(virtualNumbersTable.id, vn3.id), eq(virtualNumbersTable.status, "waiting")));
+      if (outcome === "expired_without_sms") {
+        const [existingRefund] = await tx.select({ id: transactionsTable.id }).from(transactionsTable).where(and(
+          eq(transactionsTable.type, "refund"),
+          eq(transactionsTable.virtualNumberId, vn3.id)
+        )).limit(1);
+        if (existingRefund) return;
+        const legacyRefundWindowEnd = new Date(current.createdAt.getTime() + 2 * 60 * 60 * 1e3);
+        const [legacyRefund] = await tx.select({ id: transactionsTable.id }).from(transactionsTable).where(and(
+          eq(transactionsTable.type, "refund"),
+          eq(transactionsTable.userId, current.userId),
+          eq(transactionsTable.amount, current.price),
+          isNull(transactionsTable.virtualNumberId),
+          gt(transactionsTable.createdAt, current.createdAt),
+          lt(transactionsTable.createdAt, legacyRefundWindowEnd)
+        )).limit(1);
+        if (legacyRefund) return;
+        await tx.update(usersTable).set({ balance: sql`${usersTable.balance} + ${current.price}` }).where(eq(usersTable.id, current.userId));
         await tx.insert(transactionsTable).values({
-          userId: vn3.userId,
+          userId: current.userId,
           type: "refund",
-          amount: vn3.price,
+          amount: current.price,
           status: "completed",
           method: "wallet",
           virtualNumberId: vn3.id,
@@ -166065,6 +166107,13 @@ async function handleExpiredOrder(vn3) {
     });
   } catch (txErr) {
     logger.error({ err: txErr.message, numberId: vn3.id }, "[5sim-poller] handleExpiredOrder transaction failed \u2014 will retry on next sweep");
+    return;
+  }
+  if (stillActive) {
+    logger.info(
+      { numberId: vn3.id, providerOrderId: vn3.externalOrderId, expiresAt: vn3.expiresAt },
+      "[5sim-poller] Provider order ended before the Simix expiry; keep waiting until local expiry"
+    );
     return;
   }
   logger.info({ numberId: vn3.id, orderId: vn3.externalOrderId, smsReceived, refundIssued }, "[5sim-poller] Order expired");
@@ -166100,20 +166149,41 @@ async function handleExpiredOrder(vn3) {
   }
 }
 async function handleCancelledOrder(vn3) {
-  const [msgCount] = await db.select({ c: sql`count(*)::int` }).from(smsMessagesTable).where(eq(smsMessagesTable.numberId, vn3.id));
-  const smsReceived = msgCount?.c ?? 0;
+  let smsReceived = 0;
   let refundIssued = false;
   try {
     await db.transaction(async (tx) => {
-      const [current] = await tx.select({ status: virtualNumbersTable.status }).from(virtualNumbersTable).where(eq(virtualNumbersTable.id, vn3.id)).limit(1);
+      const [current] = await tx.select({
+        status: virtualNumbersTable.status,
+        userId: virtualNumbersTable.userId,
+        price: virtualNumbersTable.price,
+        createdAt: virtualNumbersTable.createdAt
+      }).from(virtualNumbersTable).where(eq(virtualNumbersTable.id, vn3.id)).for("update").limit(1);
       if (!current || current.status !== "waiting") return;
-      await tx.update(virtualNumbersTable).set({ status: "cancelled", expiresAt: /* @__PURE__ */ new Date() }).where(and(eq(virtualNumbersTable.id, vn3.id), eq(virtualNumbersTable.status, "waiting")));
+      const [msgCount] = await tx.select({ c: sql`count(*)::int` }).from(smsMessagesTable).where(eq(smsMessagesTable.numberId, vn3.id));
+      smsReceived = msgCount?.c ?? 0;
+      await tx.update(virtualNumbersTable).set({ status: smsReceived > 0 ? "received" : "cancelled", expiresAt: /* @__PURE__ */ new Date() }).where(and(eq(virtualNumbersTable.id, vn3.id), eq(virtualNumbersTable.status, "waiting")));
       if (smsReceived === 0) {
-        await tx.update(usersTable).set({ balance: sql`${usersTable.balance} + ${vn3.price}` }).where(eq(usersTable.id, vn3.userId));
+        const [existingRefund] = await tx.select({ id: transactionsTable.id }).from(transactionsTable).where(and(
+          eq(transactionsTable.type, "refund"),
+          eq(transactionsTable.virtualNumberId, vn3.id)
+        )).limit(1);
+        if (existingRefund) return;
+        const legacyRefundWindowEnd = new Date(current.createdAt.getTime() + 2 * 60 * 60 * 1e3);
+        const [legacyRefund] = await tx.select({ id: transactionsTable.id }).from(transactionsTable).where(and(
+          eq(transactionsTable.type, "refund"),
+          eq(transactionsTable.userId, current.userId),
+          eq(transactionsTable.amount, current.price),
+          isNull(transactionsTable.virtualNumberId),
+          gt(transactionsTable.createdAt, current.createdAt),
+          lt(transactionsTable.createdAt, legacyRefundWindowEnd)
+        )).limit(1);
+        if (legacyRefund) return;
+        await tx.update(usersTable).set({ balance: sql`${usersTable.balance} + ${current.price}` }).where(eq(usersTable.id, current.userId));
         await tx.insert(transactionsTable).values({
-          userId: vn3.userId,
+          userId: current.userId,
           type: "refund",
-          amount: vn3.price,
+          amount: current.price,
           status: "completed",
           method: "wallet",
           virtualNumberId: vn3.id,
@@ -166144,83 +166214,74 @@ async function handleCancelledOrder(vn3) {
   }
 }
 async function triggerAutoRefundSweep() {
-  const cutoff = new Date(Date.now() - REFUND_TIMEOUT_MS);
   const now = /* @__PURE__ */ new Date();
   const stuckNumbers = await db.select().from(virtualNumbersTable).where(
-    and(
-      isNotNull(virtualNumbersTable.externalOrderId),
-      or(
-        and(
-          eq(virtualNumbersTable.status, "waiting"),
-          or(
-            lte(virtualNumbersTable.expiresAt, now),
-            and(
-              eq(virtualNumbersTable.numberType, "activation"),
-              lt(virtualNumbersTable.createdAt, cutoff)
-            )
-          )
-        ),
-        and(
-          or(
-            eq(virtualNumbersTable.status, "expired"),
-            eq(virtualNumbersTable.status, "cancelled")
-          ),
-          lte(virtualNumbersTable.expiresAt, now)
-        )
+    or(
+      and(
+        eq(virtualNumbersTable.status, "waiting"),
+        lte(virtualNumbersTable.expiresAt, now)
       ),
-      /* Keep the query bounded and never retry a refund already recorded. */
-      sql`NOT EXISTS (
-          SELECT 1 FROM transactions t
-          WHERE t.type = 'refund'
-            AND (
-              t.virtual_number_id = ${virtualNumbersTable.id}
-              OR (
-                t.virtual_number_id IS NULL
-                AND t.user_id = ${virtualNumbersTable.userId}
-                AND t.amount = ${virtualNumbersTable.price}
-                AND t.created_at > ${virtualNumbersTable.createdAt}
-                AND t.created_at < ${virtualNumbersTable.createdAt} + interval '2 hours'
+      and(
+        or(
+          eq(virtualNumbersTable.status, "expired"),
+          eq(virtualNumbersTable.status, "cancelled")
+        ),
+        lte(virtualNumbersTable.expiresAt, now),
+        /* Recover only terminal rows that still have no recorded refund. */
+        sql`NOT EXISTS (
+            SELECT 1 FROM transactions t
+            WHERE t.type = 'refund'
+              AND (
+                t.virtual_number_id = ${virtualNumbersTable.id}
+                OR (
+                  t.virtual_number_id IS NULL
+                  AND t.user_id = ${virtualNumbersTable.userId}
+                  AND t.amount = ${virtualNumbersTable.price}
+                  AND t.created_at > ${virtualNumbersTable.createdAt}
+                  AND t.created_at < ${virtualNumbersTable.createdAt} + interval '2 hours'
+                )
               )
-            )
-        )`
+          )`
+      )
     )
   );
   logger.info({ count: stuckNumbers.length }, "[5sim-poller] Auto-refund sweep: found stuck numbers");
   let processed = 0, refunded = 0, errors = 0;
   for (const vn3 of stuckNumbers) {
     try {
-      const [msgCount] = await db.select({ c: sql`count(*)::int` }).from(smsMessagesTable).where(eq(smsMessagesTable.numberId, vn3.id));
-      if ((msgCount?.c ?? 0) > 0) {
-        await db.update(virtualNumbersTable).set({ status: "expired" }).where(and(eq(virtualNumbersTable.id, vn3.id), eq(virtualNumbersTable.status, "waiting")));
-        processed++;
-        continue;
-      }
-      if (vn3.status === "waiting") {
-        const client = await getFiveSimClient();
-        if (client && vn3.externalOrderId) {
-          try {
-            await client.cancelOrder(Number(vn3.externalOrderId));
-            logger.info({ orderId: vn3.externalOrderId, numberId: vn3.id }, "[5sim-poller] Order cancelled on 5sim (auto-refund sweep)");
-          } catch (e3) {
-            logger.warn({ err: e3.message, orderId: vn3.externalOrderId }, "[5sim-poller] Could not cancel on 5sim (will still refund)");
-          }
-        }
-      }
       let refundCommitted = false;
+      let shouldCancelProviderOrder = false;
       await db.transaction(async (tx) => {
         const [current] = await tx.select({
           status: virtualNumbersTable.status,
           userId: virtualNumbersTable.userId,
           price: virtualNumbersTable.price,
-          createdAt: virtualNumbersTable.createdAt
+          createdAt: virtualNumbersTable.createdAt,
+          expiresAt: virtualNumbersTable.expiresAt
         }).from(virtualNumbersTable).where(eq(virtualNumbersTable.id, vn3.id)).for("update").limit(1);
         if (!current || !["waiting", "expired", "cancelled"].includes(current.status)) return;
+        if (getNumberExpiryOutcome(current.expiresAt, /* @__PURE__ */ new Date(), 0) === "still_active") return;
         const [currentSmsCount] = await tx.select({ c: sql`count(*)::int` }).from(smsMessagesTable).where(eq(smsMessagesTable.numberId, vn3.id));
         if ((currentSmsCount?.c ?? 0) > 0) {
-          if (current.status === "waiting") {
-            await tx.update(virtualNumbersTable).set({ status: "expired" }).where(and(eq(virtualNumbersTable.id, vn3.id), eq(virtualNumbersTable.status, "waiting")));
-          }
+          await tx.update(virtualNumbersTable).set({ status: "received" }).where(and(
+            eq(virtualNumbersTable.id, vn3.id),
+            or(
+              eq(virtualNumbersTable.status, "waiting"),
+              eq(virtualNumbersTable.status, "expired"),
+              eq(virtualNumbersTable.status, "cancelled")
+            ),
+            lte(virtualNumbersTable.expiresAt, /* @__PURE__ */ new Date())
+          ));
           return;
+        }
+        if (current.status === "waiting") {
+          const updated = await tx.update(virtualNumbersTable).set({ status: "expired" }).where(and(
+            eq(virtualNumbersTable.id, vn3.id),
+            eq(virtualNumbersTable.status, "waiting"),
+            lte(virtualNumbersTable.expiresAt, /* @__PURE__ */ new Date())
+          )).returning({ id: virtualNumbersTable.id });
+          if (updated.length === 0) return;
+          shouldCancelProviderOrder = true;
         }
         const [existingRefund] = await tx.select({ id: transactionsTable.id }).from(transactionsTable).where(and(
           eq(transactionsTable.type, "refund"),
@@ -166237,15 +166298,11 @@ async function triggerAutoRefundSweep() {
           lt(transactionsTable.createdAt, legacyRefundWindowEnd)
         )).limit(1);
         if (legacyRefund) return;
-        if (current.status === "waiting") {
-          const updated = await tx.update(virtualNumbersTable).set({ status: "cancelled", expiresAt: now }).where(and(eq(virtualNumbersTable.id, vn3.id), eq(virtualNumbersTable.status, "waiting"))).returning({ id: virtualNumbersTable.id });
-          if (updated.length === 0) return;
-        }
-        await tx.update(usersTable).set({ balance: sql`${usersTable.balance} + ${vn3.price}` }).where(eq(usersTable.id, vn3.userId));
+        await tx.update(usersTable).set({ balance: sql`${usersTable.balance} + ${current.price}` }).where(eq(usersTable.id, current.userId));
         await tx.insert(transactionsTable).values({
-          userId: vn3.userId,
+          userId: current.userId,
           type: "refund",
-          amount: vn3.price,
+          amount: current.price,
           status: "completed",
           method: "wallet",
           virtualNumberId: vn3.id,
@@ -166256,6 +166313,17 @@ async function triggerAutoRefundSweep() {
       if (!refundCommitted) {
         processed++;
         continue;
+      }
+      if (shouldCancelProviderOrder && vn3.externalOrderId) {
+        const client = await getFiveSimClient();
+        if (client) {
+          try {
+            await client.cancelOrder(Number(vn3.externalOrderId));
+            logger.info({ orderId: vn3.externalOrderId, numberId: vn3.id }, "[5sim-poller] Order closed on 5sim after expiry refund");
+          } catch (e3) {
+            logger.warn({ err: e3.message, orderId: vn3.externalOrderId }, "[5sim-poller] Could not close expired 5sim order");
+          }
+        }
       }
       logger.info(
         { numberId: vn3.id, userId: vn3.userId, amount: vn3.price, recoveredTerminalStatus: vn3.status !== "waiting" },
