@@ -1,7 +1,7 @@
 - [Admin router global middleware trap](admin-router-middleware-trap.md) — new non-admin routes must be registered BEFORE adminRouter in routes/index.ts or they return "Admin session required".
 - [Services table filtering](services-filter.md) — 5sim sync adds 1000+ products with sort_order=200; curated 18 have sort_order 10–180. Always filter with lte(sortOrder,180).
 - [5sim API complete integration](fivesim-complete.md) — All 19 endpoints integrated; hosting numbers (1day/3hours) require different poller (sms/inbox vs check); vendor endpoints need JWT admin auth.
-- [Auto-refund bug and sweep](auto-refund-sweep.md) — 5sim TIMEOUT is final for activation orders; save SMS first and refund exactly once if none is stored.
+- [Auto-refund bug and sweep](auto-refund-sweep.md) — 5sim TIMEOUT is final; link purchase and refund rows to avoid duplicate or suppressed credits.
 - [Sync price protection architecture](sync-price-protection.md) — services use admin_price_modified flag; countries have same flag + popular/sortOrder excluded from conflict set; never put margin in sync SET clause.
 - [Clapay CI/BJ phone format](clapay-ci-phone-format.md) — CI and BJ reject E.164 (+2250595857098); Clapay expects local 10-digit format (0595857098). Fixed in formatClapayPhone() via LOCAL_FORMAT_ONLY_COUNTRIES set.
 - [Clapay official contract](clapay-official-contract.md) — direct mode is API, not DIRECT; use official initiation/status guides over contradictory legacy comments and checkout DTO examples.

@@ -383,20 +383,30 @@ async function handleExpiredOrder(vn: typeof virtualNumbersTable.$inferSelect): 
           .limit(1);
         if (existingRefund) return;
 
-        const legacyRefundWindowEnd = new Date(current.createdAt.getTime() + 2 * 60 * 60 * 1_000);
-        const [legacyRefund] = await tx
+        const [linkedPurchase] = await tx
           .select({ id: transactionsTable.id })
           .from(transactionsTable)
           .where(and(
-            eq(transactionsTable.type, "refund"),
-            eq(transactionsTable.userId, current.userId),
-            eq(transactionsTable.amount, current.price),
-            isNull(transactionsTable.virtualNumberId),
-            gt(transactionsTable.createdAt, current.createdAt),
-            lt(transactionsTable.createdAt, legacyRefundWindowEnd),
+            eq(transactionsTable.type, "purchase"),
+            eq(transactionsTable.virtualNumberId, vn.id),
           ))
           .limit(1);
-        if (legacyRefund) return;
+        if (!linkedPurchase) {
+          const legacyRefundWindowEnd = new Date(current.createdAt.getTime() + 2 * 60 * 60 * 1_000);
+          const [legacyRefund] = await tx
+            .select({ id: transactionsTable.id })
+            .from(transactionsTable)
+            .where(and(
+              eq(transactionsTable.type, "refund"),
+              eq(transactionsTable.userId, current.userId),
+              eq(transactionsTable.amount, current.price),
+              isNull(transactionsTable.virtualNumberId),
+              gt(transactionsTable.createdAt, current.createdAt),
+              lt(transactionsTable.createdAt, legacyRefundWindowEnd),
+            ))
+            .limit(1);
+          if (legacyRefund) return;
+        }
 
         await tx
           .update(usersTable)
@@ -495,20 +505,30 @@ async function handleCancelledOrder(vn: typeof virtualNumbersTable.$inferSelect)
           .limit(1);
         if (existingRefund) return;
 
-        const legacyRefundWindowEnd = new Date(current.createdAt.getTime() + 2 * 60 * 60 * 1_000);
-        const [legacyRefund] = await tx
+        const [linkedPurchase] = await tx
           .select({ id: transactionsTable.id })
           .from(transactionsTable)
           .where(and(
-            eq(transactionsTable.type, "refund"),
-            eq(transactionsTable.userId, current.userId),
-            eq(transactionsTable.amount, current.price),
-            isNull(transactionsTable.virtualNumberId),
-            gt(transactionsTable.createdAt, current.createdAt),
-            lt(transactionsTable.createdAt, legacyRefundWindowEnd),
+            eq(transactionsTable.type, "purchase"),
+            eq(transactionsTable.virtualNumberId, vn.id),
           ))
           .limit(1);
-        if (legacyRefund) return;
+        if (!linkedPurchase) {
+          const legacyRefundWindowEnd = new Date(current.createdAt.getTime() + 2 * 60 * 60 * 1_000);
+          const [legacyRefund] = await tx
+            .select({ id: transactionsTable.id })
+            .from(transactionsTable)
+            .where(and(
+              eq(transactionsTable.type, "refund"),
+              eq(transactionsTable.userId, current.userId),
+              eq(transactionsTable.amount, current.price),
+              isNull(transactionsTable.virtualNumberId),
+              gt(transactionsTable.createdAt, current.createdAt),
+              lt(transactionsTable.createdAt, legacyRefundWindowEnd),
+            ))
+            .limit(1);
+          if (legacyRefund) return;
+        }
 
         await tx
           .update(usersTable)
@@ -677,22 +697,32 @@ export async function triggerAutoRefundSweep(): Promise<{ processed: number; ref
           .limit(1);
         if (existingRefund) return;
 
-        /* Older refunds may predate virtual_number_id. Conservatively match the
-           same legacy heuristic used by the admin missing-refunds screen. */
-        const legacyRefundWindowEnd = new Date(current.createdAt.getTime() + 2 * 60 * 60 * 1_000);
-        const [legacyRefund] = await tx
+        /* Only use the ambiguous legacy match for numbers whose purchase also
+           predates virtual_number_id. New purchases have an exact ledger link. */
+        const [linkedPurchase] = await tx
           .select({ id: transactionsTable.id })
           .from(transactionsTable)
           .where(and(
-            eq(transactionsTable.type, "refund"),
-            eq(transactionsTable.userId, current.userId),
-            eq(transactionsTable.amount, current.price),
-            isNull(transactionsTable.virtualNumberId),
-            gt(transactionsTable.createdAt, current.createdAt),
-            lt(transactionsTable.createdAt, legacyRefundWindowEnd),
+            eq(transactionsTable.type, "purchase"),
+            eq(transactionsTable.virtualNumberId, vn.id),
           ))
           .limit(1);
-        if (legacyRefund) return;
+        if (!linkedPurchase) {
+          const legacyRefundWindowEnd = new Date(current.createdAt.getTime() + 2 * 60 * 60 * 1_000);
+          const [legacyRefund] = await tx
+            .select({ id: transactionsTable.id })
+            .from(transactionsTable)
+            .where(and(
+              eq(transactionsTable.type, "refund"),
+              eq(transactionsTable.userId, current.userId),
+              eq(transactionsTable.amount, current.price),
+              isNull(transactionsTable.virtualNumberId),
+              gt(transactionsTable.createdAt, current.createdAt),
+              lt(transactionsTable.createdAt, legacyRefundWindowEnd),
+            ))
+            .limit(1);
+          if (legacyRefund) return;
+        }
 
         await tx
           .update(usersTable)

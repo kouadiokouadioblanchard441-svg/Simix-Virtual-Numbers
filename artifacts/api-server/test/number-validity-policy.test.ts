@@ -64,3 +64,20 @@ test("user cancellation and paid extension endpoints are absent", async () => {
     "terminal provider responses must save any included SMS before refund handling",
   );
 });
+
+test("purchase and refunds are linked and serialized per number", async () => {
+  const numbersRoute = await readFile(new URL("../src/routes/numbers.ts", import.meta.url), "utf8");
+  const adminRoute = await readFile(new URL("../src/routes/admin-fivesim.ts", import.meta.url), "utf8");
+  const poller = await readFile(new URL("../src/lib/fivesim-poller.ts", import.meta.url), "utf8");
+  const manualRefund = adminRoute.slice(
+    adminRoute.indexOf('router.post("/admin/fivesim/manual-refund/:numberId"'),
+    adminRoute.indexOf('router.post("/admin/fivesim/trigger-refund-sweep"'),
+  );
+
+  assert.match(numbersRoute, /type:\s*"purchase"[\s\S]*?virtualNumberId:\s*insertedVn\.id/);
+  assert.match(manualRefund, /\.for\("update"\)/);
+  assert.match(manualRefund, /eq\(transactionsTable\.virtualNumberId,\s*numberId\)/);
+  assert.match(manualRefund, /eq\(transactionsTable\.type,\s*"purchase"\)/);
+  assert.match(manualRefund, /if \(!linkedPurchase\)/);
+  assert.match(poller, /if \(!linkedPurchase\)/);
+});

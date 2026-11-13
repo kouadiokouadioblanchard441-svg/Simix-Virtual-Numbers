@@ -157897,16 +157897,22 @@ async function handleExpiredOrder(vn3) {
           eq(transactionsTable.virtualNumberId, vn3.id)
         )).limit(1);
         if (existingRefund) return;
-        const legacyRefundWindowEnd = new Date(current.createdAt.getTime() + 2 * 60 * 60 * 1e3);
-        const [legacyRefund] = await tx.select({ id: transactionsTable.id }).from(transactionsTable).where(and(
-          eq(transactionsTable.type, "refund"),
-          eq(transactionsTable.userId, current.userId),
-          eq(transactionsTable.amount, current.price),
-          isNull(transactionsTable.virtualNumberId),
-          gt(transactionsTable.createdAt, current.createdAt),
-          lt(transactionsTable.createdAt, legacyRefundWindowEnd)
+        const [linkedPurchase] = await tx.select({ id: transactionsTable.id }).from(transactionsTable).where(and(
+          eq(transactionsTable.type, "purchase"),
+          eq(transactionsTable.virtualNumberId, vn3.id)
         )).limit(1);
-        if (legacyRefund) return;
+        if (!linkedPurchase) {
+          const legacyRefundWindowEnd = new Date(current.createdAt.getTime() + 2 * 60 * 60 * 1e3);
+          const [legacyRefund] = await tx.select({ id: transactionsTable.id }).from(transactionsTable).where(and(
+            eq(transactionsTable.type, "refund"),
+            eq(transactionsTable.userId, current.userId),
+            eq(transactionsTable.amount, current.price),
+            isNull(transactionsTable.virtualNumberId),
+            gt(transactionsTable.createdAt, current.createdAt),
+            lt(transactionsTable.createdAt, legacyRefundWindowEnd)
+          )).limit(1);
+          if (legacyRefund) return;
+        }
         await tx.update(usersTable).set({ balance: sql`${usersTable.balance} + ${current.price}` }).where(eq(usersTable.id, current.userId));
         await tx.insert(transactionsTable).values({
           userId: current.userId,
@@ -157977,16 +157983,22 @@ async function handleCancelledOrder(vn3) {
           eq(transactionsTable.virtualNumberId, vn3.id)
         )).limit(1);
         if (existingRefund) return;
-        const legacyRefundWindowEnd = new Date(current.createdAt.getTime() + 2 * 60 * 60 * 1e3);
-        const [legacyRefund] = await tx.select({ id: transactionsTable.id }).from(transactionsTable).where(and(
-          eq(transactionsTable.type, "refund"),
-          eq(transactionsTable.userId, current.userId),
-          eq(transactionsTable.amount, current.price),
-          isNull(transactionsTable.virtualNumberId),
-          gt(transactionsTable.createdAt, current.createdAt),
-          lt(transactionsTable.createdAt, legacyRefundWindowEnd)
+        const [linkedPurchase] = await tx.select({ id: transactionsTable.id }).from(transactionsTable).where(and(
+          eq(transactionsTable.type, "purchase"),
+          eq(transactionsTable.virtualNumberId, vn3.id)
         )).limit(1);
-        if (legacyRefund) return;
+        if (!linkedPurchase) {
+          const legacyRefundWindowEnd = new Date(current.createdAt.getTime() + 2 * 60 * 60 * 1e3);
+          const [legacyRefund] = await tx.select({ id: transactionsTable.id }).from(transactionsTable).where(and(
+            eq(transactionsTable.type, "refund"),
+            eq(transactionsTable.userId, current.userId),
+            eq(transactionsTable.amount, current.price),
+            isNull(transactionsTable.virtualNumberId),
+            gt(transactionsTable.createdAt, current.createdAt),
+            lt(transactionsTable.createdAt, legacyRefundWindowEnd)
+          )).limit(1);
+          if (legacyRefund) return;
+        }
         await tx.update(usersTable).set({ balance: sql`${usersTable.balance} + ${current.price}` }).where(eq(usersTable.id, current.userId));
         await tx.insert(transactionsTable).values({
           userId: current.userId,
@@ -158102,16 +158114,22 @@ async function triggerAutoRefundSweep() {
           eq(transactionsTable.virtualNumberId, vn3.id)
         )).limit(1);
         if (existingRefund) return;
-        const legacyRefundWindowEnd = new Date(current.createdAt.getTime() + 2 * 60 * 60 * 1e3);
-        const [legacyRefund] = await tx.select({ id: transactionsTable.id }).from(transactionsTable).where(and(
-          eq(transactionsTable.type, "refund"),
-          eq(transactionsTable.userId, current.userId),
-          eq(transactionsTable.amount, current.price),
-          isNull(transactionsTable.virtualNumberId),
-          gt(transactionsTable.createdAt, current.createdAt),
-          lt(transactionsTable.createdAt, legacyRefundWindowEnd)
+        const [linkedPurchase] = await tx.select({ id: transactionsTable.id }).from(transactionsTable).where(and(
+          eq(transactionsTable.type, "purchase"),
+          eq(transactionsTable.virtualNumberId, vn3.id)
         )).limit(1);
-        if (legacyRefund) return;
+        if (!linkedPurchase) {
+          const legacyRefundWindowEnd = new Date(current.createdAt.getTime() + 2 * 60 * 60 * 1e3);
+          const [legacyRefund] = await tx.select({ id: transactionsTable.id }).from(transactionsTable).where(and(
+            eq(transactionsTable.type, "refund"),
+            eq(transactionsTable.userId, current.userId),
+            eq(transactionsTable.amount, current.price),
+            isNull(transactionsTable.virtualNumberId),
+            gt(transactionsTable.createdAt, current.createdAt),
+            lt(transactionsTable.createdAt, legacyRefundWindowEnd)
+          )).limit(1);
+          if (legacyRefund) return;
+        }
         await tx.update(usersTable).set({ balance: sql`${usersTable.balance} + ${current.price}` }).where(eq(usersTable.id, current.userId));
         await tx.insert(transactionsTable).values({
           userId: current.userId,
@@ -158478,6 +158496,7 @@ router8.post("/numbers", requireAuth, async (req, res) => {
         amount: price,
         status: "completed",
         method: "wallet",
+        virtualNumberId: insertedVn.id,
         description: `${service.name} \u2013 ${country.name} (5sim)`
       });
       return insertedVn;
@@ -166401,6 +166420,11 @@ router18.get("/admin/fivesim/missing-refunds", requireAdminJwt, async (_req, res
               t.virtual_number_id = ${virtualNumbersTable.id}
               OR (
                 t.virtual_number_id IS NULL
+                AND NOT EXISTS (
+                  SELECT 1 FROM transactions p
+                  WHERE p.type = 'purchase'
+                    AND p.virtual_number_id = ${virtualNumbersTable.id}
+                )
                 AND t.user_id = ${virtualNumbersTable.userId}
                 AND t.amount = ${virtualNumbersTable.price}
                 AND t.created_at > ${virtualNumbersTable.createdAt}
@@ -166427,42 +166451,35 @@ router18.get("/admin/fivesim/missing-refunds", requireAdminJwt, async (_req, res
 router18.post("/admin/fivesim/manual-refund/:numberId", requireAdminJwt, async (req, res) => {
   const { numberId } = req.params;
   try {
-    const [vn3] = await db.select().from(virtualNumbersTable).where(eq(virtualNumbersTable.id, numberId)).limit(1);
-    if (!vn3) {
-      res.status(404).json({ error: "Num\xE9ro introuvable" });
-      return;
-    }
-    if (vn3.status !== "expired" && vn3.status !== "cancelled") {
-      res.status(400).json({ error: `Impossible de rembourser un num\xE9ro en statut "${vn3.status}"` });
-      return;
-    }
-    const [{ smsCount }] = await db.select({ smsCount: sql`count(*)::int` }).from(smsMessagesTable).where(eq(smsMessagesTable.numberId, numberId));
-    if ((smsCount ?? 0) > 0) {
-      res.status(400).json({ error: "Ce num\xE9ro a re\xE7u des SMS \u2014 remboursement non \xE9ligible" });
-      return;
-    }
-    const refundWindowEnd = new Date(vn3.createdAt.getTime() + 2 * 60 * 60 * 1e3);
-    const [{ alreadyRefunded }] = await db.select({
-      alreadyRefunded: sql`EXISTS (
-          SELECT 1 FROM transactions t
-          WHERE t.type = 'refund'
-            AND (
-              t.virtual_number_id = ${vn3.id}
-              OR (
-                t.virtual_number_id IS NULL
-                AND t.user_id = ${vn3.userId}
-                AND t.amount = ${vn3.price}
-                AND t.created_at > ${vn3.createdAt}
-                AND t.created_at < ${refundWindowEnd}
-              )
-            )
-        )`
-    }).from(virtualNumbersTable).where(eq(virtualNumbersTable.id, numberId)).limit(1);
-    if (alreadyRefunded) {
-      res.status(409).json({ error: "Un remboursement semble d\xE9j\xE0 avoir \xE9t\xE9 effectu\xE9 pour ce num\xE9ro" });
-      return;
-    }
-    await db.transaction(async (tx) => {
+    const result = await db.transaction(async (tx) => {
+      const [vn3] = await tx.select().from(virtualNumbersTable).where(eq(virtualNumbersTable.id, numberId)).for("update").limit(1);
+      if (!vn3) return { state: "not_found" };
+      if (vn3.status !== "expired" && vn3.status !== "cancelled") {
+        return { state: "not_eligible", status: vn3.status };
+      }
+      const [{ smsCount }] = await tx.select({ smsCount: sql`count(*)::int` }).from(smsMessagesTable).where(eq(smsMessagesTable.numberId, numberId));
+      if ((smsCount ?? 0) > 0) return { state: "has_sms" };
+      const [existingRefund] = await tx.select({ id: transactionsTable.id }).from(transactionsTable).where(and(
+        eq(transactionsTable.type, "refund"),
+        eq(transactionsTable.virtualNumberId, numberId)
+      )).limit(1);
+      if (existingRefund) return { state: "already_refunded" };
+      const [linkedPurchase] = await tx.select({ id: transactionsTable.id }).from(transactionsTable).where(and(
+        eq(transactionsTable.type, "purchase"),
+        eq(transactionsTable.virtualNumberId, numberId)
+      )).limit(1);
+      if (!linkedPurchase) {
+        const refundWindowEnd = new Date(vn3.createdAt.getTime() + 2 * 60 * 60 * 1e3);
+        const [legacyRefund] = await tx.select({ id: transactionsTable.id }).from(transactionsTable).where(and(
+          eq(transactionsTable.type, "refund"),
+          eq(transactionsTable.userId, vn3.userId),
+          eq(transactionsTable.amount, vn3.price),
+          isNull(transactionsTable.virtualNumberId),
+          gt(transactionsTable.createdAt, vn3.createdAt),
+          lt(transactionsTable.createdAt, refundWindowEnd)
+        )).limit(1);
+        if (legacyRefund) return { state: "already_refunded" };
+      }
       await tx.update(usersTable).set({ balance: sql`${usersTable.balance} + ${vn3.price}` }).where(eq(usersTable.id, vn3.userId));
       await tx.insert(transactionsTable).values({
         userId: vn3.userId,
@@ -166473,9 +166490,26 @@ router18.post("/admin/fivesim/manual-refund/:numberId", requireAdminJwt, async (
         virtualNumberId: vn3.id,
         description: `Remboursement manuel admin \u2014 num\xE9ro ${vn3.phoneNumber ?? numberId}`
       });
+      return { state: "refunded", amount: vn3.price, userId: vn3.userId };
     });
-    logger.info({ numberId, userId: vn3.userId, amount: vn3.price }, "[admin] Manual refund issued");
-    res.json({ success: true, amount: vn3.price, numberId });
+    if (result.state === "not_found") {
+      res.status(404).json({ error: "Num\xE9ro introuvable" });
+      return;
+    }
+    if (result.state === "not_eligible") {
+      res.status(400).json({ error: `Impossible de rembourser un num\xE9ro en statut "${result.status}"` });
+      return;
+    }
+    if (result.state === "has_sms") {
+      res.status(400).json({ error: "Ce num\xE9ro a re\xE7u des SMS \u2014 remboursement non \xE9ligible" });
+      return;
+    }
+    if (result.state === "already_refunded") {
+      res.status(409).json({ error: "Un remboursement semble d\xE9j\xE0 avoir \xE9t\xE9 effectu\xE9 pour ce num\xE9ro" });
+      return;
+    }
+    logger.info({ numberId, userId: result.userId, amount: result.amount }, "[admin] Manual refund issued");
+    res.json({ success: true, amount: result.amount, numberId });
   } catch (e3) {
     logger.error({ err: e3.message, numberId }, "[admin] Error in manual refund");
     res.status(500).json({ error: "Erreur lors du remboursement manuel" });

@@ -12,7 +12,7 @@
  */
 
 import { Router, type IRouter, type Request, type Response } from "express";
-import { and, eq, lt, lte, isNotNull, sql, desc, or } from "drizzle-orm";
+import { and, eq, gt, lt, lte, isNotNull, isNull, sql, desc, or } from "drizzle-orm";
 import {
   db,
   apiProvidersTable, virtualNumbersTable, smsMessagesTable, usersTable,
@@ -221,9 +221,8 @@ router.get("/admin/fivesim/pending-refunds", requireAdminJwt, async (_req, res):
 router.get("/admin/fivesim/missing-refunds", requireAdminJwt, async (_req, res): Promise<void> => {
   try {
     /* Find virtual numbers that are expired or cancelled, received 0 SMS,
-     * and have no matching refund transaction within 2 hours of purchase.
-     * We use a time-window heuristic (userId + amount + 2h) because the
-     * transactions table has no direct FK to virtual_numbers. */
+     * and have no matching refund transaction. Old records without a linked
+     * purchase transaction use a conservative time-window fallback. */
     const rows = await db
       .select({
         id:              virtualNumbersTable.id,
@@ -246,6 +245,11 @@ router.get("/admin/fivesim/missing-refunds", requireAdminJwt, async (_req, res):
               t.virtual_number_id = ${virtualNumbersTable.id}
               OR (
                 t.virtual_number_id IS NULL
+                AND NOT EXISTS (
+                  SELECT 1 FROM transactions p
+                  WHERE p.type = 'purchase'
+                    AND p.virtual_number_id = ${virtualNumbersTable.id}
+                )
                 AND t.user_id = ${virtualNumbersTable.userId}
                 AND t.amount = ${virtualNumbersTable.price}
                 AND t.created_at > ${virtualNumbersTable.createdAt}
@@ -283,61 +287,62 @@ router.get("/admin/fivesim/missing-refunds", requireAdminJwt, async (_req, res):
 router.post("/admin/fivesim/manual-refund/:numberId", requireAdminJwt, async (req: Request<{ numberId: string }>, res): Promise<void> => {
   const { numberId } = req.params;
   try {
-    /* Fetch the number */
-    const [vn] = await db
-      .select()
-      .from(virtualNumbersTable)
-      .where(eq(virtualNumbersTable.id, numberId))
-      .limit(1);
+    const result = await db.transaction(async (tx) => {
+      /* Serialize manual refunds against the automatic worker for this number. */
+      const [vn] = await tx
+        .select()
+        .from(virtualNumbersTable)
+        .where(eq(virtualNumbersTable.id, numberId))
+        .for("update")
+        .limit(1);
+      if (!vn) return { state: "not_found" as const };
 
-    if (!vn) { res.status(404).json({ error: "Numéro introuvable" }); return; }
+      if (vn.status !== "expired" && vn.status !== "cancelled") {
+        return { state: "not_eligible" as const, status: vn.status };
+      }
 
-    /* Guard: only expired or cancelled numbers qualify */
-    if (vn.status !== "expired" && vn.status !== "cancelled") {
-      res.status(400).json({ error: `Impossible de rembourser un numéro en statut "${vn.status}"` });
-      return;
-    }
+      const [{ smsCount }] = await tx
+        .select({ smsCount: sql<number>`count(*)::int` })
+        .from(smsMessagesTable)
+        .where(eq(smsMessagesTable.numberId, numberId));
+      if ((smsCount ?? 0) > 0) return { state: "has_sms" as const };
 
-    /* Guard: must have 0 SMS */
-    const [{ smsCount }] = await db
-      .select({ smsCount: sql<number>`count(*)::int` })
-      .from(smsMessagesTable)
-      .where(eq(smsMessagesTable.numberId, numberId));
-    if ((smsCount ?? 0) > 0) {
-      res.status(400).json({ error: "Ce numéro a reçu des SMS — remboursement non éligible" });
-      return;
-    }
+      const [existingRefund] = await tx
+        .select({ id: transactionsTable.id })
+        .from(transactionsTable)
+        .where(and(
+          eq(transactionsTable.type, "refund"),
+          eq(transactionsTable.virtualNumberId, numberId),
+        ))
+        .limit(1);
+      if (existingRefund) return { state: "already_refunded" as const };
 
-    /* Guard: check if a refund was already issued (same time-window heuristic) */
-    const refundWindowEnd = new Date(vn.createdAt.getTime() + 2 * 60 * 60 * 1000);
-    const [{ alreadyRefunded }] = await db
-      .select({
-        alreadyRefunded: sql<boolean>`EXISTS (
-          SELECT 1 FROM transactions t
-          WHERE t.type = 'refund'
-            AND (
-              t.virtual_number_id = ${vn.id}
-              OR (
-                t.virtual_number_id IS NULL
-                AND t.user_id = ${vn.userId}
-                AND t.amount = ${vn.price}
-                AND t.created_at > ${vn.createdAt}
-                AND t.created_at < ${refundWindowEnd}
-              )
-            )
-        )`,
-      })
-      .from(virtualNumbersTable)
-      .where(eq(virtualNumbersTable.id, numberId))
-      .limit(1);
+      const [linkedPurchase] = await tx
+        .select({ id: transactionsTable.id })
+        .from(transactionsTable)
+        .where(and(
+          eq(transactionsTable.type, "purchase"),
+          eq(transactionsTable.virtualNumberId, numberId),
+        ))
+        .limit(1);
 
-    if (alreadyRefunded) {
-      res.status(409).json({ error: "Un remboursement semble déjà avoir été effectué pour ce numéro" });
-      return;
-    }
+      if (!linkedPurchase) {
+        const refundWindowEnd = new Date(vn.createdAt.getTime() + 2 * 60 * 60 * 1000);
+        const [legacyRefund] = await tx
+          .select({ id: transactionsTable.id })
+          .from(transactionsTable)
+          .where(and(
+            eq(transactionsTable.type, "refund"),
+            eq(transactionsTable.userId, vn.userId),
+            eq(transactionsTable.amount, vn.price),
+            isNull(transactionsTable.virtualNumberId),
+            gt(transactionsTable.createdAt, vn.createdAt),
+            lt(transactionsTable.createdAt, refundWindowEnd),
+          ))
+          .limit(1);
+        if (legacyRefund) return { state: "already_refunded" as const };
+      }
 
-    /* Atomic: credit balance + insert transaction */
-    await db.transaction(async (tx) => {
       await tx
         .update(usersTable)
         .set({ balance: sql`${usersTable.balance} + ${vn.price}` })
@@ -352,10 +357,26 @@ router.post("/admin/fivesim/manual-refund/:numberId", requireAdminJwt, async (re
         virtualNumberId: vn.id,
         description: `Remboursement manuel admin — numéro ${vn.phoneNumber ?? numberId}`,
       });
+
+      return { state: "refunded" as const, amount: vn.price, userId: vn.userId };
     });
 
-    logger.info({ numberId, userId: vn.userId, amount: vn.price }, "[admin] Manual refund issued");
-    res.json({ success: true, amount: vn.price, numberId });
+    if (result.state === "not_found") { res.status(404).json({ error: "Numéro introuvable" }); return; }
+    if (result.state === "not_eligible") {
+      res.status(400).json({ error: `Impossible de rembourser un numéro en statut "${result.status}"` });
+      return;
+    }
+    if (result.state === "has_sms") {
+      res.status(400).json({ error: "Ce numéro a reçu des SMS — remboursement non éligible" });
+      return;
+    }
+    if (result.state === "already_refunded") {
+      res.status(409).json({ error: "Un remboursement semble déjà avoir été effectué pour ce numéro" });
+      return;
+    }
+
+    logger.info({ numberId, userId: result.userId, amount: result.amount }, "[admin] Manual refund issued");
+    res.json({ success: true, amount: result.amount, numberId });
   } catch (e) {
     logger.error({ err: (e as Error).message, numberId }, "[admin] Error in manual refund");
     res.status(500).json({ error: "Erreur lors du remboursement manuel" });

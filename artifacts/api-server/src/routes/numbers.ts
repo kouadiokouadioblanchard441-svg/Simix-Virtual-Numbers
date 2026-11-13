@@ -416,6 +416,7 @@ router.post("/numbers", requireAuth, async (req, res): Promise<void> => {
         amount: price,
         status: "completed",
         method: "wallet",
+        virtualNumberId: insertedVn.id,
         description: `${service.name} – ${country.name} (5sim)`,
       });
 
