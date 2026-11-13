@@ -142,8 +142,6 @@ export const adminApi = {
     if (params?.export) q.set("export", "true");
     return req<{ orders: AdminOrder[]; total: number }>("GET", `/admin/orders?${q}`);
   },
-  cancelOrder: (id: string) => req("POST", `/admin/orders/${id}/cancel`),
-
   getTransactions: (params?: { limit?: number; offset?: number; type?: string; export?: boolean }) => {
     const q = new URLSearchParams();
     if (params?.limit) q.set("limit", String(params.limit));

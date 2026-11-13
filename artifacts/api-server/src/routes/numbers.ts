@@ -149,6 +149,8 @@ router.get("/numbers/quote", async (req, res): Promise<void> => {
   /* Price hierarchy: service_prices override → services.price → country.price */
   const price = priceOverride?.price ?? service.price ?? country.price;
   const validityMinutes = await getNumberValidityMinutes();
+  const extensionMinutes = await getExtendMinutes();
+  const extensionFee = await getExtendFee();
   res.json({
     service: {
       id: service.id,
@@ -178,6 +180,8 @@ router.get("/numbers/quote", async (req, res): Promise<void> => {
     fees: 0,
     total: price,
     validityMinutes,
+    extensionMinutes,
+    extensionFee,
   });
 });
 
@@ -320,7 +324,6 @@ router.post("/numbers", requireAuth, async (req, res): Promise<void> => {
   }
 
   const validityMin = await getNumberValidityMinutes();
-  const expiresAt = new Date(Date.now() + validityMin * 60 * 1000);
 
   /* ── Appel réel à 5sim (aucun fallback vers numéros fictifs) ── */
   const fiveSimClient = await getActive5SimClient();
@@ -349,7 +352,7 @@ router.post("/numbers", requireAuth, async (req, res): Promise<void> => {
 
   let phoneNumber: string;
   let externalOrderId: string | null = null;
-  let actualExpiresAt = expiresAt; // may be overridden for hosting
+  let actualExpiresAt: Date;
   try {
     let order: FiveSimOrder;
     if (numberType === "hosting") {
@@ -364,6 +367,8 @@ router.post("/numbers", requireAuth, async (req, res): Promise<void> => {
       );
     } else {
       order = await fiveSimClient.buyNumber(countrySlug, "any", productSlug);
+      /* Start the full 20-minute window when the provider assigns the number. */
+      actualExpiresAt = new Date(Date.now() + validityMin * 60 * 1000);
       logger.info(
         { orderId: order.id, phone: order.phone, userId: user.id, countrySlug, productSlug },
         "[5sim] Activation number acquired",
@@ -558,7 +563,11 @@ router.get("/numbers/:numberId", requireAuth, async (req, res): Promise<void> =>
     .where(eq(smsMessagesTable.numberId, numberId))
     .orderBy(desc(smsMessagesTable.receivedAt));
 
-  res.json(toNumber(row.n, row.s, row.c, messages));
+  res.json({
+    ...toNumber(row.n, row.s, row.c, messages),
+    extensionMinutes: await getExtendMinutes(),
+    extensionFee: await getExtendFee(),
+  });
 });
 
 /* ─── Poll SMS from 5sim (on-demand) ────────────────────────────── */
@@ -729,38 +738,69 @@ router.post("/numbers/:numberId/extend", requireAuth, async (req, res): Promise<
     .limit(1);
 
   if (!row) { res.status(404).json({ error: "Numéro introuvable" }); return; }
-  if (row.n.status === "received") { res.status(400).json({ error: "Ce numéro a déjà reçu un SMS" }); return; }
 
   const extendFee = await getExtendFee();
   const extendMinutes = await getExtendMinutes();
 
-  if (user.balance < extendFee) { res.status(402).json({ error: `Solde insuffisant (${extendFee} FCFA requis)` }); return; }
+  let updated: typeof virtualNumbersTable.$inferSelect;
+  try {
+    updated = await db.transaction(async (tx) => {
+      const [current] = await tx
+        .select()
+        .from(virtualNumbersTable)
+        .where(and(
+          eq(virtualNumbersTable.id, numberId),
+          eq(virtualNumbersTable.userId, user.id),
+        ))
+        .for("update")
+        .limit(1);
 
-  await db.update(usersTable)
-    .set({ balance: sql`${usersTable.balance} - ${extendFee}` })
-    .where(eq(usersTable.id, user.id));
+      if (!current) throw new Error("Numéro introuvable");
+      if (current.status === "received") throw new Error("Ce numéro a déjà reçu un SMS");
+      if (current.status !== "waiting" || current.expiresAt.getTime() <= Date.now()) {
+        throw new Error("Ce numéro n'est plus actif. Attendez le SMS ou son expiration.");
+      }
 
-  const newExpiresAt = new Date(
-    Math.max(row.n.expiresAt.getTime(), Date.now()) + extendMinutes * 60 * 1000,
-  );
+      const [debitedUser] = await tx
+        .update(usersTable)
+        .set({ balance: sql`${usersTable.balance} - ${extendFee}` })
+        .where(and(eq(usersTable.id, user.id), gt(usersTable.balance, extendFee - 1)))
+        .returning({ id: usersTable.id });
+      if (!debitedUser) throw new Error(`Solde insuffisant (${extendFee} FCFA requis)`);
 
-  const [updated] = await db
-    .update(virtualNumbersTable)
-    .set({
-      expiresAt: newExpiresAt,
-      status: row.n.status === "expired" ? "waiting" : row.n.status,
-    })
-    .where(eq(virtualNumbersTable.id, numberId))
-    .returning();
+      const newExpiresAt = new Date(current.expiresAt.getTime() + extendMinutes * 60 * 1000);
+      const [extended] = await tx
+        .update(virtualNumbersTable)
+        .set({ expiresAt: newExpiresAt })
+        .where(and(
+          eq(virtualNumbersTable.id, numberId),
+          eq(virtualNumbersTable.userId, user.id),
+          eq(virtualNumbersTable.status, "waiting"),
+          gt(virtualNumbersTable.expiresAt, new Date()),
+        ))
+        .returning();
+      if (!extended) throw new Error("Le numéro a expiré avant la prolongation.");
 
-  await db.insert(transactionsTable).values({
-    userId: user.id,
-    type: "purchase",
-    amount: extendFee,
-    status: "completed",
-    method: "wallet",
-    description: `Prolongation +${extendMinutes} min`,
-  });
+      await tx.insert(transactionsTable).values({
+        userId: user.id,
+        type: "purchase",
+        amount: extendFee,
+        status: "completed",
+        method: "wallet",
+        description: `Prolongation +${extendMinutes} min`,
+      });
+
+      return extended;
+    });
+  } catch (error) {
+    const message = (error as Error).message;
+    const status = message.includes("Solde insuffisant") ? 402
+      : message.includes("introuvable") ? 404
+      : message.includes("SMS") || message.includes("expiré") || message.includes("actif") ? 400
+      : 500;
+    res.status(status).json({ error: message || "Erreur lors de la prolongation." });
+    return;
+  }
 
   const messages = await db
     .select()
@@ -768,107 +808,11 @@ router.post("/numbers/:numberId/extend", requireAuth, async (req, res): Promise<
     .where(eq(smsMessagesTable.numberId, numberId))
     .orderBy(desc(smsMessagesTable.receivedAt));
 
-  res.json(toNumber(updated!, row.s, row.c, messages));
-});
-
-/* ─── Cancel ─────────────────────────────────────────────────────── */
-router.post("/numbers/:numberId/cancel", requireAuth, async (req, res): Promise<void> => {
-  const numberId = String(req.params.numberId);
-  const user = req.user!;
-
-  const [row] = await db
-    .select({ n: virtualNumbersTable, s: servicesTable, c: countriesTable })
-    .from(virtualNumbersTable)
-    .innerJoin(servicesTable, eq(virtualNumbersTable.serviceId, servicesTable.id))
-    .innerJoin(countriesTable, eq(virtualNumbersTable.countryId, countriesTable.id))
-    .where(and(eq(virtualNumbersTable.id, numberId), eq(virtualNumbersTable.userId, user.id)))
-    .limit(1);
-
-  if (!row) { res.status(404).json({ error: "Numéro introuvable" }); return; }
-
-  /* Only waiting or received numbers can be cancelled by the user.
-   * expired  → already handled by the sweep (refund issued), cannot cancel again.
-   * cancelled → already cancelled, avoid double-refund.              */
-  if (row.n.status === "cancelled") { res.status(400).json({ error: "Numéro déjà annulé" }); return; }
-  if (row.n.status === "expired")   { res.status(400).json({ error: "Ce numéro a déjà expiré et a été remboursé automatiquement." }); return; }
-
-  const messages = await db
-    .select()
-    .from(smsMessagesTable)
-    .where(eq(smsMessagesTable.numberId, numberId));
-
-  const hasSms = messages.length > 0;
-
-  /* Cancel on 5sim best-effort (only if no SMS yet, to avoid interrupting a pending activation) */
-  if (row.n.externalOrderId && !hasSms) {
-    const fiveSimClient = await getActive5SimClient();
-    if (fiveSimClient) {
-      try {
-        await fiveSimClient.cancelOrder(Number(row.n.externalOrderId));
-        logger.info({ orderId: row.n.externalOrderId }, "[5sim] Order cancelled by user");
-      } catch (e) {
-        logger.warn({ error: (e as Error).message }, "[5sim] Cancel failed (non-critical)");
-      }
-    }
-  }
-
-  /* Atomic transaction: status update + refund (only if no SMS) must succeed together.
-   * Previously these were separate statements — a concurrent second cancel request could
-   * pass the status check before the first had updated it, causing a double-refund.
-   * Using .returning() on the UPDATE with a status guard ensures exactly-once semantics. */
-  let updated: typeof virtualNumbersTable.$inferSelect | undefined;
-  try {
-    const result = await db.transaction(async (tx) => {
-      /* Status guard in WHERE prevents overwriting a status that changed since we read it */
-      const [updatedVn] = await tx
-        .update(virtualNumbersTable)
-        .set({ status: "cancelled", expiresAt: new Date() })
-        .where(and(
-          eq(virtualNumbersTable.id, numberId),
-          eq(virtualNumbersTable.userId, user.id),
-          /* Guard: only process if still in waiting/received — prevents double-cancel */
-          sql`${virtualNumbersTable.status} IN ('waiting', 'received')`,
-        ))
-        .returning();
-
-      if (!updatedVn) {
-        /* Another process already changed the status — abort without refund */
-        return null;
-      }
-
-      /* Refund only if no SMS was received */
-      if (!hasSms) {
-        await tx
-          .update(usersTable)
-          .set({ balance: sql`${usersTable.balance} + ${row.n.price}` })
-          .where(eq(usersTable.id, user.id));
-
-        await tx.insert(transactionsTable).values({
-          userId:      user.id,
-          type:        "refund",
-          amount:      row.n.price,
-          status:      "completed",
-          method:      "wallet",
-          virtualNumberId: numberId,
-          description: `Remboursement – ${row.s.name} (${row.c.name})`,
-        });
-      }
-
-      return updatedVn;
-    });
-
-    if (!result) {
-      res.status(409).json({ error: "Ce numéro a déjà été modifié. Veuillez rafraîchir la page." });
-      return;
-    }
-    updated = result;
-  } catch (txErr) {
-    logger.error({ err: (txErr as Error).message, numberId }, "[cancel] Transaction failed");
-    res.status(500).json({ error: "Erreur lors de l'annulation. Veuillez réessayer." });
-    return;
-  }
-
-  res.json(toNumber(updated, row.s, row.c, messages));
+  res.json({
+    ...toNumber(updated, row.s, row.c, messages),
+    extensionMinutes: await getExtendMinutes(),
+    extensionFee: await getExtendFee(),
+  });
 });
 
 export default router;

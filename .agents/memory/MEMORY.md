@@ -27,3 +27,4 @@
 - [Bundle merge validation](merge-marker-validation.md) — separator comments in generated dependencies may be mistaken for unresolved conflict markers.
 - [Workflow reconciliation listeners](workflow-reconciliation-listeners.md) — task merges can leave older servers alive; check for stale listeners before changing artifact ports.
 - [Validation registration](validation-registration.md) — registering a validation also links it to Project; check before adding another reference.
+- [Virtual-number validity policy](number-validity-and-cancellation.md) — activation numbers start with 20 minutes, extensions remain separate, and users/admins cannot manually cancel a number.

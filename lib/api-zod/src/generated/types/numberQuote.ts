@@ -17,5 +17,10 @@ export interface NumberQuote {
   price: number;
   fees: number;
   total: number;
+  /** Always 20 minutes for an activation number before optional extension */
   validityMinutes: number;
+  /** Additional validity available before expiry */
+  extensionMinutes: number;
+  /** Extension price in FCFA */
+  extensionFee: number;
 }

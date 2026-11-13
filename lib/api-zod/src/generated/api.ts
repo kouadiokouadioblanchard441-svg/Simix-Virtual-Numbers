@@ -215,7 +215,17 @@ export const GetNumberQuoteResponse = zod.object({
   price: zod.number().int(),
   fees: zod.number().int(),
   total: zod.number().int(),
-  validityMinutes: zod.number().int(),
+  validityMinutes: zod
+    .number()
+    .int()
+    .describe(
+      "Always 20 minutes for an activation number before optional extension",
+    ),
+  extensionMinutes: zod
+    .number()
+    .int()
+    .describe("Additional validity available before expiry"),
+  extensionFee: zod.number().int().describe("Extension price in FCFA"),
 });
 
 /**
@@ -233,6 +243,16 @@ export const RequestNumberResponse = zod.object({
   expiresAt: zod.coerce.date(),
   createdAt: zod.coerce.date(),
   price: zod.number().int(),
+  extensionMinutes: zod
+    .number()
+    .int()
+    .optional()
+    .describe("Additional validity available before expiry"),
+  extensionFee: zod
+    .number()
+    .int()
+    .optional()
+    .describe("Extension price in FCFA"),
   service: zod.object({
     id: zod.string(),
     name: zod.string(),
@@ -275,6 +295,16 @@ export const ListActiveNumbersResponseItem = zod.object({
   expiresAt: zod.coerce.date(),
   createdAt: zod.coerce.date(),
   price: zod.number().int(),
+  extensionMinutes: zod
+    .number()
+    .int()
+    .optional()
+    .describe("Additional validity available before expiry"),
+  extensionFee: zod
+    .number()
+    .int()
+    .optional()
+    .describe("Extension price in FCFA"),
   service: zod.object({
     id: zod.string(),
     name: zod.string(),
@@ -320,6 +350,16 @@ export const ListNumberHistoryResponseItem = zod.object({
   expiresAt: zod.coerce.date(),
   createdAt: zod.coerce.date(),
   price: zod.number().int(),
+  extensionMinutes: zod
+    .number()
+    .int()
+    .optional()
+    .describe("Additional validity available before expiry"),
+  extensionFee: zod
+    .number()
+    .int()
+    .optional()
+    .describe("Extension price in FCFA"),
   service: zod.object({
     id: zod.string(),
     name: zod.string(),
@@ -369,6 +409,16 @@ export const GetNumberResponse = zod.object({
   expiresAt: zod.coerce.date(),
   createdAt: zod.coerce.date(),
   price: zod.number().int(),
+  extensionMinutes: zod
+    .number()
+    .int()
+    .optional()
+    .describe("Additional validity available before expiry"),
+  extensionFee: zod
+    .number()
+    .int()
+    .optional()
+    .describe("Extension price in FCFA"),
   service: zod.object({
     id: zod.string(),
     name: zod.string(),
@@ -420,7 +470,7 @@ export const ListNumberMessagesResponse = zod.array(
 );
 
 /**
- * @summary Extend the active time of a virtual number by 5 minutes
+ * @summary Add the configured extension time to an active virtual number
  */
 export const ExtendNumberParams = zod.object({
   numberId: zod.coerce.string(),
@@ -433,52 +483,16 @@ export const ExtendNumberResponse = zod.object({
   expiresAt: zod.coerce.date(),
   createdAt: zod.coerce.date(),
   price: zod.number().int(),
-  service: zod.object({
-    id: zod.string(),
-    name: zod.string(),
-    slug: zod.string(),
-    scope: zod.string().describe("e.g. Global"),
-    price: zod.number().int().describe("Price in FCFA"),
-    available: zod.number().int().describe("Number of available numbers"),
-    color: zod.string().describe("Hex color used for the icon background"),
-    category: zod.string().optional(),
-    popular: zod.boolean().optional(),
-  }),
-  country: zod.object({
-    id: zod.string(),
-    name: zod.string(),
-    code: zod.string().describe("ISO country code"),
-    dialCode: zod.string().describe("e.g. +1, +33"),
-    flag: zod.string().describe("Emoji flag"),
-    available: zod.number().int(),
-    price: zod.number().int().describe("Price in FCFA"),
-    popular: zod.boolean().optional(),
-  }),
-  messages: zod.array(
-    zod.object({
-      id: zod.string(),
-      sender: zod.string(),
-      body: zod.string(),
-      code: zod.string(),
-      receivedAt: zod.coerce.date(),
-    }),
-  ),
-});
-
-/**
- * @summary Cancel a virtual number and refund if no SMS received
- */
-export const CancelNumberParams = zod.object({
-  numberId: zod.coerce.string(),
-});
-
-export const CancelNumberResponse = zod.object({
-  id: zod.string(),
-  phoneNumber: zod.string(),
-  status: zod.enum(["waiting", "received", "expired", "cancelled"]),
-  expiresAt: zod.coerce.date(),
-  createdAt: zod.coerce.date(),
-  price: zod.number().int(),
+  extensionMinutes: zod
+    .number()
+    .int()
+    .optional()
+    .describe("Additional validity available before expiry"),
+  extensionFee: zod
+    .number()
+    .int()
+    .optional()
+    .describe("Extension price in FCFA"),
   service: zod.object({
     id: zod.string(),
     name: zod.string(),
@@ -719,6 +733,16 @@ export const GetDashboardSummaryResponse = zod.object({
       expiresAt: zod.coerce.date(),
       createdAt: zod.coerce.date(),
       price: zod.number().int(),
+      extensionMinutes: zod
+        .number()
+        .int()
+        .optional()
+        .describe("Additional validity available before expiry"),
+      extensionFee: zod
+        .number()
+        .int()
+        .optional()
+        .describe("Extension price in FCFA"),
       service: zod.object({
         id: zod.string(),
         name: zod.string(),

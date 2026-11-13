@@ -1355,7 +1355,7 @@ export const getExtendNumberUrl = (numberId: string) => {
 };
 
 /**
- * @summary Extend the active time of a virtual number by 5 minutes
+ * @summary Add the configured extension time to an active virtual number
  */
 export const extendNumber = async (
   numberId: string,
@@ -1415,7 +1415,7 @@ export type ExtendNumberMutationError = ErrorType<unknown>;
 export type ExtendNumberMutationVariables = { numberId: string };
 
 /**
- * @summary Extend the active time of a virtual number by 5 minutes
+ * @summary Add the configured extension time to an active virtual number
  */
 export const useExtendNumber = <
   TError = ErrorType<unknown>,
@@ -1435,93 +1435,6 @@ export const useExtendNumber = <
   TContext
 > => {
   return useMutation(getExtendNumberMutationOptions(options));
-};
-
-export const getCancelNumberUrl = (numberId: string) => {
-  return `/api/numbers/${numberId}/cancel`;
-};
-
-/**
- * @summary Cancel a virtual number and refund if no SMS received
- */
-export const cancelNumber = async (
-  numberId: string,
-  options?: Parameters<typeof customFetch>[1],
-): Promise<VirtualNumber> => {
-  return customFetch<VirtualNumber>(getCancelNumberUrl(numberId), {
-    ...options,
-    method: "POST",
-  });
-};
-
-export const getCancelNumberMutationKey = () => ["cancelNumber"] as const;
-
-export const getCancelNumberMutationOptions = <
-  TError = ErrorType<unknown>,
-  TContext = unknown,
->(options?: {
-  mutation?: UseMutationOptions<
-    Awaited<ReturnType<typeof cancelNumber>>,
-    TError,
-    CancelNumberMutationVariables,
-    TContext
-  >;
-  request?: SecondParameter<typeof customFetch>;
-}): UseMutationOptions<
-  Awaited<ReturnType<typeof cancelNumber>>,
-  TError,
-  CancelNumberMutationVariables,
-  TContext
-> => {
-  const mutationKey = getCancelNumberMutationKey();
-  const { mutation: mutationOptions, request: requestOptions } = options
-    ? options.mutation &&
-      "mutationKey" in options.mutation &&
-      options.mutation.mutationKey
-      ? options
-      : { ...options, mutation: { ...options.mutation, mutationKey } }
-    : { mutation: { mutationKey }, request: undefined };
-
-  const mutationFn: MutationFunction<
-    Awaited<ReturnType<typeof cancelNumber>>,
-    CancelNumberMutationVariables
-  > = (props) => {
-    const { numberId } = props ?? {};
-
-    return cancelNumber(numberId, requestOptions);
-  };
-
-  return { mutationFn, ...mutationOptions };
-};
-
-export type CancelNumberMutationResult = NonNullable<
-  Awaited<ReturnType<typeof cancelNumber>>
->;
-
-export type CancelNumberMutationError = ErrorType<unknown>;
-export type CancelNumberMutationVariables = { numberId: string };
-
-/**
- * @summary Cancel a virtual number and refund if no SMS received
- */
-export const useCancelNumber = <
-  TError = ErrorType<unknown>,
-  TContext = unknown,
->(options?: {
-  mutation?: UseMutationOptions<
-    Awaited<ReturnType<typeof cancelNumber>>,
-    TError,
-    CancelNumberMutationVariables,
-    TContext
-  >;
-  request?: SecondParameter<typeof customFetch>;
-}): UseMutationResult<
-  Awaited<ReturnType<typeof cancelNumber>>,
-  TError,
-  CancelNumberMutationVariables,
-  TContext
-> => {
-  return useMutation(getCancelNumberMutationOptions(options));
 };
 
 export const getGetWalletUrl = () => {

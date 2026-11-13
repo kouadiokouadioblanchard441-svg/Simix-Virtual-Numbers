@@ -36,11 +36,11 @@ const FAQ = [
   },
   {
     q: "Que faire si je ne reçois pas le SMS ?",
-    a: "Attendez 2-3 minutes. Si le SMS n'arrive pas, le numéro est éligible à un remboursement automatique. Rendez-vous dans vos numéros actifs et cliquez sur 'Annuler' pour récupérer votre solde.",
+    a: "Le numéro reste actif pendant 20 minutes. Une prolongation payante peut être proposée avant l'expiration ; sa durée et son prix sont affichés dans l'application. Si aucun SMS n'arrive avant son expiration, votre solde est remboursé automatiquement. Il n'est pas possible d'annuler le numéro manuellement.",
   },
   {
     q: "Combien de temps dure un numéro virtuel ?",
-    a: "Par défaut, les numéros restent actifs 15 minutes — largement suffisant pour recevoir un SMS. Vous pouvez prolonger de 5 minutes supplémentaires pour 30 FCFA si nécessaire.",
+    a: "Un numéro reste actif pendant 20 minutes. Une prolongation payante peut être proposée avant l'expiration ; sa durée et son prix sont affichés dans l'application.",
   },
   {
     q: "Mon paiement est bloqué, que faire ?",

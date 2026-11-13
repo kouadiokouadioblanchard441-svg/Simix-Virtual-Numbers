@@ -421,15 +421,15 @@ Fonctionnement étape par étape:
 5. Copier le code et l'utiliser
 
 Prix: variable selon le service et le pays, en général entre 100 et 2000 FCFA. WhatsApp: ~500 FCFA. Telegram: ~500 FCFA. Google: ~300 FCFA. Binance: ~1500 FCFA.
-Prolongation possible avant expiration: +10 minutes pour 50 FCFA.
-Annulation: remboursement automatique si aucun SMS n'a été reçu.
+Le délai initial est de 20 minutes. Une prolongation payante peut être proposée avant l'expiration ; sa durée et son prix sont affichés dans l'application.
+Aucune annulation manuelle n'est possible. Il faut attendre la réception du SMS ou l'expiration du numéro.
 Solde maximum: 500 000 FCFA. Dépôt minimum: 500 FCFA.
 
 Statuts des commandes:
 En attente = le numéro est actif, il attend le SMS. Normal, sois patient(e).
 Reçu = le code SMS est arrivé, il est visible sur le tableau de bord.
 Expiré = les 20 minutes sont passées. Si aucun SMS reçu → remboursement automatique.
-Annulé = annulé manuellement. Remboursé si pas de SMS reçu.
+Annulé = le fournisseur a terminé la commande. Si aucun SMS n'a été reçu, le remboursement automatique s'applique.
 
 Problèmes fréquents et solutions directes:
 SMS pas reçu → attendre la fin du délai (remboursement automatique garanti si aucun SMS). Si le délai est passé et pas de remboursement visible, contacter le support humain.

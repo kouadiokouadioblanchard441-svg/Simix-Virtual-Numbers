@@ -71,8 +71,8 @@ export const isRegistrationEnabled = () => getSettingBool("registration_enabled"
 /** Is SMS simulation mode active (dev/demo)? */
 export const isSmsSimulationEnabled = () => getSettingBool("sms_simulation", true);
 
-/** Number validity in minutes after purchase */
-export const getNumberValidityMinutes = () => getSettingInt("number_validity_minutes", 20);
+/** Fixed activation-number validity before the optional paid extension. */
+export const getNumberValidityMinutes = async () => 20;
 
 /** Extension duration in minutes */
 export const getExtendMinutes = () => getSettingInt("extend_minutes", 10);

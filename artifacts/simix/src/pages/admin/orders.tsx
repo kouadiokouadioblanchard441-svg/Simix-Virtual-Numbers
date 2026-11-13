@@ -4,7 +4,7 @@ import { adminApi, type AdminOrder } from "@/lib/admin-api";
 import { AdminGuard } from "@/components/admin-guard";
 import { AdminLayout } from "@/components/admin-layout";
 import { formatFCFA } from "@/lib/format";
-import { Loader2, XCircle, ChevronLeft, ChevronRight, Download } from "lucide-react";
+import { Loader2, ChevronLeft, ChevronRight, Download } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 const STATUS_COLORS: Record<string, string> = {
@@ -40,15 +40,6 @@ function exportToCsv(filename: string, rows: Record<string, unknown>[]) {
 }
 
 function OrderRow({ order }: { order: AdminOrder }) {
-  const { toast } = useToast();
-  const qc = useQueryClient();
-
-  const cancel = useMutation({
-    mutationFn: () => adminApi.cancelOrder(order.id),
-    onSuccess: () => { toast({ title: "Commande annulée et remboursée" }); qc.invalidateQueries({ queryKey: ["admin-orders"] }); },
-    onError: (e) => toast({ title: "Commande non mise à jour", description: (e as Error).message, variant: "destructive" }),
-  });
-
   const expiresAt = new Date(order.expiresAt);
   const isExpired = expiresAt < new Date();
 
@@ -76,18 +67,6 @@ function OrderRow({ order }: { order: AdminOrder }) {
       <td className="py-3 px-4 text-zinc-400 text-xs hidden sm:table-cell">
         <div>{new Date(order.createdAt).toLocaleDateString("fr-FR")}</div>
         <div className={isExpired ? "text-red-400" : "text-zinc-500"}>{expiresAt.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}</div>
-      </td>
-      <td className="py-3 px-4">
-        {order.status === "waiting" && (
-          <button
-            onClick={() => { if (confirm("Annuler et rembourser cette commande ?")) cancel.mutate(); }}
-            disabled={cancel.isPending}
-            className="p-1.5 rounded hover:bg-red-500/20 text-zinc-500 hover:text-red-400 transition-colors"
-            title="Annuler et rembourser"
-          >
-            {cancel.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <XCircle className="w-4 h-4" />}
-          </button>
-        )}
       </td>
     </tr>
   );
@@ -181,14 +160,13 @@ function OrdersContent() {
                 <th className="text-left py-3 px-4 text-xs font-semibold text-zinc-500 uppercase tracking-wide">Statut</th>
                 <th className="text-left py-3 px-4 text-xs font-semibold text-zinc-500 uppercase tracking-wide">Prix</th>
                 <th className="text-left py-3 px-4 text-xs font-semibold text-zinc-500 uppercase tracking-wide hidden sm:table-cell">Date</th>
-                <th className="py-3 px-4"></th>
               </tr>
             </thead>
             <tbody>
               {isLoading ? (
-                <tr><td colSpan={8} className="py-16 text-center"><Loader2 className="w-6 h-6 text-violet-500 animate-spin mx-auto" /></td></tr>
+                <tr><td colSpan={7} className="py-16 text-center"><Loader2 className="w-6 h-6 text-violet-500 animate-spin mx-auto" /></td></tr>
               ) : data?.orders.length === 0 ? (
-                <tr><td colSpan={8} className="py-16 text-center text-zinc-500">Aucune commande</td></tr>
+                <tr><td colSpan={7} className="py-16 text-center text-zinc-500">Aucune commande</td></tr>
               ) : (
                 data?.orders.map(order => <OrderRow key={order.id} order={order} />)
               )}

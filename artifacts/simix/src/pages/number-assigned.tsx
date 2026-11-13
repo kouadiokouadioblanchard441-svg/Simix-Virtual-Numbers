@@ -2,7 +2,7 @@ import { AppLayout } from "@/components/layout/app-layout";
 import { AuthGuard } from "@/components/auth-guard";
 import { useGetNumber, getGetNumberQueryKey, useListNumberMessages, getListNumberMessagesQueryKey, useExtendNumber, getGetDashboardSummaryQueryKey, getGetWalletQueryKey, getListTransactionsQueryKey } from "@workspace/api-client-react";
 import { useLocation, Link } from "wouter";
-import { Copy, Clock, X, MessageSquare, Shield, CheckCircle2, Download, MoreVertical, RefreshCw, AlertTriangle, Lightbulb } from "lucide-react";
+import { Copy, Clock, ArrowLeft, MessageSquare, Shield, CheckCircle2, Download, MoreVertical, RefreshCw, AlertTriangle, Lightbulb } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useQueryClient, useMutation } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
@@ -59,7 +59,6 @@ function NumberAssignedContent({ id }: { id: string }) {
   });
 
   const [timeLeft, setTimeLeft] = useState(0);
-  const TOTAL_SECONDS = 15 * 60; // Assume 15 minutes total for the ring progress
 
   useEffect(() => {
     if (!number?.expiresAt || number.status !== 'waiting') return;
@@ -86,7 +85,7 @@ function NumberAssignedContent({ id }: { id: string }) {
       queryClient.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() });
       queryClient.invalidateQueries({ queryKey: getGetWalletQueryKey() });
       queryClient.invalidateQueries({ queryKey: getListTransactionsQueryKey() });
-      toast({ title: "Prolongé", description: "Le temps a été prolongé de 5 min." });
+      toast({ title: "Prolongé", description: `Le temps a été prolongé de ${number?.extensionMinutes ?? 10} min.` });
     } catch (e) {
       toast({ variant: "destructive", title: "Prolongation impossible", description: (e as Error).message || "Votre solde est peut-être insuffisant ou le numéro a déjà expiré." });
     }
@@ -96,7 +95,14 @@ function NumberAssignedContent({ id }: { id: string }) {
     return <div className="flex-1 flex items-center justify-center"><div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" /></div>;
   }
 
-  const progress = Math.min(100, Math.max(0, (timeLeft / TOTAL_SECONDS) * 100));
+  const totalSeconds = Math.max(
+    1,
+    differenceInSeconds(new Date(number.expiresAt), new Date(number.createdAt)),
+  );
+  const validityMinutes = Math.ceil(totalSeconds / 60);
+  const extensionMinutes = number.extensionMinutes ?? 10;
+  const extensionFee = number.extensionFee ?? 50;
+  const progress = Math.min(100, Math.max(0, (timeLeft / totalSeconds) * 100));
 
   return (
     <div className="flex-1 w-full bg-background flex flex-col h-full">
@@ -104,7 +110,7 @@ function NumberAssignedContent({ id }: { id: string }) {
         <div className="flex items-center">
           <button onClick={() => setLocation('/dashboard')} className="w-10 h-10 rounded-full flex items-center justify-center text-foreground hover:bg-secondary transition-colors -ml-2">
             <div className="w-8 h-8 bg-card border border-card-border rounded-full flex items-center justify-center shadow-sm">
-               <X className="w-4 h-4" />
+               <ArrowLeft className="w-4 h-4" />
             </div>
           </button>
           <h1 className="text-lg font-bold text-foreground ml-3">Numéro attribué</h1>
@@ -196,7 +202,7 @@ function NumberAssignedContent({ id }: { id: string }) {
             <div className="flex-1 py-1">
               <h4 className="text-sm font-bold text-primary mb-1">Temps restant pour recevoir</h4>
               <p className="text-xs text-muted-foreground leading-relaxed mb-3">
-                Vous avez 10 minutes pour recevoir votre SMS. Le numéro sera libéré après expiration du temps.
+                Vous avez {validityMinutes} minutes pour recevoir votre SMS. Sans SMS à l'expiration, le remboursement est automatique.
               </p>
               <div className="bg-primary/10 border border-primary/20 rounded-lg p-2.5 flex items-start gap-2">
                  <Lightbulb className="w-4 h-4 text-primary shrink-0" />
@@ -289,8 +295,8 @@ function NumberAssignedContent({ id }: { id: string }) {
       {number.status === 'waiting' && (
         <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md p-5 bg-background/90 backdrop-blur-xl border-t border-card-border z-30 pb-safe">
           <Button onClick={onExtend} disabled={extendMutation.isPending} className="h-14 w-full bg-gradient-to-r from-violet-600 to-indigo-600 hover:opacity-90 text-white rounded-xl shadow-lg shadow-primary/25 flex flex-col items-center justify-center pt-1 leading-none">
-            <span className="block text-sm font-bold mb-0.5 flex items-center gap-1"><Clock className="w-4 h-4"/> Prolonger le temps +5 min</span>
-            <span className="block text-[10px] font-normal text-white/80">30 FCFA</span>
+            <span className="block text-sm font-bold mb-0.5 flex items-center gap-1"><Clock className="w-4 h-4"/> Prolonger le temps +{extensionMinutes} min</span>
+            <span className="block text-[10px] font-normal text-white/80">{extensionFee} FCFA</span>
           </Button>
         </div>
       )}

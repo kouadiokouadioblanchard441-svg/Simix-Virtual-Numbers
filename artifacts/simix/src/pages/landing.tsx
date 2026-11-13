@@ -331,7 +331,7 @@ const FAQ_ITEMS = [
   },
   {
     q: "Combien de temps le numéro reste-t-il actif ?",
-    a: "Les numéros sont actifs 10 à 30 minutes — suffisant pour recevoir votre code. Une fois le SMS reçu, le numéro expire automatiquement pour préserver votre confidentialité.",
+    a: "Chaque numéro reste actif 20 minutes. Une prolongation payante peut être proposée avant l'expiration ; sa durée et son prix sont affichés dans l'application. Si aucun SMS n'est reçu à l'expiration, votre solde est remboursé automatiquement.",
   },
   {
     q: "Puis-je utiliser Simix sans carte bancaire ?",

@@ -186,19 +186,19 @@ function NumberDetailsContent() {
           <div className="pr-6">
             <h4 className="text-sm font-bold text-primary mb-1">Numéro temporaire</h4>
             <p className="text-xs text-primary/80 leading-relaxed">
-              Ce numéro est valable pour une seule réception de SMS. Valable environ 10 à 15 minutes.
+              Ce numéro est valable {quote.validityMinutes} minutes pour recevoir un SMS. Une prolongation de {quote.extensionMinutes} minutes est ensuite possible pour {formatFCFA(quote.extensionFee)}.
             </p>
           </div>
           <Info className="w-4 h-4 text-primary absolute top-4 right-4" />
         </div>
 
-        {/* Garantie remboursement 30 min */}
+        {/* Garantie remboursement après expiration */}
         <div className="bg-[#10B981]/10 border border-[#10B981]/30 rounded-2xl p-4 mb-8 flex items-start gap-3">
           <div className="text-[#10B981] text-lg shrink-0 mt-0.5">💸</div>
           <div>
-            <h4 className="text-sm font-bold text-[#10B981] mb-1">Garantie remboursement 30 min</h4>
+            <h4 className="text-sm font-bold text-[#10B981] mb-1">Remboursement automatique</h4>
             <p className="text-xs text-[#10B981]/80 leading-relaxed">
-              Si vous ne recevez aucun SMS dans les 30 minutes, votre solde est automatiquement recrédité — sans démarche de votre part.
+              Si aucun SMS n'est reçu avant l'expiration du délai de {quote.validityMinutes} minutes, le montant est automatiquement recrédité sur votre solde.
             </p>
           </div>
         </div>

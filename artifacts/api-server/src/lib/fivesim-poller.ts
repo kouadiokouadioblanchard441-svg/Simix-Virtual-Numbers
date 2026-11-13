@@ -234,7 +234,7 @@ async function pollHostingOrder(
       logger.info({ orderId, numberId: vn.id, newSmsCount }, "[5sim-poller] New SMS in hosting inbox");
       await pushSmsNotification(vn, inbox.Data.slice(-newSmsCount));
       /* Note: on ne change pas le status en "received" pour les hosting,
-         ils restent en "waiting" jusqu'à expiration ou annulation manuelle */
+         ils restent en "waiting" jusqu'à expiration ou arrêt côté fournisseur. */
     }
   } catch (e) {
     if (e instanceof FiveSimError) {

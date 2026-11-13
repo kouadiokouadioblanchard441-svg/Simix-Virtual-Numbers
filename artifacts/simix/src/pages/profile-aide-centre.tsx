@@ -61,19 +61,19 @@ const CATEGORIES = [
     articles: [
       {
         title: "Combien de temps dure un numéro ?",
-        content: `Par défaut, un numéro virtuel reste actif pendant 15 minutes — largement suffisant pour recevoir un SMS.\n\nSi le SMS n'arrive pas dans ce délai, vous pouvez :\n• Prolonger de 5 minutes supplémentaires\n• Annuler et récupérer votre solde automatiquement`,
+        content: `Un numéro virtuel reste actif pendant 20 minutes.\n\nUne prolongation payante peut être proposée avant l'expiration ; sa durée et son prix sont affichés dans l'application. Si aucun SMS n'arrive avant l'expiration, le remboursement est automatique. L'annulation manuelle n'est pas disponible.`,
       },
       {
         title: "Je ne reçois pas le SMS — que faire ?",
-        content: `Si le SMS n'arrive pas après 2-3 minutes :\n\n1. Vérifiez que vous avez bien entré le numéro dans le service\n2. Certains services envoient le SMS avec un léger délai\n3. Essayez de renvoyer le code depuis le service\n4. Si toujours rien après 5 min → Annulez le numéro pour récupérer votre solde\n\nVotre solde est remboursé automatiquement si aucun SMS n'est reçu.`,
+        content: `Si le SMS n'arrive pas tout de suite :\n\n1. Vérifiez que vous avez bien entré le numéro dans le service\n2. Certains services envoient le SMS avec un léger délai\n3. Essayez de renvoyer le code depuis le service\n4. Attendez l'expiration des 20 minutes ; si aucun SMS n'est reçu, votre solde est remboursé automatiquement\n\nUne prolongation payante peut être proposée avant l'expiration ; sa durée et son prix sont affichés dans l'application.`,
       },
       {
         title: "Puis-je réutiliser un numéro ?",
         content: `Non, chaque numéro virtuel est à usage unique. Une fois utilisé ou expiré, il est désactivé.\n\nPour vérifier plusieurs comptes ou services différents, achetez un numéro distinct pour chaque vérification. Cela garantit votre confidentialité et la sécurité de chaque compte.`,
       },
       {
-        title: "Comment annuler et être remboursé ?",
-        content: `1. Allez dans "Mes numéros actifs"\n2. Appuyez sur le numéro concerné\n3. Cliquez sur "Annuler le numéro"\n4. Confirmez l'annulation\n\nLe remboursement est crédité instantanément sur votre solde Simix si aucun SMS n'a été reçu.`,
+        title: "Quand le remboursement est-il effectué ?",
+        content: `Le numéro reste actif pendant 20 minutes. Une prolongation payante peut ajouter du temps avant l'expiration ; sa durée et son prix sont affichés dans l'application. Si aucun SMS n'est reçu à l'expiration, le remboursement est crédité automatiquement sur votre solde Simix. L'annulation manuelle n'est pas disponible.`,
       },
     ],
   },

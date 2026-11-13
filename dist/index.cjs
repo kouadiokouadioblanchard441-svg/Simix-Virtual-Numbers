@@ -64671,7 +64671,7 @@ var init_settings = __esm({
     cacheExpiresAt = 0;
     isMaintenanceMode = () => getSettingBool("maintenance_mode", false);
     isRegistrationEnabled = () => getSettingBool("registration_enabled", true);
-    getNumberValidityMinutes = () => getSettingInt("number_validity_minutes", 20);
+    getNumberValidityMinutes = async () => 20;
     getExtendMinutes = () => getSettingInt("extend_minutes", 10);
     getExtendFee = () => getSettingInt("extend_fee_fcfa", 50);
     getMinDepositFcfa = () => getSettingInt("min_deposit_fcfa", 500);
@@ -135475,7 +135475,11 @@ var GetNumberQuoteResponse = objectType({
   price: numberType().int(),
   fees: numberType().int(),
   total: numberType().int(),
-  validityMinutes: numberType().int()
+  validityMinutes: numberType().int().describe(
+    "Always 20 minutes for an activation number before optional extension"
+  ),
+  extensionMinutes: numberType().int().describe("Additional validity available before expiry"),
+  extensionFee: numberType().int().describe("Extension price in FCFA")
 });
 var RequestNumberBody = objectType({
   serviceId: stringType(),
@@ -135488,6 +135492,8 @@ var RequestNumberResponse = objectType({
   expiresAt: coerce.date(),
   createdAt: coerce.date(),
   price: numberType().int(),
+  extensionMinutes: numberType().int().optional().describe("Additional validity available before expiry"),
+  extensionFee: numberType().int().optional().describe("Extension price in FCFA"),
   service: objectType({
     id: stringType(),
     name: stringType(),
@@ -135526,6 +135532,8 @@ var ListActiveNumbersResponseItem = objectType({
   expiresAt: coerce.date(),
   createdAt: coerce.date(),
   price: numberType().int(),
+  extensionMinutes: numberType().int().optional().describe("Additional validity available before expiry"),
+  extensionFee: numberType().int().optional().describe("Extension price in FCFA"),
   service: objectType({
     id: stringType(),
     name: stringType(),
@@ -135567,6 +135575,8 @@ var ListNumberHistoryResponseItem = objectType({
   expiresAt: coerce.date(),
   createdAt: coerce.date(),
   price: numberType().int(),
+  extensionMinutes: numberType().int().optional().describe("Additional validity available before expiry"),
+  extensionFee: numberType().int().optional().describe("Extension price in FCFA"),
   service: objectType({
     id: stringType(),
     name: stringType(),
@@ -135611,6 +135621,8 @@ var GetNumberResponse = objectType({
   expiresAt: coerce.date(),
   createdAt: coerce.date(),
   price: numberType().int(),
+  extensionMinutes: numberType().int().optional().describe("Additional validity available before expiry"),
+  extensionFee: numberType().int().optional().describe("Extension price in FCFA"),
   service: objectType({
     id: stringType(),
     name: stringType(),
@@ -135665,47 +135677,8 @@ var ExtendNumberResponse = objectType({
   expiresAt: coerce.date(),
   createdAt: coerce.date(),
   price: numberType().int(),
-  service: objectType({
-    id: stringType(),
-    name: stringType(),
-    slug: stringType(),
-    scope: stringType().describe("e.g. Global"),
-    price: numberType().int().describe("Price in FCFA"),
-    available: numberType().int().describe("Number of available numbers"),
-    color: stringType().describe("Hex color used for the icon background"),
-    category: stringType().optional(),
-    popular: booleanType().optional()
-  }),
-  country: objectType({
-    id: stringType(),
-    name: stringType(),
-    code: stringType().describe("ISO country code"),
-    dialCode: stringType().describe("e.g. +1, +33"),
-    flag: stringType().describe("Emoji flag"),
-    available: numberType().int(),
-    price: numberType().int().describe("Price in FCFA"),
-    popular: booleanType().optional()
-  }),
-  messages: arrayType(
-    objectType({
-      id: stringType(),
-      sender: stringType(),
-      body: stringType(),
-      code: stringType(),
-      receivedAt: coerce.date()
-    })
-  )
-});
-var CancelNumberParams = objectType({
-  numberId: coerce.string()
-});
-var CancelNumberResponse = objectType({
-  id: stringType(),
-  phoneNumber: stringType(),
-  status: enumType(["waiting", "received", "expired", "cancelled"]),
-  expiresAt: coerce.date(),
-  createdAt: coerce.date(),
-  price: numberType().int(),
+  extensionMinutes: numberType().int().optional().describe("Additional validity available before expiry"),
+  extensionFee: numberType().int().optional().describe("Extension price in FCFA"),
   service: objectType({
     id: stringType(),
     name: stringType(),
@@ -135900,6 +135873,8 @@ var GetDashboardSummaryResponse = objectType({
       expiresAt: coerce.date(),
       createdAt: coerce.date(),
       price: numberType().int(),
+      extensionMinutes: numberType().int().optional().describe("Additional validity available before expiry"),
+      extensionFee: numberType().int().optional().describe("Extension price in FCFA"),
       service: objectType({
         id: stringType(),
         name: stringType(),
@@ -157810,6 +157785,8 @@ router8.get("/numbers/quote", async (req, res) => {
   }
   const price = priceOverride?.price ?? service.price ?? country.price;
   const validityMinutes = await getNumberValidityMinutes();
+  const extensionMinutes = await getExtendMinutes();
+  const extensionFee = await getExtendFee();
   res.json({
     service: {
       id: service.id,
@@ -157838,7 +157815,9 @@ router8.get("/numbers/quote", async (req, res) => {
     price,
     fees: 0,
     total: price,
-    validityMinutes
+    validityMinutes,
+    extensionMinutes,
+    extensionFee
   });
 });
 router8.post("/numbers", requireAuth, async (req, res) => {
@@ -157946,7 +157925,6 @@ router8.post("/numbers", requireAuth, async (req, res) => {
     return;
   }
   const validityMin = await getNumberValidityMinutes();
-  const expiresAt = new Date(Date.now() + validityMin * 60 * 1e3);
   const fiveSimClient = await getActive5SimClient();
   if (!fiveSimClient) {
     await db.update(usersTable).set({ balance: sql`${usersTable.balance} + ${price}` }).where(eq(usersTable.id, user.id));
@@ -157963,7 +157941,7 @@ router8.post("/numbers", requireAuth, async (req, res) => {
   }
   let phoneNumber;
   let externalOrderId = null;
-  let actualExpiresAt = expiresAt;
+  let actualExpiresAt;
   try {
     let order;
     if (numberType2 === "hosting") {
@@ -157975,6 +157953,7 @@ router8.post("/numbers", requireAuth, async (req, res) => {
       );
     } else {
       order = await fiveSimClient.buyNumber(countrySlug, "any", productSlug);
+      actualExpiresAt = new Date(Date.now() + validityMin * 60 * 1e3);
       logger.info(
         { orderId: order.id, phone: order.phone, userId: user.id, countrySlug, productSlug },
         "[5sim] Activation number acquired"
@@ -158098,7 +158077,11 @@ router8.get("/numbers/:numberId", requireAuth, async (req, res) => {
     row.n.status = "expired";
   }
   const messages = await db.select().from(smsMessagesTable).where(eq(smsMessagesTable.numberId, numberId)).orderBy(desc(smsMessagesTable.receivedAt));
-  res.json(toNumber(row.n, row.s, row.c, messages));
+  res.json({
+    ...toNumber(row.n, row.s, row.c, messages),
+    extensionMinutes: await getExtendMinutes(),
+    extensionFee: await getExtendFee()
+  });
 });
 router8.post("/numbers/:numberId/poll", requireAuth, async (req, res) => {
   const numberId = String(req.params.numberId);
@@ -158192,101 +158175,52 @@ router8.post("/numbers/:numberId/extend", requireAuth, async (req, res) => {
     res.status(404).json({ error: "Num\xE9ro introuvable" });
     return;
   }
-  if (row.n.status === "received") {
-    res.status(400).json({ error: "Ce num\xE9ro a d\xE9j\xE0 re\xE7u un SMS" });
-    return;
-  }
   const extendFee = await getExtendFee();
   const extendMinutes = await getExtendMinutes();
-  if (user.balance < extendFee) {
-    res.status(402).json({ error: `Solde insuffisant (${extendFee} FCFA requis)` });
-    return;
-  }
-  await db.update(usersTable).set({ balance: sql`${usersTable.balance} - ${extendFee}` }).where(eq(usersTable.id, user.id));
-  const newExpiresAt = new Date(
-    Math.max(row.n.expiresAt.getTime(), Date.now()) + extendMinutes * 60 * 1e3
-  );
-  const [updated] = await db.update(virtualNumbersTable).set({
-    expiresAt: newExpiresAt,
-    status: row.n.status === "expired" ? "waiting" : row.n.status
-  }).where(eq(virtualNumbersTable.id, numberId)).returning();
-  await db.insert(transactionsTable).values({
-    userId: user.id,
-    type: "purchase",
-    amount: extendFee,
-    status: "completed",
-    method: "wallet",
-    description: `Prolongation +${extendMinutes} min`
-  });
-  const messages = await db.select().from(smsMessagesTable).where(eq(smsMessagesTable.numberId, numberId)).orderBy(desc(smsMessagesTable.receivedAt));
-  res.json(toNumber(updated, row.s, row.c, messages));
-});
-router8.post("/numbers/:numberId/cancel", requireAuth, async (req, res) => {
-  const numberId = String(req.params.numberId);
-  const user = req.user;
-  const [row] = await db.select({ n: virtualNumbersTable, s: servicesTable, c: countriesTable }).from(virtualNumbersTable).innerJoin(servicesTable, eq(virtualNumbersTable.serviceId, servicesTable.id)).innerJoin(countriesTable, eq(virtualNumbersTable.countryId, countriesTable.id)).where(and(eq(virtualNumbersTable.id, numberId), eq(virtualNumbersTable.userId, user.id))).limit(1);
-  if (!row) {
-    res.status(404).json({ error: "Num\xE9ro introuvable" });
-    return;
-  }
-  if (row.n.status === "cancelled") {
-    res.status(400).json({ error: "Num\xE9ro d\xE9j\xE0 annul\xE9" });
-    return;
-  }
-  if (row.n.status === "expired") {
-    res.status(400).json({ error: "Ce num\xE9ro a d\xE9j\xE0 expir\xE9 et a \xE9t\xE9 rembours\xE9 automatiquement." });
-    return;
-  }
-  const messages = await db.select().from(smsMessagesTable).where(eq(smsMessagesTable.numberId, numberId));
-  const hasSms = messages.length > 0;
-  if (row.n.externalOrderId && !hasSms) {
-    const fiveSimClient = await getActive5SimClient();
-    if (fiveSimClient) {
-      try {
-        await fiveSimClient.cancelOrder(Number(row.n.externalOrderId));
-        logger.info({ orderId: row.n.externalOrderId }, "[5sim] Order cancelled by user");
-      } catch (e3) {
-        logger.warn({ error: e3.message }, "[5sim] Cancel failed (non-critical)");
-      }
-    }
-  }
   let updated;
   try {
-    const result = await db.transaction(async (tx) => {
-      const [updatedVn] = await tx.update(virtualNumbersTable).set({ status: "cancelled", expiresAt: /* @__PURE__ */ new Date() }).where(and(
+    updated = await db.transaction(async (tx) => {
+      const [current] = await tx.select().from(virtualNumbersTable).where(and(
+        eq(virtualNumbersTable.id, numberId),
+        eq(virtualNumbersTable.userId, user.id)
+      )).for("update").limit(1);
+      if (!current) throw new Error("Num\xE9ro introuvable");
+      if (current.status === "received") throw new Error("Ce num\xE9ro a d\xE9j\xE0 re\xE7u un SMS");
+      if (current.status !== "waiting" || current.expiresAt.getTime() <= Date.now()) {
+        throw new Error("Ce num\xE9ro n'est plus actif. Attendez le SMS ou son expiration.");
+      }
+      const [debitedUser] = await tx.update(usersTable).set({ balance: sql`${usersTable.balance} - ${extendFee}` }).where(and(eq(usersTable.id, user.id), gt(usersTable.balance, extendFee - 1))).returning({ id: usersTable.id });
+      if (!debitedUser) throw new Error(`Solde insuffisant (${extendFee} FCFA requis)`);
+      const newExpiresAt = new Date(current.expiresAt.getTime() + extendMinutes * 60 * 1e3);
+      const [extended] = await tx.update(virtualNumbersTable).set({ expiresAt: newExpiresAt }).where(and(
         eq(virtualNumbersTable.id, numberId),
         eq(virtualNumbersTable.userId, user.id),
-        /* Guard: only process if still in waiting/received — prevents double-cancel */
-        sql`${virtualNumbersTable.status} IN ('waiting', 'received')`
+        eq(virtualNumbersTable.status, "waiting"),
+        gt(virtualNumbersTable.expiresAt, /* @__PURE__ */ new Date())
       )).returning();
-      if (!updatedVn) {
-        return null;
-      }
-      if (!hasSms) {
-        await tx.update(usersTable).set({ balance: sql`${usersTable.balance} + ${row.n.price}` }).where(eq(usersTable.id, user.id));
-        await tx.insert(transactionsTable).values({
-          userId: user.id,
-          type: "refund",
-          amount: row.n.price,
-          status: "completed",
-          method: "wallet",
-          virtualNumberId: numberId,
-          description: `Remboursement \u2013 ${row.s.name} (${row.c.name})`
-        });
-      }
-      return updatedVn;
+      if (!extended) throw new Error("Le num\xE9ro a expir\xE9 avant la prolongation.");
+      await tx.insert(transactionsTable).values({
+        userId: user.id,
+        type: "purchase",
+        amount: extendFee,
+        status: "completed",
+        method: "wallet",
+        description: `Prolongation +${extendMinutes} min`
+      });
+      return extended;
     });
-    if (!result) {
-      res.status(409).json({ error: "Ce num\xE9ro a d\xE9j\xE0 \xE9t\xE9 modifi\xE9. Veuillez rafra\xEEchir la page." });
-      return;
-    }
-    updated = result;
-  } catch (txErr) {
-    logger.error({ err: txErr.message, numberId }, "[cancel] Transaction failed");
-    res.status(500).json({ error: "Erreur lors de l'annulation. Veuillez r\xE9essayer." });
+  } catch (error) {
+    const message = error.message;
+    const status = message.includes("Solde insuffisant") ? 402 : message.includes("introuvable") ? 404 : message.includes("SMS") || message.includes("expir\xE9") || message.includes("actif") ? 400 : 500;
+    res.status(status).json({ error: message || "Erreur lors de la prolongation." });
     return;
   }
-  res.json(toNumber(updated, row.s, row.c, messages));
+  const messages = await db.select().from(smsMessagesTable).where(eq(smsMessagesTable.numberId, numberId)).orderBy(desc(smsMessagesTable.receivedAt));
+  res.json({
+    ...toNumber(updated, row.s, row.c, messages),
+    extensionMinutes: await getExtendMinutes(),
+    extensionFee: await getExtendFee()
+  });
 });
 var numbers_default = router8;
 
@@ -163712,59 +163646,10 @@ router13.get("/admin/orders", requireAdmin2, async (req, res) => {
   const [totalRow] = await db.select({ c: count() }).from(virtualNumbersTable).where(where);
   res.json({ orders: rows, total: totalRow?.c ?? 0 });
 });
-router13.post("/admin/orders/:orderId/cancel", requireAdmin2, async (req, res) => {
-  const orderId = String(req.params.orderId);
-  const [order] = await db.select().from(virtualNumbersTable).where(eq(virtualNumbersTable.id, orderId)).limit(1);
-  if (!order) {
-    res.status(404).json({ error: "Commande introuvable" });
-    return;
-  }
-  if (order.status !== "waiting") {
-    res.status(400).json({ error: `Impossible d'annuler une commande en statut "${order.status}". Seules les commandes en attente peuvent \xEAtre annul\xE9es.` });
-    return;
-  }
-  const [msgCount] = await db.select({ c: sql`count(*)::int` }).from(smsMessagesTable).where(eq(smsMessagesTable.numberId, orderId));
-  const smsReceived = msgCount?.c ?? 0;
-  if (order.externalOrderId && smsReceived === 0) {
-    try {
-      const [provider] = await db.select().from(apiProvidersTable).where(and(eq(apiProvidersTable.slug, "5sim"), eq(apiProvidersTable.active, true))).limit(1);
-      if (provider?.apiKey) {
-        const client = new FiveSimClient(provider.apiKey);
-        await client.cancelOrder(Number(order.externalOrderId));
-        logger.info({ orderId: order.externalOrderId, numberId: orderId }, "[admin] Order cancelled on 5sim");
-      }
-    } catch (e3) {
-      logger.warn({ err: e3.message, orderId: order.externalOrderId }, "[admin] Could not cancel on 5sim \u2014 continuing with DB update");
-    }
-  }
-  try {
-    await db.transaction(async (tx) => {
-      const updated = await tx.update(virtualNumbersTable).set({ status: "cancelled", expiresAt: /* @__PURE__ */ new Date() }).where(and(eq(virtualNumbersTable.id, orderId), eq(virtualNumbersTable.status, "waiting"))).returning({ id: virtualNumbersTable.id });
-      if (updated.length === 0) {
-        throw new Error("La commande a d\xE9j\xE0 \xE9t\xE9 modifi\xE9e par un autre processus.");
-      }
-      if (smsReceived === 0) {
-        await tx.update(usersTable).set({ balance: sql`${usersTable.balance} + ${order.price}` }).where(eq(usersTable.id, order.userId));
-        await tx.insert(transactionsTable).values({
-          userId: order.userId,
-          type: "refund",
-          amount: order.price,
-          status: "completed",
-          method: "wallet",
-          virtualNumberId: orderId,
-          description: `Remboursement commande ${order.phoneNumber ?? orderId} (annul\xE9e par admin)`
-        });
-      } else {
-        logger.info({ orderId, smsReceived }, "[admin] Order cancelled without refund \u2014 SMS was already received");
-      }
-    });
-  } catch (e3) {
-    logger.error({ err: e3.message, orderId }, "[admin] cancelOrder transaction failed");
-    res.status(500).json({ error: e3.message || "Erreur lors de l'annulation" });
-    return;
-  }
-  await logAdminAction(adminId2(req), "cancel_order", req.ip, "order", orderId, { phoneNumber: order.phoneNumber, price: order.price });
-  res.json({ success: true, message: "Commande annul\xE9e et rembours\xE9e" });
+router13.post("/admin/orders/:orderId/cancel", requireAdmin2, async (_req, res) => {
+  res.status(410).json({
+    error: "L'annulation manuelle des num\xE9ros est d\xE9sactiv\xE9e. Attendez la r\xE9ception du SMS ou l'expiration."
+  });
 });
 router13.get("/admin/analytics", requireAdmin2, async (req, res) => {
   const days = Math.min(Number(req.query.days) || 30, 365);
@@ -170233,15 +170118,15 @@ Fonctionnement \xE9tape par \xE9tape:
 5. Copier le code et l'utiliser
 
 Prix: variable selon le service et le pays, en g\xE9n\xE9ral entre 100 et 2000 FCFA. WhatsApp: ~500 FCFA. Telegram: ~500 FCFA. Google: ~300 FCFA. Binance: ~1500 FCFA.
-Prolongation possible avant expiration: +10 minutes pour 50 FCFA.
-Annulation: remboursement automatique si aucun SMS n'a \xE9t\xE9 re\xE7u.
+Le d\xE9lai initial est de 20 minutes. Une prolongation payante peut \xEAtre propos\xE9e avant l'expiration ; sa dur\xE9e et son prix sont affich\xE9s dans l'application.
+Aucune annulation manuelle n'est possible. Il faut attendre la r\xE9ception du SMS ou l'expiration du num\xE9ro.
 Solde maximum: 500 000 FCFA. D\xE9p\xF4t minimum: 500 FCFA.
 
 Statuts des commandes:
 En attente = le num\xE9ro est actif, il attend le SMS. Normal, sois patient(e).
 Re\xE7u = le code SMS est arriv\xE9, il est visible sur le tableau de bord.
 Expir\xE9 = les 20 minutes sont pass\xE9es. Si aucun SMS re\xE7u \u2192 remboursement automatique.
-Annul\xE9 = annul\xE9 manuellement. Rembours\xE9 si pas de SMS re\xE7u.
+Annul\xE9 = le fournisseur a termin\xE9 la commande. Si aucun SMS n'a \xE9t\xE9 re\xE7u, le remboursement automatique s'applique.
 
 Probl\xE8mes fr\xE9quents et solutions directes:
 SMS pas re\xE7u \u2192 attendre la fin du d\xE9lai (remboursement automatique garanti si aucun SMS). Si le d\xE9lai est pass\xE9 et pas de remboursement visible, contacter le support humain.

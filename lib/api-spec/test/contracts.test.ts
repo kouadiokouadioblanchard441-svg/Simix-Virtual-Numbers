@@ -9,6 +9,7 @@ import {
 import {
   CancelWalletDepositResponse,
   GetWalletDepositStatusResponse,
+  GetNumberQuoteResponse,
   GetWalletPaymentOptionsQueryParams,
   GetWalletPaymentOptionsResponse,
   ListTransactionsResponse,
@@ -37,6 +38,43 @@ const transaction = {
   paymentOtp: "test-otp",
   message: "Test only",
 };
+
+test("number quote contract requires the 20-minute validity and extension terms", () => {
+  const quote = {
+    service: {
+      id: "service-id",
+      name: "WhatsApp",
+      slug: "whatsapp",
+      scope: "Global",
+      price: 350,
+      available: 1,
+      color: "#000000",
+    },
+    country: {
+      id: "country-id",
+      name: "Côte d'Ivoire",
+      code: "CI",
+      dialCode: "+225",
+      flag: "🇨🇮",
+      available: 1,
+      price: 350,
+    },
+    available: 1,
+    waitTime: "10 - 60 sec",
+    price: 350,
+    fees: 0,
+    total: 350,
+    validityMinutes: 20,
+    extensionMinutes: 10,
+    extensionFee: 50,
+  };
+
+  assert.equal(GetNumberQuoteResponse.parse(quote).validityMinutes, 20);
+  assert.equal(
+    GetNumberQuoteResponse.safeParse({ ...quote, extensionMinutes: undefined }).success,
+    false,
+  );
+});
 
 test("generated Zod 3 contracts retain OTP and reject invalid recharge amounts", () => {
   const input = {

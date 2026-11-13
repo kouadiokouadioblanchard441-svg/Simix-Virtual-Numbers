@@ -539,7 +539,7 @@ json.NewDecoder(resp.Body).Decode(&services)`,
     method: "GET",
     path: "/numbers/quote",
     title: "Obtenir un devis",
-    description: "Retourne le prix et la disponibilité en temps réel pour un service et un pays donnés. Ne nécessite pas d'authentification.",
+    description: "Retourne le prix, la disponibilité, les 20 minutes initiales et les conditions de prolongation pour un service et un pays donnés. Ne nécessite pas d'authentification.",
     auth: false,
     queryParams: [
       { name: "serviceId", type: "string (UUID)", required: true, description: "ID du service", example: "uuid-service" },
@@ -562,7 +562,9 @@ json.NewDecoder(resp.Body).Decode(&services)`,
   "fees": 0,
   "total": 350,
   "waitTime": "10 - 60 sec",
-  "validityMinutes": 20
+  "validityMinutes": 20,
+  "extensionMinutes": 10,
+  "extensionFee": 50
 }`,
     codes: [
       { code: 200, label: "OK", desc: "Devis retourné" },
@@ -866,53 +868,6 @@ curl_setopt_array($ch, [
 $updated = json_decode(curl_exec($ch), true);`,
       go: `resp, _ := client.Post(
     "${BASE_URL}/numbers/UUID/extend", "", nil,
-)`,
-    },
-  },
-  {
-    id: "cancel-number",
-    method: "POST",
-    path: "/numbers/:id/cancel",
-    title: "Annuler un numéro",
-    description: "Annule un numéro et rembourse automatiquement le prix si aucun SMS n'a été reçu. Si le numéro est lié à 5sim et qu'aucun SMS n'est arrivé, l'ordre est aussi annulé chez le fournisseur. Retourne l'objet numéro mis à jour avec status `cancelled`.",
-    auth: true,
-    response: `{
-  "id": "uuid-numero",
-  "phoneNumber": "+12025551234",
-  "service": "WhatsApp",
-  "country": "Côte d'Ivoire",
-  "status": "cancelled",
-  "price": 350,
-  "expiresAt": "2026-01-01T00:00:00.000Z",
-  "messages": []
-}`,
-    codes: [
-      { code: 200, label: "OK", desc: "Numéro annulé. Remboursement si aucun SMS reçu." },
-      { code: 400, label: "Bad Request", desc: "Numéro déjà annulé" },
-      { code: 404, label: "Not Found", desc: "Numéro introuvable" },
-    ],
-    examples: {
-      curl: `curl -X POST ${BASE_URL}/numbers/UUID_NUMERO/cancel \\
-  -b cookies.txt`,
-      javascript: `const cancelled = await fetch(\`${BASE_URL}/numbers/\${numberId}/cancel\`, {
-  method: 'POST',
-  credentials: 'include',
-}).then(r => r.json());
-// cancelled.status === 'cancelled'
-// Le remboursement est déjà appliqué au solde`,
-      python: `cancelled = session.post(
-    f'${BASE_URL}/numbers/{number_id}/cancel'
-).json()
-print(cancelled['status'])  # 'cancelled'`,
-      php: `$ch = curl_init("${BASE_URL}/numbers/$numberId/cancel");
-curl_setopt_array($ch, [
-    CURLOPT_RETURNTRANSFER => true,
-    CURLOPT_POST           => true,
-    CURLOPT_COOKIEFILE     => 'cookies.txt',
-]);
-$cancelled = json_decode(curl_exec($ch), true);`,
-      go: `resp, _ := client.Post(
-    "${BASE_URL}/numbers/UUID/cancel", "", nil,
 )`,
     },
   },
@@ -1517,7 +1472,7 @@ function SectionCredentials() {
             {[
               { event: "sms.received", color: "bg-emerald-500/15 text-emerald-400", desc: "SMS de vérification reçu sur un numéro actif" },
               { event: "number.expired", color: "bg-amber-500/15 text-amber-400", desc: "Numéro expiré sans réception de SMS" },
-              { event: "number.cancelled", color: "bg-red-500/15 text-red-400", desc: "Numéro annulé, remboursement effectué" },
+              { event: "number.cancelled", color: "bg-red-500/15 text-red-400", desc: "Commande arrêtée par le fournisseur" },
               { event: "deposit.completed", color: "bg-violet-500/15 text-violet-400", desc: "Recharge wallet validée et créditée" },
             ].map(ev => (
               <div key={ev.event} className="flex items-start gap-3">
@@ -1759,7 +1714,7 @@ function SectionNumbers() {
           ))}
         </div>
       </div>
-      {ENDPOINTS.filter(e => ["number-quote", "buy-number", "poll-number", "cancel-number"].includes(e.id)).map(ep => (
+      {ENDPOINTS.filter(e => ["number-quote", "buy-number", "poll-number"].includes(e.id)).map(ep => (
         <EndpointCard key={ep.id} ep={ep} />
       ))}
       {/* Status */}
@@ -1769,7 +1724,7 @@ function SectionNumbers() {
           {[
             { s: "waiting", color: "bg-amber-500/15 text-amber-400", desc: "En attente du SMS" },
             { s: "received", color: "bg-emerald-500/15 text-emerald-400", desc: "SMS reçu avec succès" },
-            { s: "cancelled", color: "bg-red-500/15 text-red-400", desc: "Annulé (remboursé)" },
+            { s: "cancelled", color: "bg-red-500/15 text-red-400", desc: "Commande arrêtée par le fournisseur" },
             { s: "expired", color: "bg-secondary text-muted-foreground", desc: "Expiré sans SMS" },
           ].map(s => (
             <div key={s.s} className="flex items-center gap-3">

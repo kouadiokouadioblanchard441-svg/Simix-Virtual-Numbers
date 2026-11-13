@@ -300,7 +300,7 @@ paths:
     post:
       operationId: extendNumber
       tags: [numbers]
-      summary: Extend the active time of a virtual number by 5 minutes
+      summary: Add the configured extension time to an active virtual number
       parameters:
         - name: numberId
           in: path
@@ -310,25 +310,6 @@ paths:
       responses:
         "200":
           description: Extended
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/VirtualNumber"
-
-  /numbers/{numberId}/cancel:
-    post:
-      operationId: cancelNumber
-      tags: [numbers]
-      summary: Cancel a virtual number and refund if no SMS received
-      parameters:
-        - name: numberId
-          in: path
-          required: true
-          schema:
-            type: string
-      responses:
-        "200":
-          description: Cancelled
           content:
             application/json:
               schema:
@@ -615,7 +596,7 @@ components:
 
     NumberQuote:
       type: object
-      required: [service, country, available, waitTime, price, fees, total, validityMinutes]
+      required: [service, country, available, waitTime, price, fees, total, validityMinutes, extensionMinutes, extensionFee]
       properties:
         service:
           $ref: "#/components/schemas/Service"
@@ -634,6 +615,13 @@ components:
           type: integer
         validityMinutes:
           type: integer
+          description: Always 20 minutes for an activation number before optional extension
+        extensionMinutes:
+          type: integer
+          description: Additional validity available before expiry
+        extensionFee:
+          type: integer
+          description: Extension price in FCFA
 
     RequestNumberInput:
       type: object
@@ -663,6 +651,12 @@ components:
           format: date-time
         price:
           type: integer
+        extensionMinutes:
+          type: integer
+          description: Additional validity available before expiry
+        extensionFee:
+          type: integer
+          description: Extension price in FCFA
         service:
           $ref: "#/components/schemas/Service"
         country:
