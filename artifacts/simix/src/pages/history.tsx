@@ -807,7 +807,7 @@ function HistoryContent() {
         {selectedNum && <PurchaseDetailSheet num={selectedNum} onClose={() => setSelectedNum(null)} />}
       </AnimatePresence>
 
-      <div className="flex-1 w-full bg-background overflow-y-auto overflow-x-hidden">
+      <div className="flex-1 w-full bg-background overflow-y-auto overflow-x-hidden pb-28">
         {/* ── Sticky header ── */}
         <div className="sticky top-0 z-20 bg-background/95 backdrop-blur-md border-b border-card-border/30">
           {/* Title row */}

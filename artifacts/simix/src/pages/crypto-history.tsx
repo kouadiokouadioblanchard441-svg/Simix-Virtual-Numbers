@@ -514,7 +514,7 @@ function CryptoHistoryContent() {
       </div>
 
       {/* Scrollable content */}
-      <div className="flex-1 overflow-y-auto px-4 pb-8">
+      <div className="flex-1 overflow-y-auto px-4 pb-28">
         {isLoading ? (
           <div className="space-y-3">
             {Array.from({ length: 5 }).map((_, i) => <SkeletonCard key={i} />)}
