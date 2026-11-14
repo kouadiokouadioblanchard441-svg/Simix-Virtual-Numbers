@@ -7,6 +7,7 @@ import {
   index,
   uniqueIndex,
 } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 import { usersTable } from "./users";
 import { virtualNumbersTable } from "./numbers";
 
@@ -42,9 +43,11 @@ export const transactionsTable = pgTable(
     index("idx_transactions_status").on(t.status),
     /* Deduplication check — prevent double-crediting same external deposit */
     index("idx_transactions_external_deposit_id").on(t.externalDepositId),
-    /* Exactly one refund may be linked to a virtual number. PostgreSQL allows
-       multiple NULL values, so unrelated transactions are unaffected. */
-    uniqueIndex("idx_transactions_refund_virtual_number_unique").on(t.virtualNumberId),
+    /* A purchase and its refund share the number link. Only refund rows must
+       be unique, otherwise the purchase blocks the refund transaction. */
+    uniqueIndex("idx_transactions_refund_virtual_number_unique")
+      .on(t.virtualNumberId)
+      .where(sql`${t.type} = 'refund' AND ${t.virtualNumberId} IS NOT NULL`),
     /* Support for admin / reconciliation queries ordered by date */
     index("idx_transactions_created_at").on(t.createdAt),
   ],
