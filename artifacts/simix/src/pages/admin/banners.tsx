@@ -9,6 +9,7 @@ import {
   ToggleLeft, ToggleRight, AlertCircle,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { uploadAdminImage } from "@/components/image-upload-button";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
@@ -37,15 +38,6 @@ interface Banner {
   isActive: boolean;
   sortOrder: number;
   createdAt: string;
-}
-
-function fileToBase64(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
 }
 
 const EMPTY_FORM = {
@@ -113,6 +105,7 @@ function BannerEditor({ initial, onSave, onCancel, saving, title }: {
   const [form, setForm] = useState(initial);
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const { toast } = useToast();
 
   useEffect(() => { setForm(initial); }, [initial.title, initial.bgFrom]);
 
@@ -124,7 +117,12 @@ function BannerEditor({ initial, onSave, onCancel, saving, title }: {
     const file = e.target.files?.[0];
     if (!file) return;
     setUploading(true);
-    try { set("imageData", await fileToBase64(file)); }
+    try {
+      set("imageUrl", await uploadAdminImage(file));
+      set("imageData", "");
+    } catch (error) {
+      toast({ title: "Upload échoué", description: (error as Error).message, variant: "destructive" });
+    }
     finally { setUploading(false); e.target.value = ""; }
   }
 
@@ -173,7 +171,7 @@ function BannerEditor({ initial, onSave, onCancel, saving, title }: {
           {/* Image */}
           <div>
             <label className="block text-xs font-semibold text-zinc-400 mb-1.5">Image de la bannière</label>
-            <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleFile} />
+            <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/gif,image/webp" className="hidden" onChange={handleFile} />
             <div className="flex gap-2">
               <button
                 onClick={() => fileRef.current?.click()}
@@ -181,18 +179,18 @@ function BannerEditor({ initial, onSave, onCancel, saving, title }: {
                 className="flex items-center gap-2 px-4 py-2.5 bg-zinc-800 border border-zinc-700 hover:border-violet-500/60 rounded-xl text-sm text-zinc-300 hover:text-white transition-all disabled:opacity-50"
               >
                 {uploading ? <Loader2 className="w-4 h-4 animate-spin text-violet-400" /> : <Upload className="w-4 h-4" />}
-                {form.imageData ? "Changer l'image" : "Téléverser une image"}
+                {form.imageData || form.imageUrl ? "Changer l'image" : "Téléverser une image"}
               </button>
-              {form.imageData && (
+              {(form.imageData || form.imageUrl) && (
                 <button
-                  onClick={() => set("imageData", "")}
+                  onClick={() => { set("imageData", ""); set("imageUrl", ""); }}
                   className="px-3 py-2.5 bg-red-950/40 border border-red-800/40 rounded-xl text-red-400 hover:bg-red-950/70 transition-all"
                 >
                   <X className="w-4 h-4" />
                 </button>
               )}
             </div>
-            {form.imageData && (
+            {(form.imageData || form.imageUrl) && (
               <div className="mt-2 flex items-center gap-2 text-xs text-emerald-400">
                 <Check className="w-3.5 h-3.5" /> Image chargée
               </div>

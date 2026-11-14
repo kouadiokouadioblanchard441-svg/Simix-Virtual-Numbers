@@ -14,12 +14,13 @@ import {
 import { toUser } from "../lib/serializers";
 import { logger } from "../lib/logger";
 import {
-  getTemporaryLockRemaining,
+  getPersistentTemporaryLockRemaining,
   isRateLimited,
-  recordFailedAttemptAndLock,
+  recordPersistentFailedAttemptAndLock,
+  resetPersistentKey,
+  resetPersistentTemporaryLock,
   resetKey,
-  resetTemporaryLock,
-  setTemporaryLock,
+  setPersistentTemporaryLock,
 } from "../lib/rate-limiter";
 import { assessLoginRisk, logSecurityEvent } from "../lib/fraud-detection";
 import { isRegistrationEnabled, isEmailOtpEnabled } from "../lib/settings";
@@ -256,7 +257,7 @@ router.post("/auth/login", requireTurnstile, async (req, res): Promise<void> => 
   const normalizedLockIdentifier = normalized.toLowerCase();
   const identifierLockKey = `login_account_lock_identifier:${normalizedLockIdentifier}`;
 
-  const identifierLockRemaining = getTemporaryLockRemaining(identifierLockKey);
+  const identifierLockRemaining = await getPersistentTemporaryLockRemaining(identifierLockKey);
   if (identifierLockRemaining > 0) {
     respondWithLoginLockout(res, identifierLockRemaining);
     return;
@@ -299,7 +300,7 @@ router.post("/auth/login", requireTurnstile, async (req, res): Promise<void> => 
     /* Record failed attempt */
     isRateLimited(`login_fail_ip:${ip}`, 99999, 15 * 60_000);
     isRateLimited(`login_fail_user:${normalized}`, 99999, 15 * 60_000);
-    const lockTriggered = recordFailedAttemptAndLock(
+    const lockTriggered = await recordPersistentFailedAttemptAndLock(
       `login_account_attempt_identifier:${normalizedLockIdentifier}`,
       identifierLockKey,
       LOGIN_ACCOUNT_MAX_FAILURES,
@@ -340,7 +341,7 @@ router.post("/auth/login", requireTurnstile, async (req, res): Promise<void> => 
   }
 
   const accountLockKey = `login_account_lock_user:${user.id}`;
-  const accountLockRemaining = getTemporaryLockRemaining(accountLockKey);
+  const accountLockRemaining = await getPersistentTemporaryLockRemaining(accountLockKey);
   if (accountLockRemaining > 0) {
     respondWithLoginLockout(res, accountLockRemaining);
     return;
@@ -366,14 +367,14 @@ router.post("/auth/login", requireTurnstile, async (req, res): Promise<void> => 
   if (!ok) {
     isRateLimited(`login_fail_ip:${ip}`, 99999, 15 * 60_000);
     isRateLimited(`login_fail_user:${normalized}`, 99999, 15 * 60_000);
-    const lockTriggered = recordFailedAttemptAndLock(
+    const lockTriggered = await recordPersistentFailedAttemptAndLock(
       `login_account_attempt_user:${user.id}`,
       accountLockKey,
       LOGIN_ACCOUNT_MAX_FAILURES,
       LOGIN_ACCOUNT_LOCKOUT_MS,
     );
     if (lockTriggered) {
-      setTemporaryLock(identifierLockKey, LOGIN_ACCOUNT_LOCKOUT_MS);
+      await setPersistentTemporaryLock(identifierLockKey, LOGIN_ACCOUNT_LOCKOUT_MS);
     }
 
     if (risk.level === "suspicious") {
@@ -407,10 +408,10 @@ router.post("/auth/login", requireTurnstile, async (req, res): Promise<void> => 
   /* Success — reset fail counters */
   resetKey(`login_fail_ip:${ip}`);
   resetKey(`login_fail_user:${normalized}`);
-  resetKey(`login_account_attempt_user:${user.id}`);
-  resetKey(`login_account_attempt_identifier:${normalizedLockIdentifier}`);
-  resetTemporaryLock(accountLockKey);
-  resetTemporaryLock(identifierLockKey);
+  await resetPersistentKey(`login_account_attempt_user:${user.id}`);
+  await resetPersistentKey(`login_account_attempt_identifier:${normalizedLockIdentifier}`);
+  await resetPersistentTemporaryLock(accountLockKey);
+  await resetPersistentTemporaryLock(identifierLockKey);
 
   const session = await createSession(user.id);
   setSessionCookie(res, session.id, session.expiresAt);

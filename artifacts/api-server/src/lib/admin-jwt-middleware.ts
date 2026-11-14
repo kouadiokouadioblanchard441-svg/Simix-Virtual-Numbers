@@ -3,8 +3,8 @@
  * on every protected /api/admin/* route.
  */
 import type { Request, Response, NextFunction } from "express";
-import { eq } from "drizzle-orm";
-import { db, usersTable } from "@workspace/db";
+import { and, eq, sql } from "drizzle-orm";
+import { adminAccessLogsTable, db, usersTable } from "@workspace/db";
 import { verifyAdminJwt, type AdminJwtPayload } from "./admin-jwt";
 import { sendAuditAlert } from "./telegram";
 import { logger } from "./logger";
@@ -36,11 +36,20 @@ export function requireAdminJwt(
 
   return (async () => {
     let activeAdmin: { isAdmin: boolean } | undefined;
+    let revokedToken: { id: string } | undefined;
     try {
       [activeAdmin] = await db
         .select({ isAdmin: usersTable.isAdmin })
         .from(usersTable)
         .where(eq(usersTable.id, payload.sub))
+        .limit(1);
+      [revokedToken] = await db
+        .select({ id: adminAccessLogsTable.id })
+        .from(adminAccessLogsTable)
+        .where(and(
+          eq(adminAccessLogsTable.action, "logout"),
+          sql`${adminAccessLogsTable.details}->>'jti' = ${payload.jti}`,
+        ))
         .limit(1);
     } catch (error) {
       logger.error({ err: error, adminId: payload.sub }, "[admin-auth] Could not confirm current admin access");
@@ -50,6 +59,10 @@ export function requireAdminJwt(
 
     if (!activeAdmin?.isAdmin) {
       res.status(401).json({ error: "Session administrateur révoquée. Veuillez vous reconnecter." });
+      return;
+    }
+    if (revokedToken) {
+      res.status(401).json({ error: "Cette session administrateur a été déconnectée." });
       return;
     }
 

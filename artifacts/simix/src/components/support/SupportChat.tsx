@@ -27,10 +27,16 @@ interface SupportConfig {
 function getSessionId(): string {
   const key = "simix_support_session";
   let id = localStorage.getItem(key);
-  if (!id) {
-    id = crypto.randomUUID();
+  if (!id || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id)) {
+    id = rotateSupportSessionId();
     localStorage.setItem(key, id);
   }
+  return id;
+}
+
+function rotateSupportSessionId(): string {
+  const id = crypto.randomUUID();
+  localStorage.setItem("simix_support_session", id);
   return id;
 }
 
@@ -251,9 +257,19 @@ export default function SupportChat() {
       try {
         const lang = navigator.language.startsWith("en") ? "en" : "fr";
         const historyRes = await fetch(`${getApiBase()}/support/history/${sessionId.current}`, { credentials: "include" });
-        const historyData = await historyRes.json();
-
         const greeting = lang === "en" ? config.greetingEn : config.greetingFr;
+        if (historyRes.status === 404) {
+          sessionId.current = rotateSupportSessionId();
+          setMessages([{
+            id: crypto.randomUUID(),
+            role: "assistant",
+            content: greeting,
+            createdAt: new Date(),
+          }]);
+          return;
+        }
+        if (!historyRes.ok) throw new Error("Support history could not be loaded");
+        const historyData = await historyRes.json();
 
         if (historyData.messages?.length > 0) {
           setMessages(historyData.messages.map((m: Message) => ({ ...m, createdAt: new Date(m.createdAt) })));
@@ -349,6 +365,21 @@ export default function SupportChat() {
           language: navigator.language.startsWith("en") ? "en" : "fr",
         }),
       });
+
+      if (res.status === 404) {
+        sessionId.current = rotateSupportSessionId();
+        setMessages([{
+          id: crypto.randomUUID(),
+          role: "assistant",
+          content: "Cette conversation est liée à un autre compte. Votre message n’a pas été envoyé; vous pouvez le renvoyer.",
+          createdAt: new Date(),
+        }]);
+        setInput(text);
+        setImageData(imageData ?? null);
+        setIsTyping(false);
+        setIsStreaming(false);
+        return;
+      }
 
       if (!res.ok || !res.body) throw new Error("API error");
 

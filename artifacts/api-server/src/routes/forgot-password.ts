@@ -2,7 +2,7 @@ import { Router, type IRouter } from "express";
 import bcrypt from "bcryptjs";
 import { and, desc, eq, or } from "drizzle-orm";
 import { db, emailOtpTable, sessionsTable, usersTable } from "@workspace/db";
-import { isRateLimited } from "../lib/rate-limiter";
+import { isPersistentRateLimited } from "../lib/rate-limiter";
 import { createOtp, verifyOtp, hasRecentOtp, isVerifiedActiveOtp } from "../lib/otp";
 import { sendPasswordResetEmail } from "../lib/email";
 import { requireTurnstile } from "../middlewares/turnstile";
@@ -41,7 +41,7 @@ function notifyResetEvent(
 router.post("/auth/forgot-password", requireTurnstile, async (req, res): Promise<void> => {
   const ip = req.ip ?? "unknown";
 
-  if (isRateLimited(`forgot_pwd:${ip}`, 5, 60 * 60_000)) {
+  if (await isPersistentRateLimited(`forgot_pwd:${ip}`, 5, 60 * 60_000)) {
     notifyResetEvent("Demande de réinitialisation bloquée", ip, undefined, undefined, "Limite de demandes atteinte.");
     res.status(429).json({ error: "Trop de tentatives. Réessayez dans une heure." });
     return;
@@ -101,7 +101,7 @@ router.post("/auth/forgot-password", requireTurnstile, async (req, res): Promise
 router.post("/auth/forgot-password/verify", async (req, res): Promise<void> => {
   const ip = req.ip ?? "unknown";
 
-  if (isRateLimited(`reset_verify:${ip}`, 10, 15 * 60_000)) {
+  if (await isPersistentRateLimited(`reset_verify:${ip}`, 10, 15 * 60_000)) {
     notifyResetEvent("Vérification du code bloquée", ip, undefined, undefined, "Limite de tentatives atteinte.");
     res.status(429).json({ error: "Trop de tentatives. Réessayez dans 15 minutes." });
     return;
@@ -129,7 +129,7 @@ router.post("/auth/forgot-password/verify", async (req, res): Promise<void> => {
 router.post("/auth/reset-password", async (req, res): Promise<void> => {
   const ip = req.ip ?? "unknown";
 
-  if (isRateLimited(`reset_pwd:${ip}`, 5, 60 * 60_000)) {
+  if (await isPersistentRateLimited(`reset_pwd:${ip}`, 5, 60 * 60_000)) {
     notifyResetEvent("Réinitialisation bloquée", ip, undefined, undefined, "Limite de demandes atteinte.");
     res.status(429).json({ error: "Trop de tentatives. Réessayez dans une heure." });
     return;
@@ -218,7 +218,7 @@ router.post("/auth/reset-password", async (req, res): Promise<void> => {
 router.post("/auth/forgot-password/resend", async (req, res): Promise<void> => {
   const ip = req.ip ?? "unknown";
 
-  if (isRateLimited(`reset_resend:${ip}`, 3, 60 * 60_000)) {
+  if (await isPersistentRateLimited(`reset_resend:${ip}`, 3, 60 * 60_000)) {
     notifyResetEvent("Renvoi de code bloqué", ip, undefined, undefined, "Limite de renvois atteinte.");
     res.status(429).json({ error: "Limite atteinte. Réessayez dans une heure." });
     return;

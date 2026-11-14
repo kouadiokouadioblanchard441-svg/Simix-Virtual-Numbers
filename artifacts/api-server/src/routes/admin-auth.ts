@@ -10,9 +10,13 @@ import { Router, type IRouter, type Request, type Response } from "express";
 import bcrypt from "bcryptjs";
 import { eq } from "drizzle-orm";
 import { db, usersTable, adminAccessLogsTable } from "@workspace/db";
-import { signAdminJwt, verifyAdminJwt } from "../lib/admin-jwt";
+import { signAdminJwt } from "../lib/admin-jwt";
 import { requireAdminJwt } from "../lib/admin-jwt-middleware";
-import { isRateLimited, getHitCount, resetKey } from "../lib/rate-limiter";
+import {
+  getPersistentHitCount,
+  isPersistentRateLimited,
+  resetPersistentKey,
+} from "../lib/rate-limiter";
 import { logger } from "../lib/logger";
 import { sendAuditAlert } from "../lib/telegram";
 
@@ -21,17 +25,7 @@ const router: IRouter = Router();
 /* ─── helpers ─────────────────────────────────────────────── */
 
 function getIp(req: Request): string {
-  return (
-    (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() ??
-    req.ip ??
-    "unknown"
-  );
-}
-
-function getBearerToken(req: Request): string | null {
-  const auth = req.headers.authorization;
-  if (!auth?.startsWith("Bearer ")) return null;
-  return auth.slice(7);
+  return req.ip ?? "unknown";
 }
 
 async function logAccess(
@@ -53,6 +47,7 @@ async function logAccess(
     });
   } catch (err) {
     logger.error({ err }, "Failed to log admin access");
+    if (action === "logout") throw err;
   }
   void sendAuditAlert({
     action: `Admin access — ${action}`,
@@ -73,7 +68,7 @@ router.post("/admin-auth/verify-token", async (req: Request, res: Response): Pro
   const ua = req.headers["user-agent"] ?? "";
 
   /* Aggressive rate limit on token probe attempts */
-  if (isRateLimited(`admin-token:${ip}`, 20, 15 * 60_000)) {
+  if (await isPersistentRateLimited(`admin-token:${ip}`, 20, 15 * 60_000)) {
     await logAccess(ip, "token_probe_rate_limited", false, undefined, { ua });
     res.status(429).json({ error: "Too many requests. Please wait." });
     return;
@@ -117,7 +112,7 @@ router.post("/admin-auth/login", async (req: Request, res: Response): Promise<vo
   const loginKey = `admin-login:${ip}`;
 
   /* Brute-force protection: 5 attempts per 15 min */
-  const hits = getHitCount(loginKey, 15 * 60_000);
+  const hits = await getPersistentHitCount(loginKey, 15 * 60_000);
   if (hits >= 5) {
     await logAccess(ip, "login_blocked_bruteforce", false, undefined, { hits }, ua);
     logger.warn({ ip, hits }, "Admin login brute-force blocked");
@@ -149,7 +144,7 @@ router.post("/admin-auth/login", async (req: Request, res: Response): Promise<vo
 
   if (!user || !user.isAdmin) {
     /* Record failed attempt (same timing as valid path to avoid enumeration) */
-    isRateLimited(loginKey, 5, 15 * 60_000);
+    await isPersistentRateLimited(loginKey, 5, 15 * 60_000);
     await logAccess(ip, "login_failed_not_admin", false, email, {}, ua);
     res.status(401).json({ error: "Invalid credentials" });
     return;
@@ -157,10 +152,10 @@ router.post("/admin-auth/login", async (req: Request, res: Response): Promise<vo
 
   const passwordMatch = await bcrypt.compare(password, user.passwordHash ?? "");
   if (!passwordMatch) {
-    isRateLimited(loginKey, 5, 15 * 60_000);
+    await isPersistentRateLimited(loginKey, 5, 15 * 60_000);
     await logAccess(ip, "login_failed_bad_password", false, email, { userId: user.id }, ua);
     logger.warn({ ip, email }, "Admin login — bad password");
-    const remaining = 5 - getHitCount(loginKey, 15 * 60_000);
+    const remaining = 5 - await getPersistentHitCount(loginKey, 15 * 60_000);
     res.status(401).json({
       error: "Invalid credentials",
       attemptsRemaining: Math.max(0, remaining),
@@ -169,7 +164,7 @@ router.post("/admin-auth/login", async (req: Request, res: Response): Promise<vo
   }
 
   /* Success — reset brute-force counter */
-  resetKey(loginKey);
+  await resetPersistentKey(loginKey);
 
   const fp = fingerprint ?? `${ua}:${ip}`;
   let token: string;
@@ -203,15 +198,10 @@ router.post("/admin-auth/login", async (req: Request, res: Response): Promise<vo
 /* ─── GET /api/admin-auth/session ───────────────────────────
    Verify that the current JWT is still valid.
 ────────────────────────────────────────────────────────────── */
-router.get("/admin-auth/session", async (req: Request, res: Response): Promise<void> => {
-  const token = getBearerToken(req);
-  if (!token) {
-    res.status(401).json({ valid: false, error: "No token provided" });
-    return;
-  }
-  const payload = verifyAdminJwt(token);
+router.get("/admin-auth/session", requireAdminJwt, async (req: Request, res: Response): Promise<void> => {
+  const payload = req.adminPayload;
   if (!payload) {
-    res.status(401).json({ valid: false, error: "Invalid or expired token" });
+    res.status(401).json({ valid: false, error: "No token provided" });
     return;
   }
 
@@ -237,18 +227,21 @@ router.get("/admin-auth/session", async (req: Request, res: Response): Promise<v
 /* ─── POST /api/admin-auth/logout ───────────────────────────
    Log out admin (JWT is stateless; client clears it).
 ────────────────────────────────────────────────────────────── */
-router.post("/admin-auth/logout", async (req: Request, res: Response): Promise<void> => {
+router.post("/admin-auth/logout", requireAdminJwt, async (req: Request, res: Response): Promise<void> => {
   const ip = getIp(req);
   const ua = req.headers["user-agent"] ?? "";
-  const token = getBearerToken(req);
-
-  let email: string | undefined;
-  if (token) {
-    const payload = verifyAdminJwt(token);
-    if (payload) email = payload.email;
+  const payload = req.adminPayload;
+  if (!payload) {
+    res.status(401).json({ error: "Invalid or expired token" });
+    return;
   }
 
-  await logAccess(ip, "logout", true, email, {}, ua);
+  try {
+    await logAccess(ip, "logout", true, payload.email, { jti: payload.jti }, ua);
+  } catch {
+    res.status(503).json({ error: "La session ne peut pas être révoquée pour le moment." });
+    return;
+  }
   res.json({ success: true });
 });
 

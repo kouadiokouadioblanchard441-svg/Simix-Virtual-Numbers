@@ -120,6 +120,55 @@
       "when": 1783200000000,
       "tag": "0016_enable_rls_public_tables",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1783697001000,
+      "tag": "0017_email_providers",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1783800000000,
+      "tag": "0018_worker_leader_lock",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1783900000000,
+      "tag": "0019_ai_provider_tokens",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1788393600000,
+      "tag": "0020_refund_virtual_number_link",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1788397200000,
+      "tag": "0021_email_quota_retry",
+      "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1788400800000,
+      "tag": "0022_durable_payouts",
+      "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1794645976978,
+      "tag": "0023_security_rate_limits",
+      "breakpoints": true
     }
   ]
 }

@@ -30,5 +30,6 @@ export * from "./service_country_availability";
 export * from "./referrals";
 export * from "./push_subscriptions";
 export * from "./audit_logs";
+export * from "./security_rate_limits";
 export * from "./email_providers";
 export * from "./payouts";

@@ -162,6 +162,13 @@
       "when": 1788400800000,
       "tag": "0022_durable_payouts",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1794645976978,
+      "tag": "0023_security_rate_limits",
+      "breakpoints": true
     }
   ]
 }

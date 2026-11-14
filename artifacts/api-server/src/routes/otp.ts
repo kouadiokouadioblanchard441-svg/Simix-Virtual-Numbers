@@ -2,7 +2,7 @@ import { Router, type IRouter } from "express";
 import { eq } from "drizzle-orm";
 import { db, usersTable, emailOtpTable } from "@workspace/db";
 import { requireAuth } from "../lib/auth";
-import { isRateLimited } from "../lib/rate-limiter";
+import { isPersistentRateLimited } from "../lib/rate-limiter";
 import { createOtp, verifyOtp, hasRecentOtp, isUserInactive } from "../lib/otp";
 import { sendOtpEmail } from "../lib/email";
 import { logger } from "../lib/logger";
@@ -14,7 +14,7 @@ router.post("/auth/otp/send", requireAuth, async (req, res): Promise<void> => {
   const user = req.user!;
   const ip = req.ip ?? "unknown";
 
-  if (isRateLimited(`otp_send:${user.id}`, 5, 60 * 60_000)) {
+  if (await isPersistentRateLimited(`otp_send:${user.id}`, 5, 60 * 60_000)) {
     void sendOtpEventAlert({
       event: "Demande de code bloquée",
       purpose: user.emailVerified ? "Contrôle d'inactivité" : "Vérification d'inscription",
@@ -82,7 +82,7 @@ router.post("/auth/otp/verify", requireAuth, async (req, res): Promise<void> => 
     return;
   }
 
-  if (isRateLimited(`otp_verify:${user.id}`, 10, 15 * 60_000)) {
+  if (await isPersistentRateLimited(`otp_verify:${user.id}`, 10, 15 * 60_000)) {
     void sendOtpEventAlert({
       event: "Vérification bloquée",
       purpose: user.emailVerified ? "Contrôle d'inactivité" : "Vérification d'inscription",
@@ -136,7 +136,7 @@ router.post("/auth/otp/verify", requireAuth, async (req, res): Promise<void> => 
 router.post("/auth/otp/resend", requireAuth, async (req, res): Promise<void> => {
   const user = req.user!;
 
-  if (isRateLimited(`otp_resend:${user.id}`, 3, 60 * 60_000)) {
+  if (await isPersistentRateLimited(`otp_resend:${user.id}`, 3, 60 * 60_000)) {
     void sendOtpEventAlert({
       event: "Renvoi de code bloqué",
       purpose: user.emailVerified ? "Contrôle d'inactivité" : "Vérification d'inscription",

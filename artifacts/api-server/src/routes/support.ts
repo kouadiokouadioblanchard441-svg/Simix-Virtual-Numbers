@@ -1,9 +1,10 @@
-import { Router, type IRouter } from "express";
-import { eq, asc, desc, and, gte } from "drizzle-orm";
+import { Router, type IRouter, type Request } from "express";
+import { eq, asc, desc, and, gte, isNull } from "drizzle-orm";
 import {
   db,
   supportConversationsTable,
   supportMessagesTable,
+  type SupportConversation,
   aiKnowledgeBaseTable,
   aiSupportConfigTable,
   aiProviderTokensTable,
@@ -18,8 +19,45 @@ import { logger } from "../lib/logger";
 import { getSetting } from "../lib/settings";
 import { decrypt } from "../lib/email-router/crypto";
 import { sendSupportMessageAlert } from "../lib/telegram";
+import { isPersistentRateLimited } from "../lib/rate-limiter";
 
 const router: IRouter = Router();
+
+/**
+ * Account-owned conversations require the matching logged-in account.
+ * A guest conversation is bound to the account when an authenticated user
+ * opens it, preventing later access through the old guest bearer ID.
+ */
+async function ensureSupportConversationAccess(
+  conv: SupportConversation,
+  req: Request,
+): Promise<boolean> {
+  if (conv.userId) return req.user?.id === conv.userId;
+  if (!req.user) return true;
+
+  await db
+    .update(supportConversationsTable)
+    .set({
+      userId: req.user.id,
+      userName: req.user.fullName,
+      userEmail: req.user.email,
+    })
+    .where(and(
+      eq(supportConversationsTable.id, conv.id),
+      isNull(supportConversationsTable.userId),
+    ));
+
+  const [current] = await db
+    .select({ userId: supportConversationsTable.userId })
+    .from(supportConversationsTable)
+    .where(eq(supportConversationsTable.id, conv.id))
+    .limit(1);
+  return current?.userId === req.user.id;
+}
+
+function isValidSupportSessionId(value: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+}
 
 function remainingHeader(headers: Headers, ...names: string[]): number | null {
   for (const name of names) {
@@ -480,7 +518,7 @@ ${knowledgeSection ? `\nINFOS SUPPLEMENTAIRES DE LA BASE DE CONNAISSANCES:\n${kn
 /* ── GET conversation history ─────────────────────────────── */
 router.get("/support/history/:sessionId", async (req, res): Promise<void> => {
   const { sessionId } = req.params;
-  if (!sessionId || sessionId.length < 8) {
+  if (!sessionId || !isValidSupportSessionId(sessionId)) {
     res.status(400).json({ error: "Session ID invalide" });
     return;
   }
@@ -493,6 +531,10 @@ router.get("/support/history/:sessionId", async (req, res): Promise<void> => {
 
   if (!conv) {
     res.json({ messages: [] });
+    return;
+  }
+  if (!(await ensureSupportConversationAccess(conv, req))) {
+    res.status(404).json({ error: "Conversation introuvable" });
     return;
   }
 
@@ -548,7 +590,7 @@ router.post("/support/chat", async (req, res): Promise<void> => {
   const imageData = body.imageData;
   const language = typeof body.language === "string" ? body.language : undefined;
 
-  if (typeof sessionId !== "string" || sessionId.length < 8 || sessionId.length > 200) {
+  if (typeof sessionId !== "string" || !isValidSupportSessionId(sessionId)) {
     res.status(400).json({ error: "Session ID requis" });
     return;
   }
@@ -589,6 +631,14 @@ router.post("/support/chat", async (req, res): Promise<void> => {
     return;
   }
 
+  /* Shared IP cap complements the existing 30 messages/session/hour rule,
+     and is checked before creating a conversation row. */
+  const clientIp = req.ip ?? "unknown";
+  if (await isPersistentRateLimited(`support-chat-ip:${clientIp}`, 300, 60 * 60_000)) {
+    res.status(429).json({ error: "Trop de messages depuis cette connexion. Réessayez plus tard." });
+    return;
+  }
+
   /* ── Get or create conversation ── */
   let conv = (await db
     .select()
@@ -619,6 +669,10 @@ router.post("/support/chat", async (req, res): Promise<void> => {
       })
       .returning();
     conv = created!;
+  }
+  if (!(await ensureSupportConversationAccess(conv, req))) {
+    res.status(404).json({ error: "Conversation introuvable" });
+    return;
   }
 
   /* ── Human takeover — block AI ── */
@@ -733,7 +787,6 @@ router.post("/support/chat", async (req, res): Promise<void> => {
   res.setHeader("Content-Type", "text/event-stream");
   res.setHeader("Cache-Control", "no-cache");
   res.setHeader("Connection", "keep-alive");
-  res.setHeader("Access-Control-Allow-Origin", "*");
   res.flushHeaders();
 
   let fullResponse = "";
@@ -1169,6 +1222,10 @@ router.post("/support/chat", async (req, res): Promise<void> => {
 /* ── DELETE conversation ─────────────────────────────────── */
 router.delete("/support/history/:sessionId", async (req, res): Promise<void> => {
   const { sessionId } = req.params;
+  if (!sessionId || !isValidSupportSessionId(sessionId)) {
+    res.status(400).json({ error: "Session ID invalide" });
+    return;
+  }
   const [conv] = await db
     .select()
     .from(supportConversationsTable)
@@ -1176,6 +1233,10 @@ router.delete("/support/history/:sessionId", async (req, res): Promise<void> => 
     .limit(1);
 
   if (conv) {
+    if (!(await ensureSupportConversationAccess(conv, req))) {
+      res.status(404).json({ error: "Conversation introuvable" });
+      return;
+    }
     await db.delete(supportConversationsTable).where(eq(supportConversationsTable.id, conv.id));
   }
   res.json({ success: true });

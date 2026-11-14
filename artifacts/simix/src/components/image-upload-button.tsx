@@ -1,48 +1,59 @@
 import { useRef, useState, useCallback } from "react";
 import { Upload, Loader2, X, Link, ImageIcon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { adminToken } from "@/lib/admin-token";
 
-async function uploadFile(file: File, authHeader?: Record<string, string>): Promise<string> {
-  if (!file.type.startsWith("image/")) {
-    throw new Error("Veuillez sélectionner une image (PNG, JPG, SVG, WebP).");
+export async function uploadAdminImage(file: File, authHeader?: Record<string, string>): Promise<string> {
+  if (!["image/jpeg", "image/png", "image/gif", "image/webp"].includes(file.type.toLowerCase())) {
+    throw new Error("Veuillez sélectionner une image PNG, JPG, GIF ou WebP.");
   }
+  const uploadHeaders = { ...adminToken.getHeader(), ...(authHeader ?? {}) };
 
   /* ── Phase 1: Try GCS presigned URL ── */
+  let gcsUploadCompleted = false;
   try {
     const metaRes = await fetch("/api/storage/uploads/request-url", {
       method: "POST",
-      headers: { "Content-Type": "application/json", ...(authHeader ?? {}) },
+      headers: { "Content-Type": "application/json", ...uploadHeaders },
       credentials: "include",
       body: JSON.stringify({ name: file.name, size: file.size, contentType: file.type }),
     });
     if (metaRes.ok) {
       const { uploadURL, objectPath } = await metaRes.json() as { uploadURL: string; objectPath: string };
       const putRes = await fetch(uploadURL, { method: "PUT", body: file, headers: { "Content-Type": file.type } });
-      if (putRes.ok) return `/api/storage${objectPath}`;
+      if (putRes.ok) {
+        gcsUploadCompleted = true;
+        const finalizeRes = await fetch("/api/storage/uploads/finalize", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", ...uploadHeaders },
+          credentials: "include",
+          body: JSON.stringify({ objectPath }),
+        });
+        if (!finalizeRes.ok) {
+          const error = await finalizeRes.json().catch(() => null) as { error?: string } | null;
+          throw new Error(error?.error || "Validation de l’image téléversée impossible.");
+        }
+        const finalized = await finalizeRes.json() as { url: string };
+        return finalized.url;
+      }
     }
-  } catch { /* fall through */ }
+  } catch (error) {
+    if (gcsUploadCompleted) throw error;
+  }
 
   /* ── Phase 2: Direct server upload ── */
-  try {
-    const directRes = await fetch("/api/storage/uploads/direct", {
-      method: "POST",
-      headers: { "Content-Type": file.type, ...(authHeader ?? {}) },
-      credentials: "include",
-      body: file,
-    });
-    if (directRes.ok) {
-      const { url } = await directRes.json() as { url: string };
-      return url;
-    }
-  } catch { /* fall through */ }
-
-  /* ── Phase 3: Base64 fallback ── */
-  return new Promise<string>((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = () => reject(new Error("Lecture du fichier impossible"));
-    reader.readAsDataURL(file);
+  const directRes = await fetch("/api/storage/uploads/direct", {
+    method: "POST",
+    headers: { "Content-Type": file.type, ...uploadHeaders },
+    credentials: "include",
+    body: file,
   });
+  if (directRes.ok) {
+    const { url } = await directRes.json() as { url: string };
+    return url;
+  }
+  const error = await directRes.json().catch(() => null) as { error?: string } | null;
+  throw new Error(error?.error || "Téléversement impossible. Vérifiez votre session administrateur.");
 }
 
 export function useImageUpload(onUploaded: (url: string) => void, authHeader?: Record<string, string>) {
@@ -52,7 +63,7 @@ export function useImageUpload(onUploaded: (url: string) => void, authHeader?: R
   const upload = useCallback(async (file: File) => {
     setUploading(true);
     try {
-      const url = await uploadFile(file, authHeader);
+      const url = await uploadAdminImage(file, authHeader);
       onUploaded(url);
       toast({ title: "Image uploadée ✓", description: "Le logo a été mis à jour." });
     } catch (e) {

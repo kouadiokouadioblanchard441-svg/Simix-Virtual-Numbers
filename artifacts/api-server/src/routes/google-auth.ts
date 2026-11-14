@@ -193,7 +193,7 @@ router.get("/auth/google", (req, res): void => {
 ──────────────────────────────────────────────────────────────────────── */
 router.get("/auth/google/callback", async (req, res): Promise<void> => {
   const { code, state, error } = req.query;
-  const ip = (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() ?? req.ip;
+  const ip = req.ip ?? "unknown";
 
   /* ── User denied consent ── */
   if (error) {

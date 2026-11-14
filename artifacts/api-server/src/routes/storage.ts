@@ -5,25 +5,31 @@ import { randomUUID } from "crypto";
 import path from "path";
 import fs from "fs";
 import express from "express";
+import { getObjectAclPolicy } from "../lib/objectAcl";
 import { ObjectStorageService, ObjectNotFoundError } from "../lib/objectStorage";
-
-const ALLOWED_IMAGE_TYPES = {
-  "image/jpeg": "jpg",
-  "image/png": "png",
-  "image/gif": "gif",
-  "image/webp": "webp",
-} as const;
+import { requireAdminJwt } from "../lib/admin-jwt-middleware";
+import { isPersistentRateLimited } from "../lib/rate-limiter";
+import {
+  ALLOWED_IMAGE_TYPES,
+  imageSignatureMatches,
+  MAX_IMAGE_UPLOAD_BYTES,
+} from "../lib/upload-validation";
 
 const RequestUploadUrlBody = z.object({
-  name: z.string().min(1),
-  size: z.number().int().positive().max(5 * 1024 * 1024),
+  name: z.string().trim().min(1).max(255),
+  size: z.number().int().positive().max(MAX_IMAGE_UPLOAD_BYTES),
   contentType: z.string().transform((value) => value.split(";")[0].trim().toLowerCase())
-    .refine((value) => value in ALLOWED_IMAGE_TYPES, "Unsupported image type"),
+    .refine((value) => Object.hasOwn(ALLOWED_IMAGE_TYPES, value), "Unsupported image type"),
 });
 const RequestUploadUrlResponse = z.object({
   uploadURL: z.string().url(),
   objectPath: z.string(),
   metadata: z.object({ name: z.string(), size: z.number(), contentType: z.string() }),
+});
+const FinalizeUploadBody = z.object({
+  objectPath: z.string().regex(
+    /^\/objects\/uploads\/[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
+  ),
 });
 
 const router: IRouter = Router();
@@ -41,13 +47,45 @@ function resolveUploadPath(filename: string): string {
   return resolved;
 }
 
+async function enforceAdminUploadRateLimit(req: Request, res: Response): Promise<boolean> {
+  const adminId = req.adminPayload?.sub;
+  if (!adminId) {
+    res.status(401).json({ error: "Session administrateur requise." });
+    return false;
+  }
+  const ip = req.ip ?? "unknown";
+  if (
+    await isPersistentRateLimited(`image-upload-admin:${adminId}`, 60, 60 * 60_000)
+    || await isPersistentRateLimited(`image-upload-ip:${ip}`, 100, 60 * 60_000)
+  ) {
+    res.setHeader("Retry-After", "3600");
+    res.status(429).json({ error: "Trop de téléversements. Réessayez plus tard." });
+    return false;
+  }
+  return true;
+}
+
+function hasUploadDiskCapacity(incomingBytes: number): boolean {
+  const configuredReserve = Number(process.env.UPLOAD_MIN_FREE_BYTES);
+  const reserveBytes = Number.isSafeInteger(configuredReserve) && configuredReserve >= 0
+    ? configuredReserve
+    : 256 * 1024 * 1024;
+  try {
+    const stats = fs.statfsSync(UPLOAD_DIR);
+    return stats.bavail * stats.bsize >= reserveBytes + incomingBytes;
+  } catch {
+    return false;
+  }
+}
+
 /**
  * POST /storage/uploads/request-url
  *
  * Request a presigned URL for file upload via Replit object storage (GCS).
  * Falls back gracefully — if the sidecar is unavailable use /uploads/direct.
  */
-router.post("/storage/uploads/request-url", async (req: Request, res: Response) => {
+router.post("/storage/uploads/request-url", requireAdminJwt, async (req: Request, res: Response) => {
+  if (!await enforceAdminUploadRateLimit(req, res)) return;
   const parsed = RequestUploadUrlBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "Missing or invalid required fields" });
@@ -86,11 +124,13 @@ router.post("/storage/uploads/request-url", async (req: Request, res: Response) 
  */
 router.post(
   "/storage/uploads/direct",
-  express.raw({ type: "image/*", limit: "5mb" }),
-  (req: Request, res: Response) => {
+  requireAdminJwt,
+  express.raw({ type: "image/*", limit: `${MAX_IMAGE_UPLOAD_BYTES}b` }),
+  async (req: Request, res: Response) => {
+    if (!await enforceAdminUploadRateLimit(req, res)) return;
     const contentType = (req.headers["content-type"] ?? "").split(";")[0].trim().toLowerCase();
 
-    if (!(contentType in ALLOWED_IMAGE_TYPES)) {
+    if (!Object.hasOwn(ALLOWED_IMAGE_TYPES, contentType)) {
       res.status(415).json({ error: "Formats acceptés : JPEG, PNG, GIF ou WebP" });
       return;
     }
@@ -98,6 +138,14 @@ router.post(
     const body = req.body as Buffer;
     if (!Buffer.isBuffer(body) || body.length === 0) {
       res.status(400).json({ error: "Corps de la requête vide ou invalide" });
+      return;
+    }
+    if (!imageSignatureMatches(contentType, body)) {
+      res.status(400).json({ error: "Le contenu ne correspond pas au format d’image annoncé." });
+      return;
+    }
+    if (!hasUploadDiskCapacity(body.length)) {
+      res.status(507).json({ error: "Espace de stockage insuffisant pour cet upload." });
       return;
     }
 
@@ -111,7 +159,7 @@ router.post(
       /* filename is a server-generated UUID and resolveUploadPath proves
        * the destination remains directly inside UPLOAD_DIR. */
       // nosemgrep: javascript.express.file.fs-express.fs-express
-      fs.writeFileSync(filepath, body);
+      fs.writeFileSync(filepath, body, { flag: "wx", mode: 0o644 });
       const url = `/api/storage/uploads/files/${filename}`;
       res.json({ url, objectPath: url });
     } catch (err) {
@@ -120,6 +168,55 @@ router.post(
     }
   },
 );
+
+/** Validate GCS uploads before making them publicly readable. */
+router.post("/storage/uploads/finalize", requireAdminJwt, async (req: Request, res: Response) => {
+  if (!await enforceAdminUploadRateLimit(req, res)) return;
+  const parsed = FinalizeUploadBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Chemin d’upload invalide." });
+    return;
+  }
+
+  let objectFile: Awaited<ReturnType<ObjectStorageService["getObjectEntityFile"]>> | undefined;
+  try {
+    objectFile = await objectStorageService.getObjectEntityFile(parsed.data.objectPath);
+    const [metadata] = await objectFile.getMetadata();
+    const size = Number(metadata.size);
+    const contentType = String(metadata.contentType ?? "").split(";")[0].trim().toLowerCase();
+    if (
+      !Number.isSafeInteger(size)
+      || size <= 0
+      || size > MAX_IMAGE_UPLOAD_BYTES
+      || !Object.hasOwn(ALLOWED_IMAGE_TYPES, contentType)
+    ) {
+      await objectFile.delete().catch(() => undefined);
+      res.status(400).json({ error: "Format ou taille d’image invalide (5 Mo maximum)." });
+      return;
+    }
+
+    const [contents] = await objectFile.download();
+    if (!imageSignatureMatches(contentType, contents)) {
+      await objectFile.delete().catch(() => undefined);
+      res.status(400).json({ error: "Le contenu ne correspond pas au format d’image annoncé." });
+      return;
+    }
+
+    const publicPath = await objectStorageService.trySetObjectEntityAclPolicy(
+      parsed.data.objectPath,
+      { owner: req.adminPayload!.sub, visibility: "public" },
+    );
+    res.json({ url: `/api/storage${publicPath}`, objectPath: publicPath });
+  } catch (error) {
+    if (objectFile) await objectFile.delete().catch(() => undefined);
+    if (error instanceof ObjectNotFoundError) {
+      res.status(404).json({ error: "Fichier temporaire introuvable." });
+      return;
+    }
+    req.log.warn({ err: error }, "Could not validate uploaded object");
+    res.status(503).json({ error: "Impossible de valider l’image téléversée." });
+  }
+});
 
 /**
  * GET /storage/uploads/files/:filename
@@ -190,6 +287,19 @@ router.get("/storage/objects/*path", async (req: Request, res: Response) => {
     const wildcardPath = Array.isArray(raw) ? raw.join("/") : raw;
     const objectPath = `/objects/${wildcardPath}`;
     const objectFile = await objectStorageService.getObjectEntityFile(objectPath);
+    const aclPolicy = await getObjectAclPolicy(objectFile);
+    const legacyPublicUpload = !aclPolicy
+      && /^uploads\/[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(wildcardPath);
+    const hasPermission = aclPolicy
+      ? await objectStorageService.canAccessObjectEntity({
+          userId: req.user?.id,
+          objectFile,
+        })
+      : legacyPublicUpload;
+    if (!hasPermission) {
+      res.status(404).json({ error: "Object not found" });
+      return;
+    }
 
     const response = await objectStorageService.downloadObject(objectFile);
 
