@@ -45,7 +45,7 @@ function NumberAssignedContent({ id }: { id: string }) {
     } 
   });
 
-  /* On-demand 5sim poll — triggers the server to check 5sim immediately */
+  /* On-demand order poll — triggers the server to check the order immediately */
   const pollMutation = useMutation({
     mutationFn: async () => {
       const res = await fetch(`/api/numbers/${id}/poll`, {
@@ -205,8 +205,8 @@ function NumberAssignedContent({ id }: { id: string }) {
               </h4>
               <p className="text-xs text-muted-foreground leading-relaxed mb-3">
                 {timeLeft > 0
-                  ? `Vous avez ${validityMinutes} minutes pour recevoir votre SMS. Si 5sim confirme un timeout sans SMS, le remboursement est automatique.`
-                  : "Le délai local est écoulé. Nous attendons la confirmation de 5sim ; sans SMS, le remboursement sera automatiquement crédité."}
+                  ? `Vous avez ${validityMinutes} minutes pour recevoir votre SMS. Si Simix confirme la fin de la commande sans SMS, le remboursement est automatique.`
+                  : "Le délai affiché est écoulé. Simix vérifie le résultat final ; sans SMS, le montant sera automatiquement recrédité."}
               </p>
               <div className="bg-primary/10 border border-primary/20 rounded-lg p-2.5 flex items-start gap-2">
                  <Lightbulb className="w-4 h-4 text-primary shrink-0" />

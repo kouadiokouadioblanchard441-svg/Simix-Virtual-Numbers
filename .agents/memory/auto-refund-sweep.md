@@ -10,7 +10,7 @@ description: Rules for atomic, exactly-once refunds after real number expiry, in
 - The worker checks every 15 seconds and runs a refund sweep every minute, including at startup.
 - SMS persistence and refund decisions lock the virtual-number row, preventing a race from crediting a number whose SMS was saved at the same time.
 - Purchase and refund transactions both link to the virtual number. Use the ambiguous two-hour same-user/amount refund match only for historical purchases without a purchase link.
-- A refund credits the original purchase price and links the refund transaction to the virtual number for exactly-once recovery.
+- A refund credits the original purchase price and links the refund transaction to the virtual number for exactly-once recovery. The unique index must apply only to `type = 'refund'`; a global unique index blocks the linked purchase/refund pair and rolls back the wallet credit.
 
 ## Admin endpoints
 - `GET /admin/fivesim/pending-refunds` — list numbers awaiting refund
@@ -20,6 +20,6 @@ description: Rules for atomic, exactly-once refunds after real number expiry, in
 - `PendingRefundsPanel` component added to `/admin/diagnostics` — shows count, list, and manual sweep button
 - At local `00:00`, activation UI may wait for 5sim's final status; it must not claim a refund until the terminal result is processed.
 
-**Why:** The user chose 5sim's terminal status as the source of truth and removed paid extensions; provider completion may differ from the local timer. Exact purchase links prevent unrelated equal-value refunds from suppressing a new refund.
+**Why:** The user chose 5sim's terminal status as the source of truth and removed paid extensions; provider completion may differ from the local timer. Exact purchase links prevent unrelated equal-value refunds from suppressing a new refund, but purchases and refunds intentionally share that link, so uniqueness must be refund-only.
 
-**How to apply:** For activation orders with a provider ID, finalize on 5sim `TIMEOUT` (or definitive not-found), not merely on local time. Keep the local-expiry fallback for hosting and records with no provider order.
+**How to apply:** For activation orders with a provider ID, finalize on 5sim `TIMEOUT` (or definitive not-found), not merely on local time. Keep the local-expiry fallback for hosting and records with no provider order. Keep the unique transaction index partial to refund rows so a linked purchase does not block its refund.

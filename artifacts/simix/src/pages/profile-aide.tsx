@@ -36,11 +36,11 @@ const FAQ = [
   },
   {
     q: "Que faire si je ne reçois pas le SMS ?",
-    a: "Le numéro reste actif jusqu'à ce que 5sim confirme le SMS ou termine la commande. Si 5sim renvoie TIMEOUT sans SMS, le prix du numéro est automatiquement recrédité sur votre solde. Le délai habituel est de 20 minutes. L'annulation manuelle n'est pas disponible.",
+    a: "Le numéro reste actif jusqu'à la réception du SMS ou la fin confirmée de la commande. Si Simix confirme la fin sans SMS, le prix du numéro est automatiquement recrédité sur votre solde. Le délai habituel est de 20 minutes. L'annulation manuelle n'est pas disponible.",
   },
   {
     q: "Combien de temps dure un numéro virtuel ?",
-    a: "Un numéro d'activation reste actif jusqu'à la fin confirmée par 5sim, généralement environ 20 minutes. La commande se termine plus tôt ou plus tard selon le statut renvoyé par le fournisseur.",
+    a: "Un numéro d'activation reste actif jusqu'à la fin de la commande confirmée par Simix, généralement après environ 20 minutes.",
   },
   {
     q: "Mon paiement est bloqué, que faire ?",

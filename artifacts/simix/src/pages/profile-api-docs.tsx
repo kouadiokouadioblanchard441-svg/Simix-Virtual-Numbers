@@ -765,7 +765,7 @@ json.NewDecoder(resp.Body).Decode(&history)`,
     method: "POST",
     path: "/numbers/:id/poll",
     title: "Vérifier les SMS (poll)",
-    description: "Force une vérification en temps réel auprès du fournisseur 5sim. Limité à 12 polls/minute par utilisateur. À appeler toutes les 5 secondes jusqu'à réception du SMS.",
+    description: "Force une vérification en temps réel du statut de votre commande Simix. Limité à 12 vérifications/minute par utilisateur. À appeler toutes les 5 secondes jusqu'à réception du SMS.",
     auth: true,
     response: `{
   "id": "uuid-numero",
@@ -920,7 +920,7 @@ json.NewDecoder(resp.Body).Decode(&methods)`,
     "amount": 350,
     "status": "completed",
     "method": "wallet",
-    "description": "WhatsApp – Côte d'Ivoire (5sim)",
+    "description": "WhatsApp – Côte d'Ivoire (Simix)",
     "createdAt": "2026-01-01T00:05:00.000Z"
   },
   {

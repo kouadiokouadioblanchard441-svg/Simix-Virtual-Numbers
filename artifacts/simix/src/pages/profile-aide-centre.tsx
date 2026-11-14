@@ -61,11 +61,11 @@ const CATEGORIES = [
     articles: [
       {
         title: "Combien de temps dure un numéro ?",
-        content: `Un numéro d'activation reste actif jusqu'à ce que 5sim confirme le SMS ou termine la commande, généralement autour de 20 minutes.\n\nSi 5sim renvoie TIMEOUT et qu'aucun SMS n'a été reçu, le prix du numéro est automatiquement recrédité. L'annulation manuelle n'est pas disponible.`,
+        content: `Un numéro d'activation reste actif jusqu'à la réception du SMS ou la fin confirmée de la commande, généralement autour de 20 minutes.\n\nSi Simix confirme la fin de la commande sans SMS, le prix est automatiquement recrédité. L'annulation manuelle n'est pas disponible.`,
       },
       {
         title: "Je ne reçois pas le SMS — que faire ?",
-        content: `Si le SMS n'arrive pas tout de suite :\n\n1. Vérifiez que vous avez bien entré le numéro dans le service\n2. Certains services envoient le SMS avec un léger délai\n3. Essayez de renvoyer le code depuis le service\n4. Attendez le résultat de 5sim. Si le fournisseur renvoie TIMEOUT sans SMS, le prix du numéro est automatiquement recrédité sur votre solde.`,
+        content: `Si le SMS n'arrive pas tout de suite :\n\n1. Vérifiez que vous avez bien entré le numéro dans le service\n2. Certains services envoient le SMS avec un léger délai\n3. Essayez de renvoyer le code depuis le service\n4. Attendez la confirmation de Simix. Si la commande se termine sans SMS, le prix du numéro est automatiquement recrédité sur votre solde.`,
       },
       {
         title: "Puis-je réutiliser un numéro ?",
@@ -73,7 +73,7 @@ const CATEGORIES = [
       },
       {
         title: "Quand le remboursement est-il effectué ?",
-        content: `Le remboursement est déclenché lorsque 5sim termine la commande avec TIMEOUT et qu'aucun SMS n'a été enregistré. Le prix du numéro est alors crédité automatiquement sur votre solde Simix.`,
+        content: `Le remboursement est déclenché lorsque Simix confirme la fin de la commande sans SMS enregistré. Le prix du numéro est alors crédité automatiquement sur votre solde Simix.`,
       },
     ],
   },
