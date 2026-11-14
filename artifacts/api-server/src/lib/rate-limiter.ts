@@ -16,8 +16,27 @@ interface WindowEntry {
 const store = new Map<string, WindowEntry>();
 const temporaryLocks = new Map<string, number>();
 let lastPersistentCleanupAt = 0;
+let warnedAboutPreviewFallback = false;
 const PERSISTENT_CLEANUP_INTERVAL_MS = 6 * 60 * 60 * 1000;
 const PERSISTENT_ENTRY_RETENTION_MS = 7 * 24 * 60 * 60 * 1000;
+const IS_REPLIT_DEV_ENVIRONMENT = Boolean(
+  process.env["REPL_ID"] || process.env["REPLIT_DEV_DOMAIN"],
+);
+
+function usePreviewRateLimitFallback(): boolean {
+  if (!IS_REPLIT_DEV_ENVIRONMENT) return false;
+  if (!warnedAboutPreviewFallback) {
+    warnedAboutPreviewFallback = true;
+    console.warn(
+      "[security] Replit preview uses in-memory limits because it must not migrate the Plesk-shared database; Plesk applies durable limits after migration 0023.",
+    );
+  }
+  return true;
+}
+
+function previewCounterKey(key: string): string {
+  return `replit-preview:${key}`;
+}
 
 /** Cleans old timestamps every 5 min to avoid memory leaks */
 setInterval(() => {
@@ -142,6 +161,9 @@ export async function isPersistentRateLimited(
   if (!Number.isInteger(limit) || limit < 0 || !Number.isFinite(windowMs) || windowMs <= 0) {
     throw new Error("Invalid persistent rate limit configuration");
   }
+  if (usePreviewRateLimitFallback()) {
+    return isRateLimited(previewCounterKey(key), limit, windowMs);
+  }
   await prunePersistentRateLimitRows();
 
   const now = new Date();
@@ -166,6 +188,8 @@ export async function isPersistentRateLimited(
         hitCount: sql`CASE
           WHEN ${securityRateLimitsTable.windowStartedAt} <= ${cutoff}
           THEN 1
+          WHEN ${securityRateLimitsTable.hitCount} > ${limit}
+          THEN ${securityRateLimitsTable.hitCount}
           ELSE ${securityRateLimitsTable.hitCount} + 1
         END`,
         updatedAt: now,
@@ -184,6 +208,9 @@ export async function getPersistentHitCount(
   if (!Number.isFinite(windowMs) || windowMs <= 0) {
     throw new Error("Invalid persistent rate limit window");
   }
+  if (usePreviewRateLimitFallback()) {
+    return getHitCount(previewCounterKey(key), windowMs);
+  }
   const [entry] = await db
     .select({ hitCount: securityRateLimitsTable.hitCount })
     .from(securityRateLimitsTable)
@@ -197,6 +224,10 @@ export async function getPersistentHitCount(
 
 /** Clears a shared counter, for example after a successful login. */
 export async function resetPersistentKey(key: string): Promise<void> {
+  if (usePreviewRateLimitFallback()) {
+    resetKey(previewCounterKey(key));
+    return;
+  }
   await db
     .delete(securityRateLimitsTable)
     .where(eq(securityRateLimitsTable.keyHash, hashPersistentKey(key)));
@@ -207,6 +238,10 @@ export async function setPersistentTemporaryLock(
   key: string,
   durationMs: number,
 ): Promise<void> {
+  if (usePreviewRateLimitFallback()) {
+    setTemporaryLock(previewCounterKey(key), durationMs);
+    return;
+  }
   const keyHash = hashPersistentKey(key);
   if (durationMs <= 0) {
     await resetPersistentTemporaryLock(key);
@@ -233,6 +268,9 @@ export async function setPersistentTemporaryLock(
 
 /** Returns the durable lock time remaining, or zero when unlocked. */
 export async function getPersistentTemporaryLockRemaining(key: string): Promise<number> {
+  if (usePreviewRateLimitFallback()) {
+    return getTemporaryLockRemaining(previewCounterKey(key));
+  }
   const [entry] = await db
     .select({ lockedUntil: securityRateLimitsTable.lockedUntil })
     .from(securityRateLimitsTable)
@@ -244,6 +282,10 @@ export async function getPersistentTemporaryLockRemaining(key: string): Promise<
 }
 
 export async function resetPersistentTemporaryLock(key: string): Promise<void> {
+  if (usePreviewRateLimitFallback()) {
+    resetTemporaryLock(previewCounterKey(key));
+    return;
+  }
   await db
     .update(securityRateLimitsTable)
     .set({ lockedUntil: null, updatedAt: new Date() })

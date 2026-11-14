@@ -85,7 +85,10 @@ API and frontend preview on port 5000. Configure these values in Replit Secrets:
 - `SESSION_SECRET` — the server session signing secret.
 - `ADMIN_JWT_SECRET` — the admin session signing secret.
 
-The Supabase database is migrated automatically when the server starts. Optional
+Plesk applies pending Supabase migrations when its server starts. The Replit preview
+deliberately skips migrations because it shares that database with Plesk; do not
+apply schema changes from the preview. Apply new migrations through the Plesk
+deployment/startup process before using features that depend on them. Optional
 providers such as 5sim, mobile money, transactional email, and Google OAuth can be
 configured later without changing the Replit startup workflow.
 

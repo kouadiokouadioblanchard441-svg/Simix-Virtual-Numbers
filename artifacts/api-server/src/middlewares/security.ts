@@ -8,7 +8,7 @@
 import type { Request, Response, NextFunction } from "express";
 import { eq } from "drizzle-orm";
 import { db, ipBlacklistTable } from "@workspace/db";
-import { isRateLimited } from "../lib/rate-limiter";
+import { isPersistentRateLimited, isRateLimited } from "../lib/rate-limiter";
 import { logSecurityEvent } from "../lib/fraud-detection";
 import { isMaintenanceMode } from "../lib/settings";
 import { MAINTENANCE_HTML } from "../lib/maintenance-html";
@@ -119,10 +119,15 @@ export async function checkIpBlacklist(req: Request, res: Response, next: NextFu
 }
 
 /** 200 requests per minute per IP — global API guard (skips webhook paths) */
-export function globalRateLimit(req: Request, res: Response, next: NextFunction): void {
+export async function globalRateLimit(req: Request, res: Response, next: NextFunction): Promise<void> {
   if (isWebhookPath(req.path)) { next(); return; }
   const ip = req.ip ?? "unknown";
-  if (isRateLimited(`global:${ip}`, 200, 60_000)) {
+  /* Keep the local guard as a cheap first filter, then enforce the same
+     threshold across restarts and all Plesk workers in PostgreSQL. */
+  if (
+    isRateLimited(`global-local:${ip}`, 200, 60_000)
+    || await isPersistentRateLimited(`global:${ip}`, 200, 60_000)
+  ) {
     void logSecurityEvent({
       eventType: "rate_limit_exceeded",
       severity: "medium",

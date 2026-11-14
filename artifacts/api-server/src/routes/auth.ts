@@ -15,6 +15,7 @@ import { toUser } from "../lib/serializers";
 import { logger } from "../lib/logger";
 import {
   getPersistentTemporaryLockRemaining,
+  isPersistentRateLimited,
   isRateLimited,
   recordPersistentFailedAttemptAndLock,
   resetPersistentKey,
@@ -122,7 +123,7 @@ router.post("/auth/register", requireTurnstile, async (req, res): Promise<void> 
   }
 
   /* 5 registrations per hour per IP */
-  if (isRateLimited(`register:${ip}`, 5, 60 * 60_000)) {
+  if (await isPersistentRateLimited(`register:${ip}`, 5, 60 * 60_000)) {
     res.status(429).json({ error: "Trop de tentatives d'inscription. Réessayez plus tard." });
     return;
   }

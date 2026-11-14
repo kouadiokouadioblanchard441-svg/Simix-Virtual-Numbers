@@ -18,7 +18,7 @@ import {
 } from "@workspace/api-zod";
 import { requireAuth } from "../lib/auth";
 import { toNumber, toMessage } from "../lib/serializers";
-import { isRateLimited } from "../lib/rate-limiter";
+import { isPersistentRateLimited, isRateLimited } from "../lib/rate-limiter";
 import {
   assessPurchaseRisk,
   blockUser,
@@ -183,7 +183,7 @@ router.post("/numbers", requireAuth, async (req, res): Promise<void> => {
 
   /* Rate limiting — limit from system_settings (max_orders_per_minute) */
   const maxPerMin = await getMaxOrdersPerMinute();
-  if (isRateLimited(`purchase_rate:${user.id}`, maxPerMin, 60_000)) {
+  if (await isPersistentRateLimited(`purchase_rate:${user.id}`, maxPerMin, 60_000)) {
     await logSecurityEvent({
       userId: user.id, eventType: "purchase_rate_limit", severity: "high",
       ip, userAgent: ua, riskScore: 70, details: { action: "buy_number" },
@@ -553,7 +553,7 @@ router.post("/numbers/:numberId/poll", requireAuth, async (req, res): Promise<vo
 
   /* Rate limit: max 12 polls/min per user (one every 5 s) to prevent
    * spamming the 5sim API and potential account suspension.             */
-  if (isRateLimited(`poll:${user.id}`, 12, 60_000)) {
+  if (await isPersistentRateLimited(`poll:${user.id}`, 12, 60_000)) {
     res.status(429).json({ error: "Trop de vérifications. Attendez quelques secondes." });
     return;
   }
