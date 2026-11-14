@@ -17,16 +17,12 @@ export interface DirectAction {
 
 export interface StoredPending {
   depositId: string;
-  paymentUrl: string | null; // legacy hosted checkout only
   methodSlug: string;
   methodName: string;
   methodColor: string;
   localAmount: number;
   currencyCode: string;
-  operatorPaymentUrl: string | null;
   message: string | null;
-  /** Always null: payment OTPs must remain in memory only. */
-  paymentOtp?: null;
 }
 
 export function savePendingDeposit(data: StoredPending) {
@@ -36,13 +32,22 @@ export function loadPendingDeposit(): StoredPending | null {
   try {
     const raw = sessionStorage.getItem(PENDING_KEY);
     if (!raw) return null;
-    const parsed = JSON.parse(raw) as StoredPending & { paymentOtp?: string | null };
-    if (parsed.paymentOtp) {
-      const { paymentOtp: _paymentOtp, ...safeData } = parsed;
+    const parsed = JSON.parse(raw) as StoredPending & {
+      paymentOtp?: string | null;
+      operatorPaymentUrl?: string | null;
+      paymentUrl?: string | null;
+    };
+    if ("paymentOtp" in parsed || "operatorPaymentUrl" in parsed || "paymentUrl" in parsed) {
+      const {
+        paymentOtp: _paymentOtp,
+        operatorPaymentUrl: _operatorPaymentUrl,
+        paymentUrl: _paymentUrl,
+        ...safeData
+      } = parsed;
       sessionStorage.setItem(PENDING_KEY, JSON.stringify(safeData));
-      return { ...safeData, paymentOtp: null };
+      return safeData;
     }
-    return { ...parsed, paymentOtp: null };
+    return parsed;
   } catch { return null; }
 }
 export function clearPendingDeposit() {

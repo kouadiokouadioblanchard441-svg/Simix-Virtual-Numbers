@@ -76,9 +76,7 @@ export function WalletPendingOverlay(p: Props) {
             if (stored && stored.depositId === p.depositId) {
               savePendingDeposit({
                 ...stored,
-                operatorPaymentUrl: merged.operatorPaymentUrl,
                 message: merged.message,
-                paymentOtp: null,
               });
             }
             return merged;

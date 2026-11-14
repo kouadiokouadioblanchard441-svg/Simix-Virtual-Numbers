@@ -1,6 +1,6 @@
 /**
  * Test end-to-end de l'intégration Clapay
- * Utilise la connexion Supabase réelle (SUPABASE_DATABASE_URL)
+ * Réservé à une base et un serveur API explicitement isolés pour les tests.
  *
  * Ce script :
  * 1. Lit le solde initial du compte démo dans Supabase
@@ -12,7 +12,8 @@
 
 export {};
 
-const API_BASE = `http://localhost:${process.env.PORT ?? 3000}/api`;
+const TEST_API_ORIGIN = process.env.CLAPAY_TEST_API_URL ?? `http://localhost:${process.env.PORT ?? 3000}`;
+const API_BASE = `${TEST_API_ORIGIN.replace(/\/$/, "")}/api`;
 const TEST_AMOUNT = 2500; // FCFA
 const TEST_USER_ID = process.env.CLAPAY_TEST_USER_ID;
 
@@ -20,8 +21,12 @@ const testDatabaseUrl = process.env.CLAPAY_TEST_DATABASE_URL;
 if (!testDatabaseUrl) {
   throw new Error("Test bloqué : CLAPAY_TEST_DATABASE_URL doit pointer vers une base isolée.");
 }
-if (process.env.ALLOW_CLAPAY_TEST_MUTATIONS !== "true" || !TEST_USER_ID) {
-  throw new Error("Test bloqué : définissez ALLOW_CLAPAY_TEST_MUTATIONS=true et CLAPAY_TEST_USER_ID.");
+if (
+  process.env.ALLOW_CLAPAY_TEST_MUTATIONS !== "true"
+  || process.env.CLAPAY_TEST_API_ISOLATED !== "true"
+  || !TEST_USER_ID
+) {
+  throw new Error("Test bloqué : confirmez l'isolation de la base et de l'API, puis définissez CLAPAY_TEST_USER_ID.");
 }
 const testUserId = TEST_USER_ID;
 try {
@@ -30,6 +35,10 @@ try {
   const isClearlyNonProduction = /(^|[-_.])(test|testing|staging|stage)([-_.]|$)/i.test(`${parsed.hostname} ${parsed.pathname}`);
   if (!isLocal && !isClearlyNonProduction) {
     throw new Error("L'hôte ou la base ne ressemble pas à un environnement de test.");
+  }
+  const api = new URL(TEST_API_ORIGIN);
+  if (!["localhost", "127.0.0.1", "::1"].includes(api.hostname)) {
+    throw new Error("L'API de test doit être locale.");
   }
 } catch (error) {
   throw new Error(`CLAPAY_TEST_DATABASE_URL invalide ou non isolée: ${(error as Error).message}`);
@@ -51,25 +60,25 @@ function step(msg: string) { console.log(`\n${HDR} ${msg}`); }
 
 async function run() {
   console.log("\n══════════════════════════════════════════════");
-  console.log("  Test Clapay — Intégration Supabase end-to-end");
+  console.log("  Test Clapay — base isolée");
   console.log("══════════════════════════════════════════════");
 
-  /* ── ÉTAPE 1 : Vérifier la connexion Supabase ── */
-  step("1. Connexion Supabase");
+  /* ── ÉTAPE 1 : Vérifier la connexion à la base isolée ── */
+  step("1. Connexion à la base de test isolée");
   let dbConnected = false;
   try {
     const rows = await db.select({ id: usersTable.id }).from(usersTable).limit(1);
     dbConnected = true;
-    pass(`Supabase connecté — ${rows.length} utilisateur(s) trouvé(s)`);
+    pass(`Base de test connectée — ${rows.length} utilisateur(s) trouvé(s)`);
   } catch (e) {
-    fail(`Impossible de se connecter à Supabase : ${(e as Error).message}`);
+    fail("Connexion à la base de test impossible.");
     return;
   }
 
-  /* ── ÉTAPE 2 : Lire le compte démo ── */
-  step("2. Compte démo dans Supabase");
+  /* ── ÉTAPE 2 : Lire le compte de test ── */
+  step("2. Compte de test");
   const [demo] = await db
-    .select({ id: usersTable.id, fullName: usersTable.fullName, balance: usersTable.balance })
+    .select({ id: usersTable.id, balance: usersTable.balance })
     .from(usersTable)
     .where(eq(usersTable.id, testUserId))
     .limit(1);
@@ -81,8 +90,8 @@ async function run() {
   pass("Compte de test trouvé.");
   info(`Solde actuel : ${demo.balance.toLocaleString("fr-FR")} FCFA`);
 
-  /* ── ÉTAPE 3 : Vérifier les paramètres Clapay dans Supabase ── */
-  step("3. Paramètres Clapay dans Supabase (system_settings)");
+  /* ── ÉTAPE 3 : Vérifier la configuration Clapay de test ── */
+  step("3. Paramètres Clapay");
   const settings = await db
     .select({ key: systemSettingsTable.key, value: systemSettingsTable.value })
     .from(systemSettingsTable)
@@ -109,8 +118,8 @@ async function run() {
   const gateway = process.env.MOBILE_MONEY_GATEWAY ?? gatewayRow[0]?.value ?? "pawapay";
   info(`Passerelle active : ${gateway}`);
 
-  /* ── ÉTAPE 5 : Insérer une transaction Clapay en attente dans Supabase ── */
-  step("4. Création d'une transaction Clapay en attente dans Supabase");
+  /* ── ÉTAPE 5 : Insérer une transaction de test ── */
+  step("4. Création d'une transaction de test en attente");
   const trackingId = `test-clapay-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
   const externalDepositId = `clapay:${trackingId}`;
 
@@ -189,7 +198,7 @@ async function run() {
   await new Promise(r => setTimeout(r, 1200));
 
   /* ── ÉTAPE 8 : Vérifier la transaction dans Supabase ── */
-  step("6. Vérification dans Supabase après webhook");
+  step("6. Vérification après webhook");
 
   const [updatedTx] = await db
     .select({ id: transactionsTable.id, status: transactionsTable.status, amount: transactionsTable.amount })
@@ -283,7 +292,7 @@ async function run() {
   }
 
   /* ── Nettoyage ── */
-  step("9. Nettoyage des données de test dans Supabase");
+  step("9. Nettoyage des données de test");
   await cleanup(pendingTx.id);
   await cleanup(pendingTx2!.id);
 
@@ -313,7 +322,7 @@ async function cleanup(txId: string) {
   } catch { /* ignore */ }
 }
 
-run().catch(e => {
-  console.error("\n\x1b[31mErreur fatale :\x1b[0m", e.message);
+run().catch(() => {
+  console.error("\n\x1b[31mTest échoué; détails masqués pour protéger les données de connexion.\x1b[0m");
   process.exit(1);
 });

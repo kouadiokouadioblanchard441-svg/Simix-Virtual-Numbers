@@ -54,9 +54,6 @@ test("pending payment credentials are never persisted to session storage", () =>
 
   savePendingDeposit({
     depositId: "deposit-test",
-    paymentUrl: null,
-    operatorPaymentUrl: link,
-    paymentOtp: null,
     message: null,
     methodSlug: "test",
     methodName: "Test",
@@ -66,7 +63,7 @@ test("pending payment credentials are never persisted to session storage", () =>
   });
 
   assert.equal(values.get(PENDING_KEY)?.includes("SENSITIVE-OTP"), false);
-  assert.equal(loadPendingDeposit()?.paymentOtp, null);
+  assert.equal(loadPendingDeposit()?.depositId, "deposit-test");
 
   // Remove credentials already stored by an older app version.
   values.set(PENDING_KEY, JSON.stringify({
@@ -81,8 +78,9 @@ test("pending payment credentials are never persisted to session storage", () =>
     localAmount: 500,
     currencyCode: "XOF",
   }));
-  assert.equal(loadPendingDeposit()?.paymentOtp, null);
+  assert.equal("paymentOtp" in (loadPendingDeposit() ?? {}), false);
   assert.equal(values.get(PENDING_KEY)?.includes("OLD-SENSITIVE-OTP"), false);
+  assert.equal(values.get(PENDING_KEY)?.includes(link), false);
 
   clearPendingDeposit();
   assert.equal(values.has(PENDING_KEY), false);

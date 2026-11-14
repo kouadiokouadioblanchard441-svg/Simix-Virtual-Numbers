@@ -623,8 +623,8 @@ function DepositContent() {
     const stored = loadPendingDeposit();
     if (stored) {
       setPendingDepositId(stored.depositId);
-      setPendingPaymentUrl(safeHttpsUrl(stored.paymentUrl));
-      setPendingAction({ operatorPaymentUrl: safeHttpsUrl(stored.operatorPaymentUrl), paymentOtp: stored.paymentOtp ?? null, message: stored.message ?? null });
+      setPendingPaymentUrl(null);
+      setPendingAction({ operatorPaymentUrl: null, paymentOtp: null, message: stored.message ?? null });
     }
   }, []);
 
@@ -749,9 +749,6 @@ function DepositContent() {
         const payUrl = act.operatorPaymentUrl ? null : safeHttpsUrl(result.payment_url);
         savePendingDeposit({
           depositId: outcome.depositId,
-          paymentUrl: payUrl,
-          operatorPaymentUrl: act.operatorPaymentUrl,
-          paymentOtp: null,
           message: act.message,
           methodSlug: selectedMethod.slug,
           methodName: selectedMethod.name,
@@ -777,9 +774,7 @@ function DepositContent() {
       const info = readRechargeError(e);
       if (info.pending && info.depositId && selectedMethod) {
         savePendingDeposit({
-          depositId: info.depositId, paymentUrl: null,
-          operatorPaymentUrl: info.action.operatorPaymentUrl,
-          paymentOtp: null,
+          depositId: info.depositId,
           message: info.action.message,
           methodSlug: selectedMethod.slug, methodName: selectedMethod.name, methodColor: selectedMethod.color,
           localAmount: parsedAmount, currencyCode,

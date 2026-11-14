@@ -27,7 +27,7 @@
     "helmet": "^8.1.0",
     "pino": "^9",
     "pino-http": "^10",
-    "resend": "^6.12.3",
+    "resend": "^6.38.0",
     "web-push": "^3.6.7",
     "zod": "catalog:"
   },

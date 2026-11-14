@@ -2,7 +2,7 @@
  * Test Clapay LIVE MTN Côte d'Ivoire
  * Passe par le serveur API local (port 8080) qui a accès réseau à api.clapay.net
  */
-import { db, usersTable, systemSettingsTable } from "@workspace/db";
+import { db, systemSettingsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 
 const API       = `http://localhost:${process.env.PORT ?? 8080}/api`;
@@ -55,7 +55,6 @@ async function run() {
     const setCookie = loginRes.headers.get("set-cookie") ?? "";
     const match = setCookie.match(/simix_session=[^;]+/);
     cookie = match ? match[0] : "";
-    const body = await loginRes.json() as any;
     if (!loginRes.ok || !cookie) {
       console.log(`  ${ERR} Login échoué : HTTP ${loginRes.status}`);
       process.exit(1);

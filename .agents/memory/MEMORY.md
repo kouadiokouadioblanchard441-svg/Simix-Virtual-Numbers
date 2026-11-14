@@ -28,3 +28,4 @@
 - [Workflow reconciliation listeners](workflow-reconciliation-listeners.md) — task merges can leave older servers alive; check for stale listeners before changing artifact ports.
 - [Validation registration](validation-registration.md) — registering a validation also links it to Project; check before adding another reference.
 - [Virtual-number validity policy](number-validity-and-cancellation.md) — 20-minute activation countdown, no paid extensions, provider TIMEOUT final, and no manual cancellation.
+- [Payment credential browser storage](payment-credential-browser-storage.md) — never persist operator OTPs or checkout links in browser storage; refetch them from authenticated deposit status.

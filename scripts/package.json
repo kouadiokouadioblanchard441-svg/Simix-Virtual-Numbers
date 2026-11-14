@@ -13,8 +13,7 @@
     "@workspace/db": "workspace:*",
     "bcryptjs": "^2.4.3",
     "drizzle-orm": "catalog:",
-    "pg": "^8.20.0",
-    "resend": "^4.0.0"
+    "pg": "^8.20.0"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",
