@@ -343,3 +343,102 @@ export async function sendOtpEventAlert(data: OtpEventAlertData): Promise<void> 
   ];
   await sendMessage(lines.join("\n"));
 }
+
+export interface SupportMessageAlertData {
+  conversationId: string;
+  userId?: string;
+  userName: string;
+  message: string;
+  hasImage: boolean;
+  imageData?: string;
+}
+
+function redactLabeledSecrets(message: string): string {
+  return message
+    .replace(
+      /((?:mot\s+de\s+passe|password|passcode|code\s+(?:otp|de\s+vérification|de\s+verification|de\s+sécurité|de\s+securite)|otp|pin)\s*(?:(?:est|is)\s+|[:=]\s*|-)\s*)([^\s,;]+)/gi,
+      "$1[masqué]",
+    )
+    .replace(
+      /((?:clé\s+(?:api|secrète)|cle\s+(?:api|secrete)|api\s*key|access\s+token|token|secret)\s*(?:(?:est|is)\s+|[:=]\s*|-)\s*)([^\s,;]+)/gi,
+      "$1[masqué]",
+    );
+}
+
+function splitSupportMessage(message: string, maxCharacters = 600): string[] {
+  const characters = Array.from(message);
+  if (characters.length === 0) return [""];
+  const chunks: string[] = [];
+  for (let start = 0; start < characters.length; start += maxCharacters) {
+    chunks.push(characters.slice(start, start + maxCharacters).join(""));
+  }
+  return chunks;
+}
+
+async function sendSupportPhoto(data: SupportMessageAlertData, caption: string): Promise<void> {
+  if (!data.imageData) return;
+  const match = /^data:(image\/(?:png|jpeg|webp));base64,([A-Za-z0-9+/]+={0,2})$/.exec(data.imageData);
+  if (!match || match[2]!.length > Math.ceil(5 * 1024 * 1024 * 4 / 3) + 4) {
+    logger.warn({ conversationId: data.conversationId }, "[Telegram] Support image rejected (invalid format or size)");
+    return;
+  }
+
+  const imageBytes = Buffer.from(match[2]!, "base64");
+  if (imageBytes.byteLength > 5 * 1024 * 1024) {
+    logger.warn({ conversationId: data.conversationId }, "[Telegram] Support image rejected (invalid format or size)");
+    return;
+  }
+  const creds = await getTelegramCreds();
+  if (!creds) return;
+
+  try {
+    const form = new FormData();
+    form.append("chat_id", creds.chatId);
+    form.append("caption", caption.slice(0, 1000));
+    form.append("parse_mode", "HTML");
+    form.append("photo", new Blob([imageBytes], { type: match[1] }), `support-image.${match[1]!.split("/")[1]}`);
+    const response = await fetch(`https://api.telegram.org/bot${creds.botToken}/sendPhoto`, {
+      method: "POST",
+      body: form,
+      signal: AbortSignal.timeout(10_000),
+    });
+    if (!response.ok) {
+      logger.warn({ status: response.status, conversationId: data.conversationId }, "[Telegram] Support image delivery failed");
+    }
+  } catch (err) {
+    logger.debug({ err: (err as Error).message, conversationId: data.conversationId }, "[Telegram] Support image delivery error");
+  }
+}
+
+/** Forwards a saved user support message; labeled credentials are redacted from text. */
+export async function sendSupportMessageAlert(data: SupportMessageAlertData): Promise<void> {
+  const safeMessage = redactLabeledSecrets(data.message || (data.hasImage ? "[Image jointe]" : "[Message vide]"));
+  const chunks = splitSupportMessage(safeMessage);
+  const identityLines = [
+    `👤 <b>Nom :</b> ${esc(data.userName)}`,
+    ...(data.userId ? [`🆔 <b>ID utilisateur :</b> <code>${esc(data.userId)}</code>`] : ["🆔 <b>Compte :</b> Non connecté"]),
+    `🗂️ <b>Conversation :</b> <code>${esc(data.conversationId)}</code>`,
+  ];
+  for (let index = 0; index < chunks.length; index += 1) {
+    const lines = [
+      index === 0 ? "<b>💬 Nouveau message au support</b>" : "<b>💬 Suite du message support</b>",
+      "",
+      ...identityLines,
+      "",
+      `<b>Message${index > 0 ? " (suite)" : ""} :</b>\n${esc(chunks[index])}`,
+      ...(index === 0 && data.hasImage ? ["", "🖼️ Image jointe (transmission à Telegram demandée)"] : []),
+      ...(index === 0 ? ["", `🕒 ${new Date().toLocaleString("fr-FR", { timeZone: "Africa/Abidjan" })}`] : []),
+    ];
+    await sendMessage(lines.join("\n"));
+  }
+
+  if (data.hasImage && data.imageData) {
+    const caption = [
+      "🖼️ <b>Image envoyée au support</b>",
+      `👤 ${esc(data.userName)}`,
+      data.userId ? `🆔 <code>${esc(data.userId)}</code>` : "Compte non connecté",
+      `🗂️ Conversation <code>${esc(data.conversationId)}</code>`,
+    ].join("\n");
+    await sendSupportPhoto(data, caption);
+  }
+}

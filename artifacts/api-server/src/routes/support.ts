@@ -17,6 +17,7 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import { logger } from "../lib/logger";
 import { getSetting } from "../lib/settings";
 import { decrypt } from "../lib/email-router/crypto";
+import { sendSupportMessageAlert } from "../lib/telegram";
 
 const router: IRouter = Router();
 
@@ -34,6 +35,40 @@ function providerReset(headers: Headers): Date | null {
   if (/^\d+$/.test(raw)) return new Date(Date.now() + Number(raw) * 1000);
   const date = new Date(raw);
   return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function notifySavedSupportMessage(data: {
+  conversationId: string;
+  userId: string | null;
+  userName: string | null;
+  message: string;
+  imageData?: string;
+}): void {
+  void (async () => {
+    let userName = data.userName?.trim() || null;
+    if (!userName && data.userId) {
+      try {
+        const [user] = await db
+          .select({ fullName: usersTable.fullName, username: usersTable.username })
+          .from(usersTable)
+          .where(eq(usersTable.id, data.userId))
+          .limit(1);
+        userName = user?.fullName?.trim() || user?.username?.trim() || null;
+      } catch {
+        // The support message is already saved; a profile lookup must not affect it.
+      }
+    }
+    await sendSupportMessageAlert({
+      conversationId: data.conversationId,
+      ...(data.userId ? { userId: data.userId } : {}),
+      userName: userName || (data.userId ? "Utilisateur connecté" : "Utilisateur non connecté"),
+      message: data.message,
+      hasImage: Boolean(data.imageData),
+      ...(data.imageData ? { imageData: data.imageData } : {}),
+    });
+  })().catch((err: unknown) => {
+    logger.warn({ err: err instanceof Error ? err.message : "unknown" }, "[Telegram] Support message alert failed");
+  });
 }
 
 /** Runs a token-pool request without exposing credentials or provider error bodies. */
@@ -574,6 +609,13 @@ router.post("/support/chat", async (req, res): Promise<void> => {
       content: message || "[Image]",
       imageData: imageData ?? null,
     });
+    notifySavedSupportMessage({
+      conversationId: conv.id,
+      userId: conv.userId ?? req.user?.id ?? null,
+      userName: conv.userName,
+      message,
+      ...(imageData ? { imageData } : {}),
+    });
     res.setHeader("Content-Type", "text/event-stream");
     res.setHeader("Cache-Control", "no-cache");
     res.setHeader("Connection", "keep-alive");
@@ -613,6 +655,13 @@ router.post("/support/chat", async (req, res): Promise<void> => {
     role: "user",
     content: message || "[Image]",
     imageData: imageData ?? null,
+  });
+  notifySavedSupportMessage({
+    conversationId: conv.id,
+    userId: conv.userId ?? req.user?.id ?? null,
+    userName: conv.userName,
+    message,
+    ...(imageData ? { imageData } : {}),
   });
 
   /* ── Auto-detect the language of THIS message (may differ from

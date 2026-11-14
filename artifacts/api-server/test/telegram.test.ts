@@ -32,6 +32,10 @@ type TelegramModule = {
     event: string; purpose: string; userId?: string; userName?: string;
     email?: string; identifier?: string; ip?: string; detail?: string;
   }): Promise<void>;
+  sendSupportMessageAlert(data: {
+    conversationId: string; userId?: string; userName: string;
+    message: string; hasImage: boolean; imageData?: string;
+  }): Promise<void>;
 };
 
 async function harness() {
@@ -101,11 +105,11 @@ async function harness() {
       }
     },
     AbortSignal: {
-      timeout: (milliseconds: number) => {
-        assert.equal(milliseconds, 5000);
-        return "mock-timeout-signal";
-      },
+      timeout: (milliseconds: number) => `mock-timeout-signal-${milliseconds}`,
     },
+    Blob,
+    Buffer,
+    FormData,
     fetch: async (url: string, init: RequestInit) => {
       requests.push({ url, init });
       return { ok: true };
@@ -123,13 +127,45 @@ async function harness() {
       assert.equal(url, "https://api.telegram.org/botfake-test-token/sendMessage");
       assert.equal(init.method, "POST");
       assert.equal(JSON.stringify(init.headers), '{"Content-Type":"application/json"}');
-      assert.equal(init.signal, "mock-timeout-signal");
+      assert.equal(init.signal, "mock-timeout-signal-5000");
       assert.deepEqual(JSON.parse(String(init.body)), {
         chat_id: "fake-test-chat",
         text: expectedText,
         parse_mode: "HTML",
         disable_web_page_preview: true,
       });
+    },
+    assertSupportAlert(expectedText: string, withImage: boolean) {
+      assert.equal(requests.length, withImage ? 2 : 1);
+      const textRequest = requests[0]!;
+      assert.equal(textRequest.url, "https://api.telegram.org/botfake-test-token/sendMessage");
+      assert.equal(textRequest.init.signal, "mock-timeout-signal-5000");
+      const textPayload = JSON.parse(String(textRequest.init.body));
+      assert.equal(textPayload.chat_id, "fake-test-chat");
+      assert.equal(textPayload.parse_mode, "HTML");
+      assert.equal(textPayload.text, expectedText);
+      if (withImage) {
+        const photoRequest = requests[1]!;
+        assert.equal(photoRequest.url, "https://api.telegram.org/botfake-test-token/sendPhoto");
+        assert.equal(photoRequest.init.method, "POST");
+        assert.equal(photoRequest.init.signal, "mock-timeout-signal-10000");
+        assert.ok(photoRequest.init.body instanceof FormData);
+        const form = photoRequest.init.body as FormData;
+        assert.equal(form.get("chat_id"), "fake-test-chat");
+        assert.equal(form.get("parse_mode"), "HTML");
+        assert.equal(form.get("caption"), [
+          "🖼️ <b>Image envoyée au support</b>",
+          "👤 Alice &lt;Test&gt;",
+          "🆔 <code>user-42</code>",
+          "🗂️ Conversation <code>conversation-7</code>",
+        ].join("\n"));
+        assert.equal((form.get("photo") as Blob).type, "image/png");
+      }
+    },
+    supportTextMessages() {
+      return requests
+        .filter(request => request.url.endsWith("/sendMessage"))
+        .map(request => JSON.parse(String(request.init.body)).text as string);
     },
   };
 }
@@ -347,4 +383,67 @@ test("audit alert reports admin action and HTTP result without request body", as
     "🌐 <b>IP :</b> <code>192.0.2.12</code>", "",
     timestamp,
   ].join("\n"), []);
+});
+
+test("support message forwards escaped identity, redacts labeled secrets, and sends the image", async () => {
+  const h = await harness();
+  await h.alerts.sendSupportMessageAlert({
+    conversationId: "conversation-7",
+    userId: "user-42",
+    userName: "Alice <Test>",
+    message: "Mon mot de passe est secret-123 et <bonjour>",
+    hasImage: true,
+    imageData: "data:image/png;base64,aGVsbG8=",
+  });
+  h.assertSupportAlert([
+    "<b>💬 Nouveau message au support</b>",
+    "",
+    "👤 <b>Nom :</b> Alice &lt;Test&gt;",
+    "🆔 <b>ID utilisateur :</b> <code>user-42</code>",
+    "🗂️ <b>Conversation :</b> <code>conversation-7</code>",
+    "",
+    "<b>Message :</b>\nMon mot de passe est [masqué] et &lt;bonjour&gt;",
+    "",
+    "🖼️ Image jointe (transmission à Telegram demandée)",
+    "",
+    timestamp,
+  ].join("\n"), true);
+});
+
+test("support message without an account sends text only", async () => {
+  const h = await harness();
+  await h.alerts.sendSupportMessageAlert({
+    conversationId: "conversation-8",
+    userName: "Utilisateur non connecté",
+    message: "Bonjour au support",
+    hasImage: false,
+  });
+  h.assertSupportAlert([
+    "<b>💬 Nouveau message au support</b>",
+    "",
+    "👤 <b>Nom :</b> Utilisateur non connecté",
+    "🆔 <b>Compte :</b> Non connecté",
+    "🗂️ <b>Conversation :</b> <code>conversation-8</code>",
+    "",
+    "<b>Message :</b>\nBonjour au support",
+    "",
+    timestamp,
+  ].join("\n"), false);
+});
+
+test("long support messages are split without dropping text", async () => {
+  const h = await harness();
+  const message = "a".repeat(601);
+  await h.alerts.sendSupportMessageAlert({
+    conversationId: "conversation-long",
+    userName: "Alice",
+    message,
+    hasImage: false,
+  });
+  const messages = h.supportTextMessages();
+  assert.equal(messages.length, 2);
+  assert.ok(messages[0]!.endsWith(`<b>Message :</b>\n${"a".repeat(600)}\n\n${timestamp}`));
+  assert.ok(messages[1]!.includes(`<b>Message (suite) :</b>\na`));
+  const chunks = messages.map(item => item.match(/<b>Message(?: \(suite\))? :<\/b>\n([^\n]*)/)?.[1] ?? "");
+  assert.equal(chunks.join(""), message);
 });
