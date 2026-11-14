@@ -116,7 +116,7 @@ export default function LegalCGU() {
               </Section>
 
               <Section title="7. Remboursements">
-                <p>Lorsqu'une commande d'activation se termine sans SMS reçu, Simix recrédite automatiquement le montant de l'achat sur le portefeuille. Le délai habituel est de 20 minutes ; la clôture confirmée de la commande déclenche le remboursement. L'annulation manuelle n'est pas disponible.</p>
+                <p>Lorsqu'une commande d'activation se termine sans SMS reçu, Simix recrédite automatiquement le montant de l'achat sur le portefeuille à l'échéance exacte confirmée pour le numéro. L'annulation manuelle n'est pas disponible.</p>
                 <p>• Le montant de l'achat est recrédité sur votre portefeuille Simix</p>
                 <p>• Le remboursement est crédité automatiquement après la confirmation de fin sans SMS</p>
                 <p>En revanche, les rechargements du portefeuille ne sont pas remboursables en espèces ou sur votre compte Mobile Money d'origine.</p>

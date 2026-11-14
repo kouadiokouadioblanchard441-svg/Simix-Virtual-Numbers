@@ -101,7 +101,6 @@ function NumberAssignedContent({ id }: { id: string }) {
     1,
     differenceInSeconds(new Date(number.expiresAt), new Date(number.createdAt)),
   );
-  const validityMinutes = Math.ceil(totalSeconds / 60);
   const progress = Math.min(100, Math.max(0, (timeLeft / totalSeconds) * 100));
 
   return (
@@ -205,7 +204,7 @@ function NumberAssignedContent({ id }: { id: string }) {
               </h4>
               <p className="text-xs text-muted-foreground leading-relaxed mb-3">
                 {timeLeft > 0
-                  ? `Vous avez ${validityMinutes} minutes pour recevoir votre SMS. Si Simix confirme la fin de la commande sans SMS, le remboursement est automatique.`
+                  ? "Le compte à rebours suit l'échéance confirmée par Simix. Sans SMS à la fin de la commande, le remboursement est automatique."
                   : "Le délai affiché est écoulé. Simix vérifie le résultat final ; sans SMS, le montant sera automatiquement recrédité."}
               </p>
               <div className="bg-primary/10 border border-primary/20 rounded-lg p-2.5 flex items-start gap-2">

@@ -24,7 +24,7 @@ import {
   blockUser,
   logSecurityEvent,
 } from "../lib/fraud-detection";
-import { FiveSimClient, FiveSimError, ISO_TO_5SIM, SERVICE_TO_5SIM, type FiveSimOrder } from "../lib/fivesim";
+import { FiveSimClient, FiveSimError, ISO_TO_5SIM, SERVICE_TO_5SIM, parseFiveSimExpiry, type FiveSimOrder } from "../lib/fivesim";
 import { logger } from "../lib/logger";
 import { auditLog } from "../lib/audit";
 import { sendNumberBuyAlert } from "../lib/telegram";
@@ -32,10 +32,7 @@ import { lookupIp } from "../lib/geoip";
 import { broadcastNotification } from "./notifications";
 import { notificationsTable } from "@workspace/db";
 import { pollNumberNow } from "../lib/fivesim-poller";
-import {
-  getNumberValidityMinutes,
-  getMaxOrdersPerMinute,
-} from "../lib/settings";
+import { getMaxOrdersPerMinute } from "../lib/settings";
 
 const router: IRouter = Router();
 
@@ -142,7 +139,6 @@ router.get("/numbers/quote", async (req, res): Promise<void> => {
 
   /* Price hierarchy: service_prices override → services.price → country.price */
   const price = priceOverride?.price ?? service.price ?? country.price;
-  const validityMinutes = await getNumberValidityMinutes();
   res.json({
     service: {
       id: service.id,
@@ -171,7 +167,7 @@ router.get("/numbers/quote", async (req, res): Promise<void> => {
     price,
     fees: 0,
     total: price,
-    validityMinutes,
+    expiryPolicy: "provider",
   });
 });
 
@@ -313,8 +309,6 @@ router.post("/numbers", requireAuth, async (req, res): Promise<void> => {
     return;
   }
 
-  const validityMin = await getNumberValidityMinutes();
-
   /* ── Appel réel à 5sim (aucun fallback vers numéros fictifs) ── */
   const fiveSimClient = await getActive5SimClient();
 
@@ -343,22 +337,21 @@ router.post("/numbers", requireAuth, async (req, res): Promise<void> => {
   let phoneNumber: string;
   let externalOrderId: string | null = null;
   let actualExpiresAt: Date;
+  let acquiredOrder: FiveSimOrder | null = null;
   try {
     let order: FiveSimOrder;
     if (numberType === "hosting") {
       order = await fiveSimClient.buyHostingNumber(countrySlug, "any", hostingDuration);
-      /* Hosting: expiresAt comes from 5sim (order.expires), sinon fallback calculé */
-      actualExpiresAt = order.expires
-        ? new Date(order.expires)
-        : new Date(Date.now() + (hostingDuration === "1day" ? 24 : 3) * 60 * 60 * 1000);
+      acquiredOrder = order;
+      actualExpiresAt = parseFiveSimExpiry(order.expires);
       logger.info(
         { orderId: order.id, phone: order.phone, userId: user.id, countrySlug, hostingDuration },
         "[5sim] Hosting number acquired",
       );
     } else {
       order = await fiveSimClient.buyNumber(countrySlug, "any", productSlug);
-      /* Start the full 20-minute window when the provider assigns the number. */
-      actualExpiresAt = new Date(Date.now() + validityMin * 60 * 1000);
+      acquiredOrder = order;
+      actualExpiresAt = parseFiveSimExpiry(order.expires);
       logger.info(
         { orderId: order.id, phone: order.phone, userId: user.id, countrySlug, productSlug },
         "[5sim] Activation number acquired",
@@ -369,6 +362,17 @@ router.post("/numbers", requireAuth, async (req, res): Promise<void> => {
   } catch (e) {
     const errMsg = (e as Error).message;
     const is5SimErr = e instanceof FiveSimError;
+
+    if (acquiredOrder) {
+      try {
+        await fiveSimClient.cancelOrder(acquiredOrder.id);
+      } catch (cancelErr) {
+        logger.error(
+          { err: (cancelErr as Error).message, orderId: acquiredOrder.id },
+          "[purchase] Could not close provider order with invalid expiry",
+        );
+      }
+    }
 
     /* Toujours rembourser l'utilisateur en cas d'échec */
     await db.update(usersTable)

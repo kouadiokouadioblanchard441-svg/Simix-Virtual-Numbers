@@ -61,7 +61,7 @@ const CATEGORIES = [
     articles: [
       {
         title: "Combien de temps dure un numéro ?",
-        content: `Un numéro d'activation reste actif jusqu'à la réception du SMS ou la fin confirmée de la commande, généralement autour de 20 minutes.\n\nSi Simix confirme la fin de la commande sans SMS, le prix est automatiquement recrédité. L'annulation manuelle n'est pas disponible.`,
+        content: `Un numéro d'activation reste actif jusqu'à la réception du SMS ou l'échéance exacte communiquée par Simix.\n\nSi la commande se termine sans SMS, le prix est automatiquement recrédité. L'annulation manuelle n'est pas disponible.`,
       },
       {
         title: "Je ne reçois pas le SMS — que faire ?",

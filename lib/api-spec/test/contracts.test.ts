@@ -39,7 +39,7 @@ const transaction = {
   message: "Test only",
 };
 
-test("number quote contract requires the fixed 20-minute validity", () => {
+test("number quote contract delegates expiry to the provider", () => {
   const quote = {
     service: {
       id: "service-id",
@@ -64,10 +64,10 @@ test("number quote contract requires the fixed 20-minute validity", () => {
     price: 350,
     fees: 0,
     total: 350,
-    validityMinutes: 20,
+    expiryPolicy: "provider",
   };
 
-  assert.equal(GetNumberQuoteResponse.parse(quote).validityMinutes, 20);
+  assert.equal(GetNumberQuoteResponse.parse(quote).expiryPolicy, "provider");
 });
 
 test("generated Zod 3 contracts retain OTP and reject invalid recharge amounts", () => {

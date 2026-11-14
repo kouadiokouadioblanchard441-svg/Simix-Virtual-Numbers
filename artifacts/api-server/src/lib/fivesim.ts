@@ -475,6 +475,14 @@ export class FiveSimError extends Error {
 
 /* ─── Helpers ────────────────────────────────────────────────────── */
 
+export function parseFiveSimExpiry(expires: string): Date {
+  const timestamp = typeof expires === "string" ? Date.parse(expires) : Number.NaN;
+  if (!Number.isFinite(timestamp)) {
+    throw new Error("5sim returned an invalid order expiration");
+  }
+  return new Date(timestamp);
+}
+
 function normaliseOrder(order: FiveSimOrder): FiveSimOrder {
   if (order.phone && !order.phone.startsWith("+")) {
     order.phone = `+${order.phone}`;

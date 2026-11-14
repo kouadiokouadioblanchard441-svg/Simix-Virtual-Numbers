@@ -577,7 +577,7 @@ components:
 
     NumberQuote:
       type: object
-      required: [service, country, available, waitTime, price, fees, total, validityMinutes]
+      required: [service, country, available, waitTime, price, fees, total, expiryPolicy]
       properties:
         service:
           $ref: "#/components/schemas/Service"
@@ -594,9 +594,10 @@ components:
           type: integer
         total:
           type: integer
-        validityMinutes:
-          type: integer
-          description: Always 20 minutes for an activation number
+        expiryPolicy:
+          type: string
+          enum: [provider]
+          description: The assigned number uses the expiry timestamp returned by Simix.
 
     RequestNumberInput:
       type: object

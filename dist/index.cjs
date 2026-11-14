@@ -44104,7 +44104,7 @@ var init_numbers = __esm({
         externalOrderId: text("external_order_id"),
         /**
          * Type de numéro :
-         *   "activation" — numéro one-shot (défaut), valide ~20 min
+         *   "activation" — numéro one-shot (défaut), expiration fournie par 5sim
          *   "hosting"    — numéro en location longue durée (1 jour ou 3 heures)
          */
         numberType: text("number_type").notNull().default("activation"),
@@ -64834,7 +64834,7 @@ async function getSettingBool(key, defaultValue) {
   const raw = await getSetting(key, defaultValue ? "true" : "false");
   return raw === "true" || raw === "1" || raw === "yes";
 }
-var CACHE_TTL_MS, cache, cacheExpiresAt, isMaintenanceMode, isRegistrationEnabled, getNumberValidityMinutes, getMinDepositFcfa, getMaxBalanceFcfa, getMaxOrdersPerMinute, isEmailOtpEnabled, getReferralCommissionRate;
+var CACHE_TTL_MS, cache, cacheExpiresAt, isMaintenanceMode, isRegistrationEnabled, getMinDepositFcfa, getMaxBalanceFcfa, getMaxOrdersPerMinute, isEmailOtpEnabled, getReferralCommissionRate;
 var init_settings = __esm({
   "artifacts/api-server/src/lib/settings.ts"() {
     "use strict";
@@ -64845,7 +64845,6 @@ var init_settings = __esm({
     cacheExpiresAt = 0;
     isMaintenanceMode = () => getSettingBool("maintenance_mode", false);
     isRegistrationEnabled = () => getSettingBool("registration_enabled", true);
-    getNumberValidityMinutes = async () => 20;
     getMinDepositFcfa = () => getSettingInt("min_deposit_fcfa", 500);
     getMaxBalanceFcfa = () => getSettingInt("max_balance_fcfa", 5e5);
     getMaxOrdersPerMinute = () => getSettingInt("max_orders_per_minute", 10);
@@ -79878,8 +79877,16 @@ __export(fivesim_exports, {
   FiveSimError: () => FiveSimError,
   ISO_TO_5SIM: () => ISO_TO_5SIM,
   SERVICE_TO_5SIM: () => SERVICE_TO_5SIM,
-  getActiveFiveSimClient: () => getActiveFiveSimClient
+  getActiveFiveSimClient: () => getActiveFiveSimClient,
+  parseFiveSimExpiry: () => parseFiveSimExpiry
 });
+function parseFiveSimExpiry(expires) {
+  const timestamp2 = typeof expires === "string" ? Date.parse(expires) : Number.NaN;
+  if (!Number.isFinite(timestamp2)) {
+    throw new Error("5sim returned an invalid order expiration");
+  }
+  return new Date(timestamp2);
+}
 function normaliseOrder(order) {
   if (order.phone && !order.phone.startsWith("+")) {
     order.phone = `+${order.phone}`;
@@ -108004,7 +108011,8 @@ var RegisterResponse = object({
     transactionsCount: number2().int().optional(),
     isAdmin: boolean2().optional(),
     riskScore: number2().int().optional()
-  })
+  }),
+  token: string2()
 });
 var LoginBody = object({
   identifier: string2().describe("phone number or username"),
@@ -108026,12 +108034,8 @@ var LoginResponse = object({
     transactionsCount: number2().int().optional(),
     isAdmin: boolean2().optional(),
     riskScore: number2().int().optional()
-  }).optional(),
-  requiresTwoFactor: boolean2().optional(),
-  challengeId: string2().uuid().optional(),
-  maskedEmail: string2().optional(),
-  requiresEmailVerification: boolean2().optional(),
-  requiresInactivityCheck: boolean2().optional()
+  }),
+  token: string2()
 });
 var LogoutResponse = object({
   success: boolean2()
@@ -108140,7 +108144,9 @@ var GetNumberQuoteResponse = object({
   price: number2().int(),
   fees: number2().int(),
   total: number2().int(),
-  validityMinutes: number2().int().describe("Always 20 minutes for an activation number")
+  expiryPolicy: _enum2(["provider"]).describe(
+    "The assigned number uses the expiry timestamp returned by Simix."
+  )
 });
 var RequestNumberBody = object({
   serviceId: string2(),
@@ -132433,7 +132439,13 @@ async function pollNumberNow(vn) {
 async function pollActivationOrder(client, vn, orderId) {
   try {
     const order = await client.checkOrder(orderId);
-    const { newSmsCount, hasStoredSms } = await saveNewSmsMessages(vn.id, order.sms ?? []);
+    let providerExpiresAt = null;
+    try {
+      providerExpiresAt = parseFiveSimExpiry(order.expires);
+    } catch {
+      logger.warn({ numberId: vn.id, orderId }, "[5sim-poller] Provider returned an invalid expiration timestamp");
+    }
+    const { newSmsCount, hasStoredSms } = await saveNewSmsMessages(vn.id, order.sms ?? [], providerExpiresAt);
     if (hasStoredSms) {
       await db.update(virtualNumbersTable).set({ status: "received" }).where(and(
         eq(virtualNumbersTable.id, vn.id),
@@ -132499,11 +132511,20 @@ async function pollHostingOrder(client, vn, orderId) {
     }
   }
 }
-async function saveNewSmsMessages(numberId, smsList) {
+async function saveNewSmsMessages(numberId, smsList, providerExpiresAt = null) {
   return db.transaction(async (tx) => {
-    const [number4] = await tx.select({ status: virtualNumbersTable.status }).from(virtualNumbersTable).where(eq(virtualNumbersTable.id, numberId)).for("update").limit(1);
+    const [number4] = await tx.select({
+      status: virtualNumbersTable.status,
+      expiresAt: virtualNumbersTable.expiresAt
+    }).from(virtualNumbersTable).where(eq(virtualNumbersTable.id, numberId)).for("update").limit(1);
     if (!number4 || number4.status !== "waiting") {
       return { newSmsCount: 0, hasStoredSms: false };
+    }
+    if (providerExpiresAt && number4.expiresAt.getTime() !== providerExpiresAt.getTime()) {
+      await tx.update(virtualNumbersTable).set({ expiresAt: providerExpiresAt }).where(and(
+        eq(virtualNumbersTable.id, numberId),
+        eq(virtualNumbersTable.status, "waiting")
+      ));
     }
     const existingMsgs = await tx.select({ body: smsMessagesTable.body }).from(smsMessagesTable).where(eq(smsMessagesTable.numberId, numberId));
     const existingBodies = new Set(existingMsgs.map((message) => message.body));
@@ -132951,7 +132972,6 @@ router9.get("/numbers/quote", async (req, res) => {
     logger.debug({ err: e2.message }, "[quote] service_prices lookup skipped");
   }
   const price = priceOverride?.price ?? service.price ?? country.price;
-  const validityMinutes = await getNumberValidityMinutes();
   res.json({
     service: {
       id: service.id,
@@ -132980,7 +133000,7 @@ router9.get("/numbers/quote", async (req, res) => {
     price,
     fees: 0,
     total: price,
-    validityMinutes
+    expiryPolicy: "provider"
   });
 });
 router9.post("/numbers", requireAuth, async (req, res) => {
@@ -133087,7 +133107,6 @@ router9.post("/numbers", requireAuth, async (req, res) => {
     res.status(402).json({ error: "Solde insuffisant. Veuillez r\xE9essayer." });
     return;
   }
-  const validityMin = await getNumberValidityMinutes();
   const fiveSimClient = await getActive5SimClient();
   if (!fiveSimClient) {
     await db.update(usersTable).set({ balance: sql`${usersTable.balance} + ${price}` }).where(eq(usersTable.id, user.id));
@@ -133105,18 +133124,21 @@ router9.post("/numbers", requireAuth, async (req, res) => {
   let phoneNumber;
   let externalOrderId = null;
   let actualExpiresAt;
+  let acquiredOrder = null;
   try {
     let order;
     if (numberType === "hosting") {
       order = await fiveSimClient.buyHostingNumber(countrySlug, "any", hostingDuration);
-      actualExpiresAt = order.expires ? new Date(order.expires) : new Date(Date.now() + (hostingDuration === "1day" ? 24 : 3) * 60 * 60 * 1e3);
+      acquiredOrder = order;
+      actualExpiresAt = parseFiveSimExpiry(order.expires);
       logger.info(
         { orderId: order.id, phone: order.phone, userId: user.id, countrySlug, hostingDuration },
         "[5sim] Hosting number acquired"
       );
     } else {
       order = await fiveSimClient.buyNumber(countrySlug, "any", productSlug);
-      actualExpiresAt = new Date(Date.now() + validityMin * 60 * 1e3);
+      acquiredOrder = order;
+      actualExpiresAt = parseFiveSimExpiry(order.expires);
       logger.info(
         { orderId: order.id, phone: order.phone, userId: user.id, countrySlug, productSlug },
         "[5sim] Activation number acquired"
@@ -133127,6 +133149,16 @@ router9.post("/numbers", requireAuth, async (req, res) => {
   } catch (e2) {
     const errMsg = e2.message;
     const is5SimErr = e2 instanceof FiveSimError;
+    if (acquiredOrder) {
+      try {
+        await fiveSimClient.cancelOrder(acquiredOrder.id);
+      } catch (cancelErr) {
+        logger.error(
+          { err: cancelErr.message, orderId: acquiredOrder.id },
+          "[purchase] Could not close provider order with invalid expiry"
+        );
+      }
+    }
     await db.update(usersTable).set({ balance: sql`${usersTable.balance} + ${price}` }).where(eq(usersTable.id, user.id));
     if (is5SimErr && e2.isPaymentRequired) {
       logger.warn({ countrySlug, productSlug }, "[5sim] Account balance exhausted");
@@ -144841,23 +144873,23 @@ Modes de paiement accept\xE9s: Orange Money, MTN Mobile Money, Wave, Moov Money.
 Fonctionnement \xE9tape par \xE9tape:
 1. Recharger son portefeuille via Mobile Money (d\xE9p\xF4t min 500 FCFA)
 2. Choisir un service (ex: WhatsApp) et un pays (ex: France, USA, C\xF4te d'Ivoire...)
-3. Recevoir un num\xE9ro virtuel valide pendant 20 minutes
+3. Recevoir un num\xE9ro virtuel dont l'\xE9ch\xE9ance est communiqu\xE9e par Simix
 4. Entrer ce num\xE9ro sur l'application voulue \u2192 le code SMS arrive automatiquement dans le tableau de bord Simix
 5. Copier le code et l'utiliser
 
 Prix: variable selon le service et le pays, en g\xE9n\xE9ral entre 100 et 2000 FCFA. WhatsApp: ~500 FCFA. Telegram: ~500 FCFA. Google: ~300 FCFA. Binance: ~1500 FCFA.
-Le d\xE9lai habituel est d'environ 20 minutes. Le statut TIMEOUT de 5sim termine la commande ; si aucun SMS n'a \xE9t\xE9 enregistr\xE9, le prix du num\xE9ro est automatiquement recr\xE9dit\xE9.
-Aucune annulation manuelle n'est possible. Il faut attendre le SMS ou le statut final de 5sim ; le compte \xE0 rebours local est indicatif et le contr\xF4le final suit le fournisseur.
+L'\xE9ch\xE9ance exacte est communiqu\xE9e par Simix. Le statut final termine la commande ; si aucun SMS n'a \xE9t\xE9 enregistr\xE9, le prix du num\xE9ro est automatiquement recr\xE9dit\xE9.
+Aucune annulation manuelle n'est possible. Il faut attendre le SMS ou la fin confirm\xE9e de la commande ; le compte \xE0 rebours suit l'\xE9ch\xE9ance fournie par Simix.
 Solde maximum: 500 000 FCFA. D\xE9p\xF4t minimum: 500 FCFA.
 
 Statuts des commandes:
 En attente = le num\xE9ro est actif, il attend le SMS. Normal, sois patient(e).
 Re\xE7u = le code SMS est arriv\xE9, il est visible sur le tableau de bord.
-Expir\xE9 = 5sim a termin\xE9 la commande. Si aucun SMS n'a \xE9t\xE9 enregistr\xE9 \u2192 remboursement automatique du prix du num\xE9ro.
-Annul\xE9 = le fournisseur a termin\xE9 la commande. Si aucun SMS n'a \xE9t\xE9 re\xE7u, le remboursement automatique s'applique.
+Expir\xE9 = Simix a confirm\xE9 la fin de la commande. Si aucun SMS n'a \xE9t\xE9 enregistr\xE9 \u2192 remboursement automatique du prix du num\xE9ro.
+Annul\xE9 = la commande est termin\xE9e. Si aucun SMS n'a \xE9t\xE9 re\xE7u, le remboursement automatique s'applique.
 
 Probl\xE8mes fr\xE9quents et solutions directes:
-SMS pas re\xE7u \u2192 attendre le statut final de 5sim. TIMEOUT sans SMS d\xE9clenche le remboursement automatique. Si le statut est termin\xE9 mais que le cr\xE9dit n'appara\xEEt pas, contacter le support humain.
+SMS pas re\xE7u \u2192 attendre le statut final de la commande. Une fin confirm\xE9e sans SMS d\xE9clenche le remboursement automatique. Si le cr\xE9dit n'appara\xEEt pas, contacter le support humain.
 Num\xE9ro refus\xE9 par l'application \u2192 essayer un autre pays ou un autre op\xE9rateur.
 Paiement Mobile Money \xE9chou\xE9 \u2192 v\xE9rifier le solde du compte Mobile Money, r\xE9essayer. Si le probl\xE8me persiste, v\xE9rifier que le num\xE9ro Mobile Money est bien enregistr\xE9.
 Solde insuffisant \u2192 recharger d'abord via Mobile Money dans la section "Recharger".
@@ -145262,21 +145294,21 @@ router27.post("/support/chat", async (req, res) => {
         {
           test: (m2) => /rembours|refund/.test(m2),
           responses: [
-            "Le remboursement est automatique lorsque 5sim termine la commande avec TIMEOUT et qu'aucun SMS n'a \xE9t\xE9 enregistr\xE9. Le prix du num\xE9ro est alors recr\xE9dit\xE9 sur votre solde Simix. V\xE9rifiez votre historique de transactions pour confirmer."
+            "Le remboursement est automatique lorsque Simix confirme la fin de la commande sans SMS enregistr\xE9. Le prix du num\xE9ro est alors recr\xE9dit\xE9 sur votre solde Simix. V\xE9rifiez votre historique de transactions pour confirmer."
           ]
         },
         /* SMS / code */
         {
           test: (m2) => /sms.*re[çc]u|sms.*arriv|code.*re[çc]u|code.*arriv|v[eé]rification/.test(m2),
           responses: [
-            "Le code SMS peut prendre quelques minutes \xE0 arriver. V\xE9rifiez la section \xAB Mes num\xE9ros \xBB dans votre tableau de bord \u2014 le code s'affiche automatiquement d\xE8s r\xE9ception. Si 5sim termine la commande avec TIMEOUT sans SMS, le prix est rembours\xE9 automatiquement."
+            "Le code SMS peut prendre quelques minutes \xE0 arriver. V\xE9rifiez la section \xAB Mes num\xE9ros \xBB dans votre tableau de bord \u2014 le code s'affiche automatiquement d\xE8s r\xE9ception. Si Simix confirme la fin de la commande sans SMS, le prix est rembours\xE9 automatiquement."
           ]
         },
         /* Numéro pas reçu */
         {
           test: (m2) => /num[eé]ro.*re[çc]u|num[eé]ro.*arriv|not received/.test(m2),
           responses: [
-            "Si vous n'avez pas re\xE7u votre num\xE9ro, v\xE9rifiez d'abord votre tableau de bord dans la section \xAB Mes num\xE9ros \xBB. \xAB En attente \xBB signifie que 5sim n'a pas encore renvoy\xE9 son statut final. Si 5sim r\xE9pond TIMEOUT sans SMS, le prix est rembours\xE9 automatiquement."
+            "Si vous n'avez pas re\xE7u votre num\xE9ro, v\xE9rifiez d'abord votre tableau de bord dans la section \xAB Mes num\xE9ros \xBB. \xAB En attente \xBB signifie que Simix v\xE9rifie encore le statut final. Si la commande se termine sans SMS, le prix est rembours\xE9 automatiquement."
           ]
         },
         /* Solde / compte */
@@ -145304,14 +145336,14 @@ router27.post("/support/chat", async (req, res) => {
         {
           test: (m2) => /whatsapp|telegram|facebook|google|instagram|twitter|tiktok|snapchat|discord|signal/.test(m2),
           responses: [
-            "Simix supporte tous les grands services ! Pour obtenir un num\xE9ro virtuel, allez dans \xAB Services \xBB, choisissez le service d\xE9sir\xE9, s\xE9lectionnez un pays, et le num\xE9ro vous est attribu\xE9 instantan\xE9ment. Le compte \xE0 rebours est g\xE9n\xE9ralement de 20 minutes ; le r\xE9sultat final suit le statut de 5sim."
+            "Simix supporte tous les grands services ! Pour obtenir un num\xE9ro virtuel, allez dans \xAB Services \xBB, choisissez le service d\xE9sir\xE9, s\xE9lectionnez un pays, et le num\xE9ro vous est attribu\xE9 instantan\xE9ment. Le compte \xE0 rebours suit l'\xE9ch\xE9ance exacte communiqu\xE9e par Simix."
           ]
         },
         /* Fonctionnement général */
         {
           test: (m2) => /comment [cç]a marche|how it works|fonctionnement|comment utiliser|comment [cç]a fonctionne/.test(m2),
           responses: [
-            "C'est tr\xE8s simple en 4 \xE9tapes :\n1. Rechargez votre solde via Mobile Money\n2. Choisissez un service (WhatsApp, Google, etc.) et un pays\n3. Recevez un num\xE9ro avec un compte \xE0 rebours habituel de 20 minutes\n4. Entrez ce num\xE9ro dans l'app \u2192 le code SMS arrive automatiquement dans votre tableau de bord. Si 5sim renvoie TIMEOUT sans SMS, le prix est rembours\xE9."
+            "C'est tr\xE8s simple en 4 \xE9tapes :\n1. Rechargez votre solde via Mobile Money\n2. Choisissez un service (WhatsApp, Google, etc.) et un pays\n3. Recevez un num\xE9ro avec un compte \xE0 rebours bas\xE9 sur son \xE9ch\xE9ance Simix\n4. Entrez ce num\xE9ro dans l'app \u2192 le code SMS arrive automatiquement dans votre tableau de bord. Si la commande se termine sans SMS, le prix est rembours\xE9."
           ]
         }
       ];

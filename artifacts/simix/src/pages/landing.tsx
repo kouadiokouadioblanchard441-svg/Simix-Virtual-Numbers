@@ -331,7 +331,7 @@ const FAQ_ITEMS = [
   },
   {
     q: "Combien de temps le numéro reste-t-il actif ?",
-    a: "Un numéro d'activation reste actif jusqu'à la réception du SMS ou la fin confirmée de la commande. Si Simix confirme la fin sans SMS, le prix est automatiquement recrédité. Le délai habituel est de 20 minutes.",
+    a: "Un numéro d'activation reste actif jusqu'à la réception du SMS ou la fin confirmée de la commande par Simix. Si la commande se termine sans SMS, le prix est automatiquement recrédité.",
   },
   {
     q: "Puis-je utiliser Simix sans carte bancaire ?",

@@ -36,11 +36,11 @@ const FAQ = [
   },
   {
     q: "Que faire si je ne reçois pas le SMS ?",
-    a: "Le numéro reste actif jusqu'à la réception du SMS ou la fin confirmée de la commande. Si Simix confirme la fin sans SMS, le prix du numéro est automatiquement recrédité sur votre solde. Le délai habituel est de 20 minutes. L'annulation manuelle n'est pas disponible.",
+    a: "Le numéro reste actif jusqu'à la réception du SMS ou l'échéance confirmée par Simix. Si la commande se termine sans SMS, le prix du numéro est automatiquement recrédité sur votre solde. L'annulation manuelle n'est pas disponible.",
   },
   {
     q: "Combien de temps dure un numéro virtuel ?",
-    a: "Un numéro d'activation reste actif jusqu'à la fin de la commande confirmée par Simix, généralement après environ 20 minutes.",
+    a: "Un numéro d'activation reste actif jusqu'à l'échéance exacte communiquée par Simix.",
   },
   {
     q: "Mon paiement est bloqué, que faire ?",

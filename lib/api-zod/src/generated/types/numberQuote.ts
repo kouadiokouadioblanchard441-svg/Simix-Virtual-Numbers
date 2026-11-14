@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { Country } from "./country";
+import type { NumberQuoteExpiryPolicy } from "./numberQuoteExpiryPolicy";
 import type { Service } from "./service";
 
 export interface NumberQuote {
@@ -17,6 +18,6 @@ export interface NumberQuote {
   price: number;
   fees: number;
   total: number;
-  /** Always 20 minutes for an activation number */
-  validityMinutes: number;
+  /** The assigned number uses the expiry timestamp returned by Simix. */
+  expiryPolicy: NumberQuoteExpiryPolicy;
 }

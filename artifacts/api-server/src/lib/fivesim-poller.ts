@@ -19,7 +19,7 @@ import {
   apiProvidersTable,
   notificationsTable,
 } from "@workspace/db";
-import { FiveSimClient, FiveSimError } from "./fivesim";
+import { FiveSimClient, FiveSimError, parseFiveSimExpiry } from "./fivesim";
 import { logger } from "./logger";
 import { getNumberExpiryOutcome } from "./number-expiry-policy";
 import { broadcastNotification } from "../routes/notifications";
@@ -179,8 +179,15 @@ async function pollActivationOrder(
   try {
     const order = await client.checkOrder(orderId);
 
+    let providerExpiresAt: Date | null = null;
+    try {
+      providerExpiresAt = parseFiveSimExpiry(order.expires);
+    } catch {
+      logger.warn({ numberId: vn.id, orderId }, "[5sim-poller] Provider returned an invalid expiration timestamp");
+    }
+
     /* Save SMS first: terminal provider responses may still contain the final SMS. */
-    const { newSmsCount, hasStoredSms } = await saveNewSmsMessages(vn.id, order.sms ?? []);
+    const { newSmsCount, hasStoredSms } = await saveNewSmsMessages(vn.id, order.sms ?? [], providerExpiresAt);
     if (hasStoredSms) {
       await db
         .update(virtualNumbersTable)
@@ -277,17 +284,31 @@ async function pollHostingOrder(
 async function saveNewSmsMessages(
   numberId: string,
   smsList: Array<{ text: string; sender: string; code: string; id?: number; created_at?: string; date?: string }>,
+  providerExpiresAt: Date | null = null,
 ): Promise<{ newSmsCount: number; hasStoredSms: boolean }> {
   return db.transaction(async (tx) => {
     /* Serialize SMS persistence against expiry/refund for this same number. */
     const [number] = await tx
-      .select({ status: virtualNumbersTable.status })
+      .select({
+        status: virtualNumbersTable.status,
+        expiresAt: virtualNumbersTable.expiresAt,
+      })
       .from(virtualNumbersTable)
       .where(eq(virtualNumbersTable.id, numberId))
       .for("update")
       .limit(1);
     if (!number || number.status !== "waiting") {
       return { newSmsCount: 0, hasStoredSms: false };
+    }
+
+    if (providerExpiresAt && number.expiresAt.getTime() !== providerExpiresAt.getTime()) {
+      await tx
+        .update(virtualNumbersTable)
+        .set({ expiresAt: providerExpiresAt })
+        .where(and(
+          eq(virtualNumbersTable.id, numberId),
+          eq(virtualNumbersTable.status, "waiting"),
+        ));
     }
 
     const existingMsgs = await tx

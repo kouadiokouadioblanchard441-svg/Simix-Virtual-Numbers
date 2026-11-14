@@ -31,7 +31,7 @@ export const virtualNumbersTable = pgTable(
     externalOrderId: text("external_order_id"),
     /**
      * Type de numéro :
-     *   "activation" — numéro one-shot (défaut), valide ~20 min
+     *   "activation" — numéro one-shot (défaut), expiration fournie par 5sim
      *   "hosting"    — numéro en location longue durée (1 jour ou 3 heures)
      */
     numberType: text("number_type").notNull().default("activation"),

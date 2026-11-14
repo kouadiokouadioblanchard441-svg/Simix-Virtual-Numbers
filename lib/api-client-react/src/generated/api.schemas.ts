@@ -32,13 +32,8 @@ export interface User {
 }
 
 export interface AuthResponse {
-  user?: User;
-  token?: string;
-  requiresTwoFactor?: boolean;
-  challengeId?: string;
-  maskedEmail?: string;
-  requiresEmailVerification?: boolean;
-  requiresInactivityCheck?: boolean;
+  user: User;
+  token: string;
 }
 
 export interface RegisterInput {
@@ -98,6 +93,16 @@ export interface Country {
   popular?: boolean;
 }
 
+/**
+ * The assigned number uses the expiry timestamp returned by Simix.
+ */
+export type NumberQuoteExpiryPolicy =
+  (typeof NumberQuoteExpiryPolicy)[keyof typeof NumberQuoteExpiryPolicy];
+
+export const NumberQuoteExpiryPolicy = {
+  provider: "provider",
+} as const;
+
 export interface NumberQuote {
   service: Service;
   country: Country;
@@ -107,8 +112,8 @@ export interface NumberQuote {
   price: number;
   fees: number;
   total: number;
-  /** Always 20 minutes for an activation number */
-  validityMinutes: number;
+  /** The assigned number uses the expiry timestamp returned by Simix. */
+  expiryPolicy: NumberQuoteExpiryPolicy;
 }
 
 export interface RequestNumberInput {

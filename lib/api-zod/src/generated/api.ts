@@ -47,6 +47,7 @@ export const RegisterResponse = zod.object({
     isAdmin: zod.boolean().optional(),
     riskScore: zod.number().int().optional(),
   }),
+  token: zod.string(),
 });
 
 /**
@@ -73,12 +74,8 @@ export const LoginResponse = zod.object({
     transactionsCount: zod.number().int().optional(),
     isAdmin: zod.boolean().optional(),
     riskScore: zod.number().int().optional(),
-  }).optional(),
-  requiresTwoFactor: zod.boolean().optional(),
-  challengeId: zod.string().uuid().optional(),
-  maskedEmail: zod.string().optional(),
-  requiresEmailVerification: zod.boolean().optional(),
-  requiresInactivityCheck: zod.boolean().optional(),
+  }),
+  token: zod.string(),
 });
 
 /**
@@ -218,10 +215,11 @@ export const GetNumberQuoteResponse = zod.object({
   price: zod.number().int(),
   fees: zod.number().int(),
   total: zod.number().int(),
-  validityMinutes: zod
-    .number()
-    .int()
-    .describe("Always 20 minutes for an activation number"),
+  expiryPolicy: zod
+    .enum(["provider"])
+    .describe(
+      "The assigned number uses the expiry timestamp returned by Simix.",
+    ),
 });
 
 /**

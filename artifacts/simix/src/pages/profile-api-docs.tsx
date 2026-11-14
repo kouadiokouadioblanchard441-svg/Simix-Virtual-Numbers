@@ -539,7 +539,7 @@ json.NewDecoder(resp.Body).Decode(&services)`,
     method: "GET",
     path: "/numbers/quote",
     title: "Obtenir un devis",
-    description: "Retourne le prix, la disponibilité et les 20 minutes habituelles pour un service et un pays donnés. Ne nécessite pas d'authentification.",
+    description: "Retourne le prix, la disponibilité et la règle d'échéance Simix pour un service et un pays donnés. Ne nécessite pas d'authentification.",
     auth: false,
     queryParams: [
       { name: "serviceId", type: "string (UUID)", required: true, description: "ID du service", example: "uuid-service" },
@@ -562,7 +562,7 @@ json.NewDecoder(resp.Body).Decode(&services)`,
   "fees": 0,
   "total": 350,
   "waitTime": "10 - 60 sec",
-  "validityMinutes": 20
+  "expiryPolicy": "provider"
 }`,
     codes: [
       { code: 200, label: "OK", desc: "Devis retourné" },
@@ -598,7 +598,7 @@ resp, _ := http.Get(url)`,
     bodyParams: [
       { name: "serviceId", type: "string (UUID)", required: true, description: "ID du service à utiliser", example: "uuid-service" },
       { name: "countryId", type: "string (UUID)", required: true, description: "ID du pays du numéro", example: "uuid-pays" },
-      { name: "numberType", type: "string", required: false, description: '"activation" (défaut, ~20 min) ou "hosting" (1 jour ou 3h)', example: "activation" },
+      { name: "numberType", type: "string", required: false, description: '"activation" (défaut, échéance exacte communiquée par Simix) ou "hosting" (1 jour ou 3h selon Simix)', example: "activation" },
     ],
     response: `{
   "id": "uuid-numero",

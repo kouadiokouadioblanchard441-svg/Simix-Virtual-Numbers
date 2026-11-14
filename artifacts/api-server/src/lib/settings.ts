@@ -71,9 +71,6 @@ export const isRegistrationEnabled = () => getSettingBool("registration_enabled"
 /** Is SMS simulation mode active (dev/demo)? */
 export const isSmsSimulationEnabled = () => getSettingBool("sms_simulation", true);
 
-/** Fixed activation-number validity. */
-export const getNumberValidityMinutes = async () => 20;
-
 /** Global minimum recharge amount in FCFA */
 export const getMinDepositFcfa = () => getSettingInt("min_deposit_fcfa", 500);
 

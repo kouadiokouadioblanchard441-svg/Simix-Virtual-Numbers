@@ -17,6 +17,7 @@ export * from "./listServicesParams";
 export * from "./loginInput";
 export * from "./loginInputMethod";
 export * from "./numberQuote";
+export * from "./numberQuoteExpiryPolicy";
 export * from "./paymentMethod";
 export * from "./rechargeInput";
 export * from "./rechargeResponse";

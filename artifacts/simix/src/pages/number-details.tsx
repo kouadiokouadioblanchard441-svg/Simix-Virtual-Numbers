@@ -186,7 +186,7 @@ function NumberDetailsContent() {
           <div className="pr-6">
             <h4 className="text-sm font-bold text-primary mb-1">Numéro temporaire</h4>
             <p className="text-xs text-primary/80 leading-relaxed">
-              Ce numéro est valable {quote.validityMinutes} minutes. Si Simix confirme la fin de la commande sans SMS, le prix est automatiquement recrédité sur votre solde.
+              L'échéance exacte est déterminée par Simix après l'attribution. Si la commande se termine sans SMS, le prix est automatiquement recrédité sur votre solde.
             </p>
           </div>
           <Info className="w-4 h-4 text-primary absolute top-4 right-4" />
@@ -198,7 +198,7 @@ function NumberDetailsContent() {
           <div>
             <h4 className="text-sm font-bold text-[#10B981] mb-1">Remboursement automatique</h4>
             <p className="text-xs text-[#10B981]/80 leading-relaxed">
-              Si Simix confirme la fin de la commande sans SMS, le montant est automatiquement recrédité sur votre solde. Le délai habituel est de {quote.validityMinutes} minutes.
+              Si Simix confirme la fin de la commande sans SMS, le montant est automatiquement recrédité sur votre solde.
             </p>
           </div>
         </div>

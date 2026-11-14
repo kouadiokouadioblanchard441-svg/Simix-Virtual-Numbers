@@ -3,8 +3,8 @@ name: Virtual-number validity policy
 description: Product rules for activation-number expiry, paid extensions, and manual cancellation.
 ---
 
-Activation numbers have a 20-minute local countdown and no paid extension. For activation orders with a 5sim order ID, the provider's terminal `TIMEOUT` ends the order and triggers a refund if no SMS is stored. Manual number cancellation is not allowed for customers or administrators.
+Activation and hosting numbers use the exact expiration timestamp returned by 5sim; never calculate a fixed 20-minute local deadline. Persist and refresh that timestamp so the UI countdown and server-side expiry agree. A terminal provider `TIMEOUT` triggers a refund if no SMS is stored. Paid extensions and manual number cancellation are not available to customers or administrators.
 
-**Why:** the user chose 5sim's final timeout as the authoritative result, removed paid extensions, and asked that nobody manually cancel a number.
+**Why:** the user replaced the fixed 20-minute rule with 5sim's own expiration time, kept its terminal result as the refund source of truth, removed paid extensions, and asked that nobody manually cancel a number.
 
-**How to apply:** keep the 20-minute countdown visible, but continue checking activation orders until 5sim returns a terminal status. Do not add extension controls/routes or user/admin cancellation controls.
+**How to apply:** on purchase, set `expiresAt` from the provider response; refresh it from activation status checks. Continue polling after the countdown reaches zero until the provider returns a terminal status. Do not add extension controls/routes or user/admin cancellation controls.
