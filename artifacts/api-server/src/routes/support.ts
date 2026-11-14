@@ -621,18 +621,6 @@ router.post("/support/chat", async (req, res): Promise<void> => {
     conv = created!;
   }
 
-  /* Apply the same hourly cap to both AI and human-takeover conversations. */
-  const hourAgo = new Date(Date.now() - 60 * 60 * 1000);
-  const recentMsgs = await db
-    .select()
-    .from(supportMessagesTable)
-    .where(and(eq(supportMessagesTable.conversationId, conv.id), gte(supportMessagesTable.createdAt, hourAgo)));
-
-  if (recentMsgs.filter(m => m.role === "user").length >= 30) {
-    res.status(429).json({ error: "Trop de messages. Réessayez dans une heure." });
-    return;
-  }
-
   /* ── Human takeover — block AI ── */
   if (conv.isHumanTakeover && conv.status === "takeover") {
     await db.insert(supportMessagesTable).values({
@@ -655,6 +643,18 @@ router.post("/support/chat", async (req, res): Promise<void> => {
     res.write(`data: ${JSON.stringify({ content: "Un agent humain a pris en charge votre conversation. Vous recevrez une réponse très bientôt." })}\n\n`);
     res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
     res.end();
+    return;
+  }
+
+  /* ── Rate limit: 30 messages per session per hour ── */
+  const hourAgo = new Date(Date.now() - 60 * 60 * 1000);
+  const recentMsgs = await db
+    .select()
+    .from(supportMessagesTable)
+    .where(and(eq(supportMessagesTable.conversationId, conv.id), gte(supportMessagesTable.createdAt, hourAgo)));
+
+  if (recentMsgs.filter(m => m.role === "user").length >= 30) {
+    res.status(429).json({ error: "Trop de messages. Réessayez dans une heure." });
     return;
   }
 
