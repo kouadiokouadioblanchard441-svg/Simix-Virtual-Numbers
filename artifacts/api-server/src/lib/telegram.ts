@@ -2,8 +2,8 @@
  * telegram.ts — Service de notifications Telegram pour l'admin
  *
  * Envoie des alertes formatées en Markdown via l'API Bot Telegram.
- * Les credentials (bot_token + chat_id) sont lus depuis system_settings
- * (gérés dans le panneau admin → Paramètres).
+ * Les identifiants et l’activation sont lus uniquement depuis l’environnement
+ * Plesk : TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID et TELEGRAM_ALERTS_ENABLED.
  *
  * Types d'alertes :
  *  - login         : connexion utilisateur (IP, navigateur, ville, pays)
@@ -14,41 +14,21 @@
  *  - suspicious    : activité suspecte détectée
  *  - audit         : action d'administration
  */
-import { db, systemSettingsTable, usersTable } from "@workspace/db";
+import { db, usersTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { logger } from "./logger";
 import { countryFlag, type GeoInfo } from "./geoip";
 
 interface TelegramCreds { botToken: string; chatId: string }
 
-let credsCache: TelegramCreds | null = null;
-let credsCacheTs = 0;
-const CREDS_TTL_MS = 60_000;
+function getTelegramCreds(): TelegramCreds | null {
+  const enabled = process.env["TELEGRAM_ALERTS_ENABLED"]?.trim().toLowerCase();
+  if (enabled && ["false", "0", "no", "off"].includes(enabled)) return null;
 
-async function getTelegramCreds(): Promise<TelegramCreds | null> {
-  if (credsCache && Date.now() - credsCacheTs < CREDS_TTL_MS) return credsCache;
-  try {
-    const [tokenRow, chatRow, enabledRow] = await Promise.all([
-      db.select().from(systemSettingsTable).where(eq(systemSettingsTable.key, "telegram_bot_token")).limit(1),
-      db.select().from(systemSettingsTable).where(eq(systemSettingsTable.key, "telegram_chat_id")).limit(1),
-      db.select().from(systemSettingsTable).where(eq(systemSettingsTable.key, "telegram_alerts_enabled")).limit(1),
-    ]);
-    const enabled = enabledRow[0]?.value?.trim();
-    if (enabled === "false" || enabled === "0") return null;
-    const botToken = tokenRow[0]?.value?.trim() || null;
-    const chatId = chatRow[0]?.value?.trim() || null;
-    if (!botToken || !chatId) return null;
-    credsCache = { botToken, chatId };
-    credsCacheTs = Date.now();
-    return credsCache;
-  } catch {
-    return null;
-  }
-}
-
-export function invalidateTelegramCache(): void {
-  credsCache = null;
-  credsCacheTs = 0;
+  const botToken = process.env["TELEGRAM_BOT_TOKEN"]?.trim();
+  const chatId = process.env["TELEGRAM_CHAT_ID"]?.trim();
+  if (!botToken || !chatId) return null;
+  return { botToken, chatId };
 }
 
 async function telegramRequestSucceeded(response: Response, action: string): Promise<boolean> {

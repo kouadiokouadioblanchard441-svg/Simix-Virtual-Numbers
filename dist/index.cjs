@@ -120408,28 +120408,13 @@ function countryFlag(code) {
 }
 
 // src/lib/telegram.ts
-var credsCache = null;
-var credsCacheTs = 0;
-var CREDS_TTL_MS = 6e4;
-async function getTelegramCreds() {
-  if (credsCache && Date.now() - credsCacheTs < CREDS_TTL_MS) return credsCache;
-  try {
-    const [tokenRow, chatRow, enabledRow] = await Promise.all([
-      db.select().from(systemSettingsTable).where(eq(systemSettingsTable.key, "telegram_bot_token")).limit(1),
-      db.select().from(systemSettingsTable).where(eq(systemSettingsTable.key, "telegram_chat_id")).limit(1),
-      db.select().from(systemSettingsTable).where(eq(systemSettingsTable.key, "telegram_alerts_enabled")).limit(1)
-    ]);
-    const enabled = enabledRow[0]?.value?.trim();
-    if (enabled === "false" || enabled === "0") return null;
-    const botToken = tokenRow[0]?.value?.trim() || null;
-    const chatId = chatRow[0]?.value?.trim() || null;
-    if (!botToken || !chatId) return null;
-    credsCache = { botToken, chatId };
-    credsCacheTs = Date.now();
-    return credsCache;
-  } catch {
-    return null;
-  }
+function getTelegramCreds() {
+  const enabled = process.env["TELEGRAM_ALERTS_ENABLED"]?.trim().toLowerCase();
+  if (enabled && ["false", "0", "no", "off"].includes(enabled)) return null;
+  const botToken = process.env["TELEGRAM_BOT_TOKEN"]?.trim();
+  const chatId = process.env["TELEGRAM_CHAT_ID"]?.trim();
+  if (!botToken || !chatId) return null;
+  return { botToken, chatId };
 }
 async function telegramRequestSucceeded(response, action) {
   const result = await response.json().catch(() => null);
@@ -139002,7 +138987,10 @@ router14.get("/admin/settings", requireAdmin2, async (_req, res) => {
     "pawapay_api_token",
     "pawapay_env",
     "pawapay_webhook_secret",
-    "clapay_api_token"
+    "clapay_api_token",
+    "telegram_bot_token",
+    "telegram_chat_id",
+    "telegram_alerts_enabled"
   ]);
   const rows = await db.select().from(systemSettingsTable).where(notInArray(sql`lower(${systemSettingsTable.key})`, [...environmentOnlyCredentialSettings]));
   const settings = Object.fromEntries(rows.map((row) => [row.key, row.value]));
@@ -139018,10 +139006,13 @@ router14.put("/admin/settings", requireAdmin2, async (req, res) => {
     "pawapay_api_token",
     "pawapay_env",
     "pawapay_webhook_secret",
-    "clapay_api_token"
+    "clapay_api_token",
+    "telegram_bot_token",
+    "telegram_chat_id",
+    "telegram_alerts_enabled"
   ]);
   if (Object.keys(updates).some((key) => environmentOnlyCredentialSettings.has(key.toLowerCase()))) {
-    res.status(400).json({ error: "Les identifiants PawaPay et Clapay doivent \xEAtre configur\xE9s dans les variables d\u2019environnement Plesk." });
+    res.status(400).json({ error: "Les identifiants PawaPay, Clapay et Telegram doivent \xEAtre configur\xE9s dans les variables d\u2019environnement Plesk." });
     return;
   }
   try {

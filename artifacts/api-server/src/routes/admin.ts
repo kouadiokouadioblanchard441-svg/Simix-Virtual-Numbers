@@ -1321,6 +1321,9 @@ router.get("/admin/settings", requireAdmin, async (_req, res): Promise<void> => 
     "pawapay_env",
     "pawapay_webhook_secret",
     "clapay_api_token",
+    "telegram_bot_token",
+    "telegram_chat_id",
+    "telegram_alerts_enabled",
   ]);
   const rows = await db.select().from(systemSettingsTable)
     .where(notInArray(sql`lower(${systemSettingsTable.key})`, [...environmentOnlyCredentialSettings]));
@@ -1336,9 +1339,12 @@ router.put("/admin/settings", requireAdmin, async (req, res): Promise<void> => {
     "pawapay_env",
     "pawapay_webhook_secret",
     "clapay_api_token",
+    "telegram_bot_token",
+    "telegram_chat_id",
+    "telegram_alerts_enabled",
   ]);
   if (Object.keys(updates).some(key => environmentOnlyCredentialSettings.has(key.toLowerCase()))) {
-    res.status(400).json({ error: "Les identifiants PawaPay et Clapay doivent être configurés dans les variables d’environnement Plesk." });
+    res.status(400).json({ error: "Les identifiants PawaPay, Clapay et Telegram doivent être configurés dans les variables d’environnement Plesk." });
     return;
   }
 

@@ -11,7 +11,7 @@ import type {
 import type { GeoInfo } from "../src/lib/geoip";
 
 // Compile only telegram.ts, without resolving/importing its runtime dependencies.
-// The VM has no process, real database, logger, or network access.
+// The VM has no real database, logger, or network access.
 const compiled = readFile(new URL("../src/lib/telegram.ts", import.meta.url), "utf8")
   .then(source => transform(source, { loader: "ts", format: "cjs", target: "node20" }));
 
@@ -38,44 +38,23 @@ type TelegramModule = {
   }): Promise<void>;
 };
 
-async function harness() {
+async function harness(env: Record<string, string> = {
+  TELEGRAM_BOT_TOKEN: " fake-test-token ",
+  TELEGRAM_CHAT_ID: " fake-test-chat ",
+  TELEGRAM_ALERTS_ENABLED: "true",
+}) {
   const requests: Array<{ url: string; init: RequestInit }> = [];
-  const settingsRead: string[] = [];
   const flags: string[] = [];
   const warnings: Array<{ fields: unknown; message: string }> = [];
   let telegramResult: unknown = { ok: true };
-  const settings: Record<string, string> = {
-    telegram_bot_token: " fake-test-token ",
-    telegram_chat_id: " fake-test-chat ",
-    telegram_alerts_enabled: "true",
-  };
-  const table = { key: "mock-setting-key" };
+  const usersTable = { fullName: "fullName", phone: "phone", countryCode: "countryCode", id: "id" };
   const dependencies: Record<string, unknown> = {
     "@workspace/db": {
-      systemSettingsTable: table,
-      db: {
-        select: () => ({
-          from: (selectedTable: unknown) => {
-            assert.equal(selectedTable, table);
-            return {
-              where: (key: string) => ({
-                limit: async (limit: number) => {
-                  assert.equal(limit, 1);
-                  assert.ok(Object.hasOwn(settings, key), `Unexpected setting: ${key}`);
-                  settingsRead.push(key);
-                  return [{ value: settings[key] }];
-                },
-              }),
-            };
-          },
-        }),
-      },
+      db: { select: () => assert.fail("Telegram credentials must not be read from the database") },
+      usersTable,
     },
     "drizzle-orm": {
-      eq: (column: unknown, key: string) => {
-        assert.equal(column, table.key);
-        return key;
-      },
+      eq: (column: unknown, value: unknown) => [column, value],
     },
     "./logger": {
       logger: {
@@ -94,6 +73,7 @@ async function harness() {
   runInNewContext((await compiled).code, {
     module,
     exports: module.exports,
+    process: { env },
     require: (id: string) => {
       assert.ok(Object.hasOwn(dependencies, id), `Unmocked dependency: ${id}`);
       return dependencies[id];
@@ -121,9 +101,6 @@ async function harness() {
   return {
     alerts: module.exports as TelegramModule,
     assertMessage(expectedText: string, expectedFlags: string[] = ["CI"]) {
-      assert.deepEqual(settingsRead.sort(), [
-        "telegram_alerts_enabled", "telegram_bot_token", "telegram_chat_id",
-      ]);
       assert.deepEqual(flags, expectedFlags);
       assert.equal(requests.length, 1, "Each alert sends exactly one message");
       const { url, init } = requests[0]!;
@@ -173,6 +150,9 @@ async function harness() {
     },
     setTelegramResult(result: unknown) {
       telegramResult = result;
+    },
+    requestCount() {
+      return requests.length;
     },
     warnings,
   };
@@ -494,4 +474,20 @@ test("support alert logs Telegram API failures even when HTTP status is successf
   assert.equal(h.warnings[0]!.message, "[Telegram] sendMessage failed");
   assert.equal((h.warnings[0]!.fields as { status: number }).status, 200);
   assert.equal((h.warnings[0]!.fields as { description: string }).description, "bot was blocked");
+});
+
+test("Telegram alerts require Plesk environment credentials and do not fall back to database settings", async () => {
+  const h = await harness({});
+  await h.alerts.sendRegisterAlert({ ...fixture(false), userPhone: null });
+  assert.equal(h.requestCount(), 0);
+});
+
+test("TELEGRAM_ALERTS_ENABLED=false disables alerts even when credentials are present", async () => {
+  const h = await harness({
+    TELEGRAM_BOT_TOKEN: "fake-test-token",
+    TELEGRAM_CHAT_ID: "fake-test-chat",
+    TELEGRAM_ALERTS_ENABLED: "false",
+  });
+  await h.alerts.sendRegisterAlert({ ...fixture(false), userPhone: null });
+  assert.equal(h.requestCount(), 0);
 });

@@ -73,14 +73,6 @@ const SETTINGS_SCHEMA = [
     ],
   },
   {
-    group: "Alertes Telegram",
-    fields: [
-      { key: "telegram_bot_token", label: "Token du bot Telegram", placeholder: "1234567890:ABC...", type: "text" },
-      { key: "telegram_chat_id", label: "Chat ID Telegram", placeholder: "-100123456789", type: "text" },
-      { key: "telegram_alerts_enabled", label: "Alertes Telegram activées", placeholder: "false", type: "text" },
-    ],
-  },
-  {
     group: "Réseaux Sociaux",
     fields: [
       {

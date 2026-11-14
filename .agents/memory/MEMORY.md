@@ -30,5 +30,6 @@
 - [Virtual-number validity policy](number-validity-and-cancellation.md) — 20-minute activation countdown, no paid extensions, provider TIMEOUT final, and no manual cancellation.
 - [Payment credential browser storage](payment-credential-browser-storage.md) — never persist operator OTPs or checkout links in browser storage; refetch them from authenticated deposit status.
 - [Telegram alert scope](telegram-alert-scope.md) — cover auth, OTP status, confirmed recharges, and admin actions; never include OTP values, passwords, or credentials.
+- [Telegram credentials on Plesk](telegram-credentials-plesk.md) — keep the bot token and chat target in Plesk env; never load or expose them through admin settings.
 - [Login lockout policy](login-lockout-policy.md) — lock an account for 10 minutes after its sixth failed password attempt; keep the limit server-side and account-scoped.
 - [Server-side account security](server-account-security.md) — PIN checks, email 2FA, and admin sessions stay server-side; browser state is only a display hint.

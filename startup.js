@@ -119,6 +119,9 @@ function startDiagnosticServer(missing, buildError) {
         <tr><td><code>APP_URL</code></td><td><code>https://simix.site</code></td></tr>
         <tr><td><code>NODE_ENV</code></td><td><code>production</code></td></tr>
         <tr><td><code>GEMINI_API_KEY</code></td><td>Votre clé API Google Gemini (pour le support IA)</td></tr>
+        <tr><td><code>TELEGRAM_BOT_TOKEN</code></td><td>Token secret créé avec BotFather (facultatif, active le bot avec le chat ID)</td></tr>
+        <tr><td><code>TELEGRAM_CHAT_ID</code></td><td>ID du groupe Telegram destinataire, souvent négatif (facultatif)</td></tr>
+        <tr><td><code>TELEGRAM_ALERTS_ENABLED</code></td><td><code>true</code> ou <code>false</code> (facultatif; activé par défaut si les deux identifiants sont présents)</td></tr>
       </tbody>
     </table>
   </div>
