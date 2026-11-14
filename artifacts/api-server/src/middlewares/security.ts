@@ -48,6 +48,11 @@ function isWebhookPath(path: string): boolean {
   return WEBHOOK_PATHS.some(p => path === p || path.startsWith(p));
 }
 
+/** Google OAuth must not share the email/password form's persistent lockout path. */
+function isGoogleOAuthPath(path: string): boolean {
+  return path === "/api/auth/google" || path === "/api/auth/google/callback";
+}
+
 /** Return 503 on all non-admin, non-health routes when maintenance_mode=true.
  *
  * Routing logic:
@@ -120,10 +125,11 @@ export async function checkIpBlacklist(req: Request, res: Response, next: NextFu
 
 /** 200 requests per minute per IP — global API guard (skips webhook paths) */
 export async function globalRateLimit(req: Request, res: Response, next: NextFunction): Promise<void> {
-  if (isWebhookPath(req.path)) { next(); return; }
+  if (isWebhookPath(req.path) || isGoogleOAuthPath(req.path)) { next(); return; }
   const ip = req.ip ?? "unknown";
-  /* Keep the local guard as a cheap first filter, then enforce the same
-     threshold across restarts and all Plesk workers in PostgreSQL. */
+  /* Email/password limits are applied in their own form routes. Google OAuth
+     initiation and callback are excluded from both global counters; the OAuth
+     state cookie and Google one-use authorization code protect that flow. */
   if (
     isRateLimited(`global-local:${ip}`, 200, 60_000)
     || await isPersistentRateLimited(`global:${ip}`, 200, 60_000)

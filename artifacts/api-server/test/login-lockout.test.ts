@@ -1,5 +1,6 @@
 import { strict as assert } from "node:assert";
 import { readFile } from "node:fs/promises";
+import { createRequire } from "node:module";
 import { test } from "node:test";
 import { runInNewContext } from "node:vm";
 import { transform } from "esbuild";
@@ -13,10 +14,18 @@ test("login lockout starts on the sixth failure and expires after ten minutes", 
     static now() { return now; }
   }
   const module = { exports: {} as Record<string, unknown> };
+  const nativeRequire = createRequire(import.meta.url);
   runInNewContext((await compiled).code, {
     module,
     exports: module.exports,
+    require: (specifier: string) => {
+      if (specifier === "node:crypto") return nativeRequire(specifier);
+      if (specifier === "drizzle-orm") return {};
+      if (specifier === "@workspace/db") return { db: {}, securityRateLimitsTable: {} };
+      throw new Error(`Unexpected import in rate limiter test: ${specifier}`);
+    },
     Date: TestDate,
+    process: { env: {} },
     setInterval: () => 0,
   });
 

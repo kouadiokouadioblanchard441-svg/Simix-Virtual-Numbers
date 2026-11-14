@@ -43,6 +43,18 @@ test("authentication limits and account locks use shared persistent storage", as
   assert.match(numbers, /isPersistentRateLimited\(`poll:/);
 });
 
+test("Google OAuth avoids persistent rate-limit counters used by email forms", async () => {
+  const security = await read("../src/middlewares/security.ts");
+  const auth = await read("../src/routes/auth.ts");
+  const googleAuth = await read("../src/routes/google-auth.ts");
+
+  assert.match(security, /function isGoogleOAuthPath/);
+  assert.match(security, /isWebhookPath\(req\.path\) \|\| isGoogleOAuthPath\(req\.path\)/);
+  assert.match(security, /await isPersistentRateLimited\(`global:/);
+  assert.match(auth, /recordPersistentFailedAttemptAndLock/);
+  assert.doesNotMatch(googleAuth, /isPersistentRateLimited|recordPersistentFailedAttemptAndLock/);
+});
+
 test("support conversations enforce account ownership without changing message delivery", async () => {
   const support = await read("../src/routes/support.ts");
 

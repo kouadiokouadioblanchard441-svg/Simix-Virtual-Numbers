@@ -146379,6 +146379,9 @@ var WEBHOOK_PATHS = [
 function isWebhookPath(path6) {
   return WEBHOOK_PATHS.some((p) => path6 === p || path6.startsWith(p));
 }
+function isGoogleOAuthPath(path6) {
+  return path6 === "/api/auth/google" || path6 === "/api/auth/google/callback";
+}
 async function checkMaintenanceMode(req, res, next) {
   if (req.path.startsWith("/api/admin") || req.path === "/api/health" || req.path === "/api/healthz" || req.path === "/api/maintenance/status" || req.path === "/api/auth/me" || req.path === "/maintenance-hero.png" || isWebhookPath(req.path) || /* Admin panel frontend routes — let React load so MaintenanceGuard
    * can verify the admin session and grant access. The admin API routes
@@ -146422,7 +146425,7 @@ async function checkIpBlacklist(req, res, next) {
   next();
 }
 async function globalRateLimit(req, res, next) {
-  if (isWebhookPath(req.path)) {
+  if (isWebhookPath(req.path) || isGoogleOAuthPath(req.path)) {
     next();
     return;
   }
