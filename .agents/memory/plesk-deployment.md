@@ -10,6 +10,14 @@ description: How this project (Simix) deploys to Plesk hosting outside Replit �
 
 **Why:** Two deployment docs exist (DEPLOIEMENT.md/DEPLOY.md) describing an older "prebuild dist/ then git push, Plesk just runs node dist/index.cjs, no build on server" workflow. startup.js supersedes that with self-building — both are compatible since it skips rebuilding when the bundle is already fresh, but don't assume Plesk needs a manual prebuild step; it doesn't.
 
+## Secrets source of truth
+- Production credentials must be configured in Plesk's Node.js environment settings, not as literal values in source files or `.replit`. Keep code and PM2 configuration limited to reading/pass-through of environment variables.
+- Startup requires `DATABASE_URL` (or `SUPABASE_DATABASE_URL`), `SESSION_SECRET`, `ADMIN_JWT_SECRET`, and `ENCRYPTION_KEY`; configure provider-specific credentials there for whichever integrations are enabled.
+
+**Why:** The user asked that production secrets live in the real Plesk environment, not in code.
+
+**How to apply:** Never paste secret values into the repository or chat. If a value was committed in the past, treat it as exposed and rotate it after moving it to Plesk.
+
 ## Static frontend serving
 - Vite outDir is configured to the **root-level `public/`** directory (not `dist/public`). `DEPLOY.md`'s "Document Root: dist/public" is stale/incorrect — the actual runtime (`app.ts`) resolves `publicDir` with a dual fallback (`currentDir/public` → `currentDir/../public`) and finds root `public/` correctly regardless of cwd.
 - Plesk/nginx can serve the public HTML before the Node/Express middleware. After changing HTTP security headers, verify the actual `https://www.simix.site/` response; if Express headers are absent, deploy the new bundle and configure equivalent `add_header ... always` directives in Plesk nginx.
