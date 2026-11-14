@@ -94,7 +94,6 @@ channel = "stable-25_05"
 [userenv.shared]
 LOG_LEVEL = "info"
 MOBILE_MONEY_GATEWAY = "auto_clapay_first"
-PAWAPAY_ENV = "production"
 VAPID_PUBLIC_KEY = "BPy-4QOhhUbnX3apfyA2LBL8YohvcFVV-av01mEzhI9tzfJBjzXX1Eu5UREKtOnd6W37HGZrOFwmlbYIttLATgc"
 VAPID_SUBJECT = "mailto:support@simix.site"
 APP_URL = "https://simix.site"

@@ -11,7 +11,6 @@ import {
   paymentRoutesTable,
   paymentRouteLogsTable,
   countriesTable,
-  systemSettingsTable,
   transactionsTable,
 } from "@workspace/db";
 import { requireAdminJwt } from "../lib/admin-jwt-middleware";
@@ -169,12 +168,17 @@ router.delete("/admin/payment-routing/operators/:id", requireAdmin, async (req: 
 router.get("/admin/payment-routing/gateways", requireAdmin, async (_req: Request, res: Response): Promise<void> => {
   const rows = await db.select().from(paymentGatewaysTable).orderBy(asc(paymentGatewaysTable.name));
   /* Mask API keys in list view */
-  const masked = rows.map(g => ({
-    ...g,
-    apiKey: g.apiKey ? `${g.apiKey.slice(0, 4)}${"•".repeat(Math.max(0, g.apiKey.length - 4))}` : null,
-    apiSecret: g.apiSecret ? "•".repeat(12) : null,
-    webhookSecret: g.webhookSecret ? "•".repeat(12) : null,
-  }));
+  const masked = rows.map(g => {
+    const environmentCredentials = /pawapay|clapay/i.test(g.slug);
+    return {
+      ...g,
+      apiKey: environmentCredentials
+        ? null
+        : g.apiKey ? `${g.apiKey.slice(0, 4)}${"•".repeat(Math.max(0, g.apiKey.length - 4))}` : null,
+      apiSecret: environmentCredentials ? null : g.apiSecret ? "•".repeat(12) : null,
+      webhookSecret: environmentCredentials ? null : g.webhookSecret ? "•".repeat(12) : null,
+    };
+  });
   res.json({ gateways: masked });
 });
 
@@ -192,14 +196,20 @@ router.post("/admin/payment-routing/gateways", requireAdmin, async (req: Request
     res.status(400).json({ error: "Nom et slug requis" });
     return;
   }
+  const environmentCredentials = /pawapay|clapay/i.test(slug);
+  if (environmentCredentials && [apiKey, apiSecret, webhookSecret].some(value => value?.trim())) {
+    const envName = slug.toLowerCase().includes("pawapay") ? "PAWAPAY_API_TOKEN" : "CLAPAY_API_TOKEN";
+    res.status(400).json({ error: `Les identifiants doivent être configurés dans ${envName} sur Plesk.` });
+    return;
+  }
   const [gw] = await db.insert(paymentGatewaysTable).values({
     name: name.trim(),
     slug: slug.trim().toLowerCase(),
     logoUrl: logoUrl || null,
     apiUrl: apiUrl || null,
-    apiKey: apiKey || null,
-    apiSecret: apiSecret || null,
-    webhookSecret: webhookSecret || null,
+    apiKey: environmentCredentials ? null : apiKey || null,
+    apiSecret: environmentCredentials ? null : apiSecret || null,
+    webhookSecret: environmentCredentials ? null : webhookSecret || null,
     type: type || "both",
     supportedCountries: supportedCountries ?? [],
     supportedOperators: supportedOperators ?? [],
@@ -219,15 +229,31 @@ router.put("/admin/payment-routing/gateways/:id", requireAdmin, async (req: Requ
     type: string; supportedCountries: string[]; supportedOperators: string[];
     active: boolean; testMode: boolean; notes: string;
   }>;
+  const [currentGateway] = await db.select({
+    slug: paymentGatewaysTable.slug,
+  }).from(paymentGatewaysTable)
+    .where(eq(paymentGatewaysTable.id, id))
+    .limit(1);
+  if (!currentGateway) { res.status(404).json({ error: "Passerelle introuvable" }); return; }
+  const resultingSlug = (body.slug?.trim() ? body.slug : currentGateway.slug).trim().toLowerCase();
+  const environmentCredentials =
+    /pawapay|clapay/i.test(currentGateway.slug) || /pawapay|clapay/i.test(resultingSlug);
+  if (environmentCredentials && [body.apiKey, body.apiSecret, body.webhookSecret].some(value => value?.trim())) {
+    const envName = /pawapay/i.test(currentGateway.slug) || resultingSlug.includes("pawapay")
+      ? "PAWAPAY_API_TOKEN"
+      : "CLAPAY_API_TOKEN";
+    res.status(400).json({ error: `Les identifiants doivent être configurés dans ${envName} sur Plesk.` });
+    return;
+  }
   const [gw] = await db.update(paymentGatewaysTable)
     .set({
       ...(body.name && { name: body.name.trim() }),
       ...(body.slug && { slug: body.slug.trim().toLowerCase() }),
       ...(body.logoUrl !== undefined && { logoUrl: body.logoUrl }),
       ...(body.apiUrl !== undefined && { apiUrl: body.apiUrl }),
-      ...(body.apiKey !== undefined && body.apiKey !== "••••••••••••" && { apiKey: body.apiKey }),
-      ...(body.apiSecret !== undefined && body.apiSecret !== "••••••••••••" && { apiSecret: body.apiSecret }),
-      ...(body.webhookSecret !== undefined && body.webhookSecret !== "••••••••••••" && { webhookSecret: body.webhookSecret }),
+      ...(!environmentCredentials && body.apiKey !== undefined && body.apiKey !== "••••••••••••" && { apiKey: body.apiKey }),
+      ...(!environmentCredentials && body.apiSecret !== undefined && body.apiSecret !== "••••••••••••" && { apiSecret: body.apiSecret }),
+      ...(!environmentCredentials && body.webhookSecret !== undefined && body.webhookSecret !== "••••••••••••" && { webhookSecret: body.webhookSecret }),
       ...(body.type && { type: body.type }),
       ...(body.supportedCountries !== undefined && { supportedCountries: body.supportedCountries }),
       ...(body.supportedOperators !== undefined && { supportedOperators: body.supportedOperators }),
@@ -260,12 +286,10 @@ router.post("/admin/payment-routing/gateways/:id/test", requireAdmin, async (req
 
   /* ── PawaPay: use dedicated client test ── */
   if (slug === "pawapay" || slug.includes("pawapay")) {
-    /* Credential resolution centralized in lib/gateway-credentials.ts —
-     * route override → system_settings (DB, authoritative) → env var. */
     const { resolvePawaPayCredentials } = await import("../lib/gateway-credentials");
-    const creds = await resolvePawaPayCredentials(gw.apiKey);
+    const creds = await resolvePawaPayCredentials();
     if (!creds) {
-      res.json({ status: "no_token", message: "Aucun token PawaPay configuré. Ajoutez la clé API dans les paramètres système (Paramètres → pawapay_api_token)." });
+      res.json({ status: "no_token", message: "PAWAPAY_API_TOKEN doit être configuré dans les variables d’environnement Plesk." });
       return;
     }
     try {
@@ -303,12 +327,10 @@ router.post("/admin/payment-routing/gateways/:id/test", requireAdmin, async (req
 
   /* ── Clapay: use dedicated client test ── */
   if (slug === "clapay" || slug.includes("clapay")) {
-    /* Credential resolution centralized in lib/gateway-credentials.ts —
-     * route override → system_settings (DB, authoritative) → env var. */
     const { resolveClapayCredentials } = await import("../lib/gateway-credentials");
-    const creds = await resolveClapayCredentials(gw.apiKey, gw.apiUrl);
+    const creds = await resolveClapayCredentials(gw.apiUrl);
     if (!creds) {
-      res.json({ status: "no_token", message: "Aucun token Clapay configuré. Ajoutez la clé API dans les paramètres système (Paramètres → clapay_api_token)." });
+      res.json({ status: "no_token", message: "Configurez CLAPAY_API_TOKEN dans les variables d’environnement Plesk." });
       return;
     }
     try {
@@ -717,19 +739,11 @@ router.get("/admin/payment-routing/matrix", requireAdmin, async (_req: Request, 
  */
 router.post("/admin/payment-routing/pawapay-sync", requireAdmin, async (req: Request, res: Response): Promise<void> => {
   try {
-    /* 1. Resolve PawaPay token + env */
-    let token = process.env.PAWAPAY_API_TOKEN ?? null;
-    let envStr = process.env.PAWAPAY_ENV?.trim().toLowerCase() ?? null;
-
-    if (!token || !envStr) {
-      const [tokenRow] = await db.select().from(systemSettingsTable).where(eq(systemSettingsTable.key, "pawapay_api_token")).limit(1);
-      const [envRow]   = await db.select().from(systemSettingsTable).where(eq(systemSettingsTable.key, "pawapay_env")).limit(1);
-      if (!token)   token   = tokenRow?.value?.trim() || null;
-      if (!envStr)  envStr  = envRow?.value?.trim().toLowerCase() || null;
-    }
-
-    if (!token) {
-      res.status(400).json({ error: "Aucun token PawaPay configuré. Ajoutez la clé 'pawapay_api_token' dans les Paramètres système." });
+    /* 1. Resolve credentials from the Plesk environment only. */
+    const { resolvePawaPayCredentials } = await import("../lib/gateway-credentials");
+    const credentials = await resolvePawaPayCredentials();
+    if (!credentials) {
+      res.status(400).json({ error: "Configurez PAWAPAY_API_TOKEN dans les variables d’environnement Plesk." });
       return;
     }
 
@@ -743,8 +757,8 @@ router.post("/admin/payment-routing/pawapay-sync", requireAdmin, async (req: Req
 
     /* 3. Fetch active configuration from PawaPay */
     const { PawaPayClient, ISO2_TO_ISO3 } = await import("../lib/pawapay");
-    const env: "sandbox" | "production" = envStr === "production" ? "production" : "sandbox";
-    const client = new PawaPayClient(token, env);
+    const env = credentials.env;
+    const client = new PawaPayClient(credentials.token, env);
     const config = await client.getActiveConfiguration();
 
     /* 4. Build ISO3 → ISO2 reverse map */

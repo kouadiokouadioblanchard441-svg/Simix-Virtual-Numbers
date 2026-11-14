@@ -108,16 +108,11 @@ const SETTINGS_SCHEMA = [
   },
   {
     group: "PawaPay — Mobile Money",
-    fields: [
-      { key: "pawapay_api_token", label: "Token API PawaPay", placeholder: "eyJ...", type: "password", hint: "Obtenez votre token sur le portail PawaPay" },
-      { key: "pawapay_env", label: "Environnement PawaPay", placeholder: "sandbox", type: "text", hint: "sandbox ou production" },
-      { key: "pawapay_webhook_secret", label: "Secret webhook PawaPay", placeholder: "webhook-secret", type: "password", hint: "Optionnel — pour valider les webhooks entrants" },
-    ],
+    fields: [],
   },
   {
     group: "Clapay — Mobile Money (API direct, OTP, webhook)",
     fields: [
-      { key: "clapay_api_token", label: "Token API Clapay", placeholder: "Bearer ...", type: "password", hint: "Votre clé API Clapay (NoWallet V3) — obtenue sur le portail Clapay" },
       { key: "clapay_base_url", label: "URL de base Clapay", placeholder: "https://nw-api.clapay.app/nowallet/api", type: "text", hint: "URL de l'API Clapay — laisser vide pour la valeur par défaut" },
       { key: "clapay_callback_url", label: "URL webhook (callback)", placeholder: "https://simix.site/api/wallet/clapay/webhook", type: "url", hint: "Webhook : URL que Clapay appelle à chaque changement de statut. Le paiement direct (mode API, sans page hébergée) est confirmé par ce webhook et par le suivi de statut côté client." },
       { key: "clapay_return_url", label: "URL de retour client", placeholder: "https://simix.site/wallet", type: "url", hint: "Uniquement pour les anciens paiements CHECKOUTPAGE déjà initiés. Les nouveaux paiements utilisent le mode API direct : aucune redirection, le client valide dans son application opérateur." },
@@ -149,12 +144,12 @@ interface PawaPayTestResult {
   operators?: { name: string; country: string; currency: string }[];
 }
 
-function PawaPayTestButton({ token, env }: { token: string; env: string }) {
+function PawaPayTestButton() {
   const [result, setResult] = useState<PawaPayTestResult | null>(null);
   const [showOperators, setShowOperators] = useState(false);
 
   const test = useMutation({
-    mutationFn: () => adminApi.testPawaPay(token || undefined, env || undefined),
+    mutationFn: () => adminApi.testPawaPay(),
     onSuccess: (data) => setResult(data),
     onError: (e) => setResult({ success: false, message: (e as Error).message }),
   });
@@ -342,12 +337,12 @@ interface ClapayTestResult {
   countries?: { code: string; name: string; currency: string }[];
 }
 
-function ClapayTestButton({ token, baseUrl }: { token: string; baseUrl: string }) {
+function ClapayTestButton({ baseUrl }: { baseUrl: string }) {
   const [result, setResult] = useState<ClapayTestResult | null>(null);
   const [showCountries, setShowCountries] = useState(false);
 
   const test = useMutation({
-    mutationFn: () => adminApi.testClapay(token || undefined, baseUrl || undefined),
+    mutationFn: () => adminApi.testClapay(baseUrl || undefined),
     onSuccess: (data) => setResult(data),
     onError: (e) => setResult({ success: false, message: (e as Error).message }),
   });
@@ -1074,7 +1069,7 @@ function SettingsContent() {
 
         {SETTINGS_SCHEMA.map(({ group, fields }) => {
           const isPawaPay = group === "PawaPay — Mobile Money";
-          const isClapay  = group === "Clapay — Mobile Money";
+          const isClapay  = group.startsWith("Clapay — Mobile Money");
           const isGateway = group === "Passerelle de paiement";
 
           return (
@@ -1178,11 +1173,21 @@ function SettingsContent() {
               </div>
 
               {isPawaPay && (
+                <div className="bg-zinc-800/60 border border-orange-500/20 rounded-lg p-3 text-xs text-zinc-300 space-y-1">
+                  <p>Les identifiants PawaPay sont configurés uniquement dans les variables d’environnement de Plesk.</p>
+                  <p>Définissez <code className="text-orange-300">PAWAPAY_API_TOKEN</code> et <code className="text-orange-300">PAWAPAY_ENV</code> (production ou sandbox), puis testez la connexion ci-dessous.</p>
+                </div>
+              )}
+              {isClapay && (
+                <div className="bg-zinc-800/60 border border-blue-500/20 rounded-lg p-3 text-xs text-zinc-300 space-y-1">
+                  <p>Le jeton Clapay est configuré uniquement dans les variables d’environnement de Plesk.</p>
+                  <p>Définissez <code className="text-blue-300">CLAPAY_API_TOKEN</code> sur le serveur. L’URL de base ci-dessous n’est pas un secret et peut rester dans les paramètres.</p>
+                </div>
+              )}
+
+              {isPawaPay && (
                 <>
-                  <PawaPayTestButton
-                    token={values["pawapay_api_token"] ?? ""}
-                    env={values["pawapay_env"] ?? "sandbox"}
-                  />
+                  <PawaPayTestButton />
                   <PawaPaySimulator />
                 </>
               )}
@@ -1190,7 +1195,6 @@ function SettingsContent() {
               {isClapay && (
                 <>
                   <ClapayTestButton
-                    token={values["clapay_api_token"] ?? ""}
                     baseUrl={values["clapay_base_url"] ?? ""}
                   />
                   <ClapaySimulator />

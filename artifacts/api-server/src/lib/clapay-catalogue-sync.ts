@@ -259,11 +259,16 @@ function createClapayCatalogueSource(): ClapayCatalogueSource {
       for (const { slug } of known) {
         const route = await resolvePaymentRoute(countryCode, slug, "deposit");
         if (!route) continue;
-        if (!route.gatewaySlug.toLowerCase().includes("clapay") || !route.apiKey?.trim()) {
+        if (!route.gatewaySlug.toLowerCase().includes("clapay")) {
           routing.set(slug, { kind: "other" });
           continue;
         }
-        const client = new ClapayClient(route.apiKey, route.apiUrl ?? undefined, 12_000);
+        const creds = await resolveClapayCredentials(route.apiUrl);
+        if (!creds) {
+          routing.set(slug, { kind: "other" });
+          continue;
+        }
+        const client = new ClapayClient(creds.token, creds.baseUrl, 12_000);
         const key = client.getCatalogueCacheKey();
         clients.set(key, client);
         routing.set(slug, { kind: "clapay", key });

@@ -47870,7 +47870,7 @@ var require_lib7 = __commonJS({
       const proto = signal && typeof signal === "object" && Object.getPrototypeOf(signal);
       return !!(proto && proto.constructor.name === "AbortSignal");
     }
-    var Request3 = class _Request {
+    var Request2 = class _Request {
       constructor(input2) {
         let init = arguments.length > 1 && arguments[1] !== void 0 ? arguments[1] : {};
         let parsedURL;
@@ -47942,14 +47942,14 @@ var require_lib7 = __commonJS({
         return new _Request(this);
       }
     };
-    Body2.mixIn(Request3.prototype);
-    Object.defineProperty(Request3.prototype, Symbol.toStringTag, {
+    Body2.mixIn(Request2.prototype);
+    Object.defineProperty(Request2.prototype, Symbol.toStringTag, {
       value: "Request",
       writable: false,
       enumerable: false,
       configurable: true
     });
-    Object.defineProperties(Request3.prototype, {
+    Object.defineProperties(Request2.prototype, {
       method: { enumerable: true },
       url: { enumerable: true },
       headers: { enumerable: true },
@@ -48028,7 +48028,7 @@ var require_lib7 = __commonJS({
       }
       Body2.Promise = fetch3.Promise;
       return new fetch3.Promise(function(resolve, reject) {
-        const request = new Request3(url3, opts);
+        const request = new Request2(url3, opts);
         const options = getNodeRequestOptions2(request);
         const send = (options.protocol === "https:" ? https2 : http3).request;
         const signal = request.signal;
@@ -48160,7 +48160,7 @@ var require_lib7 = __commonJS({
                   requestOpts.body = void 0;
                   requestOpts.headers.delete("content-length");
                 }
-                resolve(fetch3(new Request3(locationURL, requestOpts)));
+                resolve(fetch3(new Request2(locationURL, requestOpts)));
                 finalize2();
                 return;
             }
@@ -48260,7 +48260,7 @@ var require_lib7 = __commonJS({
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.default = exports2;
     exports2.Headers = Headers3;
-    exports2.Request = Request3;
+    exports2.Request = Request2;
     exports2.Response = Response3;
     exports2.FetchError = FetchError2;
     exports2.AbortError = AbortError2;
@@ -49951,9 +49951,9 @@ Content-Type: ${partContentType}\r
       if (!opts.url) {
         throw new Error("URL is required.");
       }
-      const baseUrl2 = opts.baseUrl || opts.baseURL;
-      if (baseUrl2) {
-        opts.url = baseUrl2.toString() + opts.url;
+      const baseUrl = opts.baseUrl || opts.baseURL;
+      if (baseUrl) {
+        opts.url = baseUrl.toString() + opts.url;
       }
       opts.paramsSerializer = opts.paramsSerializer || this.paramsSerializer;
       if (opts.params && Object.keys(opts.params).length > 0) {
@@ -52297,14 +52297,14 @@ var require_src5 = __commonJS({
       "bios-only": "treat the result of a BIOS probe as canonical (don't fall back to pinging)",
       "ping-only": "skip the BIOS probe, and go straight to pinging"
     });
-    function getBaseUrl(baseUrl2) {
-      if (!baseUrl2) {
-        baseUrl2 = process.env.GCE_METADATA_IP || process.env.GCE_METADATA_HOST || exports2.HOST_ADDRESS;
+    function getBaseUrl(baseUrl) {
+      if (!baseUrl) {
+        baseUrl = process.env.GCE_METADATA_IP || process.env.GCE_METADATA_HOST || exports2.HOST_ADDRESS;
       }
-      if (!/^https?:\/\//.test(baseUrl2)) {
-        baseUrl2 = `http://${baseUrl2}`;
+      if (!/^https?:\/\//.test(baseUrl)) {
+        baseUrl = `http://${baseUrl}`;
       }
-      return new URL(exports2.BASE_PATH, baseUrl2).href;
+      return new URL(exports2.BASE_PATH, baseUrl).href;
     }
     function validate3(options) {
       Object.keys(options).forEach((key) => {
@@ -64778,7147 +64778,6 @@ var init_settings = __esm({
   }
 });
 
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/applicationIn.js
-var require_applicationIn = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/applicationIn.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.ApplicationInSerializer = void 0;
-    exports2.ApplicationInSerializer = {
-      _fromJsonObject(object2) {
-        return {
-          metadata: object2["metadata"],
-          name: object2["name"],
-          rateLimit: object2["rateLimit"],
-          throttleRate: object2["throttleRate"],
-          uid: object2["uid"]
-        };
-      },
-      _toJsonObject(self2) {
-        return {
-          metadata: self2.metadata,
-          name: self2.name,
-          rateLimit: self2.rateLimit,
-          throttleRate: self2.throttleRate,
-          uid: self2.uid
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/applicationOut.js
-var require_applicationOut = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/applicationOut.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.ApplicationOutSerializer = void 0;
-    exports2.ApplicationOutSerializer = {
-      _fromJsonObject(object2) {
-        return {
-          createdAt: new Date(object2["createdAt"]),
-          id: object2["id"],
-          metadata: object2["metadata"],
-          name: object2["name"],
-          rateLimit: object2["rateLimit"],
-          throttleRate: object2["throttleRate"],
-          uid: object2["uid"],
-          updatedAt: new Date(object2["updatedAt"])
-        };
-      },
-      _toJsonObject(self2) {
-        return {
-          createdAt: self2.createdAt,
-          id: self2.id,
-          metadata: self2.metadata,
-          name: self2.name,
-          rateLimit: self2.rateLimit,
-          throttleRate: self2.throttleRate,
-          uid: self2.uid,
-          updatedAt: self2.updatedAt
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/applicationPatch.js
-var require_applicationPatch = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/applicationPatch.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.ApplicationPatchSerializer = void 0;
-    exports2.ApplicationPatchSerializer = {
-      _fromJsonObject(object2) {
-        return {
-          metadata: object2["metadata"],
-          name: object2["name"],
-          rateLimit: object2["rateLimit"],
-          uid: object2["uid"]
-        };
-      },
-      _toJsonObject(self2) {
-        return {
-          metadata: self2.metadata,
-          name: self2.name,
-          rateLimit: self2.rateLimit,
-          uid: self2.uid
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/listResponseApplicationOut.js
-var require_listResponseApplicationOut = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/listResponseApplicationOut.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.ListResponseApplicationOutSerializer = void 0;
-    var applicationOut_1 = require_applicationOut();
-    exports2.ListResponseApplicationOutSerializer = {
-      _fromJsonObject(object2) {
-        return {
-          data: object2["data"].map((item) => applicationOut_1.ApplicationOutSerializer._fromJsonObject(item)),
-          done: object2["done"],
-          iterator: object2["iterator"],
-          prevIterator: object2["prevIterator"]
-        };
-      },
-      _toJsonObject(self2) {
-        return {
-          data: self2.data.map((item) => applicationOut_1.ApplicationOutSerializer._toJsonObject(item)),
-          done: self2.done,
-          iterator: self2.iterator,
-          prevIterator: self2.prevIterator
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/util.js
-var require_util3 = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/util.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.ApiException = void 0;
-    var ApiException = class extends Error {
-      constructor(code, body, headers) {
-        super(`HTTP-Code: ${code}
-Headers: ${JSON.stringify(headers)}`);
-        this.code = code;
-        this.body = body;
-        this.headers = {};
-        headers.forEach((value, name3) => {
-          this.headers[name3] = value;
-        });
-      }
-    };
-    exports2.ApiException = ApiException;
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/request.js
-var require_request2 = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/request.js"(exports2) {
-    "use strict";
-    var __awaiter = exports2 && exports2.__awaiter || function(thisArg, _arguments, P2, generator) {
-      function adopt(value) {
-        return value instanceof P2 ? value : new P2(function(resolve) {
-          resolve(value);
-        });
-      }
-      return new (P2 || (P2 = Promise))(function(resolve, reject) {
-        function fulfilled(value) {
-          try {
-            step(generator.next(value));
-          } catch (e3) {
-            reject(e3);
-          }
-        }
-        function rejected(value) {
-          try {
-            step(generator["throw"](value));
-          } catch (e3) {
-            reject(e3);
-          }
-        }
-        function step(result) {
-          result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected);
-        }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-      });
-    };
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.SvixRequest = exports2.HttpMethod = exports2.LIB_VERSION = void 0;
-    var util_1 = require_util3();
-    exports2.LIB_VERSION = "1.92.2";
-    var USER_AGENT = `svix-libs/${exports2.LIB_VERSION}/javascript`;
-    var HttpMethod;
-    (function(HttpMethod2) {
-      HttpMethod2["GET"] = "GET";
-      HttpMethod2["HEAD"] = "HEAD";
-      HttpMethod2["POST"] = "POST";
-      HttpMethod2["PUT"] = "PUT";
-      HttpMethod2["DELETE"] = "DELETE";
-      HttpMethod2["CONNECT"] = "CONNECT";
-      HttpMethod2["OPTIONS"] = "OPTIONS";
-      HttpMethod2["TRACE"] = "TRACE";
-      HttpMethod2["PATCH"] = "PATCH";
-    })(HttpMethod = exports2.HttpMethod || (exports2.HttpMethod = {}));
-    var SvixRequest = class {
-      constructor(method, path6) {
-        this.method = method;
-        this.path = path6;
-        this.queryParams = {};
-        this.headerParams = {};
-      }
-      setPathParam(name3, value) {
-        const newPath = this.path.replace(`{${name3}}`, encodeURIComponent(value));
-        if (this.path === newPath) {
-          throw new Error(`path parameter ${name3} not found`);
-        }
-        this.path = newPath;
-      }
-      setQueryParams(params) {
-        for (const [name3, value] of Object.entries(params)) {
-          this.setQueryParam(name3, value);
-        }
-      }
-      setQueryParam(name3, value) {
-        if (value === void 0 || value === null) {
-          return;
-        }
-        if (typeof value === "string") {
-          this.queryParams[name3] = value;
-        } else if (typeof value === "boolean" || typeof value === "number") {
-          this.queryParams[name3] = value.toString();
-        } else if (value instanceof Date) {
-          this.queryParams[name3] = value.toISOString();
-        } else if (Array.isArray(value)) {
-          if (value.length > 0) {
-            this.queryParams[name3] = value.join(",");
-          }
-        } else {
-          const _assert_unreachable = value;
-          throw new Error(`query parameter ${name3} has unsupported type`);
-        }
-      }
-      setHeaderParam(name3, value) {
-        if (value === void 0) {
-          return;
-        }
-        this.headerParams[name3] = value;
-      }
-      setBody(value) {
-        this.body = JSON.stringify(value);
-      }
-      send(ctx, parseResponseBody) {
-        return __awaiter(this, void 0, void 0, function* () {
-          const response = yield this.sendInner(ctx);
-          if (response.status === 204) {
-            return null;
-          }
-          const responseBody = yield response.text();
-          return parseResponseBody(JSON.parse(responseBody));
-        });
-      }
-      sendNoResponseBody(ctx) {
-        return __awaiter(this, void 0, void 0, function* () {
-          yield this.sendInner(ctx);
-        });
-      }
-      sendInner(ctx) {
-        var _a6, _b;
-        return __awaiter(this, void 0, void 0, function* () {
-          const url3 = new URL(ctx.baseUrl + this.path);
-          for (const [name3, value] of Object.entries(this.queryParams)) {
-            url3.searchParams.set(name3, value);
-          }
-          if (this.headerParams["idempotency-key"] === void 0 && this.method.toUpperCase() === "POST") {
-            this.headerParams["idempotency-key"] = `auto_${crypto.randomUUID()}`;
-          }
-          const randomId = Math.floor(Math.random() * Number.MAX_SAFE_INTEGER);
-          if (this.body != null) {
-            this.headerParams["content-type"] = "application/json";
-          }
-          const isCredentialsSupported = "credentials" in Request.prototype;
-          const response = yield sendWithRetry(url3, {
-            method: this.method.toString(),
-            body: this.body,
-            headers: Object.assign({ accept: "application/json, */*;q=0.8", authorization: `Bearer ${ctx.token}`, "user-agent": USER_AGENT, "svix-req-id": randomId.toString() }, this.headerParams),
-            credentials: isCredentialsSupported ? "same-origin" : void 0,
-            signal: ctx.timeout !== void 0 ? AbortSignal.timeout(ctx.timeout) : void 0
-          }, ctx.retryScheduleInMs, (_a6 = ctx.retryScheduleInMs) === null || _a6 === void 0 ? void 0 : _a6[0], ((_b = ctx.retryScheduleInMs) === null || _b === void 0 ? void 0 : _b.length) || ctx.numRetries, ctx.fetch);
-          return filterResponseForErrors(response);
-        });
-      }
-    };
-    exports2.SvixRequest = SvixRequest;
-    function filterResponseForErrors(response) {
-      return __awaiter(this, void 0, void 0, function* () {
-        if (response.status < 300) {
-          return response;
-        }
-        const responseBody = yield response.text();
-        if (response.status === 422) {
-          throw new util_1.ApiException(response.status, JSON.parse(responseBody), response.headers);
-        }
-        if (response.status >= 400 && response.status <= 499) {
-          throw new util_1.ApiException(response.status, JSON.parse(responseBody), response.headers);
-        }
-        throw new util_1.ApiException(response.status, responseBody, response.headers);
-      });
-    }
-    function sendWithRetry(url3, init, retryScheduleInMs, nextInterval = 50, triesLeft = 2, fetchImpl = fetch, retryCount = 1) {
-      return __awaiter(this, void 0, void 0, function* () {
-        const sleep = (interval2) => new Promise((resolve) => setTimeout(resolve, interval2));
-        try {
-          const response = yield fetchImpl(url3, init);
-          if (triesLeft <= 0 || response.status < 500) {
-            return response;
-          }
-        } catch (e3) {
-          if (triesLeft <= 0) {
-            throw e3;
-          }
-        }
-        yield sleep(nextInterval);
-        init.headers["svix-retry-count"] = retryCount.toString();
-        nextInterval = (retryScheduleInMs === null || retryScheduleInMs === void 0 ? void 0 : retryScheduleInMs[retryCount]) || nextInterval * 2;
-        return yield sendWithRetry(url3, init, retryScheduleInMs, nextInterval, --triesLeft, fetchImpl, ++retryCount);
-      });
-    }
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/api/application.js
-var require_application2 = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/api/application.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.Application = void 0;
-    var applicationIn_1 = require_applicationIn();
-    var applicationOut_1 = require_applicationOut();
-    var applicationPatch_1 = require_applicationPatch();
-    var listResponseApplicationOut_1 = require_listResponseApplicationOut();
-    var request_1 = require_request2();
-    var Application = class {
-      constructor(requestCtx) {
-        this.requestCtx = requestCtx;
-      }
-      list(options) {
-        const request = new request_1.SvixRequest(request_1.HttpMethod.GET, "/api/v1/app");
-        request.setQueryParams({
-          exclude_apps_with_no_endpoints: options === null || options === void 0 ? void 0 : options.excludeAppsWithNoEndpoints,
-          exclude_apps_with_disabled_endpoints: options === null || options === void 0 ? void 0 : options.excludeAppsWithDisabledEndpoints,
-          exclude_apps_with_svix_play_endpoints: options === null || options === void 0 ? void 0 : options.excludeAppsWithSvixPlayEndpoints,
-          limit: options === null || options === void 0 ? void 0 : options.limit,
-          iterator: options === null || options === void 0 ? void 0 : options.iterator,
-          order: options === null || options === void 0 ? void 0 : options.order
-        });
-        return request.send(this.requestCtx, listResponseApplicationOut_1.ListResponseApplicationOutSerializer._fromJsonObject);
-      }
-      create(applicationIn, options) {
-        const request = new request_1.SvixRequest(request_1.HttpMethod.POST, "/api/v1/app");
-        request.setHeaderParam("idempotency-key", options === null || options === void 0 ? void 0 : options.idempotencyKey);
-        request.setBody(applicationIn_1.ApplicationInSerializer._toJsonObject(applicationIn));
-        return request.send(this.requestCtx, applicationOut_1.ApplicationOutSerializer._fromJsonObject);
-      }
-      getOrCreate(applicationIn, options) {
-        const request = new request_1.SvixRequest(request_1.HttpMethod.POST, "/api/v1/app");
-        request.setQueryParam("get_if_exists", true);
-        request.setHeaderParam("idempotency-key", options === null || options === void 0 ? void 0 : options.idempotencyKey);
-        request.setBody(applicationIn_1.ApplicationInSerializer._toJsonObject(applicationIn));
-        return request.send(this.requestCtx, applicationOut_1.ApplicationOutSerializer._fromJsonObject);
-      }
-      get(appId) {
-        const request = new request_1.SvixRequest(request_1.HttpMethod.GET, "/api/v1/app/{app_id}");
-        request.setPathParam("app_id", appId);
-        return request.send(this.requestCtx, applicationOut_1.ApplicationOutSerializer._fromJsonObject);
-      }
-      update(appId, applicationIn) {
-        const request = new request_1.SvixRequest(request_1.HttpMethod.PUT, "/api/v1/app/{app_id}");
-        request.setPathParam("app_id", appId);
-        request.setBody(applicationIn_1.ApplicationInSerializer._toJsonObject(applicationIn));
-        return request.send(this.requestCtx, applicationOut_1.ApplicationOutSerializer._fromJsonObject);
-      }
-      delete(appId) {
-        const request = new request_1.SvixRequest(request_1.HttpMethod.DELETE, "/api/v1/app/{app_id}");
-        request.setPathParam("app_id", appId);
-        return request.sendNoResponseBody(this.requestCtx);
-      }
-      patch(appId, applicationPatch) {
-        const request = new request_1.SvixRequest(request_1.HttpMethod.PATCH, "/api/v1/app/{app_id}");
-        request.setPathParam("app_id", appId);
-        request.setBody(applicationPatch_1.ApplicationPatchSerializer._toJsonObject(applicationPatch));
-        return request.send(this.requestCtx, applicationOut_1.ApplicationOutSerializer._fromJsonObject);
-      }
-    };
-    exports2.Application = Application;
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/apiTokenOut.js
-var require_apiTokenOut = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/apiTokenOut.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.ApiTokenOutSerializer = void 0;
-    exports2.ApiTokenOutSerializer = {
-      _fromJsonObject(object2) {
-        return {
-          createdAt: new Date(object2["createdAt"]),
-          expiresAt: object2["expiresAt"] ? new Date(object2["expiresAt"]) : null,
-          id: object2["id"],
-          name: object2["name"],
-          scopes: object2["scopes"],
-          token: object2["token"]
-        };
-      },
-      _toJsonObject(self2) {
-        return {
-          createdAt: self2.createdAt,
-          expiresAt: self2.expiresAt,
-          id: self2.id,
-          name: self2.name,
-          scopes: self2.scopes,
-          token: self2.token
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/appPortalCapability.js
-var require_appPortalCapability = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/appPortalCapability.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.AppPortalCapabilitySerializer = exports2.AppPortalCapability = void 0;
-    var AppPortalCapability;
-    (function(AppPortalCapability2) {
-      AppPortalCapability2["ViewBase"] = "ViewBase";
-      AppPortalCapability2["ViewEndpointSecret"] = "ViewEndpointSecret";
-      AppPortalCapability2["ManageEndpointSecret"] = "ManageEndpointSecret";
-      AppPortalCapability2["ManageTransformations"] = "ManageTransformations";
-      AppPortalCapability2["CreateAttempts"] = "CreateAttempts";
-      AppPortalCapability2["ManageEndpoint"] = "ManageEndpoint";
-    })(AppPortalCapability = exports2.AppPortalCapability || (exports2.AppPortalCapability = {}));
-    exports2.AppPortalCapabilitySerializer = {
-      _fromJsonObject(object2) {
-        return object2;
-      },
-      _toJsonObject(self2) {
-        return self2;
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/appPortalAccessIn.js
-var require_appPortalAccessIn = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/appPortalAccessIn.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.AppPortalAccessInSerializer = void 0;
-    var appPortalCapability_1 = require_appPortalCapability();
-    var applicationIn_1 = require_applicationIn();
-    exports2.AppPortalAccessInSerializer = {
-      _fromJsonObject(object2) {
-        var _a6;
-        return {
-          application: object2["application"] != null ? applicationIn_1.ApplicationInSerializer._fromJsonObject(object2["application"]) : void 0,
-          capabilities: (_a6 = object2["capabilities"]) === null || _a6 === void 0 ? void 0 : _a6.map((item) => appPortalCapability_1.AppPortalCapabilitySerializer._fromJsonObject(item)),
-          expiry: object2["expiry"],
-          featureFlags: object2["featureFlags"],
-          readOnly: object2["readOnly"],
-          sessionId: object2["sessionId"]
-        };
-      },
-      _toJsonObject(self2) {
-        var _a6;
-        return {
-          application: self2.application != null ? applicationIn_1.ApplicationInSerializer._toJsonObject(self2.application) : void 0,
-          capabilities: (_a6 = self2.capabilities) === null || _a6 === void 0 ? void 0 : _a6.map((item) => appPortalCapability_1.AppPortalCapabilitySerializer._toJsonObject(item)),
-          expiry: self2.expiry,
-          featureFlags: self2.featureFlags,
-          readOnly: self2.readOnly,
-          sessionId: self2.sessionId
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/appPortalAccessOut.js
-var require_appPortalAccessOut = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/appPortalAccessOut.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.AppPortalAccessOutSerializer = void 0;
-    exports2.AppPortalAccessOutSerializer = {
-      _fromJsonObject(object2) {
-        return {
-          token: object2["token"],
-          url: object2["url"]
-        };
-      },
-      _toJsonObject(self2) {
-        return {
-          token: self2.token,
-          url: self2.url
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/applicationTokenExpireIn.js
-var require_applicationTokenExpireIn = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/applicationTokenExpireIn.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.ApplicationTokenExpireInSerializer = void 0;
-    exports2.ApplicationTokenExpireInSerializer = {
-      _fromJsonObject(object2) {
-        return {
-          expiry: object2["expiry"],
-          sessionIds: object2["sessionIds"]
-        };
-      },
-      _toJsonObject(self2) {
-        return {
-          expiry: self2.expiry,
-          sessionIds: self2.sessionIds
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/rotatePollerTokenIn.js
-var require_rotatePollerTokenIn = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/rotatePollerTokenIn.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.RotatePollerTokenInSerializer = void 0;
-    exports2.RotatePollerTokenInSerializer = {
-      _fromJsonObject(object2) {
-        return {
-          expiry: object2["expiry"],
-          oldTokenExpiry: object2["oldTokenExpiry"]
-        };
-      },
-      _toJsonObject(self2) {
-        return {
-          expiry: self2.expiry,
-          oldTokenExpiry: self2.oldTokenExpiry
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/streamPortalAccessIn.js
-var require_streamPortalAccessIn = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/streamPortalAccessIn.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.StreamPortalAccessInSerializer = void 0;
-    exports2.StreamPortalAccessInSerializer = {
-      _fromJsonObject(object2) {
-        return {
-          expiry: object2["expiry"],
-          featureFlags: object2["featureFlags"],
-          sessionId: object2["sessionId"]
-        };
-      },
-      _toJsonObject(self2) {
-        return {
-          expiry: self2.expiry,
-          featureFlags: self2.featureFlags,
-          sessionId: self2.sessionId
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/streamTokenExpireIn.js
-var require_streamTokenExpireIn = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/streamTokenExpireIn.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.StreamTokenExpireInSerializer = void 0;
-    exports2.StreamTokenExpireInSerializer = {
-      _fromJsonObject(object2) {
-        return {
-          expiry: object2["expiry"],
-          sessionIds: object2["sessionIds"]
-        };
-      },
-      _toJsonObject(self2) {
-        return {
-          expiry: self2.expiry,
-          sessionIds: self2.sessionIds
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/dashboardAccessOut.js
-var require_dashboardAccessOut = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/dashboardAccessOut.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.DashboardAccessOutSerializer = void 0;
-    exports2.DashboardAccessOutSerializer = {
-      _fromJsonObject(object2) {
-        return {
-          token: object2["token"],
-          url: object2["url"]
-        };
-      },
-      _toJsonObject(self2) {
-        return {
-          token: self2.token,
-          url: self2.url
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/api/authentication.js
-var require_authentication = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/api/authentication.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.Authentication = void 0;
-    var apiTokenOut_1 = require_apiTokenOut();
-    var appPortalAccessIn_1 = require_appPortalAccessIn();
-    var appPortalAccessOut_1 = require_appPortalAccessOut();
-    var applicationTokenExpireIn_1 = require_applicationTokenExpireIn();
-    var rotatePollerTokenIn_1 = require_rotatePollerTokenIn();
-    var streamPortalAccessIn_1 = require_streamPortalAccessIn();
-    var streamTokenExpireIn_1 = require_streamTokenExpireIn();
-    var dashboardAccessOut_1 = require_dashboardAccessOut();
-    var request_1 = require_request2();
-    var Authentication = class {
-      constructor(requestCtx) {
-        this.requestCtx = requestCtx;
-      }
-      appPortalAccess(appId, appPortalAccessIn, options) {
-        const request = new request_1.SvixRequest(request_1.HttpMethod.POST, "/api/v1/auth/app-portal-access/{app_id}");
-        request.setPathParam("app_id", appId);
-        request.setHeaderParam("idempotency-key", options === null || options === void 0 ? void 0 : options.idempotencyKey);
-        request.setBody(appPortalAccessIn_1.AppPortalAccessInSerializer._toJsonObject(appPortalAccessIn));
-        return request.send(this.requestCtx, appPortalAccessOut_1.AppPortalAccessOutSerializer._fromJsonObject);
-      }
-      expireAll(appId, applicationTokenExpireIn, options) {
-        const request = new request_1.SvixRequest(request_1.HttpMethod.POST, "/api/v1/auth/app/{app_id}/expire-all");
-        request.setPathParam("app_id", appId);
-        request.setHeaderParam("idempotency-key", options === null || options === void 0 ? void 0 : options.idempotencyKey);
-        request.setBody(applicationTokenExpireIn_1.ApplicationTokenExpireInSerializer._toJsonObject(applicationTokenExpireIn));
-        return request.sendNoResponseBody(this.requestCtx);
-      }
-      dashboardAccess(appId, options) {
-        const request = new request_1.SvixRequest(request_1.HttpMethod.POST, "/api/v1/auth/dashboard-access/{app_id}");
-        request.setPathParam("app_id", appId);
-        request.setHeaderParam("idempotency-key", options === null || options === void 0 ? void 0 : options.idempotencyKey);
-        return request.send(this.requestCtx, dashboardAccessOut_1.DashboardAccessOutSerializer._fromJsonObject);
-      }
-      logout(options) {
-        const request = new request_1.SvixRequest(request_1.HttpMethod.POST, "/api/v1/auth/logout");
-        request.setHeaderParam("idempotency-key", options === null || options === void 0 ? void 0 : options.idempotencyKey);
-        return request.sendNoResponseBody(this.requestCtx);
-      }
-      streamLogout(options) {
-        const request = new request_1.SvixRequest(request_1.HttpMethod.POST, "/api/v1/auth/stream-logout");
-        request.setHeaderParam("idempotency-key", options === null || options === void 0 ? void 0 : options.idempotencyKey);
-        return request.sendNoResponseBody(this.requestCtx);
-      }
-      streamPortalAccess(streamId, streamPortalAccessIn, options) {
-        const request = new request_1.SvixRequest(request_1.HttpMethod.POST, "/api/v1/auth/stream-portal-access/{stream_id}");
-        request.setPathParam("stream_id", streamId);
-        request.setHeaderParam("idempotency-key", options === null || options === void 0 ? void 0 : options.idempotencyKey);
-        request.setBody(streamPortalAccessIn_1.StreamPortalAccessInSerializer._toJsonObject(streamPortalAccessIn));
-        return request.send(this.requestCtx, appPortalAccessOut_1.AppPortalAccessOutSerializer._fromJsonObject);
-      }
-      streamExpireAll(streamId, streamTokenExpireIn, options) {
-        const request = new request_1.SvixRequest(request_1.HttpMethod.POST, "/api/v1/auth/stream/{stream_id}/expire-all");
-        request.setPathParam("stream_id", streamId);
-        request.setHeaderParam("idempotency-key", options === null || options === void 0 ? void 0 : options.idempotencyKey);
-        request.setBody(streamTokenExpireIn_1.StreamTokenExpireInSerializer._toJsonObject(streamTokenExpireIn));
-        return request.sendNoResponseBody(this.requestCtx);
-      }
-      getStreamPollerToken(streamId, sinkId) {
-        const request = new request_1.SvixRequest(request_1.HttpMethod.GET, "/api/v1/auth/stream/{stream_id}/sink/{sink_id}/poller/token");
-        request.setPathParam("stream_id", streamId);
-        request.setPathParam("sink_id", sinkId);
-        return request.send(this.requestCtx, apiTokenOut_1.ApiTokenOutSerializer._fromJsonObject);
-      }
-      rotateStreamPollerToken(streamId, sinkId, rotatePollerTokenIn, options) {
-        const request = new request_1.SvixRequest(request_1.HttpMethod.POST, "/api/v1/auth/stream/{stream_id}/sink/{sink_id}/poller/token/rotate");
-        request.setPathParam("stream_id", streamId);
-        request.setPathParam("sink_id", sinkId);
-        request.setHeaderParam("idempotency-key", options === null || options === void 0 ? void 0 : options.idempotencyKey);
-        request.setBody(rotatePollerTokenIn_1.RotatePollerTokenInSerializer._toJsonObject(rotatePollerTokenIn));
-        return request.send(this.requestCtx, apiTokenOut_1.ApiTokenOutSerializer._fromJsonObject);
-      }
-    };
-    exports2.Authentication = Authentication;
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/backgroundTaskStatus.js
-var require_backgroundTaskStatus = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/backgroundTaskStatus.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.BackgroundTaskStatusSerializer = exports2.BackgroundTaskStatus = void 0;
-    var BackgroundTaskStatus;
-    (function(BackgroundTaskStatus2) {
-      BackgroundTaskStatus2["Running"] = "running";
-      BackgroundTaskStatus2["Finished"] = "finished";
-      BackgroundTaskStatus2["Failed"] = "failed";
-    })(BackgroundTaskStatus = exports2.BackgroundTaskStatus || (exports2.BackgroundTaskStatus = {}));
-    exports2.BackgroundTaskStatusSerializer = {
-      _fromJsonObject(object2) {
-        return object2;
-      },
-      _toJsonObject(self2) {
-        return self2;
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/backgroundTaskType.js
-var require_backgroundTaskType = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/backgroundTaskType.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.BackgroundTaskTypeSerializer = exports2.BackgroundTaskType = void 0;
-    var BackgroundTaskType;
-    (function(BackgroundTaskType2) {
-      BackgroundTaskType2["EndpointReplay"] = "endpoint.replay";
-      BackgroundTaskType2["EndpointRecover"] = "endpoint.recover";
-      BackgroundTaskType2["ApplicationStats"] = "application.stats";
-      BackgroundTaskType2["MessageBroadcast"] = "message.broadcast";
-      BackgroundTaskType2["SdkGenerate"] = "sdk.generate";
-      BackgroundTaskType2["EventTypeAggregate"] = "event-type.aggregate";
-      BackgroundTaskType2["ApplicationPurgeContent"] = "application.purge_content";
-      BackgroundTaskType2["EndpointBulkReplay"] = "endpoint.bulk-replay";
-    })(BackgroundTaskType = exports2.BackgroundTaskType || (exports2.BackgroundTaskType = {}));
-    exports2.BackgroundTaskTypeSerializer = {
-      _fromJsonObject(object2) {
-        return object2;
-      },
-      _toJsonObject(self2) {
-        return self2;
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/backgroundTaskOut.js
-var require_backgroundTaskOut = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/backgroundTaskOut.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.BackgroundTaskOutSerializer = void 0;
-    var backgroundTaskStatus_1 = require_backgroundTaskStatus();
-    var backgroundTaskType_1 = require_backgroundTaskType();
-    exports2.BackgroundTaskOutSerializer = {
-      _fromJsonObject(object2) {
-        return {
-          data: object2["data"],
-          id: object2["id"],
-          status: backgroundTaskStatus_1.BackgroundTaskStatusSerializer._fromJsonObject(object2["status"]),
-          task: backgroundTaskType_1.BackgroundTaskTypeSerializer._fromJsonObject(object2["task"]),
-          updatedAt: new Date(object2["updatedAt"])
-        };
-      },
-      _toJsonObject(self2) {
-        return {
-          data: self2.data,
-          id: self2.id,
-          status: backgroundTaskStatus_1.BackgroundTaskStatusSerializer._toJsonObject(self2.status),
-          task: backgroundTaskType_1.BackgroundTaskTypeSerializer._toJsonObject(self2.task),
-          updatedAt: self2.updatedAt
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/listResponseBackgroundTaskOut.js
-var require_listResponseBackgroundTaskOut = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/listResponseBackgroundTaskOut.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.ListResponseBackgroundTaskOutSerializer = void 0;
-    var backgroundTaskOut_1 = require_backgroundTaskOut();
-    exports2.ListResponseBackgroundTaskOutSerializer = {
-      _fromJsonObject(object2) {
-        return {
-          data: object2["data"].map((item) => backgroundTaskOut_1.BackgroundTaskOutSerializer._fromJsonObject(item)),
-          done: object2["done"],
-          iterator: object2["iterator"],
-          prevIterator: object2["prevIterator"]
-        };
-      },
-      _toJsonObject(self2) {
-        return {
-          data: self2.data.map((item) => backgroundTaskOut_1.BackgroundTaskOutSerializer._toJsonObject(item)),
-          done: self2.done,
-          iterator: self2.iterator,
-          prevIterator: self2.prevIterator
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/api/backgroundTask.js
-var require_backgroundTask = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/api/backgroundTask.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.BackgroundTask = void 0;
-    var backgroundTaskOut_1 = require_backgroundTaskOut();
-    var listResponseBackgroundTaskOut_1 = require_listResponseBackgroundTaskOut();
-    var request_1 = require_request2();
-    var BackgroundTask = class {
-      constructor(requestCtx) {
-        this.requestCtx = requestCtx;
-      }
-      list(options) {
-        const request = new request_1.SvixRequest(request_1.HttpMethod.GET, "/api/v1/background-task");
-        request.setQueryParams({
-          status: options === null || options === void 0 ? void 0 : options.status,
-          task: options === null || options === void 0 ? void 0 : options.task,
-          limit: options === null || options === void 0 ? void 0 : options.limit,
-          iterator: options === null || options === void 0 ? void 0 : options.iterator,
-          order: options === null || options === void 0 ? void 0 : options.order
-        });
-        return request.send(this.requestCtx, listResponseBackgroundTaskOut_1.ListResponseBackgroundTaskOutSerializer._fromJsonObject);
-      }
-      listByEndpoint(options) {
-        return this.list(options);
-      }
-      get(taskId) {
-        const request = new request_1.SvixRequest(request_1.HttpMethod.GET, "/api/v1/background-task/{task_id}");
-        request.setPathParam("task_id", taskId);
-        return request.send(this.requestCtx, backgroundTaskOut_1.BackgroundTaskOutSerializer._fromJsonObject);
-      }
-    };
-    exports2.BackgroundTask = BackgroundTask;
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/connectorKind.js
-var require_connectorKind = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/connectorKind.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.ConnectorKindSerializer = exports2.ConnectorKind = void 0;
-    var ConnectorKind;
-    (function(ConnectorKind2) {
-      ConnectorKind2["Custom"] = "Custom";
-      ConnectorKind2["AgenticCommerceProtocol"] = "AgenticCommerceProtocol";
-      ConnectorKind2["CloseCrm"] = "CloseCRM";
-      ConnectorKind2["CustomerIo"] = "CustomerIO";
-      ConnectorKind2["Discord"] = "Discord";
-      ConnectorKind2["Hubspot"] = "Hubspot";
-      ConnectorKind2["Inngest"] = "Inngest";
-      ConnectorKind2["Loops"] = "Loops";
-      ConnectorKind2["Otel"] = "Otel";
-      ConnectorKind2["Resend"] = "Resend";
-      ConnectorKind2["Salesforce"] = "Salesforce";
-      ConnectorKind2["Segment"] = "Segment";
-      ConnectorKind2["Sendgrid"] = "Sendgrid";
-      ConnectorKind2["Slack"] = "Slack";
-      ConnectorKind2["Teams"] = "Teams";
-      ConnectorKind2["TriggerDev"] = "TriggerDev";
-      ConnectorKind2["Windmill"] = "Windmill";
-      ConnectorKind2["Zapier"] = "Zapier";
-    })(ConnectorKind = exports2.ConnectorKind || (exports2.ConnectorKind = {}));
-    exports2.ConnectorKindSerializer = {
-      _fromJsonObject(object2) {
-        return object2;
-      },
-      _toJsonObject(self2) {
-        return self2;
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/connectorProduct.js
-var require_connectorProduct = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/connectorProduct.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.ConnectorProductSerializer = exports2.ConnectorProduct = void 0;
-    var ConnectorProduct;
-    (function(ConnectorProduct2) {
-      ConnectorProduct2["Dispatch"] = "Dispatch";
-      ConnectorProduct2["Stream"] = "Stream";
-    })(ConnectorProduct = exports2.ConnectorProduct || (exports2.ConnectorProduct = {}));
-    exports2.ConnectorProductSerializer = {
-      _fromJsonObject(object2) {
-        return object2;
-      },
-      _toJsonObject(self2) {
-        return self2;
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/connectorIn.js
-var require_connectorIn = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/connectorIn.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.ConnectorInSerializer = void 0;
-    var connectorKind_1 = require_connectorKind();
-    var connectorProduct_1 = require_connectorProduct();
-    exports2.ConnectorInSerializer = {
-      _fromJsonObject(object2) {
-        return {
-          allowedEventTypes: object2["allowedEventTypes"],
-          description: object2["description"],
-          featureFlags: object2["featureFlags"],
-          instructions: object2["instructions"],
-          kind: object2["kind"] != null ? connectorKind_1.ConnectorKindSerializer._fromJsonObject(object2["kind"]) : void 0,
-          logo: object2["logo"],
-          name: object2["name"],
-          productType: object2["productType"] != null ? connectorProduct_1.ConnectorProductSerializer._fromJsonObject(object2["productType"]) : void 0,
-          transformation: object2["transformation"],
-          uid: object2["uid"]
-        };
-      },
-      _toJsonObject(self2) {
-        return {
-          allowedEventTypes: self2.allowedEventTypes,
-          description: self2.description,
-          featureFlags: self2.featureFlags,
-          instructions: self2.instructions,
-          kind: self2.kind != null ? connectorKind_1.ConnectorKindSerializer._toJsonObject(self2.kind) : void 0,
-          logo: self2.logo,
-          name: self2.name,
-          productType: self2.productType != null ? connectorProduct_1.ConnectorProductSerializer._toJsonObject(self2.productType) : void 0,
-          transformation: self2.transformation,
-          uid: self2.uid
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/connectorOut.js
-var require_connectorOut = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/connectorOut.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.ConnectorOutSerializer = void 0;
-    var connectorKind_1 = require_connectorKind();
-    var connectorProduct_1 = require_connectorProduct();
-    exports2.ConnectorOutSerializer = {
-      _fromJsonObject(object2) {
-        return {
-          allowedEventTypes: object2["allowedEventTypes"],
-          createdAt: new Date(object2["createdAt"]),
-          description: object2["description"],
-          featureFlags: object2["featureFlags"],
-          id: object2["id"],
-          instructions: object2["instructions"],
-          kind: connectorKind_1.ConnectorKindSerializer._fromJsonObject(object2["kind"]),
-          logo: object2["logo"],
-          name: object2["name"],
-          orgId: object2["orgId"],
-          productType: connectorProduct_1.ConnectorProductSerializer._fromJsonObject(object2["productType"]),
-          transformation: object2["transformation"],
-          transformationUpdatedAt: new Date(object2["transformationUpdatedAt"]),
-          uid: object2["uid"],
-          updatedAt: new Date(object2["updatedAt"])
-        };
-      },
-      _toJsonObject(self2) {
-        return {
-          allowedEventTypes: self2.allowedEventTypes,
-          createdAt: self2.createdAt,
-          description: self2.description,
-          featureFlags: self2.featureFlags,
-          id: self2.id,
-          instructions: self2.instructions,
-          kind: connectorKind_1.ConnectorKindSerializer._toJsonObject(self2.kind),
-          logo: self2.logo,
-          name: self2.name,
-          orgId: self2.orgId,
-          productType: connectorProduct_1.ConnectorProductSerializer._toJsonObject(self2.productType),
-          transformation: self2.transformation,
-          transformationUpdatedAt: self2.transformationUpdatedAt,
-          uid: self2.uid,
-          updatedAt: self2.updatedAt
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/connectorPatch.js
-var require_connectorPatch = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/connectorPatch.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.ConnectorPatchSerializer = void 0;
-    var connectorKind_1 = require_connectorKind();
-    exports2.ConnectorPatchSerializer = {
-      _fromJsonObject(object2) {
-        return {
-          allowedEventTypes: object2["allowedEventTypes"],
-          description: object2["description"],
-          featureFlags: object2["featureFlags"],
-          instructions: object2["instructions"],
-          kind: object2["kind"] != null ? connectorKind_1.ConnectorKindSerializer._fromJsonObject(object2["kind"]) : void 0,
-          logo: object2["logo"],
-          name: object2["name"],
-          transformation: object2["transformation"]
-        };
-      },
-      _toJsonObject(self2) {
-        return {
-          allowedEventTypes: self2.allowedEventTypes,
-          description: self2.description,
-          featureFlags: self2.featureFlags,
-          instructions: self2.instructions,
-          kind: self2.kind != null ? connectorKind_1.ConnectorKindSerializer._toJsonObject(self2.kind) : void 0,
-          logo: self2.logo,
-          name: self2.name,
-          transformation: self2.transformation
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/connectorUpdate.js
-var require_connectorUpdate = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/connectorUpdate.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.ConnectorUpdateSerializer = void 0;
-    var connectorKind_1 = require_connectorKind();
-    exports2.ConnectorUpdateSerializer = {
-      _fromJsonObject(object2) {
-        return {
-          allowedEventTypes: object2["allowedEventTypes"],
-          description: object2["description"],
-          featureFlags: object2["featureFlags"],
-          instructions: object2["instructions"],
-          kind: object2["kind"] != null ? connectorKind_1.ConnectorKindSerializer._fromJsonObject(object2["kind"]) : void 0,
-          logo: object2["logo"],
-          name: object2["name"],
-          transformation: object2["transformation"]
-        };
-      },
-      _toJsonObject(self2) {
-        return {
-          allowedEventTypes: self2.allowedEventTypes,
-          description: self2.description,
-          featureFlags: self2.featureFlags,
-          instructions: self2.instructions,
-          kind: self2.kind != null ? connectorKind_1.ConnectorKindSerializer._toJsonObject(self2.kind) : void 0,
-          logo: self2.logo,
-          name: self2.name,
-          transformation: self2.transformation
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/listResponseConnectorOut.js
-var require_listResponseConnectorOut = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/listResponseConnectorOut.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.ListResponseConnectorOutSerializer = void 0;
-    var connectorOut_1 = require_connectorOut();
-    exports2.ListResponseConnectorOutSerializer = {
-      _fromJsonObject(object2) {
-        return {
-          data: object2["data"].map((item) => connectorOut_1.ConnectorOutSerializer._fromJsonObject(item)),
-          done: object2["done"],
-          iterator: object2["iterator"],
-          prevIterator: object2["prevIterator"]
-        };
-      },
-      _toJsonObject(self2) {
-        return {
-          data: self2.data.map((item) => connectorOut_1.ConnectorOutSerializer._toJsonObject(item)),
-          done: self2.done,
-          iterator: self2.iterator,
-          prevIterator: self2.prevIterator
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/api/connector.js
-var require_connector = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/api/connector.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.Connector = void 0;
-    var connectorIn_1 = require_connectorIn();
-    var connectorOut_1 = require_connectorOut();
-    var connectorPatch_1 = require_connectorPatch();
-    var connectorUpdate_1 = require_connectorUpdate();
-    var listResponseConnectorOut_1 = require_listResponseConnectorOut();
-    var request_1 = require_request2();
-    var Connector = class {
-      constructor(requestCtx) {
-        this.requestCtx = requestCtx;
-      }
-      list(options) {
-        const request = new request_1.SvixRequest(request_1.HttpMethod.GET, "/api/v1/connector");
-        request.setQueryParams({
-          limit: options === null || options === void 0 ? void 0 : options.limit,
-          iterator: options === null || options === void 0 ? void 0 : options.iterator,
-          order: options === null || options === void 0 ? void 0 : options.order,
-          product_type: options === null || options === void 0 ? void 0 : options.productType
-        });
-        return request.send(this.requestCtx, listResponseConnectorOut_1.ListResponseConnectorOutSerializer._fromJsonObject);
-      }
-      create(connectorIn, options) {
-        const request = new request_1.SvixRequest(request_1.HttpMethod.POST, "/api/v1/connector");
-        request.setHeaderParam("idempotency-key", options === null || options === void 0 ? void 0 : options.idempotencyKey);
-        request.setBody(connectorIn_1.ConnectorInSerializer._toJsonObject(connectorIn));
-        return request.send(this.requestCtx, connectorOut_1.ConnectorOutSerializer._fromJsonObject);
-      }
-      get(connectorId) {
-        const request = new request_1.SvixRequest(request_1.HttpMethod.GET, "/api/v1/connector/{connector_id}");
-        request.setPathParam("connector_id", connectorId);
-        return request.send(this.requestCtx, connectorOut_1.ConnectorOutSerializer._fromJsonObject);
-      }
-      update(connectorId, connectorUpdate) {
-        const request = new request_1.SvixRequest(request_1.HttpMethod.PUT, "/api/v1/connector/{connector_id}");
-        request.setPathParam("connector_id", connectorId);
-        request.setBody(connectorUpdate_1.ConnectorUpdateSerializer._toJsonObject(connectorUpdate));
-        return request.send(this.requestCtx, connectorOut_1.ConnectorOutSerializer._fromJsonObject);
-      }
-      delete(connectorId) {
-        const request = new request_1.SvixRequest(request_1.HttpMethod.DELETE, "/api/v1/connector/{connector_id}");
-        request.setPathParam("connector_id", connectorId);
-        return request.sendNoResponseBody(this.requestCtx);
-      }
-      patch(connectorId, connectorPatch) {
-        const request = new request_1.SvixRequest(request_1.HttpMethod.PATCH, "/api/v1/connector/{connector_id}");
-        request.setPathParam("connector_id", connectorId);
-        request.setBody(connectorPatch_1.ConnectorPatchSerializer._toJsonObject(connectorPatch));
-        return request.send(this.requestCtx, connectorOut_1.ConnectorOutSerializer._fromJsonObject);
-      }
-    };
-    exports2.Connector = Connector;
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/messageStatus.js
-var require_messageStatus = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/messageStatus.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.MessageStatusSerializer = exports2.MessageStatus = void 0;
-    var MessageStatus;
-    (function(MessageStatus2) {
-      MessageStatus2[MessageStatus2["Success"] = 0] = "Success";
-      MessageStatus2[MessageStatus2["Pending"] = 1] = "Pending";
-      MessageStatus2[MessageStatus2["Fail"] = 2] = "Fail";
-      MessageStatus2[MessageStatus2["Sending"] = 3] = "Sending";
-    })(MessageStatus = exports2.MessageStatus || (exports2.MessageStatus = {}));
-    exports2.MessageStatusSerializer = {
-      _fromJsonObject(object2) {
-        return object2;
-      },
-      _toJsonObject(self2) {
-        return self2;
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/statusCodeClass.js
-var require_statusCodeClass = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/statusCodeClass.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.StatusCodeClassSerializer = exports2.StatusCodeClass = void 0;
-    var StatusCodeClass;
-    (function(StatusCodeClass2) {
-      StatusCodeClass2[StatusCodeClass2["CodeNone"] = 0] = "CodeNone";
-      StatusCodeClass2[StatusCodeClass2["Code1xx"] = 100] = "Code1xx";
-      StatusCodeClass2[StatusCodeClass2["Code2xx"] = 200] = "Code2xx";
-      StatusCodeClass2[StatusCodeClass2["Code3xx"] = 300] = "Code3xx";
-      StatusCodeClass2[StatusCodeClass2["Code4xx"] = 400] = "Code4xx";
-      StatusCodeClass2[StatusCodeClass2["Code5xx"] = 500] = "Code5xx";
-    })(StatusCodeClass = exports2.StatusCodeClass || (exports2.StatusCodeClass = {}));
-    exports2.StatusCodeClassSerializer = {
-      _fromJsonObject(object2) {
-        return object2;
-      },
-      _toJsonObject(self2) {
-        return self2;
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/bulkReplayIn.js
-var require_bulkReplayIn = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/bulkReplayIn.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.BulkReplayInSerializer = void 0;
-    var messageStatus_1 = require_messageStatus();
-    var statusCodeClass_1 = require_statusCodeClass();
-    exports2.BulkReplayInSerializer = {
-      _fromJsonObject(object2) {
-        return {
-          channel: object2["channel"],
-          eventTypes: object2["eventTypes"],
-          since: new Date(object2["since"]),
-          status: object2["status"] != null ? messageStatus_1.MessageStatusSerializer._fromJsonObject(object2["status"]) : void 0,
-          statusCodeClass: object2["statusCodeClass"] != null ? statusCodeClass_1.StatusCodeClassSerializer._fromJsonObject(object2["statusCodeClass"]) : void 0,
-          tag: object2["tag"],
-          until: object2["until"] ? new Date(object2["until"]) : null
-        };
-      },
-      _toJsonObject(self2) {
-        return {
-          channel: self2.channel,
-          eventTypes: self2.eventTypes,
-          since: self2.since,
-          status: self2.status != null ? messageStatus_1.MessageStatusSerializer._toJsonObject(self2.status) : void 0,
-          statusCodeClass: self2.statusCodeClass != null ? statusCodeClass_1.StatusCodeClassSerializer._toJsonObject(self2.statusCodeClass) : void 0,
-          tag: self2.tag,
-          until: self2.until
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/endpointHeadersIn.js
-var require_endpointHeadersIn = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/endpointHeadersIn.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.EndpointHeadersInSerializer = void 0;
-    exports2.EndpointHeadersInSerializer = {
-      _fromJsonObject(object2) {
-        return {
-          headers: object2["headers"]
-        };
-      },
-      _toJsonObject(self2) {
-        return {
-          headers: self2.headers
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/endpointHeadersOut.js
-var require_endpointHeadersOut = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/endpointHeadersOut.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.EndpointHeadersOutSerializer = void 0;
-    exports2.EndpointHeadersOutSerializer = {
-      _fromJsonObject(object2) {
-        return {
-          headers: object2["headers"],
-          sensitive: object2["sensitive"]
-        };
-      },
-      _toJsonObject(self2) {
-        return {
-          headers: self2.headers,
-          sensitive: self2.sensitive
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/endpointHeadersPatchIn.js
-var require_endpointHeadersPatchIn = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/endpointHeadersPatchIn.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.EndpointHeadersPatchInSerializer = void 0;
-    exports2.EndpointHeadersPatchInSerializer = {
-      _fromJsonObject(object2) {
-        return {
-          deleteHeaders: object2["deleteHeaders"],
-          headers: object2["headers"]
-        };
-      },
-      _toJsonObject(self2) {
-        return {
-          deleteHeaders: self2.deleteHeaders,
-          headers: self2.headers
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/endpointIn.js
-var require_endpointIn = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/endpointIn.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.EndpointInSerializer = void 0;
-    exports2.EndpointInSerializer = {
-      _fromJsonObject(object2) {
-        return {
-          channels: object2["channels"],
-          description: object2["description"],
-          disabled: object2["disabled"],
-          filterTypes: object2["filterTypes"],
-          headers: object2["headers"],
-          metadata: object2["metadata"],
-          rateLimit: object2["rateLimit"],
-          secret: object2["secret"],
-          throttleRate: object2["throttleRate"],
-          uid: object2["uid"],
-          url: object2["url"],
-          version: object2["version"]
-        };
-      },
-      _toJsonObject(self2) {
-        return {
-          channels: self2.channels,
-          description: self2.description,
-          disabled: self2.disabled,
-          filterTypes: self2.filterTypes,
-          headers: self2.headers,
-          metadata: self2.metadata,
-          rateLimit: self2.rateLimit,
-          secret: self2.secret,
-          throttleRate: self2.throttleRate,
-          uid: self2.uid,
-          url: self2.url,
-          version: self2.version
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/endpointOut.js
-var require_endpointOut = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/endpointOut.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.EndpointOutSerializer = void 0;
-    exports2.EndpointOutSerializer = {
-      _fromJsonObject(object2) {
-        return {
-          channels: object2["channels"],
-          createdAt: new Date(object2["createdAt"]),
-          description: object2["description"],
-          disabled: object2["disabled"],
-          filterTypes: object2["filterTypes"],
-          id: object2["id"],
-          metadata: object2["metadata"],
-          rateLimit: object2["rateLimit"],
-          throttleRate: object2["throttleRate"],
-          uid: object2["uid"],
-          updatedAt: new Date(object2["updatedAt"]),
-          url: object2["url"],
-          version: object2["version"]
-        };
-      },
-      _toJsonObject(self2) {
-        return {
-          channels: self2.channels,
-          createdAt: self2.createdAt,
-          description: self2.description,
-          disabled: self2.disabled,
-          filterTypes: self2.filterTypes,
-          id: self2.id,
-          metadata: self2.metadata,
-          rateLimit: self2.rateLimit,
-          throttleRate: self2.throttleRate,
-          uid: self2.uid,
-          updatedAt: self2.updatedAt,
-          url: self2.url,
-          version: self2.version
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/endpointPatch.js
-var require_endpointPatch = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/endpointPatch.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.EndpointPatchSerializer = void 0;
-    exports2.EndpointPatchSerializer = {
-      _fromJsonObject(object2) {
-        return {
-          channels: object2["channels"],
-          description: object2["description"],
-          disabled: object2["disabled"],
-          filterTypes: object2["filterTypes"],
-          metadata: object2["metadata"],
-          rateLimit: object2["rateLimit"],
-          secret: object2["secret"],
-          throttleRate: object2["throttleRate"],
-          uid: object2["uid"],
-          url: object2["url"],
-          version: object2["version"]
-        };
-      },
-      _toJsonObject(self2) {
-        return {
-          channels: self2.channels,
-          description: self2.description,
-          disabled: self2.disabled,
-          filterTypes: self2.filterTypes,
-          metadata: self2.metadata,
-          rateLimit: self2.rateLimit,
-          secret: self2.secret,
-          throttleRate: self2.throttleRate,
-          uid: self2.uid,
-          url: self2.url,
-          version: self2.version
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/endpointSecretOut.js
-var require_endpointSecretOut = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/endpointSecretOut.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.EndpointSecretOutSerializer = void 0;
-    exports2.EndpointSecretOutSerializer = {
-      _fromJsonObject(object2) {
-        return {
-          key: object2["key"]
-        };
-      },
-      _toJsonObject(self2) {
-        return {
-          key: self2.key
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/endpointSecretRotateIn.js
-var require_endpointSecretRotateIn = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/endpointSecretRotateIn.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.EndpointSecretRotateInSerializer = void 0;
-    exports2.EndpointSecretRotateInSerializer = {
-      _fromJsonObject(object2) {
-        return {
-          key: object2["key"]
-        };
-      },
-      _toJsonObject(self2) {
-        return {
-          key: self2.key
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/endpointStats.js
-var require_endpointStats = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/endpointStats.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.EndpointStatsSerializer = void 0;
-    exports2.EndpointStatsSerializer = {
-      _fromJsonObject(object2) {
-        return {
-          fail: object2["fail"],
-          pending: object2["pending"],
-          sending: object2["sending"],
-          success: object2["success"]
-        };
-      },
-      _toJsonObject(self2) {
-        return {
-          fail: self2.fail,
-          pending: self2.pending,
-          sending: self2.sending,
-          success: self2.success
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/endpointTransformationIn.js
-var require_endpointTransformationIn = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/endpointTransformationIn.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.EndpointTransformationInSerializer = void 0;
-    exports2.EndpointTransformationInSerializer = {
-      _fromJsonObject(object2) {
-        return {
-          code: object2["code"],
-          enabled: object2["enabled"]
-        };
-      },
-      _toJsonObject(self2) {
-        return {
-          code: self2.code,
-          enabled: self2.enabled
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/endpointTransformationOut.js
-var require_endpointTransformationOut = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/endpointTransformationOut.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.EndpointTransformationOutSerializer = void 0;
-    exports2.EndpointTransformationOutSerializer = {
-      _fromJsonObject(object2) {
-        return {
-          code: object2["code"],
-          enabled: object2["enabled"],
-          updatedAt: object2["updatedAt"] ? new Date(object2["updatedAt"]) : null
-        };
-      },
-      _toJsonObject(self2) {
-        return {
-          code: self2.code,
-          enabled: self2.enabled,
-          updatedAt: self2.updatedAt
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/endpointTransformationPatch.js
-var require_endpointTransformationPatch = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/endpointTransformationPatch.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.EndpointTransformationPatchSerializer = void 0;
-    exports2.EndpointTransformationPatchSerializer = {
-      _fromJsonObject(object2) {
-        return {
-          code: object2["code"],
-          enabled: object2["enabled"]
-        };
-      },
-      _toJsonObject(self2) {
-        return {
-          code: self2.code,
-          enabled: self2.enabled
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/endpointUpdate.js
-var require_endpointUpdate = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/endpointUpdate.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.EndpointUpdateSerializer = void 0;
-    exports2.EndpointUpdateSerializer = {
-      _fromJsonObject(object2) {
-        return {
-          channels: object2["channels"],
-          description: object2["description"],
-          disabled: object2["disabled"],
-          filterTypes: object2["filterTypes"],
-          metadata: object2["metadata"],
-          rateLimit: object2["rateLimit"],
-          throttleRate: object2["throttleRate"],
-          uid: object2["uid"],
-          url: object2["url"],
-          version: object2["version"]
-        };
-      },
-      _toJsonObject(self2) {
-        return {
-          channels: self2.channels,
-          description: self2.description,
-          disabled: self2.disabled,
-          filterTypes: self2.filterTypes,
-          metadata: self2.metadata,
-          rateLimit: self2.rateLimit,
-          throttleRate: self2.throttleRate,
-          uid: self2.uid,
-          url: self2.url,
-          version: self2.version
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/eventExampleIn.js
-var require_eventExampleIn = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/eventExampleIn.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.EventExampleInSerializer = void 0;
-    exports2.EventExampleInSerializer = {
-      _fromJsonObject(object2) {
-        return {
-          eventType: object2["eventType"],
-          exampleIndex: object2["exampleIndex"]
-        };
-      },
-      _toJsonObject(self2) {
-        return {
-          eventType: self2.eventType,
-          exampleIndex: self2.exampleIndex
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/listResponseEndpointOut.js
-var require_listResponseEndpointOut = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/listResponseEndpointOut.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.ListResponseEndpointOutSerializer = void 0;
-    var endpointOut_1 = require_endpointOut();
-    exports2.ListResponseEndpointOutSerializer = {
-      _fromJsonObject(object2) {
-        return {
-          data: object2["data"].map((item) => endpointOut_1.EndpointOutSerializer._fromJsonObject(item)),
-          done: object2["done"],
-          iterator: object2["iterator"],
-          prevIterator: object2["prevIterator"]
-        };
-      },
-      _toJsonObject(self2) {
-        return {
-          data: self2.data.map((item) => endpointOut_1.EndpointOutSerializer._toJsonObject(item)),
-          done: self2.done,
-          iterator: self2.iterator,
-          prevIterator: self2.prevIterator
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/messageOut.js
-var require_messageOut = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/messageOut.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.MessageOutSerializer = void 0;
-    exports2.MessageOutSerializer = {
-      _fromJsonObject(object2) {
-        return {
-          channels: object2["channels"],
-          deliverAt: object2["deliverAt"] ? new Date(object2["deliverAt"]) : null,
-          eventId: object2["eventId"],
-          eventType: object2["eventType"],
-          id: object2["id"],
-          payload: object2["payload"],
-          tags: object2["tags"],
-          timestamp: new Date(object2["timestamp"])
-        };
-      },
-      _toJsonObject(self2) {
-        return {
-          channels: self2.channels,
-          deliverAt: self2.deliverAt,
-          eventId: self2.eventId,
-          eventType: self2.eventType,
-          id: self2.id,
-          payload: self2.payload,
-          tags: self2.tags,
-          timestamp: self2.timestamp
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/recoverIn.js
-var require_recoverIn = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/recoverIn.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.RecoverInSerializer = void 0;
-    exports2.RecoverInSerializer = {
-      _fromJsonObject(object2) {
-        return {
-          since: new Date(object2["since"]),
-          until: object2["until"] ? new Date(object2["until"]) : null
-        };
-      },
-      _toJsonObject(self2) {
-        return {
-          since: self2.since,
-          until: self2.until
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/recoverOut.js
-var require_recoverOut = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/recoverOut.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.RecoverOutSerializer = void 0;
-    var backgroundTaskStatus_1 = require_backgroundTaskStatus();
-    var backgroundTaskType_1 = require_backgroundTaskType();
-    exports2.RecoverOutSerializer = {
-      _fromJsonObject(object2) {
-        return {
-          id: object2["id"],
-          status: backgroundTaskStatus_1.BackgroundTaskStatusSerializer._fromJsonObject(object2["status"]),
-          task: backgroundTaskType_1.BackgroundTaskTypeSerializer._fromJsonObject(object2["task"]),
-          updatedAt: new Date(object2["updatedAt"])
-        };
-      },
-      _toJsonObject(self2) {
-        return {
-          id: self2.id,
-          status: backgroundTaskStatus_1.BackgroundTaskStatusSerializer._toJsonObject(self2.status),
-          task: backgroundTaskType_1.BackgroundTaskTypeSerializer._toJsonObject(self2.task),
-          updatedAt: self2.updatedAt
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/replayIn.js
-var require_replayIn = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/replayIn.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.ReplayInSerializer = void 0;
-    exports2.ReplayInSerializer = {
-      _fromJsonObject(object2) {
-        return {
-          since: new Date(object2["since"]),
-          until: object2["until"] ? new Date(object2["until"]) : null
-        };
-      },
-      _toJsonObject(self2) {
-        return {
-          since: self2.since,
-          until: self2.until
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/replayOut.js
-var require_replayOut = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/replayOut.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.ReplayOutSerializer = void 0;
-    var backgroundTaskStatus_1 = require_backgroundTaskStatus();
-    var backgroundTaskType_1 = require_backgroundTaskType();
-    exports2.ReplayOutSerializer = {
-      _fromJsonObject(object2) {
-        return {
-          id: object2["id"],
-          status: backgroundTaskStatus_1.BackgroundTaskStatusSerializer._fromJsonObject(object2["status"]),
-          task: backgroundTaskType_1.BackgroundTaskTypeSerializer._fromJsonObject(object2["task"]),
-          updatedAt: new Date(object2["updatedAt"])
-        };
-      },
-      _toJsonObject(self2) {
-        return {
-          id: self2.id,
-          status: backgroundTaskStatus_1.BackgroundTaskStatusSerializer._toJsonObject(self2.status),
-          task: backgroundTaskType_1.BackgroundTaskTypeSerializer._toJsonObject(self2.task),
-          updatedAt: self2.updatedAt
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/api/endpoint.js
-var require_endpoint = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/api/endpoint.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.Endpoint = void 0;
-    var bulkReplayIn_1 = require_bulkReplayIn();
-    var endpointHeadersIn_1 = require_endpointHeadersIn();
-    var endpointHeadersOut_1 = require_endpointHeadersOut();
-    var endpointHeadersPatchIn_1 = require_endpointHeadersPatchIn();
-    var endpointIn_1 = require_endpointIn();
-    var endpointOut_1 = require_endpointOut();
-    var endpointPatch_1 = require_endpointPatch();
-    var endpointSecretOut_1 = require_endpointSecretOut();
-    var endpointSecretRotateIn_1 = require_endpointSecretRotateIn();
-    var endpointStats_1 = require_endpointStats();
-    var endpointTransformationIn_1 = require_endpointTransformationIn();
-    var endpointTransformationOut_1 = require_endpointTransformationOut();
-    var endpointTransformationPatch_1 = require_endpointTransformationPatch();
-    var endpointUpdate_1 = require_endpointUpdate();
-    var eventExampleIn_1 = require_eventExampleIn();
-    var listResponseEndpointOut_1 = require_listResponseEndpointOut();
-    var messageOut_1 = require_messageOut();
-    var recoverIn_1 = require_recoverIn();
-    var recoverOut_1 = require_recoverOut();
-    var replayIn_1 = require_replayIn();
-    var replayOut_1 = require_replayOut();
-    var request_1 = require_request2();
-    var Endpoint = class {
-      constructor(requestCtx) {
-        this.requestCtx = requestCtx;
-      }
-      list(appId, options) {
-        const request = new request_1.SvixRequest(request_1.HttpMethod.GET, "/api/v1/app/{app_id}/endpoint");
-        request.setPathParam("app_id", appId);
-        request.setQueryParams({
-          limit: options === null || options === void 0 ? void 0 : options.limit,
-          iterator: options === null || options === void 0 ? void 0 : options.iterator,
-          order: options === null || options === void 0 ? void 0 : options.order
-        });
-        return request.send(this.requestCtx, listResponseEndpointOut_1.ListResponseEndpointOutSerializer._fromJsonObject);
-      }
-      create(appId, endpointIn, options) {
-        const request = new request_1.SvixRequest(request_1.HttpMethod.POST, "/api/v1/app/{app_id}/endpoint");
-        request.setPathParam("app_id", appId);
-        request.setHeaderParam("idempotency-key", options === null || options === void 0 ? void 0 : options.idempotencyKey);
-        request.setBody(endpointIn_1.EndpointInSerializer._toJsonObject(endpointIn));
-        return request.send(this.requestCtx, endpointOut_1.EndpointOutSerializer._fromJsonObject);
-      }
-      get(appId, endpointId) {
-        const request = new request_1.SvixRequest(request_1.HttpMethod.GET, "/api/v1/app/{app_id}/endpoint/{endpoint_id}");
-        request.setPathParam("app_id", appId);
-        request.setPathParam("endpoint_id", endpointId);
-        return request.send(this.requestCtx, endpointOut_1.EndpointOutSerializer._fromJsonObject);
-      }
-      update(appId, endpointId, endpointUpdate) {
-        const request = new request_1.SvixRequest(request_1.HttpMethod.PUT, "/api/v1/app/{app_id}/endpoint/{endpoint_id}");
-        request.setPathParam("app_id", appId);
-        request.setPathParam("endpoint_id", endpointId);
-        request.setBody(endpointUpdate_1.EndpointUpdateSerializer._toJsonObject(endpointUpdate));
-        return request.send(this.requestCtx, endpointOut_1.EndpointOutSerializer._fromJsonObject);
-      }
-      delete(appId, endpointId) {
-        const request = new request_1.SvixRequest(request_1.HttpMethod.DELETE, "/api/v1/app/{app_id}/endpoint/{endpoint_id}");
-        request.setPathParam("app_id", appId);
-        request.setPathParam("endpoint_id", endpointId);
-        return request.sendNoResponseBody(this.requestCtx);
-      }
-      patch(appId, endpointId, endpointPatch) {
-        const request = new request_1.SvixRequest(request_1.HttpMethod.PATCH, "/api/v1/app/{app_id}/endpoint/{endpoint_id}");
-        request.setPathParam("app_id", appId);
-        request.setPathParam("endpoint_id", endpointId);
-        request.setBody(endpointPatch_1.EndpointPatchSerializer._toJsonObject(endpointPatch));
-        return request.send(this.requestCtx, endpointOut_1.EndpointOutSerializer._fromJsonObject);
-      }
-      bulkReplay(appId, endpointId, bulkReplayIn, options) {
-        const request = new request_1.SvixRequest(request_1.HttpMethod.POST, "/api/v1/app/{app_id}/endpoint/{endpoint_id}/bulk-replay");
-        request.setPathParam("app_id", appId);
-        request.setPathParam("endpoint_id", endpointId);
-        request.setHeaderParam("idempotency-key", options === null || options === void 0 ? void 0 : options.idempotencyKey);
-        request.setBody(bulkReplayIn_1.BulkReplayInSerializer._toJsonObject(bulkReplayIn));
-        return request.send(this.requestCtx, replayOut_1.ReplayOutSerializer._fromJsonObject);
-      }
-      getHeaders(appId, endpointId) {
-        const request = new request_1.SvixRequest(request_1.HttpMethod.GET, "/api/v1/app/{app_id}/endpoint/{endpoint_id}/headers");
-        request.setPathParam("app_id", appId);
-        request.setPathParam("endpoint_id", endpointId);
-        return request.send(this.requestCtx, endpointHeadersOut_1.EndpointHeadersOutSerializer._fromJsonObject);
-      }
-      updateHeaders(appId, endpointId, endpointHeadersIn) {
-        const request = new request_1.SvixRequest(request_1.HttpMethod.PUT, "/api/v1/app/{app_id}/endpoint/{endpoint_id}/headers");
-        request.setPathParam("app_id", appId);
-        request.setPathParam("endpoint_id", endpointId);
-        request.setBody(endpointHeadersIn_1.EndpointHeadersInSerializer._toJsonObject(endpointHeadersIn));
-        return request.sendNoResponseBody(this.requestCtx);
-      }
-      headersUpdate(appId, endpointId, endpointHeadersIn) {
-        return this.updateHeaders(appId, endpointId, endpointHeadersIn);
-      }
-      patchHeaders(appId, endpointId, endpointHeadersPatchIn) {
-        const request = new request_1.SvixRequest(request_1.HttpMethod.PATCH, "/api/v1/app/{app_id}/endpoint/{endpoint_id}/headers");
-        request.setPathParam("app_id", appId);
-        request.setPathParam("endpoint_id", endpointId);
-        request.setBody(endpointHeadersPatchIn_1.EndpointHeadersPatchInSerializer._toJsonObject(endpointHeadersPatchIn));
-        return request.sendNoResponseBody(this.requestCtx);
-      }
-      headersPatch(appId, endpointId, endpointHeadersPatchIn) {
-        return this.patchHeaders(appId, endpointId, endpointHeadersPatchIn);
-      }
-      recover(appId, endpointId, recoverIn, options) {
-        const request = new request_1.SvixRequest(request_1.HttpMethod.POST, "/api/v1/app/{app_id}/endpoint/{endpoint_id}/recover");
-        request.setPathParam("app_id", appId);
-        request.setPathParam("endpoint_id", endpointId);
-        request.setHeaderParam("idempotency-key", options === null || options === void 0 ? void 0 : options.idempotencyKey);
-        request.setBody(recoverIn_1.RecoverInSerializer._toJsonObject(recoverIn));
-        return request.send(this.requestCtx, recoverOut_1.RecoverOutSerializer._fromJsonObject);
-      }
-      replayMissing(appId, endpointId, replayIn, options) {
-        const request = new request_1.SvixRequest(request_1.HttpMethod.POST, "/api/v1/app/{app_id}/endpoint/{endpoint_id}/replay-missing");
-        request.setPathParam("app_id", appId);
-        request.setPathParam("endpoint_id", endpointId);
-        request.setHeaderParam("idempotency-key", options === null || options === void 0 ? void 0 : options.idempotencyKey);
-        request.setBody(replayIn_1.ReplayInSerializer._toJsonObject(replayIn));
-        return request.send(this.requestCtx, replayOut_1.ReplayOutSerializer._fromJsonObject);
-      }
-      getSecret(appId, endpointId) {
-        const request = new request_1.SvixRequest(request_1.HttpMethod.GET, "/api/v1/app/{app_id}/endpoint/{endpoint_id}/secret");
-        request.setPathParam("app_id", appId);
-        request.setPathParam("endpoint_id", endpointId);
-        return request.send(this.requestCtx, endpointSecretOut_1.EndpointSecretOutSerializer._fromJsonObject);
-      }
-      rotateSecret(appId, endpointId, endpointSecretRotateIn, options) {
-        const request = new request_1.SvixRequest(request_1.HttpMethod.POST, "/api/v1/app/{app_id}/endpoint/{endpoint_id}/secret/rotate");
-        request.setPathParam("app_id", appId);
-        request.setPathParam("endpoint_id", endpointId);
-        request.setHeaderParam("idempotency-key", options === null || options === void 0 ? void 0 : options.idempotencyKey);
-        request.setBody(endpointSecretRotateIn_1.EndpointSecretRotateInSerializer._toJsonObject(endpointSecretRotateIn));
-        return request.sendNoResponseBody(this.requestCtx);
-      }
-      sendExample(appId, endpointId, eventExampleIn, options) {
-        const request = new request_1.SvixRequest(request_1.HttpMethod.POST, "/api/v1/app/{app_id}/endpoint/{endpoint_id}/send-example");
-        request.setPathParam("app_id", appId);
-        request.setPathParam("endpoint_id", endpointId);
-        request.setHeaderParam("idempotency-key", options === null || options === void 0 ? void 0 : options.idempotencyKey);
-        request.setBody(eventExampleIn_1.EventExampleInSerializer._toJsonObject(eventExampleIn));
-        return request.send(this.requestCtx, messageOut_1.MessageOutSerializer._fromJsonObject);
-      }
-      getStats(appId, endpointId, options) {
-        const request = new request_1.SvixRequest(request_1.HttpMethod.GET, "/api/v1/app/{app_id}/endpoint/{endpoint_id}/stats");
-        request.setPathParam("app_id", appId);
-        request.setPathParam("endpoint_id", endpointId);
-        request.setQueryParams({
-          since: options === null || options === void 0 ? void 0 : options.since,
-          until: options === null || options === void 0 ? void 0 : options.until
-        });
-        return request.send(this.requestCtx, endpointStats_1.EndpointStatsSerializer._fromJsonObject);
-      }
-      transformationGet(appId, endpointId) {
-        const request = new request_1.SvixRequest(request_1.HttpMethod.GET, "/api/v1/app/{app_id}/endpoint/{endpoint_id}/transformation");
-        request.setPathParam("app_id", appId);
-        request.setPathParam("endpoint_id", endpointId);
-        return request.send(this.requestCtx, endpointTransformationOut_1.EndpointTransformationOutSerializer._fromJsonObject);
-      }
-      patchTransformation(appId, endpointId, endpointTransformationPatch) {
-        const request = new request_1.SvixRequest(request_1.HttpMethod.PATCH, "/api/v1/app/{app_id}/endpoint/{endpoint_id}/transformation");
-        request.setPathParam("app_id", appId);
-        request.setPathParam("endpoint_id", endpointId);
-        request.setBody(endpointTransformationPatch_1.EndpointTransformationPatchSerializer._toJsonObject(endpointTransformationPatch));
-        return request.sendNoResponseBody(this.requestCtx);
-      }
-      transformationPartialUpdate(appId, endpointId, endpointTransformationIn) {
-        const request = new request_1.SvixRequest(request_1.HttpMethod.PATCH, "/api/v1/app/{app_id}/endpoint/{endpoint_id}/transformation");
-        request.setPathParam("app_id", appId);
-        request.setPathParam("endpoint_id", endpointId);
-        request.setBody(endpointTransformationIn_1.EndpointTransformationInSerializer._toJsonObject(endpointTransformationIn));
-        return request.sendNoResponseBody(this.requestCtx);
-      }
-    };
-    exports2.Endpoint = Endpoint;
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/eventTypeIn.js
-var require_eventTypeIn = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/eventTypeIn.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.EventTypeInSerializer = void 0;
-    exports2.EventTypeInSerializer = {
-      _fromJsonObject(object2) {
-        return {
-          archived: object2["archived"],
-          deprecated: object2["deprecated"],
-          description: object2["description"],
-          featureFlag: object2["featureFlag"],
-          featureFlags: object2["featureFlags"],
-          groupName: object2["groupName"],
-          name: object2["name"],
-          schemas: object2["schemas"]
-        };
-      },
-      _toJsonObject(self2) {
-        return {
-          archived: self2.archived,
-          deprecated: self2.deprecated,
-          description: self2.description,
-          featureFlag: self2.featureFlag,
-          featureFlags: self2.featureFlags,
-          groupName: self2.groupName,
-          name: self2.name,
-          schemas: self2.schemas
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/environmentIn.js
-var require_environmentIn = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/environmentIn.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.EnvironmentInSerializer = void 0;
-    var connectorIn_1 = require_connectorIn();
-    var eventTypeIn_1 = require_eventTypeIn();
-    exports2.EnvironmentInSerializer = {
-      _fromJsonObject(object2) {
-        var _a6, _b;
-        return {
-          connectors: (_a6 = object2["connectors"]) === null || _a6 === void 0 ? void 0 : _a6.map((item) => connectorIn_1.ConnectorInSerializer._fromJsonObject(item)),
-          eventTypes: (_b = object2["eventTypes"]) === null || _b === void 0 ? void 0 : _b.map((item) => eventTypeIn_1.EventTypeInSerializer._fromJsonObject(item)),
-          settings: object2["settings"]
-        };
-      },
-      _toJsonObject(self2) {
-        var _a6, _b;
-        return {
-          connectors: (_a6 = self2.connectors) === null || _a6 === void 0 ? void 0 : _a6.map((item) => connectorIn_1.ConnectorInSerializer._toJsonObject(item)),
-          eventTypes: (_b = self2.eventTypes) === null || _b === void 0 ? void 0 : _b.map((item) => eventTypeIn_1.EventTypeInSerializer._toJsonObject(item)),
-          settings: self2.settings
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/eventTypeOut.js
-var require_eventTypeOut = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/eventTypeOut.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.EventTypeOutSerializer = void 0;
-    exports2.EventTypeOutSerializer = {
-      _fromJsonObject(object2) {
-        return {
-          archived: object2["archived"],
-          createdAt: new Date(object2["createdAt"]),
-          deprecated: object2["deprecated"],
-          description: object2["description"],
-          featureFlag: object2["featureFlag"],
-          featureFlags: object2["featureFlags"],
-          groupName: object2["groupName"],
-          name: object2["name"],
-          schemas: object2["schemas"],
-          updatedAt: new Date(object2["updatedAt"])
-        };
-      },
-      _toJsonObject(self2) {
-        return {
-          archived: self2.archived,
-          createdAt: self2.createdAt,
-          deprecated: self2.deprecated,
-          description: self2.description,
-          featureFlag: self2.featureFlag,
-          featureFlags: self2.featureFlags,
-          groupName: self2.groupName,
-          name: self2.name,
-          schemas: self2.schemas,
-          updatedAt: self2.updatedAt
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/environmentOut.js
-var require_environmentOut = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/environmentOut.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.EnvironmentOutSerializer = void 0;
-    var connectorOut_1 = require_connectorOut();
-    var eventTypeOut_1 = require_eventTypeOut();
-    exports2.EnvironmentOutSerializer = {
-      _fromJsonObject(object2) {
-        return {
-          connectors: object2["connectors"].map((item) => connectorOut_1.ConnectorOutSerializer._fromJsonObject(item)),
-          createdAt: new Date(object2["createdAt"]),
-          eventTypes: object2["eventTypes"].map((item) => eventTypeOut_1.EventTypeOutSerializer._fromJsonObject(item)),
-          settings: object2["settings"],
-          version: object2["version"]
-        };
-      },
-      _toJsonObject(self2) {
-        return {
-          connectors: self2.connectors.map((item) => connectorOut_1.ConnectorOutSerializer._toJsonObject(item)),
-          createdAt: self2.createdAt,
-          eventTypes: self2.eventTypes.map((item) => eventTypeOut_1.EventTypeOutSerializer._toJsonObject(item)),
-          settings: self2.settings,
-          version: self2.version
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/api/environment.js
-var require_environment = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/api/environment.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.Environment = void 0;
-    var environmentIn_1 = require_environmentIn();
-    var environmentOut_1 = require_environmentOut();
-    var request_1 = require_request2();
-    var Environment = class {
-      constructor(requestCtx) {
-        this.requestCtx = requestCtx;
-      }
-      export(options) {
-        const request = new request_1.SvixRequest(request_1.HttpMethod.POST, "/api/v1/environment/export");
-        request.setHeaderParam("idempotency-key", options === null || options === void 0 ? void 0 : options.idempotencyKey);
-        return request.send(this.requestCtx, environmentOut_1.EnvironmentOutSerializer._fromJsonObject);
-      }
-      import(environmentIn, options) {
-        const request = new request_1.SvixRequest(request_1.HttpMethod.POST, "/api/v1/environment/import");
-        request.setHeaderParam("idempotency-key", options === null || options === void 0 ? void 0 : options.idempotencyKey);
-        request.setBody(environmentIn_1.EnvironmentInSerializer._toJsonObject(environmentIn));
-        return request.sendNoResponseBody(this.requestCtx);
-      }
-    };
-    exports2.Environment = Environment;
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/eventTypeImportOpenApiIn.js
-var require_eventTypeImportOpenApiIn = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/eventTypeImportOpenApiIn.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.EventTypeImportOpenApiInSerializer = void 0;
-    exports2.EventTypeImportOpenApiInSerializer = {
-      _fromJsonObject(object2) {
-        return {
-          dryRun: object2["dryRun"],
-          replaceAll: object2["replaceAll"],
-          spec: object2["spec"],
-          specRaw: object2["specRaw"]
-        };
-      },
-      _toJsonObject(self2) {
-        return {
-          dryRun: self2.dryRun,
-          replaceAll: self2.replaceAll,
-          spec: self2.spec,
-          specRaw: self2.specRaw
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/eventTypeFromOpenApi.js
-var require_eventTypeFromOpenApi = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/eventTypeFromOpenApi.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.EventTypeFromOpenApiSerializer = void 0;
-    exports2.EventTypeFromOpenApiSerializer = {
-      _fromJsonObject(object2) {
-        return {
-          deprecated: object2["deprecated"],
-          description: object2["description"],
-          featureFlag: object2["featureFlag"],
-          featureFlags: object2["featureFlags"],
-          groupName: object2["groupName"],
-          name: object2["name"],
-          schemas: object2["schemas"]
-        };
-      },
-      _toJsonObject(self2) {
-        return {
-          deprecated: self2.deprecated,
-          description: self2.description,
-          featureFlag: self2.featureFlag,
-          featureFlags: self2.featureFlags,
-          groupName: self2.groupName,
-          name: self2.name,
-          schemas: self2.schemas
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/eventTypeImportOpenApiOutData.js
-var require_eventTypeImportOpenApiOutData = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/eventTypeImportOpenApiOutData.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.EventTypeImportOpenApiOutDataSerializer = void 0;
-    var eventTypeFromOpenApi_1 = require_eventTypeFromOpenApi();
-    exports2.EventTypeImportOpenApiOutDataSerializer = {
-      _fromJsonObject(object2) {
-        var _a6;
-        return {
-          modified: object2["modified"],
-          toModify: (_a6 = object2["to_modify"]) === null || _a6 === void 0 ? void 0 : _a6.map((item) => eventTypeFromOpenApi_1.EventTypeFromOpenApiSerializer._fromJsonObject(item))
-        };
-      },
-      _toJsonObject(self2) {
-        var _a6;
-        return {
-          modified: self2.modified,
-          to_modify: (_a6 = self2.toModify) === null || _a6 === void 0 ? void 0 : _a6.map((item) => eventTypeFromOpenApi_1.EventTypeFromOpenApiSerializer._toJsonObject(item))
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/eventTypeImportOpenApiOut.js
-var require_eventTypeImportOpenApiOut = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/eventTypeImportOpenApiOut.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.EventTypeImportOpenApiOutSerializer = void 0;
-    var eventTypeImportOpenApiOutData_1 = require_eventTypeImportOpenApiOutData();
-    exports2.EventTypeImportOpenApiOutSerializer = {
-      _fromJsonObject(object2) {
-        return {
-          data: eventTypeImportOpenApiOutData_1.EventTypeImportOpenApiOutDataSerializer._fromJsonObject(object2["data"])
-        };
-      },
-      _toJsonObject(self2) {
-        return {
-          data: eventTypeImportOpenApiOutData_1.EventTypeImportOpenApiOutDataSerializer._toJsonObject(self2.data)
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/eventTypePatch.js
-var require_eventTypePatch = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/eventTypePatch.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.EventTypePatchSerializer = void 0;
-    exports2.EventTypePatchSerializer = {
-      _fromJsonObject(object2) {
-        return {
-          archived: object2["archived"],
-          deprecated: object2["deprecated"],
-          description: object2["description"],
-          featureFlag: object2["featureFlag"],
-          featureFlags: object2["featureFlags"],
-          groupName: object2["groupName"],
-          schemas: object2["schemas"]
-        };
-      },
-      _toJsonObject(self2) {
-        return {
-          archived: self2.archived,
-          deprecated: self2.deprecated,
-          description: self2.description,
-          featureFlag: self2.featureFlag,
-          featureFlags: self2.featureFlags,
-          groupName: self2.groupName,
-          schemas: self2.schemas
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/eventTypeUpdate.js
-var require_eventTypeUpdate = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/eventTypeUpdate.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.EventTypeUpdateSerializer = void 0;
-    exports2.EventTypeUpdateSerializer = {
-      _fromJsonObject(object2) {
-        return {
-          archived: object2["archived"],
-          deprecated: object2["deprecated"],
-          description: object2["description"],
-          featureFlag: object2["featureFlag"],
-          featureFlags: object2["featureFlags"],
-          groupName: object2["groupName"],
-          schemas: object2["schemas"]
-        };
-      },
-      _toJsonObject(self2) {
-        return {
-          archived: self2.archived,
-          deprecated: self2.deprecated,
-          description: self2.description,
-          featureFlag: self2.featureFlag,
-          featureFlags: self2.featureFlags,
-          groupName: self2.groupName,
-          schemas: self2.schemas
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/listResponseEventTypeOut.js
-var require_listResponseEventTypeOut = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/listResponseEventTypeOut.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.ListResponseEventTypeOutSerializer = void 0;
-    var eventTypeOut_1 = require_eventTypeOut();
-    exports2.ListResponseEventTypeOutSerializer = {
-      _fromJsonObject(object2) {
-        return {
-          data: object2["data"].map((item) => eventTypeOut_1.EventTypeOutSerializer._fromJsonObject(item)),
-          done: object2["done"],
-          iterator: object2["iterator"],
-          prevIterator: object2["prevIterator"]
-        };
-      },
-      _toJsonObject(self2) {
-        return {
-          data: self2.data.map((item) => eventTypeOut_1.EventTypeOutSerializer._toJsonObject(item)),
-          done: self2.done,
-          iterator: self2.iterator,
-          prevIterator: self2.prevIterator
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/api/eventType.js
-var require_eventType = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/api/eventType.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.EventType = void 0;
-    var eventTypeImportOpenApiIn_1 = require_eventTypeImportOpenApiIn();
-    var eventTypeImportOpenApiOut_1 = require_eventTypeImportOpenApiOut();
-    var eventTypeIn_1 = require_eventTypeIn();
-    var eventTypeOut_1 = require_eventTypeOut();
-    var eventTypePatch_1 = require_eventTypePatch();
-    var eventTypeUpdate_1 = require_eventTypeUpdate();
-    var listResponseEventTypeOut_1 = require_listResponseEventTypeOut();
-    var request_1 = require_request2();
-    var EventType = class {
-      constructor(requestCtx) {
-        this.requestCtx = requestCtx;
-      }
-      list(options) {
-        const request = new request_1.SvixRequest(request_1.HttpMethod.GET, "/api/v1/event-type");
-        request.setQueryParams({
-          limit: options === null || options === void 0 ? void 0 : options.limit,
-          iterator: options === null || options === void 0 ? void 0 : options.iterator,
-          order: options === null || options === void 0 ? void 0 : options.order,
-          include_archived: options === null || options === void 0 ? void 0 : options.includeArchived,
-          with_content: options === null || options === void 0 ? void 0 : options.withContent
-        });
-        return request.send(this.requestCtx, listResponseEventTypeOut_1.ListResponseEventTypeOutSerializer._fromJsonObject);
-      }
-      create(eventTypeIn, options) {
-        const request = new request_1.SvixRequest(request_1.HttpMethod.POST, "/api/v1/event-type");
-        request.setHeaderParam("idempotency-key", options === null || options === void 0 ? void 0 : options.idempotencyKey);
-        request.setBody(eventTypeIn_1.EventTypeInSerializer._toJsonObject(eventTypeIn));
-        return request.send(this.requestCtx, eventTypeOut_1.EventTypeOutSerializer._fromJsonObject);
-      }
-      importOpenapi(eventTypeImportOpenApiIn, options) {
-        const request = new request_1.SvixRequest(request_1.HttpMethod.POST, "/api/v1/event-type/import/openapi");
-        request.setHeaderParam("idempotency-key", options === null || options === void 0 ? void 0 : options.idempotencyKey);
-        request.setBody(eventTypeImportOpenApiIn_1.EventTypeImportOpenApiInSerializer._toJsonObject(eventTypeImportOpenApiIn));
-        return request.send(this.requestCtx, eventTypeImportOpenApiOut_1.EventTypeImportOpenApiOutSerializer._fromJsonObject);
-      }
-      get(eventTypeName) {
-        const request = new request_1.SvixRequest(request_1.HttpMethod.GET, "/api/v1/event-type/{event_type_name}");
-        request.setPathParam("event_type_name", eventTypeName);
-        return request.send(this.requestCtx, eventTypeOut_1.EventTypeOutSerializer._fromJsonObject);
-      }
-      update(eventTypeName, eventTypeUpdate) {
-        const request = new request_1.SvixRequest(request_1.HttpMethod.PUT, "/api/v1/event-type/{event_type_name}");
-        request.setPathParam("event_type_name", eventTypeName);
-        request.setBody(eventTypeUpdate_1.EventTypeUpdateSerializer._toJsonObject(eventTypeUpdate));
-        return request.send(this.requestCtx, eventTypeOut_1.EventTypeOutSerializer._fromJsonObject);
-      }
-      delete(eventTypeName, options) {
-        const request = new request_1.SvixRequest(request_1.HttpMethod.DELETE, "/api/v1/event-type/{event_type_name}");
-        request.setPathParam("event_type_name", eventTypeName);
-        request.setQueryParams({
-          expunge: options === null || options === void 0 ? void 0 : options.expunge
-        });
-        return request.sendNoResponseBody(this.requestCtx);
-      }
-      patch(eventTypeName, eventTypePatch) {
-        const request = new request_1.SvixRequest(request_1.HttpMethod.PATCH, "/api/v1/event-type/{event_type_name}");
-        request.setPathParam("event_type_name", eventTypeName);
-        request.setBody(eventTypePatch_1.EventTypePatchSerializer._toJsonObject(eventTypePatch));
-        return request.send(this.requestCtx, eventTypeOut_1.EventTypeOutSerializer._fromJsonObject);
-      }
-    };
-    exports2.EventType = EventType;
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/api/health.js
-var require_health = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/api/health.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.Health = void 0;
-    var request_1 = require_request2();
-    var Health = class {
-      constructor(requestCtx) {
-        this.requestCtx = requestCtx;
-      }
-      get() {
-        const request = new request_1.SvixRequest(request_1.HttpMethod.GET, "/api/v1/health");
-        return request.sendNoResponseBody(this.requestCtx);
-      }
-    };
-    exports2.Health = Health;
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/ingestSourceConsumerPortalAccessIn.js
-var require_ingestSourceConsumerPortalAccessIn = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/ingestSourceConsumerPortalAccessIn.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.IngestSourceConsumerPortalAccessInSerializer = void 0;
-    exports2.IngestSourceConsumerPortalAccessInSerializer = {
-      _fromJsonObject(object2) {
-        return {
-          expiry: object2["expiry"],
-          readOnly: object2["readOnly"]
-        };
-      },
-      _toJsonObject(self2) {
-        return {
-          expiry: self2.expiry,
-          readOnly: self2.readOnly
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/ingestEndpointHeadersIn.js
-var require_ingestEndpointHeadersIn = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/ingestEndpointHeadersIn.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.IngestEndpointHeadersInSerializer = void 0;
-    exports2.IngestEndpointHeadersInSerializer = {
-      _fromJsonObject(object2) {
-        return {
-          headers: object2["headers"]
-        };
-      },
-      _toJsonObject(self2) {
-        return {
-          headers: self2.headers
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/ingestEndpointHeadersOut.js
-var require_ingestEndpointHeadersOut = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/ingestEndpointHeadersOut.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.IngestEndpointHeadersOutSerializer = void 0;
-    exports2.IngestEndpointHeadersOutSerializer = {
-      _fromJsonObject(object2) {
-        return {
-          headers: object2["headers"],
-          sensitive: object2["sensitive"]
-        };
-      },
-      _toJsonObject(self2) {
-        return {
-          headers: self2.headers,
-          sensitive: self2.sensitive
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/ingestEndpointIn.js
-var require_ingestEndpointIn = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/ingestEndpointIn.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.IngestEndpointInSerializer = void 0;
-    exports2.IngestEndpointInSerializer = {
-      _fromJsonObject(object2) {
-        return {
-          description: object2["description"],
-          disabled: object2["disabled"],
-          metadata: object2["metadata"],
-          rateLimit: object2["rateLimit"],
-          secret: object2["secret"],
-          uid: object2["uid"],
-          url: object2["url"]
-        };
-      },
-      _toJsonObject(self2) {
-        return {
-          description: self2.description,
-          disabled: self2.disabled,
-          metadata: self2.metadata,
-          rateLimit: self2.rateLimit,
-          secret: self2.secret,
-          uid: self2.uid,
-          url: self2.url
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/ingestEndpointOut.js
-var require_ingestEndpointOut = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/ingestEndpointOut.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.IngestEndpointOutSerializer = void 0;
-    exports2.IngestEndpointOutSerializer = {
-      _fromJsonObject(object2) {
-        return {
-          createdAt: new Date(object2["createdAt"]),
-          description: object2["description"],
-          disabled: object2["disabled"],
-          id: object2["id"],
-          metadata: object2["metadata"],
-          rateLimit: object2["rateLimit"],
-          uid: object2["uid"],
-          updatedAt: new Date(object2["updatedAt"]),
-          url: object2["url"]
-        };
-      },
-      _toJsonObject(self2) {
-        return {
-          createdAt: self2.createdAt,
-          description: self2.description,
-          disabled: self2.disabled,
-          id: self2.id,
-          metadata: self2.metadata,
-          rateLimit: self2.rateLimit,
-          uid: self2.uid,
-          updatedAt: self2.updatedAt,
-          url: self2.url
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/ingestEndpointSecretIn.js
-var require_ingestEndpointSecretIn = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/ingestEndpointSecretIn.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.IngestEndpointSecretInSerializer = void 0;
-    exports2.IngestEndpointSecretInSerializer = {
-      _fromJsonObject(object2) {
-        return {
-          key: object2["key"]
-        };
-      },
-      _toJsonObject(self2) {
-        return {
-          key: self2.key
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/ingestEndpointSecretOut.js
-var require_ingestEndpointSecretOut = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/ingestEndpointSecretOut.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.IngestEndpointSecretOutSerializer = void 0;
-    exports2.IngestEndpointSecretOutSerializer = {
-      _fromJsonObject(object2) {
-        return {
-          key: object2["key"]
-        };
-      },
-      _toJsonObject(self2) {
-        return {
-          key: self2.key
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/ingestEndpointTransformationOut.js
-var require_ingestEndpointTransformationOut = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/ingestEndpointTransformationOut.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.IngestEndpointTransformationOutSerializer = void 0;
-    exports2.IngestEndpointTransformationOutSerializer = {
-      _fromJsonObject(object2) {
-        return {
-          code: object2["code"],
-          enabled: object2["enabled"]
-        };
-      },
-      _toJsonObject(self2) {
-        return {
-          code: self2.code,
-          enabled: self2.enabled
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/ingestEndpointTransformationPatch.js
-var require_ingestEndpointTransformationPatch = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/ingestEndpointTransformationPatch.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.IngestEndpointTransformationPatchSerializer = void 0;
-    exports2.IngestEndpointTransformationPatchSerializer = {
-      _fromJsonObject(object2) {
-        return {
-          code: object2["code"],
-          enabled: object2["enabled"]
-        };
-      },
-      _toJsonObject(self2) {
-        return {
-          code: self2.code,
-          enabled: self2.enabled
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/ingestEndpointUpdate.js
-var require_ingestEndpointUpdate = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/ingestEndpointUpdate.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.IngestEndpointUpdateSerializer = void 0;
-    exports2.IngestEndpointUpdateSerializer = {
-      _fromJsonObject(object2) {
-        return {
-          description: object2["description"],
-          disabled: object2["disabled"],
-          metadata: object2["metadata"],
-          rateLimit: object2["rateLimit"],
-          uid: object2["uid"],
-          url: object2["url"]
-        };
-      },
-      _toJsonObject(self2) {
-        return {
-          description: self2.description,
-          disabled: self2.disabled,
-          metadata: self2.metadata,
-          rateLimit: self2.rateLimit,
-          uid: self2.uid,
-          url: self2.url
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/listResponseIngestEndpointOut.js
-var require_listResponseIngestEndpointOut = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/listResponseIngestEndpointOut.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.ListResponseIngestEndpointOutSerializer = void 0;
-    var ingestEndpointOut_1 = require_ingestEndpointOut();
-    exports2.ListResponseIngestEndpointOutSerializer = {
-      _fromJsonObject(object2) {
-        return {
-          data: object2["data"].map((item) => ingestEndpointOut_1.IngestEndpointOutSerializer._fromJsonObject(item)),
-          done: object2["done"],
-          iterator: object2["iterator"],
-          prevIterator: object2["prevIterator"]
-        };
-      },
-      _toJsonObject(self2) {
-        return {
-          data: self2.data.map((item) => ingestEndpointOut_1.IngestEndpointOutSerializer._toJsonObject(item)),
-          done: self2.done,
-          iterator: self2.iterator,
-          prevIterator: self2.prevIterator
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/api/ingestEndpoint.js
-var require_ingestEndpoint = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/api/ingestEndpoint.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.IngestEndpoint = void 0;
-    var ingestEndpointHeadersIn_1 = require_ingestEndpointHeadersIn();
-    var ingestEndpointHeadersOut_1 = require_ingestEndpointHeadersOut();
-    var ingestEndpointIn_1 = require_ingestEndpointIn();
-    var ingestEndpointOut_1 = require_ingestEndpointOut();
-    var ingestEndpointSecretIn_1 = require_ingestEndpointSecretIn();
-    var ingestEndpointSecretOut_1 = require_ingestEndpointSecretOut();
-    var ingestEndpointTransformationOut_1 = require_ingestEndpointTransformationOut();
-    var ingestEndpointTransformationPatch_1 = require_ingestEndpointTransformationPatch();
-    var ingestEndpointUpdate_1 = require_ingestEndpointUpdate();
-    var listResponseIngestEndpointOut_1 = require_listResponseIngestEndpointOut();
-    var request_1 = require_request2();
-    var IngestEndpoint = class {
-      constructor(requestCtx) {
-        this.requestCtx = requestCtx;
-      }
-      list(sourceId, options) {
-        const request = new request_1.SvixRequest(request_1.HttpMethod.GET, "/ingest/api/v1/source/{source_id}/endpoint");
-        request.setPathParam("source_id", sourceId);
-        request.setQueryParams({
-          limit: options === null || options === void 0 ? void 0 : options.limit,
-          iterator: options === null || options === void 0 ? void 0 : options.iterator,
-          order: options === null || options === void 0 ? void 0 : options.order
-        });
-        return request.send(this.requestCtx, listResponseIngestEndpointOut_1.ListResponseIngestEndpointOutSerializer._fromJsonObject);
-      }
-      create(sourceId, ingestEndpointIn, options) {
-        const request = new request_1.SvixRequest(request_1.HttpMethod.POST, "/ingest/api/v1/source/{source_id}/endpoint");
-        request.setPathParam("source_id", sourceId);
-        request.setHeaderParam("idempotency-key", options === null || options === void 0 ? void 0 : options.idempotencyKey);
-        request.setBody(ingestEndpointIn_1.IngestEndpointInSerializer._toJsonObject(ingestEndpointIn));
-        return request.send(this.requestCtx, ingestEndpointOut_1.IngestEndpointOutSerializer._fromJsonObject);
-      }
-      get(sourceId, endpointId) {
-        const request = new request_1.SvixRequest(request_1.HttpMethod.GET, "/ingest/api/v1/source/{source_id}/endpoint/{endpoint_id}");
-        request.setPathParam("source_id", sourceId);
-        request.setPathParam("endpoint_id", endpointId);
-        return request.send(this.requestCtx, ingestEndpointOut_1.IngestEndpointOutSerializer._fromJsonObject);
-      }
-      update(sourceId, endpointId, ingestEndpointUpdate) {
-        const request = new request_1.SvixRequest(request_1.HttpMethod.PUT, "/ingest/api/v1/source/{source_id}/endpoint/{endpoint_id}");
-        request.setPathParam("source_id", sourceId);
-        request.setPathParam("endpoint_id", endpointId);
-        request.setBody(ingestEndpointUpdate_1.IngestEndpointUpdateSerializer._toJsonObject(ingestEndpointUpdate));
-        return request.send(this.requestCtx, ingestEndpointOut_1.IngestEndpointOutSerializer._fromJsonObject);
-      }
-      delete(sourceId, endpointId) {
-        const request = new request_1.SvixRequest(request_1.HttpMethod.DELETE, "/ingest/api/v1/source/{source_id}/endpoint/{endpoint_id}");
-        request.setPathParam("source_id", sourceId);
-        request.setPathParam("endpoint_id", endpointId);
-        return request.sendNoResponseBody(this.requestCtx);
-      }
-      getHeaders(sourceId, endpointId) {
-        const request = new request_1.SvixRequest(request_1.HttpMethod.GET, "/ingest/api/v1/source/{source_id}/endpoint/{endpoint_id}/headers");
-        request.setPathParam("source_id", sourceId);
-        request.setPathParam("endpoint_id", endpointId);
-        return request.send(this.requestCtx, ingestEndpointHeadersOut_1.IngestEndpointHeadersOutSerializer._fromJsonObject);
-      }
-      updateHeaders(sourceId, endpointId, ingestEndpointHeadersIn) {
-        const request = new request_1.SvixRequest(request_1.HttpMethod.PUT, "/ingest/api/v1/source/{source_id}/endpoint/{endpoint_id}/headers");
-        request.setPathParam("source_id", sourceId);
-        request.setPathParam("endpoint_id", endpointId);
-        request.setBody(ingestEndpointHeadersIn_1.IngestEndpointHeadersInSerializer._toJsonObject(ingestEndpointHeadersIn));
-        return request.sendNoResponseBody(this.requestCtx);
-      }
-      getSecret(sourceId, endpointId) {
-        const request = new request_1.SvixRequest(request_1.HttpMethod.GET, "/ingest/api/v1/source/{source_id}/endpoint/{endpoint_id}/secret");
-        request.setPathParam("source_id", sourceId);
-        request.setPathParam("endpoint_id", endpointId);
-        return request.send(this.requestCtx, ingestEndpointSecretOut_1.IngestEndpointSecretOutSerializer._fromJsonObject);
-      }
-      rotateSecret(sourceId, endpointId, ingestEndpointSecretIn, options) {
-        const request = new request_1.SvixRequest(request_1.HttpMethod.POST, "/ingest/api/v1/source/{source_id}/endpoint/{endpoint_id}/secret/rotate");
-        request.setPathParam("source_id", sourceId);
-        request.setPathParam("endpoint_id", endpointId);
-        request.setHeaderParam("idempotency-key", options === null || options === void 0 ? void 0 : options.idempotencyKey);
-        request.setBody(ingestEndpointSecretIn_1.IngestEndpointSecretInSerializer._toJsonObject(ingestEndpointSecretIn));
-        return request.sendNoResponseBody(this.requestCtx);
-      }
-      getTransformation(sourceId, endpointId) {
-        const request = new request_1.SvixRequest(request_1.HttpMethod.GET, "/ingest/api/v1/source/{source_id}/endpoint/{endpoint_id}/transformation");
-        request.setPathParam("source_id", sourceId);
-        request.setPathParam("endpoint_id", endpointId);
-        return request.send(this.requestCtx, ingestEndpointTransformationOut_1.IngestEndpointTransformationOutSerializer._fromJsonObject);
-      }
-      setTransformation(sourceId, endpointId, ingestEndpointTransformationPatch) {
-        const request = new request_1.SvixRequest(request_1.HttpMethod.PATCH, "/ingest/api/v1/source/{source_id}/endpoint/{endpoint_id}/transformation");
-        request.setPathParam("source_id", sourceId);
-        request.setPathParam("endpoint_id", endpointId);
-        request.setBody(ingestEndpointTransformationPatch_1.IngestEndpointTransformationPatchSerializer._toJsonObject(ingestEndpointTransformationPatch));
-        return request.sendNoResponseBody(this.requestCtx);
-      }
-    };
-    exports2.IngestEndpoint = IngestEndpoint;
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/adobeSignConfig.js
-var require_adobeSignConfig = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/adobeSignConfig.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.AdobeSignConfigSerializer = void 0;
-    exports2.AdobeSignConfigSerializer = {
-      _fromJsonObject(object2) {
-        return {
-          clientId: object2["clientId"]
-        };
-      },
-      _toJsonObject(self2) {
-        return {
-          clientId: self2.clientId
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/airwallexConfig.js
-var require_airwallexConfig = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/airwallexConfig.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.AirwallexConfigSerializer = void 0;
-    exports2.AirwallexConfigSerializer = {
-      _fromJsonObject(object2) {
-        return {
-          secret: object2["secret"]
-        };
-      },
-      _toJsonObject(self2) {
-        return {
-          secret: self2.secret
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/checkbookConfig.js
-var require_checkbookConfig = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/checkbookConfig.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.CheckbookConfigSerializer = void 0;
-    exports2.CheckbookConfigSerializer = {
-      _fromJsonObject(object2) {
-        return {
-          secret: object2["secret"]
-        };
-      },
-      _toJsonObject(self2) {
-        return {
-          secret: self2.secret
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/cronConfig.js
-var require_cronConfig = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/cronConfig.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.CronConfigSerializer = void 0;
-    exports2.CronConfigSerializer = {
-      _fromJsonObject(object2) {
-        return {
-          contentType: object2["contentType"],
-          payload: object2["payload"],
-          schedule: object2["schedule"]
-        };
-      },
-      _toJsonObject(self2) {
-        return {
-          contentType: self2.contentType,
-          payload: self2.payload,
-          schedule: self2.schedule
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/docusignConfig.js
-var require_docusignConfig = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/docusignConfig.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.DocusignConfigSerializer = void 0;
-    exports2.DocusignConfigSerializer = {
-      _fromJsonObject(object2) {
-        return {
-          secret: object2["secret"]
-        };
-      },
-      _toJsonObject(self2) {
-        return {
-          secret: self2.secret
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/easypostConfig.js
-var require_easypostConfig = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/easypostConfig.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.EasypostConfigSerializer = void 0;
-    exports2.EasypostConfigSerializer = {
-      _fromJsonObject(object2) {
-        return {
-          secret: object2["secret"]
-        };
-      },
-      _toJsonObject(self2) {
-        return {
-          secret: self2.secret
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/githubConfig.js
-var require_githubConfig = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/githubConfig.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.GithubConfigSerializer = void 0;
-    exports2.GithubConfigSerializer = {
-      _fromJsonObject(object2) {
-        return {
-          secret: object2["secret"]
-        };
-      },
-      _toJsonObject(self2) {
-        return {
-          secret: self2.secret
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/hubspotConfig.js
-var require_hubspotConfig = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/hubspotConfig.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.HubspotConfigSerializer = void 0;
-    exports2.HubspotConfigSerializer = {
-      _fromJsonObject(object2) {
-        return {
-          secret: object2["secret"]
-        };
-      },
-      _toJsonObject(self2) {
-        return {
-          secret: self2.secret
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/metaConfig.js
-var require_metaConfig = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/metaConfig.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.MetaConfigSerializer = void 0;
-    exports2.MetaConfigSerializer = {
-      _fromJsonObject(object2) {
-        return {
-          secret: object2["secret"],
-          verifyToken: object2["verifyToken"]
-        };
-      },
-      _toJsonObject(self2) {
-        return {
-          secret: self2.secret,
-          verifyToken: self2.verifyToken
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/orumIoConfig.js
-var require_orumIoConfig = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/orumIoConfig.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.OrumIoConfigSerializer = void 0;
-    exports2.OrumIoConfigSerializer = {
-      _fromJsonObject(object2) {
-        return {
-          publicKey: object2["publicKey"]
-        };
-      },
-      _toJsonObject(self2) {
-        return {
-          publicKey: self2.publicKey
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/pandaDocConfig.js
-var require_pandaDocConfig = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/pandaDocConfig.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.PandaDocConfigSerializer = void 0;
-    exports2.PandaDocConfigSerializer = {
-      _fromJsonObject(object2) {
-        return {
-          secret: object2["secret"]
-        };
-      },
-      _toJsonObject(self2) {
-        return {
-          secret: self2.secret
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/portIoConfig.js
-var require_portIoConfig = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/portIoConfig.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.PortIoConfigSerializer = void 0;
-    exports2.PortIoConfigSerializer = {
-      _fromJsonObject(object2) {
-        return {
-          secret: object2["secret"]
-        };
-      },
-      _toJsonObject(self2) {
-        return {
-          secret: self2.secret
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/rutterConfig.js
-var require_rutterConfig = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/rutterConfig.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.RutterConfigSerializer = void 0;
-    exports2.RutterConfigSerializer = {
-      _fromJsonObject(object2) {
-        return {
-          secret: object2["secret"]
-        };
-      },
-      _toJsonObject(self2) {
-        return {
-          secret: self2.secret
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/segmentConfig.js
-var require_segmentConfig = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/segmentConfig.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.SegmentConfigSerializer = void 0;
-    exports2.SegmentConfigSerializer = {
-      _fromJsonObject(object2) {
-        return {
-          secret: object2["secret"]
-        };
-      },
-      _toJsonObject(self2) {
-        return {
-          secret: self2.secret
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/shopifyConfig.js
-var require_shopifyConfig = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/shopifyConfig.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.ShopifyConfigSerializer = void 0;
-    exports2.ShopifyConfigSerializer = {
-      _fromJsonObject(object2) {
-        return {
-          secret: object2["secret"]
-        };
-      },
-      _toJsonObject(self2) {
-        return {
-          secret: self2.secret
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/slackConfig.js
-var require_slackConfig = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/slackConfig.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.SlackConfigSerializer = void 0;
-    exports2.SlackConfigSerializer = {
-      _fromJsonObject(object2) {
-        return {
-          secret: object2["secret"]
-        };
-      },
-      _toJsonObject(self2) {
-        return {
-          secret: self2.secret
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/stripeConfig.js
-var require_stripeConfig = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/stripeConfig.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.StripeConfigSerializer = void 0;
-    exports2.StripeConfigSerializer = {
-      _fromJsonObject(object2) {
-        return {
-          secret: object2["secret"]
-        };
-      },
-      _toJsonObject(self2) {
-        return {
-          secret: self2.secret
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/svixConfig.js
-var require_svixConfig = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/svixConfig.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.SvixConfigSerializer = void 0;
-    exports2.SvixConfigSerializer = {
-      _fromJsonObject(object2) {
-        return {
-          secret: object2["secret"]
-        };
-      },
-      _toJsonObject(self2) {
-        return {
-          secret: self2.secret
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/telnyxConfig.js
-var require_telnyxConfig = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/telnyxConfig.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.TelnyxConfigSerializer = void 0;
-    exports2.TelnyxConfigSerializer = {
-      _fromJsonObject(object2) {
-        return {
-          publicKey: object2["publicKey"]
-        };
-      },
-      _toJsonObject(self2) {
-        return {
-          publicKey: self2.publicKey
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/vapiConfig.js
-var require_vapiConfig = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/vapiConfig.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.VapiConfigSerializer = void 0;
-    exports2.VapiConfigSerializer = {
-      _fromJsonObject(object2) {
-        return {
-          secret: object2["secret"]
-        };
-      },
-      _toJsonObject(self2) {
-        return {
-          secret: self2.secret
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/veriffConfig.js
-var require_veriffConfig = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/veriffConfig.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.VeriffConfigSerializer = void 0;
-    exports2.VeriffConfigSerializer = {
-      _fromJsonObject(object2) {
-        return {
-          secret: object2["secret"]
-        };
-      },
-      _toJsonObject(self2) {
-        return {
-          secret: self2.secret
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/zoomConfig.js
-var require_zoomConfig = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/zoomConfig.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.ZoomConfigSerializer = void 0;
-    exports2.ZoomConfigSerializer = {
-      _fromJsonObject(object2) {
-        return {
-          secret: object2["secret"]
-        };
-      },
-      _toJsonObject(self2) {
-        return {
-          secret: self2.secret
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/ingestSourceIn.js
-var require_ingestSourceIn = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/ingestSourceIn.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.IngestSourceInSerializer = void 0;
-    var adobeSignConfig_1 = require_adobeSignConfig();
-    var airwallexConfig_1 = require_airwallexConfig();
-    var checkbookConfig_1 = require_checkbookConfig();
-    var cronConfig_1 = require_cronConfig();
-    var docusignConfig_1 = require_docusignConfig();
-    var easypostConfig_1 = require_easypostConfig();
-    var githubConfig_1 = require_githubConfig();
-    var hubspotConfig_1 = require_hubspotConfig();
-    var metaConfig_1 = require_metaConfig();
-    var orumIoConfig_1 = require_orumIoConfig();
-    var pandaDocConfig_1 = require_pandaDocConfig();
-    var portIoConfig_1 = require_portIoConfig();
-    var rutterConfig_1 = require_rutterConfig();
-    var segmentConfig_1 = require_segmentConfig();
-    var shopifyConfig_1 = require_shopifyConfig();
-    var slackConfig_1 = require_slackConfig();
-    var stripeConfig_1 = require_stripeConfig();
-    var svixConfig_1 = require_svixConfig();
-    var telnyxConfig_1 = require_telnyxConfig();
-    var vapiConfig_1 = require_vapiConfig();
-    var veriffConfig_1 = require_veriffConfig();
-    var zoomConfig_1 = require_zoomConfig();
-    exports2.IngestSourceInSerializer = {
-      _fromJsonObject(object2) {
-        const type = object2["type"];
-        function getConfig(type2) {
-          switch (type2) {
-            case "generic-webhook":
-              return {};
-            case "cron":
-              return cronConfig_1.CronConfigSerializer._fromJsonObject(object2["config"]);
-            case "adobe-sign":
-              return adobeSignConfig_1.AdobeSignConfigSerializer._fromJsonObject(object2["config"]);
-            case "beehiiv":
-              return svixConfig_1.SvixConfigSerializer._fromJsonObject(object2["config"]);
-            case "brex":
-              return svixConfig_1.SvixConfigSerializer._fromJsonObject(object2["config"]);
-            case "checkbook":
-              return checkbookConfig_1.CheckbookConfigSerializer._fromJsonObject(object2["config"]);
-            case "clerk":
-              return svixConfig_1.SvixConfigSerializer._fromJsonObject(object2["config"]);
-            case "docusign":
-              return docusignConfig_1.DocusignConfigSerializer._fromJsonObject(object2["config"]);
-            case "easypost":
-              return easypostConfig_1.EasypostConfigSerializer._fromJsonObject(object2["config"]);
-            case "github":
-              return githubConfig_1.GithubConfigSerializer._fromJsonObject(object2["config"]);
-            case "guesty":
-              return svixConfig_1.SvixConfigSerializer._fromJsonObject(object2["config"]);
-            case "hubspot":
-              return hubspotConfig_1.HubspotConfigSerializer._fromJsonObject(object2["config"]);
-            case "incident-io":
-              return svixConfig_1.SvixConfigSerializer._fromJsonObject(object2["config"]);
-            case "lithic":
-              return svixConfig_1.SvixConfigSerializer._fromJsonObject(object2["config"]);
-            case "meta":
-              return metaConfig_1.MetaConfigSerializer._fromJsonObject(object2["config"]);
-            case "nash":
-              return svixConfig_1.SvixConfigSerializer._fromJsonObject(object2["config"]);
-            case "orum-io":
-              return orumIoConfig_1.OrumIoConfigSerializer._fromJsonObject(object2["config"]);
-            case "panda-doc":
-              return pandaDocConfig_1.PandaDocConfigSerializer._fromJsonObject(object2["config"]);
-            case "port-io":
-              return portIoConfig_1.PortIoConfigSerializer._fromJsonObject(object2["config"]);
-            case "pleo":
-              return svixConfig_1.SvixConfigSerializer._fromJsonObject(object2["config"]);
-            case "psi-fi":
-              return svixConfig_1.SvixConfigSerializer._fromJsonObject(object2["config"]);
-            case "replicate":
-              return svixConfig_1.SvixConfigSerializer._fromJsonObject(object2["config"]);
-            case "resend":
-              return svixConfig_1.SvixConfigSerializer._fromJsonObject(object2["config"]);
-            case "rutter":
-              return rutterConfig_1.RutterConfigSerializer._fromJsonObject(object2["config"]);
-            case "safebase":
-              return svixConfig_1.SvixConfigSerializer._fromJsonObject(object2["config"]);
-            case "sardine":
-              return svixConfig_1.SvixConfigSerializer._fromJsonObject(object2["config"]);
-            case "segment":
-              return segmentConfig_1.SegmentConfigSerializer._fromJsonObject(object2["config"]);
-            case "shopify":
-              return shopifyConfig_1.ShopifyConfigSerializer._fromJsonObject(object2["config"]);
-            case "slack":
-              return slackConfig_1.SlackConfigSerializer._fromJsonObject(object2["config"]);
-            case "stripe":
-              return stripeConfig_1.StripeConfigSerializer._fromJsonObject(object2["config"]);
-            case "stych":
-              return svixConfig_1.SvixConfigSerializer._fromJsonObject(object2["config"]);
-            case "svix":
-              return svixConfig_1.SvixConfigSerializer._fromJsonObject(object2["config"]);
-            case "zoom":
-              return zoomConfig_1.ZoomConfigSerializer._fromJsonObject(object2["config"]);
-            case "telnyx":
-              return telnyxConfig_1.TelnyxConfigSerializer._fromJsonObject(object2["config"]);
-            case "vapi":
-              return vapiConfig_1.VapiConfigSerializer._fromJsonObject(object2["config"]);
-            case "open-ai":
-              return svixConfig_1.SvixConfigSerializer._fromJsonObject(object2["config"]);
-            case "render":
-              return svixConfig_1.SvixConfigSerializer._fromJsonObject(object2["config"]);
-            case "veriff":
-              return veriffConfig_1.VeriffConfigSerializer._fromJsonObject(object2["config"]);
-            case "airwallex":
-              return airwallexConfig_1.AirwallexConfigSerializer._fromJsonObject(object2["config"]);
-            default:
-              throw new Error(`Unexpected type: ${type2}`);
-          }
-        }
-        return {
-          type,
-          config: getConfig(type),
-          metadata: object2["metadata"],
-          name: object2["name"],
-          uid: object2["uid"]
-        };
-      },
-      _toJsonObject(self2) {
-        let config2;
-        switch (self2.type) {
-          case "generic-webhook":
-            config2 = {};
-            break;
-          case "cron":
-            config2 = cronConfig_1.CronConfigSerializer._toJsonObject(self2.config);
-            break;
-          case "adobe-sign":
-            config2 = adobeSignConfig_1.AdobeSignConfigSerializer._toJsonObject(self2.config);
-            break;
-          case "beehiiv":
-            config2 = svixConfig_1.SvixConfigSerializer._toJsonObject(self2.config);
-            break;
-          case "brex":
-            config2 = svixConfig_1.SvixConfigSerializer._toJsonObject(self2.config);
-            break;
-          case "checkbook":
-            config2 = checkbookConfig_1.CheckbookConfigSerializer._toJsonObject(self2.config);
-            break;
-          case "clerk":
-            config2 = svixConfig_1.SvixConfigSerializer._toJsonObject(self2.config);
-            break;
-          case "docusign":
-            config2 = docusignConfig_1.DocusignConfigSerializer._toJsonObject(self2.config);
-            break;
-          case "easypost":
-            config2 = easypostConfig_1.EasypostConfigSerializer._toJsonObject(self2.config);
-            break;
-          case "github":
-            config2 = githubConfig_1.GithubConfigSerializer._toJsonObject(self2.config);
-            break;
-          case "guesty":
-            config2 = svixConfig_1.SvixConfigSerializer._toJsonObject(self2.config);
-            break;
-          case "hubspot":
-            config2 = hubspotConfig_1.HubspotConfigSerializer._toJsonObject(self2.config);
-            break;
-          case "incident-io":
-            config2 = svixConfig_1.SvixConfigSerializer._toJsonObject(self2.config);
-            break;
-          case "lithic":
-            config2 = svixConfig_1.SvixConfigSerializer._toJsonObject(self2.config);
-            break;
-          case "meta":
-            config2 = metaConfig_1.MetaConfigSerializer._toJsonObject(self2.config);
-            break;
-          case "nash":
-            config2 = svixConfig_1.SvixConfigSerializer._toJsonObject(self2.config);
-            break;
-          case "orum-io":
-            config2 = orumIoConfig_1.OrumIoConfigSerializer._toJsonObject(self2.config);
-            break;
-          case "panda-doc":
-            config2 = pandaDocConfig_1.PandaDocConfigSerializer._toJsonObject(self2.config);
-            break;
-          case "port-io":
-            config2 = portIoConfig_1.PortIoConfigSerializer._toJsonObject(self2.config);
-            break;
-          case "pleo":
-            config2 = svixConfig_1.SvixConfigSerializer._toJsonObject(self2.config);
-            break;
-          case "psi-fi":
-            config2 = svixConfig_1.SvixConfigSerializer._toJsonObject(self2.config);
-            break;
-          case "replicate":
-            config2 = svixConfig_1.SvixConfigSerializer._toJsonObject(self2.config);
-            break;
-          case "resend":
-            config2 = svixConfig_1.SvixConfigSerializer._toJsonObject(self2.config);
-            break;
-          case "rutter":
-            config2 = rutterConfig_1.RutterConfigSerializer._toJsonObject(self2.config);
-            break;
-          case "safebase":
-            config2 = svixConfig_1.SvixConfigSerializer._toJsonObject(self2.config);
-            break;
-          case "sardine":
-            config2 = svixConfig_1.SvixConfigSerializer._toJsonObject(self2.config);
-            break;
-          case "segment":
-            config2 = segmentConfig_1.SegmentConfigSerializer._toJsonObject(self2.config);
-            break;
-          case "shopify":
-            config2 = shopifyConfig_1.ShopifyConfigSerializer._toJsonObject(self2.config);
-            break;
-          case "slack":
-            config2 = slackConfig_1.SlackConfigSerializer._toJsonObject(self2.config);
-            break;
-          case "stripe":
-            config2 = stripeConfig_1.StripeConfigSerializer._toJsonObject(self2.config);
-            break;
-          case "stych":
-            config2 = svixConfig_1.SvixConfigSerializer._toJsonObject(self2.config);
-            break;
-          case "svix":
-            config2 = svixConfig_1.SvixConfigSerializer._toJsonObject(self2.config);
-            break;
-          case "zoom":
-            config2 = zoomConfig_1.ZoomConfigSerializer._toJsonObject(self2.config);
-            break;
-          case "telnyx":
-            config2 = telnyxConfig_1.TelnyxConfigSerializer._toJsonObject(self2.config);
-            break;
-          case "vapi":
-            config2 = vapiConfig_1.VapiConfigSerializer._toJsonObject(self2.config);
-            break;
-          case "open-ai":
-            config2 = svixConfig_1.SvixConfigSerializer._toJsonObject(self2.config);
-            break;
-          case "render":
-            config2 = svixConfig_1.SvixConfigSerializer._toJsonObject(self2.config);
-            break;
-          case "veriff":
-            config2 = veriffConfig_1.VeriffConfigSerializer._toJsonObject(self2.config);
-            break;
-          case "airwallex":
-            config2 = airwallexConfig_1.AirwallexConfigSerializer._toJsonObject(self2.config);
-            break;
-        }
-        return {
-          type: self2.type,
-          config: config2,
-          metadata: self2.metadata,
-          name: self2.name,
-          uid: self2.uid
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/adobeSignConfigOut.js
-var require_adobeSignConfigOut = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/adobeSignConfigOut.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.AdobeSignConfigOutSerializer = void 0;
-    exports2.AdobeSignConfigOutSerializer = {
-      _fromJsonObject(_object) {
-        return {};
-      },
-      _toJsonObject(_self) {
-        return {};
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/airwallexConfigOut.js
-var require_airwallexConfigOut = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/airwallexConfigOut.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.AirwallexConfigOutSerializer = void 0;
-    exports2.AirwallexConfigOutSerializer = {
-      _fromJsonObject(_object) {
-        return {};
-      },
-      _toJsonObject(_self) {
-        return {};
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/checkbookConfigOut.js
-var require_checkbookConfigOut = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/checkbookConfigOut.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.CheckbookConfigOutSerializer = void 0;
-    exports2.CheckbookConfigOutSerializer = {
-      _fromJsonObject(_object) {
-        return {};
-      },
-      _toJsonObject(_self) {
-        return {};
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/docusignConfigOut.js
-var require_docusignConfigOut = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/docusignConfigOut.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.DocusignConfigOutSerializer = void 0;
-    exports2.DocusignConfigOutSerializer = {
-      _fromJsonObject(_object) {
-        return {};
-      },
-      _toJsonObject(_self) {
-        return {};
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/easypostConfigOut.js
-var require_easypostConfigOut = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/easypostConfigOut.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.EasypostConfigOutSerializer = void 0;
-    exports2.EasypostConfigOutSerializer = {
-      _fromJsonObject(_object) {
-        return {};
-      },
-      _toJsonObject(_self) {
-        return {};
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/githubConfigOut.js
-var require_githubConfigOut = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/githubConfigOut.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.GithubConfigOutSerializer = void 0;
-    exports2.GithubConfigOutSerializer = {
-      _fromJsonObject(_object) {
-        return {};
-      },
-      _toJsonObject(_self) {
-        return {};
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/hubspotConfigOut.js
-var require_hubspotConfigOut = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/hubspotConfigOut.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.HubspotConfigOutSerializer = void 0;
-    exports2.HubspotConfigOutSerializer = {
-      _fromJsonObject(_object) {
-        return {};
-      },
-      _toJsonObject(_self) {
-        return {};
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/metaConfigOut.js
-var require_metaConfigOut = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/metaConfigOut.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.MetaConfigOutSerializer = void 0;
-    exports2.MetaConfigOutSerializer = {
-      _fromJsonObject(_object) {
-        return {};
-      },
-      _toJsonObject(_self) {
-        return {};
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/orumIoConfigOut.js
-var require_orumIoConfigOut = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/orumIoConfigOut.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.OrumIoConfigOutSerializer = void 0;
-    exports2.OrumIoConfigOutSerializer = {
-      _fromJsonObject(object2) {
-        return {
-          publicKey: object2["publicKey"]
-        };
-      },
-      _toJsonObject(self2) {
-        return {
-          publicKey: self2.publicKey
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/pandaDocConfigOut.js
-var require_pandaDocConfigOut = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/pandaDocConfigOut.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.PandaDocConfigOutSerializer = void 0;
-    exports2.PandaDocConfigOutSerializer = {
-      _fromJsonObject(_object) {
-        return {};
-      },
-      _toJsonObject(_self) {
-        return {};
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/portIoConfigOut.js
-var require_portIoConfigOut = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/portIoConfigOut.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.PortIoConfigOutSerializer = void 0;
-    exports2.PortIoConfigOutSerializer = {
-      _fromJsonObject(_object) {
-        return {};
-      },
-      _toJsonObject(_self) {
-        return {};
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/rutterConfigOut.js
-var require_rutterConfigOut = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/rutterConfigOut.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.RutterConfigOutSerializer = void 0;
-    exports2.RutterConfigOutSerializer = {
-      _fromJsonObject(_object) {
-        return {};
-      },
-      _toJsonObject(_self) {
-        return {};
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/segmentConfigOut.js
-var require_segmentConfigOut = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/segmentConfigOut.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.SegmentConfigOutSerializer = void 0;
-    exports2.SegmentConfigOutSerializer = {
-      _fromJsonObject(_object) {
-        return {};
-      },
-      _toJsonObject(_self) {
-        return {};
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/shopifyConfigOut.js
-var require_shopifyConfigOut = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/shopifyConfigOut.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.ShopifyConfigOutSerializer = void 0;
-    exports2.ShopifyConfigOutSerializer = {
-      _fromJsonObject(_object) {
-        return {};
-      },
-      _toJsonObject(_self) {
-        return {};
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/slackConfigOut.js
-var require_slackConfigOut = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/slackConfigOut.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.SlackConfigOutSerializer = void 0;
-    exports2.SlackConfigOutSerializer = {
-      _fromJsonObject(_object) {
-        return {};
-      },
-      _toJsonObject(_self) {
-        return {};
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/stripeConfigOut.js
-var require_stripeConfigOut = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/stripeConfigOut.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.StripeConfigOutSerializer = void 0;
-    exports2.StripeConfigOutSerializer = {
-      _fromJsonObject(_object) {
-        return {};
-      },
-      _toJsonObject(_self) {
-        return {};
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/svixConfigOut.js
-var require_svixConfigOut = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/svixConfigOut.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.SvixConfigOutSerializer = void 0;
-    exports2.SvixConfigOutSerializer = {
-      _fromJsonObject(_object) {
-        return {};
-      },
-      _toJsonObject(_self) {
-        return {};
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/telnyxConfigOut.js
-var require_telnyxConfigOut = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/telnyxConfigOut.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.TelnyxConfigOutSerializer = void 0;
-    exports2.TelnyxConfigOutSerializer = {
-      _fromJsonObject(object2) {
-        return {
-          publicKey: object2["publicKey"]
-        };
-      },
-      _toJsonObject(self2) {
-        return {
-          publicKey: self2.publicKey
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/vapiConfigOut.js
-var require_vapiConfigOut = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/vapiConfigOut.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.VapiConfigOutSerializer = void 0;
-    exports2.VapiConfigOutSerializer = {
-      _fromJsonObject(_object) {
-        return {};
-      },
-      _toJsonObject(_self) {
-        return {};
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/veriffConfigOut.js
-var require_veriffConfigOut = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/veriffConfigOut.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.VeriffConfigOutSerializer = void 0;
-    exports2.VeriffConfigOutSerializer = {
-      _fromJsonObject(_object) {
-        return {};
-      },
-      _toJsonObject(_self) {
-        return {};
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/zoomConfigOut.js
-var require_zoomConfigOut = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/zoomConfigOut.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.ZoomConfigOutSerializer = void 0;
-    exports2.ZoomConfigOutSerializer = {
-      _fromJsonObject(_object) {
-        return {};
-      },
-      _toJsonObject(_self) {
-        return {};
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/ingestSourceOut.js
-var require_ingestSourceOut = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/ingestSourceOut.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.IngestSourceOutSerializer = void 0;
-    var adobeSignConfigOut_1 = require_adobeSignConfigOut();
-    var airwallexConfigOut_1 = require_airwallexConfigOut();
-    var checkbookConfigOut_1 = require_checkbookConfigOut();
-    var cronConfig_1 = require_cronConfig();
-    var docusignConfigOut_1 = require_docusignConfigOut();
-    var easypostConfigOut_1 = require_easypostConfigOut();
-    var githubConfigOut_1 = require_githubConfigOut();
-    var hubspotConfigOut_1 = require_hubspotConfigOut();
-    var metaConfigOut_1 = require_metaConfigOut();
-    var orumIoConfigOut_1 = require_orumIoConfigOut();
-    var pandaDocConfigOut_1 = require_pandaDocConfigOut();
-    var portIoConfigOut_1 = require_portIoConfigOut();
-    var rutterConfigOut_1 = require_rutterConfigOut();
-    var segmentConfigOut_1 = require_segmentConfigOut();
-    var shopifyConfigOut_1 = require_shopifyConfigOut();
-    var slackConfigOut_1 = require_slackConfigOut();
-    var stripeConfigOut_1 = require_stripeConfigOut();
-    var svixConfigOut_1 = require_svixConfigOut();
-    var telnyxConfigOut_1 = require_telnyxConfigOut();
-    var vapiConfigOut_1 = require_vapiConfigOut();
-    var veriffConfigOut_1 = require_veriffConfigOut();
-    var zoomConfigOut_1 = require_zoomConfigOut();
-    exports2.IngestSourceOutSerializer = {
-      _fromJsonObject(object2) {
-        const type = object2["type"];
-        function getConfig(type2) {
-          switch (type2) {
-            case "generic-webhook":
-              return {};
-            case "cron":
-              return cronConfig_1.CronConfigSerializer._fromJsonObject(object2["config"]);
-            case "adobe-sign":
-              return adobeSignConfigOut_1.AdobeSignConfigOutSerializer._fromJsonObject(object2["config"]);
-            case "beehiiv":
-              return svixConfigOut_1.SvixConfigOutSerializer._fromJsonObject(object2["config"]);
-            case "brex":
-              return svixConfigOut_1.SvixConfigOutSerializer._fromJsonObject(object2["config"]);
-            case "checkbook":
-              return checkbookConfigOut_1.CheckbookConfigOutSerializer._fromJsonObject(object2["config"]);
-            case "clerk":
-              return svixConfigOut_1.SvixConfigOutSerializer._fromJsonObject(object2["config"]);
-            case "docusign":
-              return docusignConfigOut_1.DocusignConfigOutSerializer._fromJsonObject(object2["config"]);
-            case "easypost":
-              return easypostConfigOut_1.EasypostConfigOutSerializer._fromJsonObject(object2["config"]);
-            case "github":
-              return githubConfigOut_1.GithubConfigOutSerializer._fromJsonObject(object2["config"]);
-            case "guesty":
-              return svixConfigOut_1.SvixConfigOutSerializer._fromJsonObject(object2["config"]);
-            case "hubspot":
-              return hubspotConfigOut_1.HubspotConfigOutSerializer._fromJsonObject(object2["config"]);
-            case "incident-io":
-              return svixConfigOut_1.SvixConfigOutSerializer._fromJsonObject(object2["config"]);
-            case "lithic":
-              return svixConfigOut_1.SvixConfigOutSerializer._fromJsonObject(object2["config"]);
-            case "meta":
-              return metaConfigOut_1.MetaConfigOutSerializer._fromJsonObject(object2["config"]);
-            case "nash":
-              return svixConfigOut_1.SvixConfigOutSerializer._fromJsonObject(object2["config"]);
-            case "orum-io":
-              return orumIoConfigOut_1.OrumIoConfigOutSerializer._fromJsonObject(object2["config"]);
-            case "panda-doc":
-              return pandaDocConfigOut_1.PandaDocConfigOutSerializer._fromJsonObject(object2["config"]);
-            case "port-io":
-              return portIoConfigOut_1.PortIoConfigOutSerializer._fromJsonObject(object2["config"]);
-            case "psi-fi":
-              return svixConfigOut_1.SvixConfigOutSerializer._fromJsonObject(object2["config"]);
-            case "pleo":
-              return svixConfigOut_1.SvixConfigOutSerializer._fromJsonObject(object2["config"]);
-            case "replicate":
-              return svixConfigOut_1.SvixConfigOutSerializer._fromJsonObject(object2["config"]);
-            case "resend":
-              return svixConfigOut_1.SvixConfigOutSerializer._fromJsonObject(object2["config"]);
-            case "rutter":
-              return rutterConfigOut_1.RutterConfigOutSerializer._fromJsonObject(object2["config"]);
-            case "safebase":
-              return svixConfigOut_1.SvixConfigOutSerializer._fromJsonObject(object2["config"]);
-            case "sardine":
-              return svixConfigOut_1.SvixConfigOutSerializer._fromJsonObject(object2["config"]);
-            case "segment":
-              return segmentConfigOut_1.SegmentConfigOutSerializer._fromJsonObject(object2["config"]);
-            case "shopify":
-              return shopifyConfigOut_1.ShopifyConfigOutSerializer._fromJsonObject(object2["config"]);
-            case "slack":
-              return slackConfigOut_1.SlackConfigOutSerializer._fromJsonObject(object2["config"]);
-            case "stripe":
-              return stripeConfigOut_1.StripeConfigOutSerializer._fromJsonObject(object2["config"]);
-            case "stych":
-              return svixConfigOut_1.SvixConfigOutSerializer._fromJsonObject(object2["config"]);
-            case "svix":
-              return svixConfigOut_1.SvixConfigOutSerializer._fromJsonObject(object2["config"]);
-            case "zoom":
-              return zoomConfigOut_1.ZoomConfigOutSerializer._fromJsonObject(object2["config"]);
-            case "telnyx":
-              return telnyxConfigOut_1.TelnyxConfigOutSerializer._fromJsonObject(object2["config"]);
-            case "vapi":
-              return vapiConfigOut_1.VapiConfigOutSerializer._fromJsonObject(object2["config"]);
-            case "open-ai":
-              return svixConfigOut_1.SvixConfigOutSerializer._fromJsonObject(object2["config"]);
-            case "render":
-              return svixConfigOut_1.SvixConfigOutSerializer._fromJsonObject(object2["config"]);
-            case "veriff":
-              return veriffConfigOut_1.VeriffConfigOutSerializer._fromJsonObject(object2["config"]);
-            case "airwallex":
-              return airwallexConfigOut_1.AirwallexConfigOutSerializer._fromJsonObject(object2["config"]);
-            default:
-              throw new Error(`Unexpected type: ${type2}`);
-          }
-        }
-        return {
-          type,
-          config: getConfig(type),
-          createdAt: new Date(object2["createdAt"]),
-          id: object2["id"],
-          ingestUrl: object2["ingestUrl"],
-          metadata: object2["metadata"],
-          name: object2["name"],
-          uid: object2["uid"],
-          updatedAt: new Date(object2["updatedAt"])
-        };
-      },
-      _toJsonObject(self2) {
-        let config2;
-        switch (self2.type) {
-          case "generic-webhook":
-            config2 = {};
-            break;
-          case "cron":
-            config2 = cronConfig_1.CronConfigSerializer._toJsonObject(self2.config);
-            break;
-          case "adobe-sign":
-            config2 = adobeSignConfigOut_1.AdobeSignConfigOutSerializer._toJsonObject(self2.config);
-            break;
-          case "beehiiv":
-            config2 = svixConfigOut_1.SvixConfigOutSerializer._toJsonObject(self2.config);
-            break;
-          case "brex":
-            config2 = svixConfigOut_1.SvixConfigOutSerializer._toJsonObject(self2.config);
-            break;
-          case "checkbook":
-            config2 = checkbookConfigOut_1.CheckbookConfigOutSerializer._toJsonObject(self2.config);
-            break;
-          case "clerk":
-            config2 = svixConfigOut_1.SvixConfigOutSerializer._toJsonObject(self2.config);
-            break;
-          case "docusign":
-            config2 = docusignConfigOut_1.DocusignConfigOutSerializer._toJsonObject(self2.config);
-            break;
-          case "easypost":
-            config2 = easypostConfigOut_1.EasypostConfigOutSerializer._toJsonObject(self2.config);
-            break;
-          case "github":
-            config2 = githubConfigOut_1.GithubConfigOutSerializer._toJsonObject(self2.config);
-            break;
-          case "guesty":
-            config2 = svixConfigOut_1.SvixConfigOutSerializer._toJsonObject(self2.config);
-            break;
-          case "hubspot":
-            config2 = hubspotConfigOut_1.HubspotConfigOutSerializer._toJsonObject(self2.config);
-            break;
-          case "incident-io":
-            config2 = svixConfigOut_1.SvixConfigOutSerializer._toJsonObject(self2.config);
-            break;
-          case "lithic":
-            config2 = svixConfigOut_1.SvixConfigOutSerializer._toJsonObject(self2.config);
-            break;
-          case "meta":
-            config2 = metaConfigOut_1.MetaConfigOutSerializer._toJsonObject(self2.config);
-            break;
-          case "nash":
-            config2 = svixConfigOut_1.SvixConfigOutSerializer._toJsonObject(self2.config);
-            break;
-          case "orum-io":
-            config2 = orumIoConfigOut_1.OrumIoConfigOutSerializer._toJsonObject(self2.config);
-            break;
-          case "panda-doc":
-            config2 = pandaDocConfigOut_1.PandaDocConfigOutSerializer._toJsonObject(self2.config);
-            break;
-          case "port-io":
-            config2 = portIoConfigOut_1.PortIoConfigOutSerializer._toJsonObject(self2.config);
-            break;
-          case "psi-fi":
-            config2 = svixConfigOut_1.SvixConfigOutSerializer._toJsonObject(self2.config);
-            break;
-          case "pleo":
-            config2 = svixConfigOut_1.SvixConfigOutSerializer._toJsonObject(self2.config);
-            break;
-          case "replicate":
-            config2 = svixConfigOut_1.SvixConfigOutSerializer._toJsonObject(self2.config);
-            break;
-          case "resend":
-            config2 = svixConfigOut_1.SvixConfigOutSerializer._toJsonObject(self2.config);
-            break;
-          case "rutter":
-            config2 = rutterConfigOut_1.RutterConfigOutSerializer._toJsonObject(self2.config);
-            break;
-          case "safebase":
-            config2 = svixConfigOut_1.SvixConfigOutSerializer._toJsonObject(self2.config);
-            break;
-          case "sardine":
-            config2 = svixConfigOut_1.SvixConfigOutSerializer._toJsonObject(self2.config);
-            break;
-          case "segment":
-            config2 = segmentConfigOut_1.SegmentConfigOutSerializer._toJsonObject(self2.config);
-            break;
-          case "shopify":
-            config2 = shopifyConfigOut_1.ShopifyConfigOutSerializer._toJsonObject(self2.config);
-            break;
-          case "slack":
-            config2 = slackConfigOut_1.SlackConfigOutSerializer._toJsonObject(self2.config);
-            break;
-          case "stripe":
-            config2 = stripeConfigOut_1.StripeConfigOutSerializer._toJsonObject(self2.config);
-            break;
-          case "stych":
-            config2 = svixConfigOut_1.SvixConfigOutSerializer._toJsonObject(self2.config);
-            break;
-          case "svix":
-            config2 = svixConfigOut_1.SvixConfigOutSerializer._toJsonObject(self2.config);
-            break;
-          case "zoom":
-            config2 = zoomConfigOut_1.ZoomConfigOutSerializer._toJsonObject(self2.config);
-            break;
-          case "telnyx":
-            config2 = telnyxConfigOut_1.TelnyxConfigOutSerializer._toJsonObject(self2.config);
-            break;
-          case "vapi":
-            config2 = vapiConfigOut_1.VapiConfigOutSerializer._toJsonObject(self2.config);
-            break;
-          case "open-ai":
-            config2 = svixConfigOut_1.SvixConfigOutSerializer._toJsonObject(self2.config);
-            break;
-          case "render":
-            config2 = svixConfigOut_1.SvixConfigOutSerializer._toJsonObject(self2.config);
-            break;
-          case "veriff":
-            config2 = veriffConfigOut_1.VeriffConfigOutSerializer._toJsonObject(self2.config);
-            break;
-          case "airwallex":
-            config2 = airwallexConfigOut_1.AirwallexConfigOutSerializer._toJsonObject(self2.config);
-            break;
-        }
-        return {
-          type: self2.type,
-          config: config2,
-          createdAt: self2.createdAt,
-          id: self2.id,
-          ingestUrl: self2.ingestUrl,
-          metadata: self2.metadata,
-          name: self2.name,
-          uid: self2.uid,
-          updatedAt: self2.updatedAt
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/listResponseIngestSourceOut.js
-var require_listResponseIngestSourceOut = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/listResponseIngestSourceOut.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.ListResponseIngestSourceOutSerializer = void 0;
-    var ingestSourceOut_1 = require_ingestSourceOut();
-    exports2.ListResponseIngestSourceOutSerializer = {
-      _fromJsonObject(object2) {
-        return {
-          data: object2["data"].map((item) => ingestSourceOut_1.IngestSourceOutSerializer._fromJsonObject(item)),
-          done: object2["done"],
-          iterator: object2["iterator"],
-          prevIterator: object2["prevIterator"]
-        };
-      },
-      _toJsonObject(self2) {
-        return {
-          data: self2.data.map((item) => ingestSourceOut_1.IngestSourceOutSerializer._toJsonObject(item)),
-          done: self2.done,
-          iterator: self2.iterator,
-          prevIterator: self2.prevIterator
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/rotateTokenOut.js
-var require_rotateTokenOut = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/rotateTokenOut.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.RotateTokenOutSerializer = void 0;
-    exports2.RotateTokenOutSerializer = {
-      _fromJsonObject(object2) {
-        return {
-          ingestUrl: object2["ingestUrl"]
-        };
-      },
-      _toJsonObject(self2) {
-        return {
-          ingestUrl: self2.ingestUrl
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/api/ingestSource.js
-var require_ingestSource = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/api/ingestSource.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.IngestSource = void 0;
-    var ingestSourceIn_1 = require_ingestSourceIn();
-    var ingestSourceOut_1 = require_ingestSourceOut();
-    var listResponseIngestSourceOut_1 = require_listResponseIngestSourceOut();
-    var rotateTokenOut_1 = require_rotateTokenOut();
-    var request_1 = require_request2();
-    var IngestSource = class {
-      constructor(requestCtx) {
-        this.requestCtx = requestCtx;
-      }
-      list(options) {
-        const request = new request_1.SvixRequest(request_1.HttpMethod.GET, "/ingest/api/v1/source");
-        request.setQueryParams({
-          limit: options === null || options === void 0 ? void 0 : options.limit,
-          iterator: options === null || options === void 0 ? void 0 : options.iterator,
-          order: options === null || options === void 0 ? void 0 : options.order
-        });
-        return request.send(this.requestCtx, listResponseIngestSourceOut_1.ListResponseIngestSourceOutSerializer._fromJsonObject);
-      }
-      create(ingestSourceIn, options) {
-        const request = new request_1.SvixRequest(request_1.HttpMethod.POST, "/ingest/api/v1/source");
-        request.setHeaderParam("idempotency-key", options === null || options === void 0 ? void 0 : options.idempotencyKey);
-        request.setBody(ingestSourceIn_1.IngestSourceInSerializer._toJsonObject(ingestSourceIn));
-        return request.send(this.requestCtx, ingestSourceOut_1.IngestSourceOutSerializer._fromJsonObject);
-      }
-      get(sourceId) {
-        const request = new request_1.SvixRequest(request_1.HttpMethod.GET, "/ingest/api/v1/source/{source_id}");
-        request.setPathParam("source_id", sourceId);
-        return request.send(this.requestCtx, ingestSourceOut_1.IngestSourceOutSerializer._fromJsonObject);
-      }
-      update(sourceId, ingestSourceIn) {
-        const request = new request_1.SvixRequest(request_1.HttpMethod.PUT, "/ingest/api/v1/source/{source_id}");
-        request.setPathParam("source_id", sourceId);
-        request.setBody(ingestSourceIn_1.IngestSourceInSerializer._toJsonObject(ingestSourceIn));
-        return request.send(this.requestCtx, ingestSourceOut_1.IngestSourceOutSerializer._fromJsonObject);
-      }
-      delete(sourceId) {
-        const request = new request_1.SvixRequest(request_1.HttpMethod.DELETE, "/ingest/api/v1/source/{source_id}");
-        request.setPathParam("source_id", sourceId);
-        return request.sendNoResponseBody(this.requestCtx);
-      }
-      rotateToken(sourceId, options) {
-        const request = new request_1.SvixRequest(request_1.HttpMethod.POST, "/ingest/api/v1/source/{source_id}/token/rotate");
-        request.setPathParam("source_id", sourceId);
-        request.setHeaderParam("idempotency-key", options === null || options === void 0 ? void 0 : options.idempotencyKey);
-        return request.send(this.requestCtx, rotateTokenOut_1.RotateTokenOutSerializer._fromJsonObject);
-      }
-    };
-    exports2.IngestSource = IngestSource;
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/api/ingest.js
-var require_ingest = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/api/ingest.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.Ingest = void 0;
-    var dashboardAccessOut_1 = require_dashboardAccessOut();
-    var ingestSourceConsumerPortalAccessIn_1 = require_ingestSourceConsumerPortalAccessIn();
-    var ingestEndpoint_1 = require_ingestEndpoint();
-    var ingestSource_1 = require_ingestSource();
-    var request_1 = require_request2();
-    var Ingest = class {
-      constructor(requestCtx) {
-        this.requestCtx = requestCtx;
-      }
-      get endpoint() {
-        return new ingestEndpoint_1.IngestEndpoint(this.requestCtx);
-      }
-      get source() {
-        return new ingestSource_1.IngestSource(this.requestCtx);
-      }
-      dashboard(sourceId, ingestSourceConsumerPortalAccessIn, options) {
-        const request = new request_1.SvixRequest(request_1.HttpMethod.POST, "/ingest/api/v1/source/{source_id}/dashboard");
-        request.setPathParam("source_id", sourceId);
-        request.setHeaderParam("idempotency-key", options === null || options === void 0 ? void 0 : options.idempotencyKey);
-        request.setBody(ingestSourceConsumerPortalAccessIn_1.IngestSourceConsumerPortalAccessInSerializer._toJsonObject(ingestSourceConsumerPortalAccessIn));
-        return request.send(this.requestCtx, dashboardAccessOut_1.DashboardAccessOutSerializer._fromJsonObject);
-      }
-    };
-    exports2.Ingest = Ingest;
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/integrationIn.js
-var require_integrationIn = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/integrationIn.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.IntegrationInSerializer = void 0;
-    exports2.IntegrationInSerializer = {
-      _fromJsonObject(object2) {
-        return {
-          featureFlags: object2["featureFlags"],
-          name: object2["name"]
-        };
-      },
-      _toJsonObject(self2) {
-        return {
-          featureFlags: self2.featureFlags,
-          name: self2.name
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/integrationKeyOut.js
-var require_integrationKeyOut = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/integrationKeyOut.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.IntegrationKeyOutSerializer = void 0;
-    exports2.IntegrationKeyOutSerializer = {
-      _fromJsonObject(object2) {
-        return {
-          key: object2["key"]
-        };
-      },
-      _toJsonObject(self2) {
-        return {
-          key: self2.key
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/integrationOut.js
-var require_integrationOut = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/integrationOut.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.IntegrationOutSerializer = void 0;
-    exports2.IntegrationOutSerializer = {
-      _fromJsonObject(object2) {
-        return {
-          createdAt: new Date(object2["createdAt"]),
-          featureFlags: object2["featureFlags"],
-          id: object2["id"],
-          name: object2["name"],
-          updatedAt: new Date(object2["updatedAt"])
-        };
-      },
-      _toJsonObject(self2) {
-        return {
-          createdAt: self2.createdAt,
-          featureFlags: self2.featureFlags,
-          id: self2.id,
-          name: self2.name,
-          updatedAt: self2.updatedAt
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/integrationUpdate.js
-var require_integrationUpdate = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/integrationUpdate.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.IntegrationUpdateSerializer = void 0;
-    exports2.IntegrationUpdateSerializer = {
-      _fromJsonObject(object2) {
-        return {
-          featureFlags: object2["featureFlags"],
-          name: object2["name"]
-        };
-      },
-      _toJsonObject(self2) {
-        return {
-          featureFlags: self2.featureFlags,
-          name: self2.name
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/listResponseIntegrationOut.js
-var require_listResponseIntegrationOut = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/listResponseIntegrationOut.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.ListResponseIntegrationOutSerializer = void 0;
-    var integrationOut_1 = require_integrationOut();
-    exports2.ListResponseIntegrationOutSerializer = {
-      _fromJsonObject(object2) {
-        return {
-          data: object2["data"].map((item) => integrationOut_1.IntegrationOutSerializer._fromJsonObject(item)),
-          done: object2["done"],
-          iterator: object2["iterator"],
-          prevIterator: object2["prevIterator"]
-        };
-      },
-      _toJsonObject(self2) {
-        return {
-          data: self2.data.map((item) => integrationOut_1.IntegrationOutSerializer._toJsonObject(item)),
-          done: self2.done,
-          iterator: self2.iterator,
-          prevIterator: self2.prevIterator
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/api/integration.js
-var require_integration = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/api/integration.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.Integration = void 0;
-    var integrationIn_1 = require_integrationIn();
-    var integrationKeyOut_1 = require_integrationKeyOut();
-    var integrationOut_1 = require_integrationOut();
-    var integrationUpdate_1 = require_integrationUpdate();
-    var listResponseIntegrationOut_1 = require_listResponseIntegrationOut();
-    var request_1 = require_request2();
-    var Integration = class {
-      constructor(requestCtx) {
-        this.requestCtx = requestCtx;
-      }
-      list(appId, options) {
-        const request = new request_1.SvixRequest(request_1.HttpMethod.GET, "/api/v1/app/{app_id}/integration");
-        request.setPathParam("app_id", appId);
-        request.setQueryParams({
-          limit: options === null || options === void 0 ? void 0 : options.limit,
-          iterator: options === null || options === void 0 ? void 0 : options.iterator,
-          order: options === null || options === void 0 ? void 0 : options.order
-        });
-        return request.send(this.requestCtx, listResponseIntegrationOut_1.ListResponseIntegrationOutSerializer._fromJsonObject);
-      }
-      create(appId, integrationIn, options) {
-        const request = new request_1.SvixRequest(request_1.HttpMethod.POST, "/api/v1/app/{app_id}/integration");
-        request.setPathParam("app_id", appId);
-        request.setHeaderParam("idempotency-key", options === null || options === void 0 ? void 0 : options.idempotencyKey);
-        request.setBody(integrationIn_1.IntegrationInSerializer._toJsonObject(integrationIn));
-        return request.send(this.requestCtx, integrationOut_1.IntegrationOutSerializer._fromJsonObject);
-      }
-      get(appId, integId) {
-        const request = new request_1.SvixRequest(request_1.HttpMethod.GET, "/api/v1/app/{app_id}/integration/{integ_id}");
-        request.setPathParam("app_id", appId);
-        request.setPathParam("integ_id", integId);
-        return request.send(this.requestCtx, integrationOut_1.IntegrationOutSerializer._fromJsonObject);
-      }
-      update(appId, integId, integrationUpdate) {
-        const request = new request_1.SvixRequest(request_1.HttpMethod.PUT, "/api/v1/app/{app_id}/integration/{integ_id}");
-        request.setPathParam("app_id", appId);
-        request.setPathParam("integ_id", integId);
-        request.setBody(integrationUpdate_1.IntegrationUpdateSerializer._toJsonObject(integrationUpdate));
-        return request.send(this.requestCtx, integrationOut_1.IntegrationOutSerializer._fromJsonObject);
-      }
-      delete(appId, integId) {
-        const request = new request_1.SvixRequest(request_1.HttpMethod.DELETE, "/api/v1/app/{app_id}/integration/{integ_id}");
-        request.setPathParam("app_id", appId);
-        request.setPathParam("integ_id", integId);
-        return request.sendNoResponseBody(this.requestCtx);
-      }
-      getKey(appId, integId) {
-        const request = new request_1.SvixRequest(request_1.HttpMethod.GET, "/api/v1/app/{app_id}/integration/{integ_id}/key");
-        request.setPathParam("app_id", appId);
-        request.setPathParam("integ_id", integId);
-        return request.send(this.requestCtx, integrationKeyOut_1.IntegrationKeyOutSerializer._fromJsonObject);
-      }
-      rotateKey(appId, integId, options) {
-        const request = new request_1.SvixRequest(request_1.HttpMethod.POST, "/api/v1/app/{app_id}/integration/{integ_id}/key/rotate");
-        request.setPathParam("app_id", appId);
-        request.setPathParam("integ_id", integId);
-        request.setHeaderParam("idempotency-key", options === null || options === void 0 ? void 0 : options.idempotencyKey);
-        return request.send(this.requestCtx, integrationKeyOut_1.IntegrationKeyOutSerializer._fromJsonObject);
-      }
-    };
-    exports2.Integration = Integration;
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/expungeAllContentsOut.js
-var require_expungeAllContentsOut = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/expungeAllContentsOut.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.ExpungeAllContentsOutSerializer = void 0;
-    var backgroundTaskStatus_1 = require_backgroundTaskStatus();
-    var backgroundTaskType_1 = require_backgroundTaskType();
-    exports2.ExpungeAllContentsOutSerializer = {
-      _fromJsonObject(object2) {
-        return {
-          id: object2["id"],
-          status: backgroundTaskStatus_1.BackgroundTaskStatusSerializer._fromJsonObject(object2["status"]),
-          task: backgroundTaskType_1.BackgroundTaskTypeSerializer._fromJsonObject(object2["task"]),
-          updatedAt: new Date(object2["updatedAt"])
-        };
-      },
-      _toJsonObject(self2) {
-        return {
-          id: self2.id,
-          status: backgroundTaskStatus_1.BackgroundTaskStatusSerializer._toJsonObject(self2.status),
-          task: backgroundTaskType_1.BackgroundTaskTypeSerializer._toJsonObject(self2.task),
-          updatedAt: self2.updatedAt
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/listResponseMessageOut.js
-var require_listResponseMessageOut = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/listResponseMessageOut.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.ListResponseMessageOutSerializer = void 0;
-    var messageOut_1 = require_messageOut();
-    exports2.ListResponseMessageOutSerializer = {
-      _fromJsonObject(object2) {
-        return {
-          data: object2["data"].map((item) => messageOut_1.MessageOutSerializer._fromJsonObject(item)),
-          done: object2["done"],
-          iterator: object2["iterator"],
-          prevIterator: object2["prevIterator"]
-        };
-      },
-      _toJsonObject(self2) {
-        return {
-          data: self2.data.map((item) => messageOut_1.MessageOutSerializer._toJsonObject(item)),
-          done: self2.done,
-          iterator: self2.iterator,
-          prevIterator: self2.prevIterator
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/messagePrecheckIn.js
-var require_messagePrecheckIn = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/messagePrecheckIn.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.MessagePrecheckInSerializer = void 0;
-    exports2.MessagePrecheckInSerializer = {
-      _fromJsonObject(object2) {
-        return {
-          channels: object2["channels"],
-          eventType: object2["eventType"]
-        };
-      },
-      _toJsonObject(self2) {
-        return {
-          channels: self2.channels,
-          eventType: self2.eventType
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/messagePrecheckOut.js
-var require_messagePrecheckOut = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/messagePrecheckOut.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.MessagePrecheckOutSerializer = void 0;
-    exports2.MessagePrecheckOutSerializer = {
-      _fromJsonObject(object2) {
-        return {
-          active: object2["active"]
-        };
-      },
-      _toJsonObject(self2) {
-        return {
-          active: self2.active
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/pollingEndpointConsumerSeekIn.js
-var require_pollingEndpointConsumerSeekIn = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/pollingEndpointConsumerSeekIn.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.PollingEndpointConsumerSeekInSerializer = void 0;
-    exports2.PollingEndpointConsumerSeekInSerializer = {
-      _fromJsonObject(object2) {
-        return {
-          after: new Date(object2["after"])
-        };
-      },
-      _toJsonObject(self2) {
-        return {
-          after: self2.after
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/pollingEndpointConsumerSeekOut.js
-var require_pollingEndpointConsumerSeekOut = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/pollingEndpointConsumerSeekOut.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.PollingEndpointConsumerSeekOutSerializer = void 0;
-    exports2.PollingEndpointConsumerSeekOutSerializer = {
-      _fromJsonObject(object2) {
-        return {
-          iterator: object2["iterator"]
-        };
-      },
-      _toJsonObject(self2) {
-        return {
-          iterator: self2.iterator
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/pollingEndpointMessageOut.js
-var require_pollingEndpointMessageOut = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/pollingEndpointMessageOut.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.PollingEndpointMessageOutSerializer = void 0;
-    exports2.PollingEndpointMessageOutSerializer = {
-      _fromJsonObject(object2) {
-        return {
-          channels: object2["channels"],
-          deliverAt: object2["deliverAt"] ? new Date(object2["deliverAt"]) : null,
-          eventId: object2["eventId"],
-          eventType: object2["eventType"],
-          headers: object2["headers"],
-          id: object2["id"],
-          payload: object2["payload"],
-          tags: object2["tags"],
-          timestamp: new Date(object2["timestamp"])
-        };
-      },
-      _toJsonObject(self2) {
-        return {
-          channels: self2.channels,
-          deliverAt: self2.deliverAt,
-          eventId: self2.eventId,
-          eventType: self2.eventType,
-          headers: self2.headers,
-          id: self2.id,
-          payload: self2.payload,
-          tags: self2.tags,
-          timestamp: self2.timestamp
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/pollingEndpointOut.js
-var require_pollingEndpointOut = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/pollingEndpointOut.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.PollingEndpointOutSerializer = void 0;
-    var pollingEndpointMessageOut_1 = require_pollingEndpointMessageOut();
-    exports2.PollingEndpointOutSerializer = {
-      _fromJsonObject(object2) {
-        return {
-          data: object2["data"].map((item) => pollingEndpointMessageOut_1.PollingEndpointMessageOutSerializer._fromJsonObject(item)),
-          done: object2["done"],
-          iterator: object2["iterator"]
-        };
-      },
-      _toJsonObject(self2) {
-        return {
-          data: self2.data.map((item) => pollingEndpointMessageOut_1.PollingEndpointMessageOutSerializer._toJsonObject(item)),
-          done: self2.done,
-          iterator: self2.iterator
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/api/messagePoller.js
-var require_messagePoller = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/api/messagePoller.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.MessagePoller = void 0;
-    var pollingEndpointConsumerSeekIn_1 = require_pollingEndpointConsumerSeekIn();
-    var pollingEndpointConsumerSeekOut_1 = require_pollingEndpointConsumerSeekOut();
-    var pollingEndpointOut_1 = require_pollingEndpointOut();
-    var request_1 = require_request2();
-    var MessagePoller = class {
-      constructor(requestCtx) {
-        this.requestCtx = requestCtx;
-      }
-      poll(appId, sinkId, options) {
-        const request = new request_1.SvixRequest(request_1.HttpMethod.GET, "/api/v1/app/{app_id}/poller/{sink_id}");
-        request.setPathParam("app_id", appId);
-        request.setPathParam("sink_id", sinkId);
-        request.setQueryParams({
-          limit: options === null || options === void 0 ? void 0 : options.limit,
-          iterator: options === null || options === void 0 ? void 0 : options.iterator,
-          event_type: options === null || options === void 0 ? void 0 : options.eventType,
-          channel: options === null || options === void 0 ? void 0 : options.channel,
-          after: options === null || options === void 0 ? void 0 : options.after
-        });
-        return request.send(this.requestCtx, pollingEndpointOut_1.PollingEndpointOutSerializer._fromJsonObject);
-      }
-      consumerPoll(appId, sinkId, consumerId, options) {
-        const request = new request_1.SvixRequest(request_1.HttpMethod.GET, "/api/v1/app/{app_id}/poller/{sink_id}/consumer/{consumer_id}");
-        request.setPathParam("app_id", appId);
-        request.setPathParam("sink_id", sinkId);
-        request.setPathParam("consumer_id", consumerId);
-        request.setQueryParams({
-          limit: options === null || options === void 0 ? void 0 : options.limit,
-          iterator: options === null || options === void 0 ? void 0 : options.iterator
-        });
-        return request.send(this.requestCtx, pollingEndpointOut_1.PollingEndpointOutSerializer._fromJsonObject);
-      }
-      consumerSeek(appId, sinkId, consumerId, pollingEndpointConsumerSeekIn, options) {
-        const request = new request_1.SvixRequest(request_1.HttpMethod.POST, "/api/v1/app/{app_id}/poller/{sink_id}/consumer/{consumer_id}/seek");
-        request.setPathParam("app_id", appId);
-        request.setPathParam("sink_id", sinkId);
-        request.setPathParam("consumer_id", consumerId);
-        request.setHeaderParam("idempotency-key", options === null || options === void 0 ? void 0 : options.idempotencyKey);
-        request.setBody(pollingEndpointConsumerSeekIn_1.PollingEndpointConsumerSeekInSerializer._toJsonObject(pollingEndpointConsumerSeekIn));
-        return request.send(this.requestCtx, pollingEndpointConsumerSeekOut_1.PollingEndpointConsumerSeekOutSerializer._fromJsonObject);
-      }
-    };
-    exports2.MessagePoller = MessagePoller;
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/messageIn.js
-var require_messageIn = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/messageIn.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.MessageInSerializer = void 0;
-    var applicationIn_1 = require_applicationIn();
-    exports2.MessageInSerializer = {
-      _fromJsonObject(object2) {
-        return {
-          application: object2["application"] != null ? applicationIn_1.ApplicationInSerializer._fromJsonObject(object2["application"]) : void 0,
-          channels: object2["channels"],
-          deliverAt: object2["deliverAt"] ? new Date(object2["deliverAt"]) : null,
-          eventId: object2["eventId"],
-          eventType: object2["eventType"],
-          payload: object2["payload"],
-          payloadRetentionHours: object2["payloadRetentionHours"],
-          payloadRetentionPeriod: object2["payloadRetentionPeriod"],
-          tags: object2["tags"],
-          transformationsParams: object2["transformationsParams"]
-        };
-      },
-      _toJsonObject(self2) {
-        return {
-          application: self2.application != null ? applicationIn_1.ApplicationInSerializer._toJsonObject(self2.application) : void 0,
-          channels: self2.channels,
-          deliverAt: self2.deliverAt,
-          eventId: self2.eventId,
-          eventType: self2.eventType,
-          payload: self2.payload,
-          payloadRetentionHours: self2.payloadRetentionHours,
-          payloadRetentionPeriod: self2.payloadRetentionPeriod,
-          tags: self2.tags,
-          transformationsParams: self2.transformationsParams
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/api/message.js
-var require_message = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/api/message.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.messageInRaw = exports2.Message = void 0;
-    var expungeAllContentsOut_1 = require_expungeAllContentsOut();
-    var listResponseMessageOut_1 = require_listResponseMessageOut();
-    var messageOut_1 = require_messageOut();
-    var messagePrecheckIn_1 = require_messagePrecheckIn();
-    var messagePrecheckOut_1 = require_messagePrecheckOut();
-    var messagePoller_1 = require_messagePoller();
-    var request_1 = require_request2();
-    var messageIn_1 = require_messageIn();
-    var Message = class {
-      constructor(requestCtx) {
-        this.requestCtx = requestCtx;
-      }
-      get poller() {
-        return new messagePoller_1.MessagePoller(this.requestCtx);
-      }
-      list(appId, options) {
-        const request = new request_1.SvixRequest(request_1.HttpMethod.GET, "/api/v1/app/{app_id}/msg");
-        request.setPathParam("app_id", appId);
-        request.setQueryParams({
-          limit: options === null || options === void 0 ? void 0 : options.limit,
-          iterator: options === null || options === void 0 ? void 0 : options.iterator,
-          channel: options === null || options === void 0 ? void 0 : options.channel,
-          before: options === null || options === void 0 ? void 0 : options.before,
-          after: options === null || options === void 0 ? void 0 : options.after,
-          with_content: options === null || options === void 0 ? void 0 : options.withContent,
-          tag: options === null || options === void 0 ? void 0 : options.tag,
-          event_types: options === null || options === void 0 ? void 0 : options.eventTypes
-        });
-        return request.send(this.requestCtx, listResponseMessageOut_1.ListResponseMessageOutSerializer._fromJsonObject);
-      }
-      create(appId, messageIn, options) {
-        const request = new request_1.SvixRequest(request_1.HttpMethod.POST, "/api/v1/app/{app_id}/msg");
-        request.setPathParam("app_id", appId);
-        request.setQueryParams({
-          with_content: options === null || options === void 0 ? void 0 : options.withContent
-        });
-        request.setHeaderParam("idempotency-key", options === null || options === void 0 ? void 0 : options.idempotencyKey);
-        request.setBody(messageIn_1.MessageInSerializer._toJsonObject(messageIn));
-        return request.send(this.requestCtx, messageOut_1.MessageOutSerializer._fromJsonObject);
-      }
-      expungeAllContents(appId, options) {
-        const request = new request_1.SvixRequest(request_1.HttpMethod.POST, "/api/v1/app/{app_id}/msg/expunge-all-contents");
-        request.setPathParam("app_id", appId);
-        request.setHeaderParam("idempotency-key", options === null || options === void 0 ? void 0 : options.idempotencyKey);
-        return request.send(this.requestCtx, expungeAllContentsOut_1.ExpungeAllContentsOutSerializer._fromJsonObject);
-      }
-      precheck(appId, messagePrecheckIn, options) {
-        const request = new request_1.SvixRequest(request_1.HttpMethod.POST, "/api/v1/app/{app_id}/msg/precheck/active");
-        request.setPathParam("app_id", appId);
-        request.setHeaderParam("idempotency-key", options === null || options === void 0 ? void 0 : options.idempotencyKey);
-        request.setBody(messagePrecheckIn_1.MessagePrecheckInSerializer._toJsonObject(messagePrecheckIn));
-        return request.send(this.requestCtx, messagePrecheckOut_1.MessagePrecheckOutSerializer._fromJsonObject);
-      }
-      get(appId, msgId, options) {
-        const request = new request_1.SvixRequest(request_1.HttpMethod.GET, "/api/v1/app/{app_id}/msg/{msg_id}");
-        request.setPathParam("app_id", appId);
-        request.setPathParam("msg_id", msgId);
-        request.setQueryParams({
-          with_content: options === null || options === void 0 ? void 0 : options.withContent
-        });
-        return request.send(this.requestCtx, messageOut_1.MessageOutSerializer._fromJsonObject);
-      }
-      expungeContent(appId, msgId) {
-        const request = new request_1.SvixRequest(request_1.HttpMethod.DELETE, "/api/v1/app/{app_id}/msg/{msg_id}/content");
-        request.setPathParam("app_id", appId);
-        request.setPathParam("msg_id", msgId);
-        return request.sendNoResponseBody(this.requestCtx);
-      }
-    };
-    exports2.Message = Message;
-    function messageInRaw(eventType, payload, contentType) {
-      const headers = contentType ? { "content-type": contentType } : void 0;
-      return {
-        eventType,
-        payload: {},
-        transformationsParams: {
-          rawPayload: payload,
-          headers
-        }
-      };
-    }
-    exports2.messageInRaw = messageInRaw;
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/emptyResponse.js
-var require_emptyResponse = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/emptyResponse.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.EmptyResponseSerializer = void 0;
-    exports2.EmptyResponseSerializer = {
-      _fromJsonObject(_object) {
-        return {};
-      },
-      _toJsonObject(_self) {
-        return {};
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/messageStatusText.js
-var require_messageStatusText = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/messageStatusText.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.MessageStatusTextSerializer = exports2.MessageStatusText = void 0;
-    var MessageStatusText;
-    (function(MessageStatusText2) {
-      MessageStatusText2["Success"] = "success";
-      MessageStatusText2["Pending"] = "pending";
-      MessageStatusText2["Fail"] = "fail";
-      MessageStatusText2["Sending"] = "sending";
-    })(MessageStatusText = exports2.MessageStatusText || (exports2.MessageStatusText = {}));
-    exports2.MessageStatusTextSerializer = {
-      _fromJsonObject(object2) {
-        return object2;
-      },
-      _toJsonObject(self2) {
-        return self2;
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/endpointMessageOut.js
-var require_endpointMessageOut = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/endpointMessageOut.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.EndpointMessageOutSerializer = void 0;
-    var messageStatus_1 = require_messageStatus();
-    var messageStatusText_1 = require_messageStatusText();
-    exports2.EndpointMessageOutSerializer = {
-      _fromJsonObject(object2) {
-        return {
-          channels: object2["channels"],
-          deliverAt: object2["deliverAt"] ? new Date(object2["deliverAt"]) : null,
-          eventId: object2["eventId"],
-          eventType: object2["eventType"],
-          id: object2["id"],
-          nextAttempt: object2["nextAttempt"] ? new Date(object2["nextAttempt"]) : null,
-          payload: object2["payload"],
-          status: messageStatus_1.MessageStatusSerializer._fromJsonObject(object2["status"]),
-          statusText: messageStatusText_1.MessageStatusTextSerializer._fromJsonObject(object2["statusText"]),
-          tags: object2["tags"],
-          timestamp: new Date(object2["timestamp"])
-        };
-      },
-      _toJsonObject(self2) {
-        return {
-          channels: self2.channels,
-          deliverAt: self2.deliverAt,
-          eventId: self2.eventId,
-          eventType: self2.eventType,
-          id: self2.id,
-          nextAttempt: self2.nextAttempt,
-          payload: self2.payload,
-          status: messageStatus_1.MessageStatusSerializer._toJsonObject(self2.status),
-          statusText: messageStatusText_1.MessageStatusTextSerializer._toJsonObject(self2.statusText),
-          tags: self2.tags,
-          timestamp: self2.timestamp
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/listResponseEndpointMessageOut.js
-var require_listResponseEndpointMessageOut = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/listResponseEndpointMessageOut.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.ListResponseEndpointMessageOutSerializer = void 0;
-    var endpointMessageOut_1 = require_endpointMessageOut();
-    exports2.ListResponseEndpointMessageOutSerializer = {
-      _fromJsonObject(object2) {
-        return {
-          data: object2["data"].map((item) => endpointMessageOut_1.EndpointMessageOutSerializer._fromJsonObject(item)),
-          done: object2["done"],
-          iterator: object2["iterator"],
-          prevIterator: object2["prevIterator"]
-        };
-      },
-      _toJsonObject(self2) {
-        return {
-          data: self2.data.map((item) => endpointMessageOut_1.EndpointMessageOutSerializer._toJsonObject(item)),
-          done: self2.done,
-          iterator: self2.iterator,
-          prevIterator: self2.prevIterator
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/messageAttemptTriggerType.js
-var require_messageAttemptTriggerType = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/messageAttemptTriggerType.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.MessageAttemptTriggerTypeSerializer = exports2.MessageAttemptTriggerType = void 0;
-    var MessageAttemptTriggerType;
-    (function(MessageAttemptTriggerType2) {
-      MessageAttemptTriggerType2[MessageAttemptTriggerType2["Scheduled"] = 0] = "Scheduled";
-      MessageAttemptTriggerType2[MessageAttemptTriggerType2["Manual"] = 1] = "Manual";
-    })(MessageAttemptTriggerType = exports2.MessageAttemptTriggerType || (exports2.MessageAttemptTriggerType = {}));
-    exports2.MessageAttemptTriggerTypeSerializer = {
-      _fromJsonObject(object2) {
-        return object2;
-      },
-      _toJsonObject(self2) {
-        return self2;
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/messageAttemptOut.js
-var require_messageAttemptOut = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/messageAttemptOut.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.MessageAttemptOutSerializer = void 0;
-    var messageAttemptTriggerType_1 = require_messageAttemptTriggerType();
-    var messageOut_1 = require_messageOut();
-    var messageStatus_1 = require_messageStatus();
-    var messageStatusText_1 = require_messageStatusText();
-    exports2.MessageAttemptOutSerializer = {
-      _fromJsonObject(object2) {
-        return {
-          endpointId: object2["endpointId"],
-          id: object2["id"],
-          msg: object2["msg"] != null ? messageOut_1.MessageOutSerializer._fromJsonObject(object2["msg"]) : void 0,
-          msgId: object2["msgId"],
-          response: object2["response"],
-          responseDurationMs: object2["responseDurationMs"],
-          responseStatusCode: object2["responseStatusCode"],
-          status: messageStatus_1.MessageStatusSerializer._fromJsonObject(object2["status"]),
-          statusText: messageStatusText_1.MessageStatusTextSerializer._fromJsonObject(object2["statusText"]),
-          timestamp: new Date(object2["timestamp"]),
-          triggerType: messageAttemptTriggerType_1.MessageAttemptTriggerTypeSerializer._fromJsonObject(object2["triggerType"]),
-          url: object2["url"]
-        };
-      },
-      _toJsonObject(self2) {
-        return {
-          endpointId: self2.endpointId,
-          id: self2.id,
-          msg: self2.msg != null ? messageOut_1.MessageOutSerializer._toJsonObject(self2.msg) : void 0,
-          msgId: self2.msgId,
-          response: self2.response,
-          responseDurationMs: self2.responseDurationMs,
-          responseStatusCode: self2.responseStatusCode,
-          status: messageStatus_1.MessageStatusSerializer._toJsonObject(self2.status),
-          statusText: messageStatusText_1.MessageStatusTextSerializer._toJsonObject(self2.statusText),
-          timestamp: self2.timestamp,
-          triggerType: messageAttemptTriggerType_1.MessageAttemptTriggerTypeSerializer._toJsonObject(self2.triggerType),
-          url: self2.url
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/listResponseMessageAttemptOut.js
-var require_listResponseMessageAttemptOut = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/listResponseMessageAttemptOut.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.ListResponseMessageAttemptOutSerializer = void 0;
-    var messageAttemptOut_1 = require_messageAttemptOut();
-    exports2.ListResponseMessageAttemptOutSerializer = {
-      _fromJsonObject(object2) {
-        return {
-          data: object2["data"].map((item) => messageAttemptOut_1.MessageAttemptOutSerializer._fromJsonObject(item)),
-          done: object2["done"],
-          iterator: object2["iterator"],
-          prevIterator: object2["prevIterator"]
-        };
-      },
-      _toJsonObject(self2) {
-        return {
-          data: self2.data.map((item) => messageAttemptOut_1.MessageAttemptOutSerializer._toJsonObject(item)),
-          done: self2.done,
-          iterator: self2.iterator,
-          prevIterator: self2.prevIterator
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/messageEndpointOut.js
-var require_messageEndpointOut = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/messageEndpointOut.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.MessageEndpointOutSerializer = void 0;
-    var messageStatus_1 = require_messageStatus();
-    var messageStatusText_1 = require_messageStatusText();
-    exports2.MessageEndpointOutSerializer = {
-      _fromJsonObject(object2) {
-        return {
-          channels: object2["channels"],
-          createdAt: new Date(object2["createdAt"]),
-          description: object2["description"],
-          disabled: object2["disabled"],
-          filterTypes: object2["filterTypes"],
-          id: object2["id"],
-          nextAttempt: object2["nextAttempt"] ? new Date(object2["nextAttempt"]) : null,
-          rateLimit: object2["rateLimit"],
-          status: messageStatus_1.MessageStatusSerializer._fromJsonObject(object2["status"]),
-          statusText: messageStatusText_1.MessageStatusTextSerializer._fromJsonObject(object2["statusText"]),
-          throttleRate: object2["throttleRate"],
-          uid: object2["uid"],
-          updatedAt: new Date(object2["updatedAt"]),
-          url: object2["url"],
-          version: object2["version"]
-        };
-      },
-      _toJsonObject(self2) {
-        return {
-          channels: self2.channels,
-          createdAt: self2.createdAt,
-          description: self2.description,
-          disabled: self2.disabled,
-          filterTypes: self2.filterTypes,
-          id: self2.id,
-          nextAttempt: self2.nextAttempt,
-          rateLimit: self2.rateLimit,
-          status: messageStatus_1.MessageStatusSerializer._toJsonObject(self2.status),
-          statusText: messageStatusText_1.MessageStatusTextSerializer._toJsonObject(self2.statusText),
-          throttleRate: self2.throttleRate,
-          uid: self2.uid,
-          updatedAt: self2.updatedAt,
-          url: self2.url,
-          version: self2.version
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/listResponseMessageEndpointOut.js
-var require_listResponseMessageEndpointOut = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/listResponseMessageEndpointOut.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.ListResponseMessageEndpointOutSerializer = void 0;
-    var messageEndpointOut_1 = require_messageEndpointOut();
-    exports2.ListResponseMessageEndpointOutSerializer = {
-      _fromJsonObject(object2) {
-        return {
-          data: object2["data"].map((item) => messageEndpointOut_1.MessageEndpointOutSerializer._fromJsonObject(item)),
-          done: object2["done"],
-          iterator: object2["iterator"],
-          prevIterator: object2["prevIterator"]
-        };
-      },
-      _toJsonObject(self2) {
-        return {
-          data: self2.data.map((item) => messageEndpointOut_1.MessageEndpointOutSerializer._toJsonObject(item)),
-          done: self2.done,
-          iterator: self2.iterator,
-          prevIterator: self2.prevIterator
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/api/messageAttempt.js
-var require_messageAttempt = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/api/messageAttempt.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.MessageAttempt = void 0;
-    var emptyResponse_1 = require_emptyResponse();
-    var listResponseEndpointMessageOut_1 = require_listResponseEndpointMessageOut();
-    var listResponseMessageAttemptOut_1 = require_listResponseMessageAttemptOut();
-    var listResponseMessageEndpointOut_1 = require_listResponseMessageEndpointOut();
-    var messageAttemptOut_1 = require_messageAttemptOut();
-    var request_1 = require_request2();
-    var MessageAttempt = class {
-      constructor(requestCtx) {
-        this.requestCtx = requestCtx;
-      }
-      listByEndpoint(appId, endpointId, options) {
-        const request = new request_1.SvixRequest(request_1.HttpMethod.GET, "/api/v1/app/{app_id}/attempt/endpoint/{endpoint_id}");
-        request.setPathParam("app_id", appId);
-        request.setPathParam("endpoint_id", endpointId);
-        request.setQueryParams({
-          limit: options === null || options === void 0 ? void 0 : options.limit,
-          iterator: options === null || options === void 0 ? void 0 : options.iterator,
-          status: options === null || options === void 0 ? void 0 : options.status,
-          status_code_class: options === null || options === void 0 ? void 0 : options.statusCodeClass,
-          channel: options === null || options === void 0 ? void 0 : options.channel,
-          tag: options === null || options === void 0 ? void 0 : options.tag,
-          before: options === null || options === void 0 ? void 0 : options.before,
-          after: options === null || options === void 0 ? void 0 : options.after,
-          with_content: options === null || options === void 0 ? void 0 : options.withContent,
-          with_msg: options === null || options === void 0 ? void 0 : options.withMsg,
-          event_types: options === null || options === void 0 ? void 0 : options.eventTypes
-        });
-        return request.send(this.requestCtx, listResponseMessageAttemptOut_1.ListResponseMessageAttemptOutSerializer._fromJsonObject);
-      }
-      listByMsg(appId, msgId, options) {
-        const request = new request_1.SvixRequest(request_1.HttpMethod.GET, "/api/v1/app/{app_id}/attempt/msg/{msg_id}");
-        request.setPathParam("app_id", appId);
-        request.setPathParam("msg_id", msgId);
-        request.setQueryParams({
-          limit: options === null || options === void 0 ? void 0 : options.limit,
-          iterator: options === null || options === void 0 ? void 0 : options.iterator,
-          status: options === null || options === void 0 ? void 0 : options.status,
-          status_code_class: options === null || options === void 0 ? void 0 : options.statusCodeClass,
-          channel: options === null || options === void 0 ? void 0 : options.channel,
-          tag: options === null || options === void 0 ? void 0 : options.tag,
-          endpoint_id: options === null || options === void 0 ? void 0 : options.endpointId,
-          before: options === null || options === void 0 ? void 0 : options.before,
-          after: options === null || options === void 0 ? void 0 : options.after,
-          with_content: options === null || options === void 0 ? void 0 : options.withContent,
-          event_types: options === null || options === void 0 ? void 0 : options.eventTypes
-        });
-        return request.send(this.requestCtx, listResponseMessageAttemptOut_1.ListResponseMessageAttemptOutSerializer._fromJsonObject);
-      }
-      listAttemptedMessages(appId, endpointId, options) {
-        const request = new request_1.SvixRequest(request_1.HttpMethod.GET, "/api/v1/app/{app_id}/endpoint/{endpoint_id}/msg");
-        request.setPathParam("app_id", appId);
-        request.setPathParam("endpoint_id", endpointId);
-        request.setQueryParams({
-          limit: options === null || options === void 0 ? void 0 : options.limit,
-          iterator: options === null || options === void 0 ? void 0 : options.iterator,
-          channel: options === null || options === void 0 ? void 0 : options.channel,
-          tag: options === null || options === void 0 ? void 0 : options.tag,
-          status: options === null || options === void 0 ? void 0 : options.status,
-          before: options === null || options === void 0 ? void 0 : options.before,
-          after: options === null || options === void 0 ? void 0 : options.after,
-          with_content: options === null || options === void 0 ? void 0 : options.withContent,
-          event_types: options === null || options === void 0 ? void 0 : options.eventTypes
-        });
-        return request.send(this.requestCtx, listResponseEndpointMessageOut_1.ListResponseEndpointMessageOutSerializer._fromJsonObject);
-      }
-      get(appId, msgId, attemptId) {
-        const request = new request_1.SvixRequest(request_1.HttpMethod.GET, "/api/v1/app/{app_id}/msg/{msg_id}/attempt/{attempt_id}");
-        request.setPathParam("app_id", appId);
-        request.setPathParam("msg_id", msgId);
-        request.setPathParam("attempt_id", attemptId);
-        return request.send(this.requestCtx, messageAttemptOut_1.MessageAttemptOutSerializer._fromJsonObject);
-      }
-      expungeContent(appId, msgId, attemptId) {
-        const request = new request_1.SvixRequest(request_1.HttpMethod.DELETE, "/api/v1/app/{app_id}/msg/{msg_id}/attempt/{attempt_id}/content");
-        request.setPathParam("app_id", appId);
-        request.setPathParam("msg_id", msgId);
-        request.setPathParam("attempt_id", attemptId);
-        return request.sendNoResponseBody(this.requestCtx);
-      }
-      listAttemptedDestinations(appId, msgId, options) {
-        const request = new request_1.SvixRequest(request_1.HttpMethod.GET, "/api/v1/app/{app_id}/msg/{msg_id}/endpoint");
-        request.setPathParam("app_id", appId);
-        request.setPathParam("msg_id", msgId);
-        request.setQueryParams({
-          limit: options === null || options === void 0 ? void 0 : options.limit,
-          iterator: options === null || options === void 0 ? void 0 : options.iterator
-        });
-        return request.send(this.requestCtx, listResponseMessageEndpointOut_1.ListResponseMessageEndpointOutSerializer._fromJsonObject);
-      }
-      resend(appId, msgId, endpointId, options) {
-        const request = new request_1.SvixRequest(request_1.HttpMethod.POST, "/api/v1/app/{app_id}/msg/{msg_id}/endpoint/{endpoint_id}/resend");
-        request.setPathParam("app_id", appId);
-        request.setPathParam("msg_id", msgId);
-        request.setPathParam("endpoint_id", endpointId);
-        request.setHeaderParam("idempotency-key", options === null || options === void 0 ? void 0 : options.idempotencyKey);
-        return request.send(this.requestCtx, emptyResponse_1.EmptyResponseSerializer._fromJsonObject);
-      }
-    };
-    exports2.MessageAttempt = MessageAttempt;
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/operationalWebhookEndpointOut.js
-var require_operationalWebhookEndpointOut = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/operationalWebhookEndpointOut.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.OperationalWebhookEndpointOutSerializer = void 0;
-    exports2.OperationalWebhookEndpointOutSerializer = {
-      _fromJsonObject(object2) {
-        return {
-          createdAt: new Date(object2["createdAt"]),
-          description: object2["description"],
-          disabled: object2["disabled"],
-          filterTypes: object2["filterTypes"],
-          id: object2["id"],
-          metadata: object2["metadata"],
-          rateLimit: object2["rateLimit"],
-          uid: object2["uid"],
-          updatedAt: new Date(object2["updatedAt"]),
-          url: object2["url"]
-        };
-      },
-      _toJsonObject(self2) {
-        return {
-          createdAt: self2.createdAt,
-          description: self2.description,
-          disabled: self2.disabled,
-          filterTypes: self2.filterTypes,
-          id: self2.id,
-          metadata: self2.metadata,
-          rateLimit: self2.rateLimit,
-          uid: self2.uid,
-          updatedAt: self2.updatedAt,
-          url: self2.url
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/listResponseOperationalWebhookEndpointOut.js
-var require_listResponseOperationalWebhookEndpointOut = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/listResponseOperationalWebhookEndpointOut.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.ListResponseOperationalWebhookEndpointOutSerializer = void 0;
-    var operationalWebhookEndpointOut_1 = require_operationalWebhookEndpointOut();
-    exports2.ListResponseOperationalWebhookEndpointOutSerializer = {
-      _fromJsonObject(object2) {
-        return {
-          data: object2["data"].map((item) => operationalWebhookEndpointOut_1.OperationalWebhookEndpointOutSerializer._fromJsonObject(item)),
-          done: object2["done"],
-          iterator: object2["iterator"],
-          prevIterator: object2["prevIterator"]
-        };
-      },
-      _toJsonObject(self2) {
-        return {
-          data: self2.data.map((item) => operationalWebhookEndpointOut_1.OperationalWebhookEndpointOutSerializer._toJsonObject(item)),
-          done: self2.done,
-          iterator: self2.iterator,
-          prevIterator: self2.prevIterator
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/operationalWebhookEndpointHeadersIn.js
-var require_operationalWebhookEndpointHeadersIn = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/operationalWebhookEndpointHeadersIn.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.OperationalWebhookEndpointHeadersInSerializer = void 0;
-    exports2.OperationalWebhookEndpointHeadersInSerializer = {
-      _fromJsonObject(object2) {
-        return {
-          headers: object2["headers"]
-        };
-      },
-      _toJsonObject(self2) {
-        return {
-          headers: self2.headers
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/operationalWebhookEndpointHeadersOut.js
-var require_operationalWebhookEndpointHeadersOut = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/operationalWebhookEndpointHeadersOut.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.OperationalWebhookEndpointHeadersOutSerializer = void 0;
-    exports2.OperationalWebhookEndpointHeadersOutSerializer = {
-      _fromJsonObject(object2) {
-        return {
-          headers: object2["headers"],
-          sensitive: object2["sensitive"]
-        };
-      },
-      _toJsonObject(self2) {
-        return {
-          headers: self2.headers,
-          sensitive: self2.sensitive
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/operationalWebhookEndpointIn.js
-var require_operationalWebhookEndpointIn = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/operationalWebhookEndpointIn.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.OperationalWebhookEndpointInSerializer = void 0;
-    exports2.OperationalWebhookEndpointInSerializer = {
-      _fromJsonObject(object2) {
-        return {
-          description: object2["description"],
-          disabled: object2["disabled"],
-          filterTypes: object2["filterTypes"],
-          metadata: object2["metadata"],
-          rateLimit: object2["rateLimit"],
-          secret: object2["secret"],
-          uid: object2["uid"],
-          url: object2["url"]
-        };
-      },
-      _toJsonObject(self2) {
-        return {
-          description: self2.description,
-          disabled: self2.disabled,
-          filterTypes: self2.filterTypes,
-          metadata: self2.metadata,
-          rateLimit: self2.rateLimit,
-          secret: self2.secret,
-          uid: self2.uid,
-          url: self2.url
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/operationalWebhookEndpointSecretIn.js
-var require_operationalWebhookEndpointSecretIn = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/operationalWebhookEndpointSecretIn.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.OperationalWebhookEndpointSecretInSerializer = void 0;
-    exports2.OperationalWebhookEndpointSecretInSerializer = {
-      _fromJsonObject(object2) {
-        return {
-          key: object2["key"]
-        };
-      },
-      _toJsonObject(self2) {
-        return {
-          key: self2.key
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/operationalWebhookEndpointSecretOut.js
-var require_operationalWebhookEndpointSecretOut = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/operationalWebhookEndpointSecretOut.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.OperationalWebhookEndpointSecretOutSerializer = void 0;
-    exports2.OperationalWebhookEndpointSecretOutSerializer = {
-      _fromJsonObject(object2) {
-        return {
-          key: object2["key"]
-        };
-      },
-      _toJsonObject(self2) {
-        return {
-          key: self2.key
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/operationalWebhookEndpointUpdate.js
-var require_operationalWebhookEndpointUpdate = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/operationalWebhookEndpointUpdate.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.OperationalWebhookEndpointUpdateSerializer = void 0;
-    exports2.OperationalWebhookEndpointUpdateSerializer = {
-      _fromJsonObject(object2) {
-        return {
-          description: object2["description"],
-          disabled: object2["disabled"],
-          filterTypes: object2["filterTypes"],
-          metadata: object2["metadata"],
-          rateLimit: object2["rateLimit"],
-          uid: object2["uid"],
-          url: object2["url"]
-        };
-      },
-      _toJsonObject(self2) {
-        return {
-          description: self2.description,
-          disabled: self2.disabled,
-          filterTypes: self2.filterTypes,
-          metadata: self2.metadata,
-          rateLimit: self2.rateLimit,
-          uid: self2.uid,
-          url: self2.url
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/api/operationalWebhookEndpoint.js
-var require_operationalWebhookEndpoint = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/api/operationalWebhookEndpoint.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.OperationalWebhookEndpoint = void 0;
-    var listResponseOperationalWebhookEndpointOut_1 = require_listResponseOperationalWebhookEndpointOut();
-    var operationalWebhookEndpointHeadersIn_1 = require_operationalWebhookEndpointHeadersIn();
-    var operationalWebhookEndpointHeadersOut_1 = require_operationalWebhookEndpointHeadersOut();
-    var operationalWebhookEndpointIn_1 = require_operationalWebhookEndpointIn();
-    var operationalWebhookEndpointOut_1 = require_operationalWebhookEndpointOut();
-    var operationalWebhookEndpointSecretIn_1 = require_operationalWebhookEndpointSecretIn();
-    var operationalWebhookEndpointSecretOut_1 = require_operationalWebhookEndpointSecretOut();
-    var operationalWebhookEndpointUpdate_1 = require_operationalWebhookEndpointUpdate();
-    var request_1 = require_request2();
-    var OperationalWebhookEndpoint = class {
-      constructor(requestCtx) {
-        this.requestCtx = requestCtx;
-      }
-      list(options) {
-        const request = new request_1.SvixRequest(request_1.HttpMethod.GET, "/api/v1/operational-webhook/endpoint");
-        request.setQueryParams({
-          limit: options === null || options === void 0 ? void 0 : options.limit,
-          iterator: options === null || options === void 0 ? void 0 : options.iterator,
-          order: options === null || options === void 0 ? void 0 : options.order
-        });
-        return request.send(this.requestCtx, listResponseOperationalWebhookEndpointOut_1.ListResponseOperationalWebhookEndpointOutSerializer._fromJsonObject);
-      }
-      create(operationalWebhookEndpointIn, options) {
-        const request = new request_1.SvixRequest(request_1.HttpMethod.POST, "/api/v1/operational-webhook/endpoint");
-        request.setHeaderParam("idempotency-key", options === null || options === void 0 ? void 0 : options.idempotencyKey);
-        request.setBody(operationalWebhookEndpointIn_1.OperationalWebhookEndpointInSerializer._toJsonObject(operationalWebhookEndpointIn));
-        return request.send(this.requestCtx, operationalWebhookEndpointOut_1.OperationalWebhookEndpointOutSerializer._fromJsonObject);
-      }
-      get(endpointId) {
-        const request = new request_1.SvixRequest(request_1.HttpMethod.GET, "/api/v1/operational-webhook/endpoint/{endpoint_id}");
-        request.setPathParam("endpoint_id", endpointId);
-        return request.send(this.requestCtx, operationalWebhookEndpointOut_1.OperationalWebhookEndpointOutSerializer._fromJsonObject);
-      }
-      update(endpointId, operationalWebhookEndpointUpdate) {
-        const request = new request_1.SvixRequest(request_1.HttpMethod.PUT, "/api/v1/operational-webhook/endpoint/{endpoint_id}");
-        request.setPathParam("endpoint_id", endpointId);
-        request.setBody(operationalWebhookEndpointUpdate_1.OperationalWebhookEndpointUpdateSerializer._toJsonObject(operationalWebhookEndpointUpdate));
-        return request.send(this.requestCtx, operationalWebhookEndpointOut_1.OperationalWebhookEndpointOutSerializer._fromJsonObject);
-      }
-      delete(endpointId) {
-        const request = new request_1.SvixRequest(request_1.HttpMethod.DELETE, "/api/v1/operational-webhook/endpoint/{endpoint_id}");
-        request.setPathParam("endpoint_id", endpointId);
-        return request.sendNoResponseBody(this.requestCtx);
-      }
-      getHeaders(endpointId) {
-        const request = new request_1.SvixRequest(request_1.HttpMethod.GET, "/api/v1/operational-webhook/endpoint/{endpoint_id}/headers");
-        request.setPathParam("endpoint_id", endpointId);
-        return request.send(this.requestCtx, operationalWebhookEndpointHeadersOut_1.OperationalWebhookEndpointHeadersOutSerializer._fromJsonObject);
-      }
-      updateHeaders(endpointId, operationalWebhookEndpointHeadersIn) {
-        const request = new request_1.SvixRequest(request_1.HttpMethod.PUT, "/api/v1/operational-webhook/endpoint/{endpoint_id}/headers");
-        request.setPathParam("endpoint_id", endpointId);
-        request.setBody(operationalWebhookEndpointHeadersIn_1.OperationalWebhookEndpointHeadersInSerializer._toJsonObject(operationalWebhookEndpointHeadersIn));
-        return request.sendNoResponseBody(this.requestCtx);
-      }
-      getSecret(endpointId) {
-        const request = new request_1.SvixRequest(request_1.HttpMethod.GET, "/api/v1/operational-webhook/endpoint/{endpoint_id}/secret");
-        request.setPathParam("endpoint_id", endpointId);
-        return request.send(this.requestCtx, operationalWebhookEndpointSecretOut_1.OperationalWebhookEndpointSecretOutSerializer._fromJsonObject);
-      }
-      rotateSecret(endpointId, operationalWebhookEndpointSecretIn, options) {
-        const request = new request_1.SvixRequest(request_1.HttpMethod.POST, "/api/v1/operational-webhook/endpoint/{endpoint_id}/secret/rotate");
-        request.setPathParam("endpoint_id", endpointId);
-        request.setHeaderParam("idempotency-key", options === null || options === void 0 ? void 0 : options.idempotencyKey);
-        request.setBody(operationalWebhookEndpointSecretIn_1.OperationalWebhookEndpointSecretInSerializer._toJsonObject(operationalWebhookEndpointSecretIn));
-        return request.sendNoResponseBody(this.requestCtx);
-      }
-    };
-    exports2.OperationalWebhookEndpoint = OperationalWebhookEndpoint;
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/api/operationalWebhook.js
-var require_operationalWebhook = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/api/operationalWebhook.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.OperationalWebhook = void 0;
-    var operationalWebhookEndpoint_1 = require_operationalWebhookEndpoint();
-    var OperationalWebhook = class {
-      constructor(requestCtx) {
-        this.requestCtx = requestCtx;
-      }
-      get endpoint() {
-        return new operationalWebhookEndpoint_1.OperationalWebhookEndpoint(this.requestCtx);
-      }
-    };
-    exports2.OperationalWebhook = OperationalWebhook;
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/aggregateEventTypesOut.js
-var require_aggregateEventTypesOut = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/aggregateEventTypesOut.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.AggregateEventTypesOutSerializer = void 0;
-    var backgroundTaskStatus_1 = require_backgroundTaskStatus();
-    var backgroundTaskType_1 = require_backgroundTaskType();
-    exports2.AggregateEventTypesOutSerializer = {
-      _fromJsonObject(object2) {
-        return {
-          id: object2["id"],
-          status: backgroundTaskStatus_1.BackgroundTaskStatusSerializer._fromJsonObject(object2["status"]),
-          task: backgroundTaskType_1.BackgroundTaskTypeSerializer._fromJsonObject(object2["task"]),
-          updatedAt: new Date(object2["updatedAt"])
-        };
-      },
-      _toJsonObject(self2) {
-        return {
-          id: self2.id,
-          status: backgroundTaskStatus_1.BackgroundTaskStatusSerializer._toJsonObject(self2.status),
-          task: backgroundTaskType_1.BackgroundTaskTypeSerializer._toJsonObject(self2.task),
-          updatedAt: self2.updatedAt
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/appUsageStatsIn.js
-var require_appUsageStatsIn = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/appUsageStatsIn.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.AppUsageStatsInSerializer = void 0;
-    exports2.AppUsageStatsInSerializer = {
-      _fromJsonObject(object2) {
-        return {
-          appIds: object2["appIds"],
-          since: new Date(object2["since"]),
-          until: new Date(object2["until"])
-        };
-      },
-      _toJsonObject(self2) {
-        return {
-          appIds: self2.appIds,
-          since: self2.since,
-          until: self2.until
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/appUsageStatsOut.js
-var require_appUsageStatsOut = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/appUsageStatsOut.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.AppUsageStatsOutSerializer = void 0;
-    var backgroundTaskStatus_1 = require_backgroundTaskStatus();
-    var backgroundTaskType_1 = require_backgroundTaskType();
-    exports2.AppUsageStatsOutSerializer = {
-      _fromJsonObject(object2) {
-        return {
-          id: object2["id"],
-          status: backgroundTaskStatus_1.BackgroundTaskStatusSerializer._fromJsonObject(object2["status"]),
-          task: backgroundTaskType_1.BackgroundTaskTypeSerializer._fromJsonObject(object2["task"]),
-          unresolvedAppIds: object2["unresolvedAppIds"],
-          updatedAt: new Date(object2["updatedAt"])
-        };
-      },
-      _toJsonObject(self2) {
-        return {
-          id: self2.id,
-          status: backgroundTaskStatus_1.BackgroundTaskStatusSerializer._toJsonObject(self2.status),
-          task: backgroundTaskType_1.BackgroundTaskTypeSerializer._toJsonObject(self2.task),
-          unresolvedAppIds: self2.unresolvedAppIds,
-          updatedAt: self2.updatedAt
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/api/statistics.js
-var require_statistics = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/api/statistics.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.Statistics = void 0;
-    var aggregateEventTypesOut_1 = require_aggregateEventTypesOut();
-    var appUsageStatsIn_1 = require_appUsageStatsIn();
-    var appUsageStatsOut_1 = require_appUsageStatsOut();
-    var request_1 = require_request2();
-    var Statistics = class {
-      constructor(requestCtx) {
-        this.requestCtx = requestCtx;
-      }
-      aggregateAppStats(appUsageStatsIn, options) {
-        const request = new request_1.SvixRequest(request_1.HttpMethod.POST, "/api/v1/stats/usage/app");
-        request.setHeaderParam("idempotency-key", options === null || options === void 0 ? void 0 : options.idempotencyKey);
-        request.setBody(appUsageStatsIn_1.AppUsageStatsInSerializer._toJsonObject(appUsageStatsIn));
-        return request.send(this.requestCtx, appUsageStatsOut_1.AppUsageStatsOutSerializer._fromJsonObject);
-      }
-      aggregateEventTypes() {
-        const request = new request_1.SvixRequest(request_1.HttpMethod.PUT, "/api/v1/stats/usage/event-types");
-        return request.send(this.requestCtx, aggregateEventTypesOut_1.AggregateEventTypesOutSerializer._fromJsonObject);
-      }
-    };
-    exports2.Statistics = Statistics;
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/httpSinkHeadersPatchIn.js
-var require_httpSinkHeadersPatchIn = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/httpSinkHeadersPatchIn.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.HttpSinkHeadersPatchInSerializer = void 0;
-    exports2.HttpSinkHeadersPatchInSerializer = {
-      _fromJsonObject(object2) {
-        return {
-          headers: object2["headers"]
-        };
-      },
-      _toJsonObject(self2) {
-        return {
-          headers: self2.headers
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/sinkTransformationOut.js
-var require_sinkTransformationOut = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/sinkTransformationOut.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.SinkTransformationOutSerializer = void 0;
-    exports2.SinkTransformationOutSerializer = {
-      _fromJsonObject(object2) {
-        return {
-          code: object2["code"],
-          enabled: object2["enabled"]
-        };
-      },
-      _toJsonObject(self2) {
-        return {
-          code: self2.code,
-          enabled: self2.enabled
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/streamEventTypeOut.js
-var require_streamEventTypeOut = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/streamEventTypeOut.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.StreamEventTypeOutSerializer = void 0;
-    exports2.StreamEventTypeOutSerializer = {
-      _fromJsonObject(object2) {
-        return {
-          archived: object2["archived"],
-          createdAt: new Date(object2["createdAt"]),
-          deprecated: object2["deprecated"],
-          description: object2["description"],
-          featureFlags: object2["featureFlags"],
-          name: object2["name"],
-          updatedAt: new Date(object2["updatedAt"])
-        };
-      },
-      _toJsonObject(self2) {
-        return {
-          archived: self2.archived,
-          createdAt: self2.createdAt,
-          deprecated: self2.deprecated,
-          description: self2.description,
-          featureFlags: self2.featureFlags,
-          name: self2.name,
-          updatedAt: self2.updatedAt
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/listResponseStreamEventTypeOut.js
-var require_listResponseStreamEventTypeOut = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/listResponseStreamEventTypeOut.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.ListResponseStreamEventTypeOutSerializer = void 0;
-    var streamEventTypeOut_1 = require_streamEventTypeOut();
-    exports2.ListResponseStreamEventTypeOutSerializer = {
-      _fromJsonObject(object2) {
-        return {
-          data: object2["data"].map((item) => streamEventTypeOut_1.StreamEventTypeOutSerializer._fromJsonObject(item)),
-          done: object2["done"],
-          iterator: object2["iterator"],
-          prevIterator: object2["prevIterator"]
-        };
-      },
-      _toJsonObject(self2) {
-        return {
-          data: self2.data.map((item) => streamEventTypeOut_1.StreamEventTypeOutSerializer._toJsonObject(item)),
-          done: self2.done,
-          iterator: self2.iterator,
-          prevIterator: self2.prevIterator
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/streamEventTypeIn.js
-var require_streamEventTypeIn = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/streamEventTypeIn.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.StreamEventTypeInSerializer = void 0;
-    exports2.StreamEventTypeInSerializer = {
-      _fromJsonObject(object2) {
-        return {
-          archived: object2["archived"],
-          deprecated: object2["deprecated"],
-          description: object2["description"],
-          featureFlags: object2["featureFlags"],
-          name: object2["name"]
-        };
-      },
-      _toJsonObject(self2) {
-        return {
-          archived: self2.archived,
-          deprecated: self2.deprecated,
-          description: self2.description,
-          featureFlags: self2.featureFlags,
-          name: self2.name
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/streamEventTypePatch.js
-var require_streamEventTypePatch = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/streamEventTypePatch.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.StreamEventTypePatchSerializer = void 0;
-    exports2.StreamEventTypePatchSerializer = {
-      _fromJsonObject(object2) {
-        return {
-          archived: object2["archived"],
-          deprecated: object2["deprecated"],
-          description: object2["description"],
-          featureFlags: object2["featureFlags"],
-          name: object2["name"]
-        };
-      },
-      _toJsonObject(self2) {
-        return {
-          archived: self2.archived,
-          deprecated: self2.deprecated,
-          description: self2.description,
-          featureFlags: self2.featureFlags,
-          name: self2.name
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/api/streamingEventType.js
-var require_streamingEventType = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/api/streamingEventType.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.StreamingEventType = void 0;
-    var listResponseStreamEventTypeOut_1 = require_listResponseStreamEventTypeOut();
-    var streamEventTypeIn_1 = require_streamEventTypeIn();
-    var streamEventTypeOut_1 = require_streamEventTypeOut();
-    var streamEventTypePatch_1 = require_streamEventTypePatch();
-    var request_1 = require_request2();
-    var StreamingEventType = class {
-      constructor(requestCtx) {
-        this.requestCtx = requestCtx;
-      }
-      list(options) {
-        const request = new request_1.SvixRequest(request_1.HttpMethod.GET, "/api/v1/stream/event-type");
-        request.setQueryParams({
-          limit: options === null || options === void 0 ? void 0 : options.limit,
-          iterator: options === null || options === void 0 ? void 0 : options.iterator,
-          order: options === null || options === void 0 ? void 0 : options.order,
-          include_archived: options === null || options === void 0 ? void 0 : options.includeArchived
-        });
-        return request.send(this.requestCtx, listResponseStreamEventTypeOut_1.ListResponseStreamEventTypeOutSerializer._fromJsonObject);
-      }
-      create(streamEventTypeIn, options) {
-        const request = new request_1.SvixRequest(request_1.HttpMethod.POST, "/api/v1/stream/event-type");
-        request.setHeaderParam("idempotency-key", options === null || options === void 0 ? void 0 : options.idempotencyKey);
-        request.setBody(streamEventTypeIn_1.StreamEventTypeInSerializer._toJsonObject(streamEventTypeIn));
-        return request.send(this.requestCtx, streamEventTypeOut_1.StreamEventTypeOutSerializer._fromJsonObject);
-      }
-      get(name3) {
-        const request = new request_1.SvixRequest(request_1.HttpMethod.GET, "/api/v1/stream/event-type/{name}");
-        request.setPathParam("name", name3);
-        return request.send(this.requestCtx, streamEventTypeOut_1.StreamEventTypeOutSerializer._fromJsonObject);
-      }
-      update(name3, streamEventTypeIn) {
-        const request = new request_1.SvixRequest(request_1.HttpMethod.PUT, "/api/v1/stream/event-type/{name}");
-        request.setPathParam("name", name3);
-        request.setBody(streamEventTypeIn_1.StreamEventTypeInSerializer._toJsonObject(streamEventTypeIn));
-        return request.send(this.requestCtx, streamEventTypeOut_1.StreamEventTypeOutSerializer._fromJsonObject);
-      }
-      delete(name3, options) {
-        const request = new request_1.SvixRequest(request_1.HttpMethod.DELETE, "/api/v1/stream/event-type/{name}");
-        request.setPathParam("name", name3);
-        request.setQueryParams({
-          expunge: options === null || options === void 0 ? void 0 : options.expunge
-        });
-        return request.sendNoResponseBody(this.requestCtx);
-      }
-      patch(name3, streamEventTypePatch) {
-        const request = new request_1.SvixRequest(request_1.HttpMethod.PATCH, "/api/v1/stream/event-type/{name}");
-        request.setPathParam("name", name3);
-        request.setBody(streamEventTypePatch_1.StreamEventTypePatchSerializer._toJsonObject(streamEventTypePatch));
-        return request.send(this.requestCtx, streamEventTypeOut_1.StreamEventTypeOutSerializer._fromJsonObject);
-      }
-    };
-    exports2.StreamingEventType = StreamingEventType;
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/eventIn.js
-var require_eventIn = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/eventIn.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.EventInSerializer = void 0;
-    exports2.EventInSerializer = {
-      _fromJsonObject(object2) {
-        return {
-          eventType: object2["eventType"],
-          payload: object2["payload"]
-        };
-      },
-      _toJsonObject(self2) {
-        return {
-          eventType: self2.eventType,
-          payload: self2.payload
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/streamIn.js
-var require_streamIn = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/streamIn.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.StreamInSerializer = void 0;
-    exports2.StreamInSerializer = {
-      _fromJsonObject(object2) {
-        return {
-          metadata: object2["metadata"],
-          name: object2["name"],
-          uid: object2["uid"]
-        };
-      },
-      _toJsonObject(self2) {
-        return {
-          metadata: self2.metadata,
-          name: self2.name,
-          uid: self2.uid
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/createStreamEventsIn.js
-var require_createStreamEventsIn = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/createStreamEventsIn.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.CreateStreamEventsInSerializer = void 0;
-    var eventIn_1 = require_eventIn();
-    var streamIn_1 = require_streamIn();
-    exports2.CreateStreamEventsInSerializer = {
-      _fromJsonObject(object2) {
-        return {
-          events: object2["events"].map((item) => eventIn_1.EventInSerializer._fromJsonObject(item)),
-          stream: object2["stream"] != null ? streamIn_1.StreamInSerializer._fromJsonObject(object2["stream"]) : void 0
-        };
-      },
-      _toJsonObject(self2) {
-        return {
-          events: self2.events.map((item) => eventIn_1.EventInSerializer._toJsonObject(item)),
-          stream: self2.stream != null ? streamIn_1.StreamInSerializer._toJsonObject(self2.stream) : void 0
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/createStreamEventsOut.js
-var require_createStreamEventsOut = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/createStreamEventsOut.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.CreateStreamEventsOutSerializer = void 0;
-    exports2.CreateStreamEventsOutSerializer = {
-      _fromJsonObject(_object) {
-        return {};
-      },
-      _toJsonObject(_self) {
-        return {};
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/eventOut.js
-var require_eventOut = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/eventOut.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.EventOutSerializer = void 0;
-    exports2.EventOutSerializer = {
-      _fromJsonObject(object2) {
-        return {
-          eventType: object2["eventType"],
-          payload: object2["payload"],
-          timestamp: new Date(object2["timestamp"])
-        };
-      },
-      _toJsonObject(self2) {
-        return {
-          eventType: self2.eventType,
-          payload: self2.payload,
-          timestamp: self2.timestamp
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/eventStreamOut.js
-var require_eventStreamOut = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/eventStreamOut.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.EventStreamOutSerializer = void 0;
-    var eventOut_1 = require_eventOut();
-    exports2.EventStreamOutSerializer = {
-      _fromJsonObject(object2) {
-        return {
-          data: object2["data"].map((item) => eventOut_1.EventOutSerializer._fromJsonObject(item)),
-          done: object2["done"],
-          iterator: object2["iterator"]
-        };
-      },
-      _toJsonObject(self2) {
-        return {
-          data: self2.data.map((item) => eventOut_1.EventOutSerializer._toJsonObject(item)),
-          done: self2.done,
-          iterator: self2.iterator
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/api/streamingEvents.js
-var require_streamingEvents = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/api/streamingEvents.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.StreamingEvents = void 0;
-    var createStreamEventsIn_1 = require_createStreamEventsIn();
-    var createStreamEventsOut_1 = require_createStreamEventsOut();
-    var eventStreamOut_1 = require_eventStreamOut();
-    var request_1 = require_request2();
-    var StreamingEvents = class {
-      constructor(requestCtx) {
-        this.requestCtx = requestCtx;
-      }
-      create(streamId, createStreamEventsIn, options) {
-        const request = new request_1.SvixRequest(request_1.HttpMethod.POST, "/api/v1/stream/{stream_id}/events");
-        request.setPathParam("stream_id", streamId);
-        request.setHeaderParam("idempotency-key", options === null || options === void 0 ? void 0 : options.idempotencyKey);
-        request.setBody(createStreamEventsIn_1.CreateStreamEventsInSerializer._toJsonObject(createStreamEventsIn));
-        return request.send(this.requestCtx, createStreamEventsOut_1.CreateStreamEventsOutSerializer._fromJsonObject);
-      }
-      get(streamId, sinkId, options) {
-        const request = new request_1.SvixRequest(request_1.HttpMethod.GET, "/api/v1/stream/{stream_id}/sink/{sink_id}/events");
-        request.setPathParam("stream_id", streamId);
-        request.setPathParam("sink_id", sinkId);
-        request.setQueryParams({
-          limit: options === null || options === void 0 ? void 0 : options.limit,
-          iterator: options === null || options === void 0 ? void 0 : options.iterator,
-          after: options === null || options === void 0 ? void 0 : options.after
-        });
-        return request.send(this.requestCtx, eventStreamOut_1.EventStreamOutSerializer._fromJsonObject);
-      }
-    };
-    exports2.StreamingEvents = StreamingEvents;
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/azureBlobStorageConfig.js
-var require_azureBlobStorageConfig = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/azureBlobStorageConfig.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.AzureBlobStorageConfigSerializer = void 0;
-    exports2.AzureBlobStorageConfigSerializer = {
-      _fromJsonObject(object2) {
-        return {
-          accessKey: object2["accessKey"],
-          account: object2["account"],
-          container: object2["container"]
-        };
-      },
-      _toJsonObject(self2) {
-        return {
-          accessKey: self2.accessKey,
-          account: self2.account,
-          container: self2.container
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/googleCloudStorageConfig.js
-var require_googleCloudStorageConfig = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/googleCloudStorageConfig.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.GoogleCloudStorageConfigSerializer = void 0;
-    exports2.GoogleCloudStorageConfigSerializer = {
-      _fromJsonObject(object2) {
-        return {
-          bucket: object2["bucket"],
-          credentials: object2["credentials"]
-        };
-      },
-      _toJsonObject(self2) {
-        return {
-          bucket: self2.bucket,
-          credentials: self2.credentials
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/s3Config.js
-var require_s3Config = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/s3Config.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.S3ConfigSerializer = void 0;
-    exports2.S3ConfigSerializer = {
-      _fromJsonObject(object2) {
-        return {
-          accessKeyId: object2["accessKeyId"],
-          bucket: object2["bucket"],
-          endpointUrl: object2["endpointUrl"],
-          region: object2["region"],
-          secretAccessKey: object2["secretAccessKey"]
-        };
-      },
-      _toJsonObject(self2) {
-        return {
-          accessKeyId: self2.accessKeyId,
-          bucket: self2.bucket,
-          endpointUrl: self2.endpointUrl,
-          region: self2.region,
-          secretAccessKey: self2.secretAccessKey
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/sinkHttpConfig.js
-var require_sinkHttpConfig = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/sinkHttpConfig.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.SinkHttpConfigSerializer = void 0;
-    exports2.SinkHttpConfigSerializer = {
-      _fromJsonObject(object2) {
-        return {
-          headers: object2["headers"],
-          key: object2["key"],
-          url: object2["url"]
-        };
-      },
-      _toJsonObject(self2) {
-        return {
-          headers: self2.headers,
-          key: self2.key,
-          url: self2.url
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/sinkOtelV1Config.js
-var require_sinkOtelV1Config = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/sinkOtelV1Config.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.SinkOtelV1ConfigSerializer = void 0;
-    exports2.SinkOtelV1ConfigSerializer = {
-      _fromJsonObject(object2) {
-        return {
-          headers: object2["headers"],
-          url: object2["url"]
-        };
-      },
-      _toJsonObject(self2) {
-        return {
-          headers: self2.headers,
-          url: self2.url
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/sinkStatus.js
-var require_sinkStatus = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/sinkStatus.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.SinkStatusSerializer = exports2.SinkStatus = void 0;
-    var SinkStatus;
-    (function(SinkStatus2) {
-      SinkStatus2["Enabled"] = "enabled";
-      SinkStatus2["Paused"] = "paused";
-      SinkStatus2["Disabled"] = "disabled";
-      SinkStatus2["Retrying"] = "retrying";
-    })(SinkStatus = exports2.SinkStatus || (exports2.SinkStatus = {}));
-    exports2.SinkStatusSerializer = {
-      _fromJsonObject(object2) {
-        return object2;
-      },
-      _toJsonObject(self2) {
-        return self2;
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/streamSinkOut.js
-var require_streamSinkOut = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/streamSinkOut.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.StreamSinkOutSerializer = void 0;
-    var azureBlobStorageConfig_1 = require_azureBlobStorageConfig();
-    var googleCloudStorageConfig_1 = require_googleCloudStorageConfig();
-    var s3Config_1 = require_s3Config();
-    var sinkHttpConfig_1 = require_sinkHttpConfig();
-    var sinkOtelV1Config_1 = require_sinkOtelV1Config();
-    var sinkStatus_1 = require_sinkStatus();
-    exports2.StreamSinkOutSerializer = {
-      _fromJsonObject(object2) {
-        const type = object2["type"];
-        function getConfig(type2) {
-          switch (type2) {
-            case "poller":
-              return {};
-            case "azureBlobStorage":
-              return azureBlobStorageConfig_1.AzureBlobStorageConfigSerializer._fromJsonObject(object2["config"]);
-            case "otelTracing":
-              return sinkOtelV1Config_1.SinkOtelV1ConfigSerializer._fromJsonObject(object2["config"]);
-            case "http":
-              return sinkHttpConfig_1.SinkHttpConfigSerializer._fromJsonObject(object2["config"]);
-            case "amazonS3":
-              return s3Config_1.S3ConfigSerializer._fromJsonObject(object2["config"]);
-            case "googleCloudStorage":
-              return googleCloudStorageConfig_1.GoogleCloudStorageConfigSerializer._fromJsonObject(object2["config"]);
-            default:
-              throw new Error(`Unexpected type: ${type2}`);
-          }
-        }
-        return {
-          type,
-          config: getConfig(type),
-          batchSize: object2["batchSize"],
-          createdAt: new Date(object2["createdAt"]),
-          currentIterator: object2["currentIterator"],
-          eventTypes: object2["eventTypes"],
-          failureReason: object2["failureReason"],
-          id: object2["id"],
-          maxWaitSecs: object2["maxWaitSecs"],
-          metadata: object2["metadata"],
-          nextRetryAt: object2["nextRetryAt"] ? new Date(object2["nextRetryAt"]) : null,
-          status: sinkStatus_1.SinkStatusSerializer._fromJsonObject(object2["status"]),
-          uid: object2["uid"],
-          updatedAt: new Date(object2["updatedAt"])
-        };
-      },
-      _toJsonObject(self2) {
-        let config2;
-        switch (self2.type) {
-          case "poller":
-            config2 = {};
-            break;
-          case "azureBlobStorage":
-            config2 = azureBlobStorageConfig_1.AzureBlobStorageConfigSerializer._toJsonObject(self2.config);
-            break;
-          case "otelTracing":
-            config2 = sinkOtelV1Config_1.SinkOtelV1ConfigSerializer._toJsonObject(self2.config);
-            break;
-          case "http":
-            config2 = sinkHttpConfig_1.SinkHttpConfigSerializer._toJsonObject(self2.config);
-            break;
-          case "amazonS3":
-            config2 = s3Config_1.S3ConfigSerializer._toJsonObject(self2.config);
-            break;
-          case "googleCloudStorage":
-            config2 = googleCloudStorageConfig_1.GoogleCloudStorageConfigSerializer._toJsonObject(self2.config);
-            break;
-        }
-        return {
-          type: self2.type,
-          config: config2,
-          batchSize: self2.batchSize,
-          createdAt: self2.createdAt,
-          currentIterator: self2.currentIterator,
-          eventTypes: self2.eventTypes,
-          failureReason: self2.failureReason,
-          id: self2.id,
-          maxWaitSecs: self2.maxWaitSecs,
-          metadata: self2.metadata,
-          nextRetryAt: self2.nextRetryAt,
-          status: sinkStatus_1.SinkStatusSerializer._toJsonObject(self2.status),
-          uid: self2.uid,
-          updatedAt: self2.updatedAt
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/listResponseStreamSinkOut.js
-var require_listResponseStreamSinkOut = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/listResponseStreamSinkOut.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.ListResponseStreamSinkOutSerializer = void 0;
-    var streamSinkOut_1 = require_streamSinkOut();
-    exports2.ListResponseStreamSinkOutSerializer = {
-      _fromJsonObject(object2) {
-        return {
-          data: object2["data"].map((item) => streamSinkOut_1.StreamSinkOutSerializer._fromJsonObject(item)),
-          done: object2["done"],
-          iterator: object2["iterator"],
-          prevIterator: object2["prevIterator"]
-        };
-      },
-      _toJsonObject(self2) {
-        return {
-          data: self2.data.map((item) => streamSinkOut_1.StreamSinkOutSerializer._toJsonObject(item)),
-          done: self2.done,
-          iterator: self2.iterator,
-          prevIterator: self2.prevIterator
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/sinkSecretOut.js
-var require_sinkSecretOut = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/sinkSecretOut.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.SinkSecretOutSerializer = void 0;
-    exports2.SinkSecretOutSerializer = {
-      _fromJsonObject(object2) {
-        return {
-          key: object2["key"]
-        };
-      },
-      _toJsonObject(self2) {
-        return {
-          key: self2.key
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/sinkTransformIn.js
-var require_sinkTransformIn = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/sinkTransformIn.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.SinkTransformInSerializer = void 0;
-    exports2.SinkTransformInSerializer = {
-      _fromJsonObject(object2) {
-        return {
-          code: object2["code"]
-        };
-      },
-      _toJsonObject(self2) {
-        return {
-          code: self2.code
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/sinkStatusIn.js
-var require_sinkStatusIn = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/sinkStatusIn.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.SinkStatusInSerializer = exports2.SinkStatusIn = void 0;
-    var SinkStatusIn;
-    (function(SinkStatusIn2) {
-      SinkStatusIn2["Enabled"] = "enabled";
-      SinkStatusIn2["Disabled"] = "disabled";
-    })(SinkStatusIn = exports2.SinkStatusIn || (exports2.SinkStatusIn = {}));
-    exports2.SinkStatusInSerializer = {
-      _fromJsonObject(object2) {
-        return object2;
-      },
-      _toJsonObject(self2) {
-        return self2;
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/streamSinkIn.js
-var require_streamSinkIn = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/streamSinkIn.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.StreamSinkInSerializer = void 0;
-    var azureBlobStorageConfig_1 = require_azureBlobStorageConfig();
-    var googleCloudStorageConfig_1 = require_googleCloudStorageConfig();
-    var s3Config_1 = require_s3Config();
-    var sinkHttpConfig_1 = require_sinkHttpConfig();
-    var sinkOtelV1Config_1 = require_sinkOtelV1Config();
-    var sinkStatusIn_1 = require_sinkStatusIn();
-    exports2.StreamSinkInSerializer = {
-      _fromJsonObject(object2) {
-        const type = object2["type"];
-        function getConfig(type2) {
-          switch (type2) {
-            case "poller":
-              return {};
-            case "azureBlobStorage":
-              return azureBlobStorageConfig_1.AzureBlobStorageConfigSerializer._fromJsonObject(object2["config"]);
-            case "otelTracing":
-              return sinkOtelV1Config_1.SinkOtelV1ConfigSerializer._fromJsonObject(object2["config"]);
-            case "http":
-              return sinkHttpConfig_1.SinkHttpConfigSerializer._fromJsonObject(object2["config"]);
-            case "amazonS3":
-              return s3Config_1.S3ConfigSerializer._fromJsonObject(object2["config"]);
-            case "googleCloudStorage":
-              return googleCloudStorageConfig_1.GoogleCloudStorageConfigSerializer._fromJsonObject(object2["config"]);
-            default:
-              throw new Error(`Unexpected type: ${type2}`);
-          }
-        }
-        return {
-          type,
-          config: getConfig(type),
-          batchSize: object2["batchSize"],
-          eventTypes: object2["eventTypes"],
-          maxWaitSecs: object2["maxWaitSecs"],
-          metadata: object2["metadata"],
-          status: object2["status"] != null ? sinkStatusIn_1.SinkStatusInSerializer._fromJsonObject(object2["status"]) : void 0,
-          uid: object2["uid"]
-        };
-      },
-      _toJsonObject(self2) {
-        let config2;
-        switch (self2.type) {
-          case "poller":
-            config2 = {};
-            break;
-          case "azureBlobStorage":
-            config2 = azureBlobStorageConfig_1.AzureBlobStorageConfigSerializer._toJsonObject(self2.config);
-            break;
-          case "otelTracing":
-            config2 = sinkOtelV1Config_1.SinkOtelV1ConfigSerializer._toJsonObject(self2.config);
-            break;
-          case "http":
-            config2 = sinkHttpConfig_1.SinkHttpConfigSerializer._toJsonObject(self2.config);
-            break;
-          case "amazonS3":
-            config2 = s3Config_1.S3ConfigSerializer._toJsonObject(self2.config);
-            break;
-          case "googleCloudStorage":
-            config2 = googleCloudStorageConfig_1.GoogleCloudStorageConfigSerializer._toJsonObject(self2.config);
-            break;
-        }
-        return {
-          type: self2.type,
-          config: config2,
-          batchSize: self2.batchSize,
-          eventTypes: self2.eventTypes,
-          maxWaitSecs: self2.maxWaitSecs,
-          metadata: self2.metadata,
-          status: self2.status != null ? sinkStatusIn_1.SinkStatusInSerializer._toJsonObject(self2.status) : void 0,
-          uid: self2.uid
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/amazonS3PatchConfig.js
-var require_amazonS3PatchConfig = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/amazonS3PatchConfig.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.AmazonS3PatchConfigSerializer = void 0;
-    exports2.AmazonS3PatchConfigSerializer = {
-      _fromJsonObject(object2) {
-        return {
-          accessKeyId: object2["accessKeyId"],
-          bucket: object2["bucket"],
-          endpointUrl: object2["endpointUrl"],
-          region: object2["region"],
-          secretAccessKey: object2["secretAccessKey"]
-        };
-      },
-      _toJsonObject(self2) {
-        return {
-          accessKeyId: self2.accessKeyId,
-          bucket: self2.bucket,
-          endpointUrl: self2.endpointUrl,
-          region: self2.region,
-          secretAccessKey: self2.secretAccessKey
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/azureBlobStoragePatchConfig.js
-var require_azureBlobStoragePatchConfig = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/azureBlobStoragePatchConfig.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.AzureBlobStoragePatchConfigSerializer = void 0;
-    exports2.AzureBlobStoragePatchConfigSerializer = {
-      _fromJsonObject(object2) {
-        return {
-          accessKey: object2["accessKey"],
-          account: object2["account"],
-          container: object2["container"]
-        };
-      },
-      _toJsonObject(self2) {
-        return {
-          accessKey: self2.accessKey,
-          account: self2.account,
-          container: self2.container
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/googleCloudStoragePatchConfig.js
-var require_googleCloudStoragePatchConfig = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/googleCloudStoragePatchConfig.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.GoogleCloudStoragePatchConfigSerializer = void 0;
-    exports2.GoogleCloudStoragePatchConfigSerializer = {
-      _fromJsonObject(object2) {
-        return {
-          bucket: object2["bucket"],
-          credentials: object2["credentials"]
-        };
-      },
-      _toJsonObject(self2) {
-        return {
-          bucket: self2.bucket,
-          credentials: self2.credentials
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/httpPatchConfig.js
-var require_httpPatchConfig = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/httpPatchConfig.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.HttpPatchConfigSerializer = void 0;
-    exports2.HttpPatchConfigSerializer = {
-      _fromJsonObject(object2) {
-        return {
-          url: object2["url"]
-        };
-      },
-      _toJsonObject(self2) {
-        return {
-          url: self2.url
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/otelTracingPatchConfig.js
-var require_otelTracingPatchConfig = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/otelTracingPatchConfig.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.OtelTracingPatchConfigSerializer = void 0;
-    exports2.OtelTracingPatchConfigSerializer = {
-      _fromJsonObject(object2) {
-        return {
-          url: object2["url"]
-        };
-      },
-      _toJsonObject(self2) {
-        return {
-          url: self2.url
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/streamSinkPatch.js
-var require_streamSinkPatch = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/streamSinkPatch.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.StreamSinkPatchSerializer = void 0;
-    var amazonS3PatchConfig_1 = require_amazonS3PatchConfig();
-    var azureBlobStoragePatchConfig_1 = require_azureBlobStoragePatchConfig();
-    var googleCloudStoragePatchConfig_1 = require_googleCloudStoragePatchConfig();
-    var httpPatchConfig_1 = require_httpPatchConfig();
-    var otelTracingPatchConfig_1 = require_otelTracingPatchConfig();
-    var sinkStatusIn_1 = require_sinkStatusIn();
-    exports2.StreamSinkPatchSerializer = {
-      _fromJsonObject(object2) {
-        const type = object2["type"];
-        function getConfig(type2) {
-          switch (type2) {
-            case "poller":
-              return {};
-            case "azureBlobStorage":
-              return azureBlobStoragePatchConfig_1.AzureBlobStoragePatchConfigSerializer._fromJsonObject(object2["config"]);
-            case "otelTracing":
-              return otelTracingPatchConfig_1.OtelTracingPatchConfigSerializer._fromJsonObject(object2["config"]);
-            case "http":
-              return httpPatchConfig_1.HttpPatchConfigSerializer._fromJsonObject(object2["config"]);
-            case "amazonS3":
-              return amazonS3PatchConfig_1.AmazonS3PatchConfigSerializer._fromJsonObject(object2["config"]);
-            case "googleCloudStorage":
-              return googleCloudStoragePatchConfig_1.GoogleCloudStoragePatchConfigSerializer._fromJsonObject(object2["config"]);
-            default:
-              throw new Error(`Unexpected type: ${type2}`);
-          }
-        }
-        return {
-          type,
-          config: getConfig(type),
-          batchSize: object2["batchSize"],
-          eventTypes: object2["eventTypes"],
-          maxWaitSecs: object2["maxWaitSecs"],
-          metadata: object2["metadata"],
-          status: object2["status"] != null ? sinkStatusIn_1.SinkStatusInSerializer._fromJsonObject(object2["status"]) : void 0,
-          uid: object2["uid"]
-        };
-      },
-      _toJsonObject(self2) {
-        let config2;
-        switch (self2.type) {
-          case "poller":
-            config2 = {};
-            break;
-          case "azureBlobStorage":
-            config2 = azureBlobStoragePatchConfig_1.AzureBlobStoragePatchConfigSerializer._toJsonObject(self2.config);
-            break;
-          case "otelTracing":
-            config2 = otelTracingPatchConfig_1.OtelTracingPatchConfigSerializer._toJsonObject(self2.config);
-            break;
-          case "http":
-            config2 = httpPatchConfig_1.HttpPatchConfigSerializer._toJsonObject(self2.config);
-            break;
-          case "amazonS3":
-            config2 = amazonS3PatchConfig_1.AmazonS3PatchConfigSerializer._toJsonObject(self2.config);
-            break;
-          case "googleCloudStorage":
-            config2 = googleCloudStoragePatchConfig_1.GoogleCloudStoragePatchConfigSerializer._toJsonObject(self2.config);
-            break;
-        }
-        return {
-          type: self2.type,
-          config: config2,
-          batchSize: self2.batchSize,
-          eventTypes: self2.eventTypes,
-          maxWaitSecs: self2.maxWaitSecs,
-          metadata: self2.metadata,
-          status: self2.status != null ? sinkStatusIn_1.SinkStatusInSerializer._toJsonObject(self2.status) : void 0,
-          uid: self2.uid
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/api/streamingSink.js
-var require_streamingSink = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/api/streamingSink.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.StreamingSink = void 0;
-    var emptyResponse_1 = require_emptyResponse();
-    var endpointSecretRotateIn_1 = require_endpointSecretRotateIn();
-    var listResponseStreamSinkOut_1 = require_listResponseStreamSinkOut();
-    var sinkSecretOut_1 = require_sinkSecretOut();
-    var sinkTransformIn_1 = require_sinkTransformIn();
-    var streamSinkIn_1 = require_streamSinkIn();
-    var streamSinkOut_1 = require_streamSinkOut();
-    var streamSinkPatch_1 = require_streamSinkPatch();
-    var request_1 = require_request2();
-    var StreamingSink = class {
-      constructor(requestCtx) {
-        this.requestCtx = requestCtx;
-      }
-      list(streamId, options) {
-        const request = new request_1.SvixRequest(request_1.HttpMethod.GET, "/api/v1/stream/{stream_id}/sink");
-        request.setPathParam("stream_id", streamId);
-        request.setQueryParams({
-          limit: options === null || options === void 0 ? void 0 : options.limit,
-          iterator: options === null || options === void 0 ? void 0 : options.iterator,
-          order: options === null || options === void 0 ? void 0 : options.order
-        });
-        return request.send(this.requestCtx, listResponseStreamSinkOut_1.ListResponseStreamSinkOutSerializer._fromJsonObject);
-      }
-      create(streamId, streamSinkIn, options) {
-        const request = new request_1.SvixRequest(request_1.HttpMethod.POST, "/api/v1/stream/{stream_id}/sink");
-        request.setPathParam("stream_id", streamId);
-        request.setHeaderParam("idempotency-key", options === null || options === void 0 ? void 0 : options.idempotencyKey);
-        request.setBody(streamSinkIn_1.StreamSinkInSerializer._toJsonObject(streamSinkIn));
-        return request.send(this.requestCtx, streamSinkOut_1.StreamSinkOutSerializer._fromJsonObject);
-      }
-      get(streamId, sinkId) {
-        const request = new request_1.SvixRequest(request_1.HttpMethod.GET, "/api/v1/stream/{stream_id}/sink/{sink_id}");
-        request.setPathParam("stream_id", streamId);
-        request.setPathParam("sink_id", sinkId);
-        return request.send(this.requestCtx, streamSinkOut_1.StreamSinkOutSerializer._fromJsonObject);
-      }
-      update(streamId, sinkId, streamSinkIn) {
-        const request = new request_1.SvixRequest(request_1.HttpMethod.PUT, "/api/v1/stream/{stream_id}/sink/{sink_id}");
-        request.setPathParam("stream_id", streamId);
-        request.setPathParam("sink_id", sinkId);
-        request.setBody(streamSinkIn_1.StreamSinkInSerializer._toJsonObject(streamSinkIn));
-        return request.send(this.requestCtx, streamSinkOut_1.StreamSinkOutSerializer._fromJsonObject);
-      }
-      delete(streamId, sinkId) {
-        const request = new request_1.SvixRequest(request_1.HttpMethod.DELETE, "/api/v1/stream/{stream_id}/sink/{sink_id}");
-        request.setPathParam("stream_id", streamId);
-        request.setPathParam("sink_id", sinkId);
-        return request.sendNoResponseBody(this.requestCtx);
-      }
-      patch(streamId, sinkId, streamSinkPatch) {
-        const request = new request_1.SvixRequest(request_1.HttpMethod.PATCH, "/api/v1/stream/{stream_id}/sink/{sink_id}");
-        request.setPathParam("stream_id", streamId);
-        request.setPathParam("sink_id", sinkId);
-        request.setBody(streamSinkPatch_1.StreamSinkPatchSerializer._toJsonObject(streamSinkPatch));
-        return request.send(this.requestCtx, streamSinkOut_1.StreamSinkOutSerializer._fromJsonObject);
-      }
-      getSecret(streamId, sinkId) {
-        const request = new request_1.SvixRequest(request_1.HttpMethod.GET, "/api/v1/stream/{stream_id}/sink/{sink_id}/secret");
-        request.setPathParam("stream_id", streamId);
-        request.setPathParam("sink_id", sinkId);
-        return request.send(this.requestCtx, sinkSecretOut_1.SinkSecretOutSerializer._fromJsonObject);
-      }
-      rotateSecret(streamId, sinkId, endpointSecretRotateIn, options) {
-        const request = new request_1.SvixRequest(request_1.HttpMethod.POST, "/api/v1/stream/{stream_id}/sink/{sink_id}/secret/rotate");
-        request.setPathParam("stream_id", streamId);
-        request.setPathParam("sink_id", sinkId);
-        request.setHeaderParam("idempotency-key", options === null || options === void 0 ? void 0 : options.idempotencyKey);
-        request.setBody(endpointSecretRotateIn_1.EndpointSecretRotateInSerializer._toJsonObject(endpointSecretRotateIn));
-        return request.send(this.requestCtx, emptyResponse_1.EmptyResponseSerializer._fromJsonObject);
-      }
-      transformationPartialUpdate(streamId, sinkId, sinkTransformIn) {
-        const request = new request_1.SvixRequest(request_1.HttpMethod.PATCH, "/api/v1/stream/{stream_id}/sink/{sink_id}/transformation");
-        request.setPathParam("stream_id", streamId);
-        request.setPathParam("sink_id", sinkId);
-        request.setBody(sinkTransformIn_1.SinkTransformInSerializer._toJsonObject(sinkTransformIn));
-        return request.send(this.requestCtx, emptyResponse_1.EmptyResponseSerializer._fromJsonObject);
-      }
-    };
-    exports2.StreamingSink = StreamingSink;
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/streamOut.js
-var require_streamOut = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/streamOut.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.StreamOutSerializer = void 0;
-    exports2.StreamOutSerializer = {
-      _fromJsonObject(object2) {
-        return {
-          createdAt: new Date(object2["createdAt"]),
-          id: object2["id"],
-          metadata: object2["metadata"],
-          name: object2["name"],
-          uid: object2["uid"],
-          updatedAt: new Date(object2["updatedAt"])
-        };
-      },
-      _toJsonObject(self2) {
-        return {
-          createdAt: self2.createdAt,
-          id: self2.id,
-          metadata: self2.metadata,
-          name: self2.name,
-          uid: self2.uid,
-          updatedAt: self2.updatedAt
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/listResponseStreamOut.js
-var require_listResponseStreamOut = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/listResponseStreamOut.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.ListResponseStreamOutSerializer = void 0;
-    var streamOut_1 = require_streamOut();
-    exports2.ListResponseStreamOutSerializer = {
-      _fromJsonObject(object2) {
-        return {
-          data: object2["data"].map((item) => streamOut_1.StreamOutSerializer._fromJsonObject(item)),
-          done: object2["done"],
-          iterator: object2["iterator"],
-          prevIterator: object2["prevIterator"]
-        };
-      },
-      _toJsonObject(self2) {
-        return {
-          data: self2.data.map((item) => streamOut_1.StreamOutSerializer._toJsonObject(item)),
-          done: self2.done,
-          iterator: self2.iterator,
-          prevIterator: self2.prevIterator
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/streamPatch.js
-var require_streamPatch = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/streamPatch.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.StreamPatchSerializer = void 0;
-    exports2.StreamPatchSerializer = {
-      _fromJsonObject(object2) {
-        return {
-          description: object2["description"],
-          metadata: object2["metadata"],
-          uid: object2["uid"]
-        };
-      },
-      _toJsonObject(self2) {
-        return {
-          description: self2.description,
-          metadata: self2.metadata,
-          uid: self2.uid
-        };
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/api/streamingStream.js
-var require_streamingStream = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/api/streamingStream.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.StreamingStream = void 0;
-    var listResponseStreamOut_1 = require_listResponseStreamOut();
-    var streamIn_1 = require_streamIn();
-    var streamOut_1 = require_streamOut();
-    var streamPatch_1 = require_streamPatch();
-    var request_1 = require_request2();
-    var StreamingStream = class {
-      constructor(requestCtx) {
-        this.requestCtx = requestCtx;
-      }
-      list(options) {
-        const request = new request_1.SvixRequest(request_1.HttpMethod.GET, "/api/v1/stream");
-        request.setQueryParams({
-          limit: options === null || options === void 0 ? void 0 : options.limit,
-          iterator: options === null || options === void 0 ? void 0 : options.iterator,
-          order: options === null || options === void 0 ? void 0 : options.order
-        });
-        return request.send(this.requestCtx, listResponseStreamOut_1.ListResponseStreamOutSerializer._fromJsonObject);
-      }
-      create(streamIn, options) {
-        const request = new request_1.SvixRequest(request_1.HttpMethod.POST, "/api/v1/stream");
-        request.setHeaderParam("idempotency-key", options === null || options === void 0 ? void 0 : options.idempotencyKey);
-        request.setBody(streamIn_1.StreamInSerializer._toJsonObject(streamIn));
-        return request.send(this.requestCtx, streamOut_1.StreamOutSerializer._fromJsonObject);
-      }
-      get(streamId) {
-        const request = new request_1.SvixRequest(request_1.HttpMethod.GET, "/api/v1/stream/{stream_id}");
-        request.setPathParam("stream_id", streamId);
-        return request.send(this.requestCtx, streamOut_1.StreamOutSerializer._fromJsonObject);
-      }
-      update(streamId, streamIn) {
-        const request = new request_1.SvixRequest(request_1.HttpMethod.PUT, "/api/v1/stream/{stream_id}");
-        request.setPathParam("stream_id", streamId);
-        request.setBody(streamIn_1.StreamInSerializer._toJsonObject(streamIn));
-        return request.send(this.requestCtx, streamOut_1.StreamOutSerializer._fromJsonObject);
-      }
-      delete(streamId) {
-        const request = new request_1.SvixRequest(request_1.HttpMethod.DELETE, "/api/v1/stream/{stream_id}");
-        request.setPathParam("stream_id", streamId);
-        return request.sendNoResponseBody(this.requestCtx);
-      }
-      patch(streamId, streamPatch) {
-        const request = new request_1.SvixRequest(request_1.HttpMethod.PATCH, "/api/v1/stream/{stream_id}");
-        request.setPathParam("stream_id", streamId);
-        request.setBody(streamPatch_1.StreamPatchSerializer._toJsonObject(streamPatch));
-        return request.send(this.requestCtx, streamOut_1.StreamOutSerializer._fromJsonObject);
-      }
-    };
-    exports2.StreamingStream = StreamingStream;
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/api/streaming.js
-var require_streaming = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/api/streaming.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.Streaming = void 0;
-    var endpointHeadersOut_1 = require_endpointHeadersOut();
-    var httpSinkHeadersPatchIn_1 = require_httpSinkHeadersPatchIn();
-    var sinkTransformationOut_1 = require_sinkTransformationOut();
-    var streamingEventType_1 = require_streamingEventType();
-    var streamingEvents_1 = require_streamingEvents();
-    var streamingSink_1 = require_streamingSink();
-    var streamingStream_1 = require_streamingStream();
-    var request_1 = require_request2();
-    var Streaming = class {
-      constructor(requestCtx) {
-        this.requestCtx = requestCtx;
-      }
-      get event_type() {
-        return new streamingEventType_1.StreamingEventType(this.requestCtx);
-      }
-      get events() {
-        return new streamingEvents_1.StreamingEvents(this.requestCtx);
-      }
-      get sink() {
-        return new streamingSink_1.StreamingSink(this.requestCtx);
-      }
-      get stream() {
-        return new streamingStream_1.StreamingStream(this.requestCtx);
-      }
-      sinkHeadersGet(streamId, sinkId) {
-        const request = new request_1.SvixRequest(request_1.HttpMethod.GET, "/api/v1/stream/{stream_id}/sink/{sink_id}/headers");
-        request.setPathParam("stream_id", streamId);
-        request.setPathParam("sink_id", sinkId);
-        return request.send(this.requestCtx, endpointHeadersOut_1.EndpointHeadersOutSerializer._fromJsonObject);
-      }
-      sinkHeadersPatch(streamId, sinkId, httpSinkHeadersPatchIn) {
-        const request = new request_1.SvixRequest(request_1.HttpMethod.PATCH, "/api/v1/stream/{stream_id}/sink/{sink_id}/headers");
-        request.setPathParam("stream_id", streamId);
-        request.setPathParam("sink_id", sinkId);
-        request.setBody(httpSinkHeadersPatchIn_1.HttpSinkHeadersPatchInSerializer._toJsonObject(httpSinkHeadersPatchIn));
-        return request.send(this.requestCtx, endpointHeadersOut_1.EndpointHeadersOutSerializer._fromJsonObject);
-      }
-      sinkTransformationGet(streamId, sinkId) {
-        const request = new request_1.SvixRequest(request_1.HttpMethod.GET, "/api/v1/stream/{stream_id}/sink/{sink_id}/transformation");
-        request.setPathParam("stream_id", streamId);
-        request.setPathParam("sink_id", sinkId);
-        return request.send(this.requestCtx, sinkTransformationOut_1.SinkTransformationOutSerializer._fromJsonObject);
-      }
-    };
-    exports2.Streaming = Streaming;
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/HttpErrors.js
-var require_HttpErrors = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/HttpErrors.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.HTTPValidationError = exports2.ValidationError = exports2.HttpErrorOut = void 0;
-    var HttpErrorOut = class _HttpErrorOut {
-      static getAttributeTypeMap() {
-        return _HttpErrorOut.attributeTypeMap;
-      }
-    };
-    exports2.HttpErrorOut = HttpErrorOut;
-    HttpErrorOut.discriminator = void 0;
-    HttpErrorOut.mapping = void 0;
-    HttpErrorOut.attributeTypeMap = [
-      {
-        name: "code",
-        baseName: "code",
-        type: "string",
-        format: ""
-      },
-      {
-        name: "detail",
-        baseName: "detail",
-        type: "string",
-        format: ""
-      }
-    ];
-    var ValidationError2 = class _ValidationError {
-      static getAttributeTypeMap() {
-        return _ValidationError.attributeTypeMap;
-      }
-    };
-    exports2.ValidationError = ValidationError2;
-    ValidationError2.discriminator = void 0;
-    ValidationError2.mapping = void 0;
-    ValidationError2.attributeTypeMap = [
-      {
-        name: "loc",
-        baseName: "loc",
-        type: "Array<string>",
-        format: ""
-      },
-      {
-        name: "msg",
-        baseName: "msg",
-        type: "string",
-        format: ""
-      },
-      {
-        name: "type",
-        baseName: "type",
-        type: "string",
-        format: ""
-      }
-    ];
-    var HTTPValidationError = class _HTTPValidationError {
-      static getAttributeTypeMap() {
-        return _HTTPValidationError.attributeTypeMap;
-      }
-    };
-    exports2.HTTPValidationError = HTTPValidationError;
-    HTTPValidationError.discriminator = void 0;
-    HTTPValidationError.mapping = void 0;
-    HTTPValidationError.attributeTypeMap = [
-      {
-        name: "detail",
-        baseName: "detail",
-        type: "Array<ValidationError>",
-        format: ""
-      }
-    ];
-  }
-});
-
-// ../../node_modules/.pnpm/standardwebhooks@1.0.0/node_modules/standardwebhooks/dist/timing_safe_equal.js
-var require_timing_safe_equal = __commonJS({
-  "../../node_modules/.pnpm/standardwebhooks@1.0.0/node_modules/standardwebhooks/dist/timing_safe_equal.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.timingSafeEqual = void 0;
-    function assert2(expr, msg = "") {
-      if (!expr) {
-        throw new Error(msg);
-      }
-    }
-    function timingSafeEqual2(a, b3) {
-      if (a.byteLength !== b3.byteLength) {
-        return false;
-      }
-      if (!(a instanceof DataView)) {
-        a = new DataView(ArrayBuffer.isView(a) ? a.buffer : a);
-      }
-      if (!(b3 instanceof DataView)) {
-        b3 = new DataView(ArrayBuffer.isView(b3) ? b3.buffer : b3);
-      }
-      assert2(a instanceof DataView);
-      assert2(b3 instanceof DataView);
-      const length = a.byteLength;
-      let out = 0;
-      let i2 = -1;
-      while (++i2 < length) {
-        out |= a.getUint8(i2) ^ b3.getUint8(i2);
-      }
-      return out === 0;
-    }
-    exports2.timingSafeEqual = timingSafeEqual2;
-  }
-});
-
 // ../../node_modules/.pnpm/@stablelib+base64@1.0.1/node_modules/@stablelib/base64/lib/base64.js
 var require_base64 = __commonJS({
   "../../node_modules/.pnpm/@stablelib+base64@1.0.1/node_modules/@stablelib/base64/lib/base64.js"(exports2) {
@@ -72556,15 +65415,49 @@ var require_sha256 = __commonJS({
   }
 });
 
-// ../../node_modules/.pnpm/standardwebhooks@1.0.0/node_modules/standardwebhooks/dist/index.js
+// ../../node_modules/.pnpm/standardwebhooks@1.1.1/node_modules/standardwebhooks/dist/timing_safe_equal.js
+var require_timing_safe_equal = __commonJS({
+  "../../node_modules/.pnpm/standardwebhooks@1.1.1/node_modules/standardwebhooks/dist/timing_safe_equal.js"(exports2) {
+    "use strict";
+    Object.defineProperty(exports2, "__esModule", { value: true });
+    exports2.timingSafeEqual = timingSafeEqual2;
+    function assert2(expr, msg = "") {
+      if (!expr) {
+        throw new Error(msg);
+      }
+    }
+    function timingSafeEqual2(a, b3) {
+      if (a.byteLength !== b3.byteLength) {
+        return false;
+      }
+      if (!(a instanceof DataView)) {
+        a = new DataView(ArrayBuffer.isView(a) ? a.buffer : a);
+      }
+      if (!(b3 instanceof DataView)) {
+        b3 = new DataView(ArrayBuffer.isView(b3) ? b3.buffer : b3);
+      }
+      assert2(a instanceof DataView);
+      assert2(b3 instanceof DataView);
+      const length = a.byteLength;
+      let out = 0;
+      let i2 = -1;
+      while (++i2 < length) {
+        out |= a.getUint8(i2) ^ b3.getUint8(i2);
+      }
+      return out === 0;
+    }
+  }
+});
+
+// ../../node_modules/.pnpm/standardwebhooks@1.1.1/node_modules/standardwebhooks/dist/index.js
 var require_dist9 = __commonJS({
-  "../../node_modules/.pnpm/standardwebhooks@1.0.0/node_modules/standardwebhooks/dist/index.js"(exports2) {
+  "../../node_modules/.pnpm/standardwebhooks@1.1.1/node_modules/standardwebhooks/dist/index.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.Webhook = exports2.WebhookVerificationError = void 0;
-    var timing_safe_equal_1 = require_timing_safe_equal();
     var base643 = require_base64();
     var sha256 = require_sha256();
+    var timing_safe_equal_1 = require_timing_safe_equal();
     var WEBHOOK_TOLERANCE_IN_SECONDS = 5 * 60;
     var ExtendableError = class _ExtendableError extends Error {
       constructor(message) {
@@ -72584,9 +65477,6 @@ var require_dist9 = __commonJS({
     exports2.WebhookVerificationError = WebhookVerificationError;
     var Webhook2 = class _Webhook {
       constructor(secret, options) {
-        if (!secret) {
-          throw new Error("Secret can't be empty.");
-        }
         if ((options === null || options === void 0 ? void 0 : options.format) === "raw") {
           if (secret instanceof Uint8Array) {
             this.key = secret;
@@ -72602,15 +65492,20 @@ var require_dist9 = __commonJS({
           }
           this.key = base643.decode(secret);
         }
-      }
-      verify(payload, headers_) {
-        const headers = {};
-        for (const key of Object.keys(headers_)) {
-          headers[key.toLowerCase()] = headers_[key];
+        if (this.key.length === 0) {
+          throw new Error("Secret can't be empty.");
         }
-        const msgId = headers["webhook-id"];
-        const msgSignature = headers["webhook-signature"];
-        const msgTimestamp = headers["webhook-timestamp"];
+      }
+      verify(payload, headers, options) {
+        var _a6;
+        const jsonParse = (_a6 = options === null || options === void 0 ? void 0 : options.jsonParse) !== null && _a6 !== void 0 ? _a6 : true;
+        const normalizedHeaders = {};
+        for (const key of Object.keys(headers)) {
+          normalizedHeaders[key.toLowerCase()] = headers[key];
+        }
+        const msgId = normalizedHeaders["webhook-id"];
+        const msgSignature = normalizedHeaders["webhook-signature"];
+        const msgTimestamp = normalizedHeaders["webhook-timestamp"];
         if (!msgSignature || !msgId || !msgTimestamp) {
           throw new WebhookVerificationError("Missing required headers");
         }
@@ -72625,7 +65520,15 @@ var require_dist9 = __commonJS({
             continue;
           }
           if ((0, timing_safe_equal_1.timingSafeEqual)(encoder.encode(signature), encoder.encode(expectedSignature))) {
-            return JSON.parse(payload.toString());
+            const payloadString = payload.toString();
+            if (payloadString === "") {
+              return void 0;
+            }
+            if (jsonParse) {
+              return JSON.parse(payloadString);
+            } else {
+              return void 0;
+            }
           }
         }
         throw new WebhookVerificationError("No matching signature found");
@@ -72646,7 +65549,7 @@ var require_dist9 = __commonJS({
       verifyTimestamp(timestampHeader) {
         const now = Math.floor(Date.now() / 1e3);
         const timestamp2 = parseInt(timestampHeader, 10);
-        if (isNaN(timestamp2)) {
+        if (Number.isNaN(timestamp2)) {
           throw new WebhookVerificationError("Invalid Signature Headers");
         }
         if (now - timestamp2 > WEBHOOK_TOLERANCE_IN_SECONDS) {
@@ -72660,295 +65563,6 @@ var require_dist9 = __commonJS({
     };
     exports2.Webhook = Webhook2;
     Webhook2.prefix = "whsec_";
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/webhook.js
-var require_webhook = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/webhook.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.Webhook = exports2.WebhookVerificationError = void 0;
-    var standardwebhooks_1 = require_dist9();
-    var standardwebhooks_2 = require_dist9();
-    Object.defineProperty(exports2, "WebhookVerificationError", { enumerable: true, get: function() {
-      return standardwebhooks_2.WebhookVerificationError;
-    } });
-    var Webhook2 = class {
-      constructor(secret, options) {
-        this.inner = new standardwebhooks_1.Webhook(secret, options);
-      }
-      verify(payload, headers_) {
-        var _a6, _b, _c, _d, _e3, _f;
-        const headers = {};
-        for (const key of Object.keys(headers_)) {
-          headers[key.toLowerCase()] = headers_[key];
-        }
-        headers["webhook-id"] = (_b = (_a6 = headers["svix-id"]) !== null && _a6 !== void 0 ? _a6 : headers["webhook-id"]) !== null && _b !== void 0 ? _b : "";
-        headers["webhook-signature"] = (_d = (_c = headers["svix-signature"]) !== null && _c !== void 0 ? _c : headers["webhook-signature"]) !== null && _d !== void 0 ? _d : "";
-        headers["webhook-timestamp"] = (_f = (_e3 = headers["svix-timestamp"]) !== null && _e3 !== void 0 ? _e3 : headers["webhook-timestamp"]) !== null && _f !== void 0 ? _f : "";
-        return this.inner.verify(payload, headers);
-      }
-      sign(msgId, timestamp2, payload) {
-        return this.inner.sign(msgId, timestamp2, payload);
-      }
-    };
-    exports2.Webhook = Webhook2;
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/endpointDisabledTrigger.js
-var require_endpointDisabledTrigger = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/endpointDisabledTrigger.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.EndpointDisabledTriggerSerializer = exports2.EndpointDisabledTrigger = void 0;
-    var EndpointDisabledTrigger;
-    (function(EndpointDisabledTrigger2) {
-      EndpointDisabledTrigger2["Manual"] = "manual";
-      EndpointDisabledTrigger2["Automatic"] = "automatic";
-    })(EndpointDisabledTrigger = exports2.EndpointDisabledTrigger || (exports2.EndpointDisabledTrigger = {}));
-    exports2.EndpointDisabledTriggerSerializer = {
-      _fromJsonObject(object2) {
-        return object2;
-      },
-      _toJsonObject(self2) {
-        return self2;
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/ordering.js
-var require_ordering = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/ordering.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.OrderingSerializer = exports2.Ordering = void 0;
-    var Ordering;
-    (function(Ordering2) {
-      Ordering2["Ascending"] = "ascending";
-      Ordering2["Descending"] = "descending";
-    })(Ordering = exports2.Ordering || (exports2.Ordering = {}));
-    exports2.OrderingSerializer = {
-      _fromJsonObject(object2) {
-        return object2;
-      },
-      _toJsonObject(self2) {
-        return self2;
-      }
-    };
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/index.js
-var require_models = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/models/index.js"(exports2) {
-    "use strict";
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.StatusCodeClass = exports2.SinkStatusIn = exports2.SinkStatus = exports2.Ordering = exports2.MessageStatusText = exports2.MessageStatus = exports2.MessageAttemptTriggerType = exports2.EndpointDisabledTrigger = exports2.ConnectorProduct = exports2.ConnectorKind = exports2.BackgroundTaskType = exports2.BackgroundTaskStatus = exports2.AppPortalCapability = void 0;
-    var appPortalCapability_1 = require_appPortalCapability();
-    Object.defineProperty(exports2, "AppPortalCapability", { enumerable: true, get: function() {
-      return appPortalCapability_1.AppPortalCapability;
-    } });
-    var backgroundTaskStatus_1 = require_backgroundTaskStatus();
-    Object.defineProperty(exports2, "BackgroundTaskStatus", { enumerable: true, get: function() {
-      return backgroundTaskStatus_1.BackgroundTaskStatus;
-    } });
-    var backgroundTaskType_1 = require_backgroundTaskType();
-    Object.defineProperty(exports2, "BackgroundTaskType", { enumerable: true, get: function() {
-      return backgroundTaskType_1.BackgroundTaskType;
-    } });
-    var connectorKind_1 = require_connectorKind();
-    Object.defineProperty(exports2, "ConnectorKind", { enumerable: true, get: function() {
-      return connectorKind_1.ConnectorKind;
-    } });
-    var connectorProduct_1 = require_connectorProduct();
-    Object.defineProperty(exports2, "ConnectorProduct", { enumerable: true, get: function() {
-      return connectorProduct_1.ConnectorProduct;
-    } });
-    var endpointDisabledTrigger_1 = require_endpointDisabledTrigger();
-    Object.defineProperty(exports2, "EndpointDisabledTrigger", { enumerable: true, get: function() {
-      return endpointDisabledTrigger_1.EndpointDisabledTrigger;
-    } });
-    var messageAttemptTriggerType_1 = require_messageAttemptTriggerType();
-    Object.defineProperty(exports2, "MessageAttemptTriggerType", { enumerable: true, get: function() {
-      return messageAttemptTriggerType_1.MessageAttemptTriggerType;
-    } });
-    var messageStatus_1 = require_messageStatus();
-    Object.defineProperty(exports2, "MessageStatus", { enumerable: true, get: function() {
-      return messageStatus_1.MessageStatus;
-    } });
-    var messageStatusText_1 = require_messageStatusText();
-    Object.defineProperty(exports2, "MessageStatusText", { enumerable: true, get: function() {
-      return messageStatusText_1.MessageStatusText;
-    } });
-    var ordering_1 = require_ordering();
-    Object.defineProperty(exports2, "Ordering", { enumerable: true, get: function() {
-      return ordering_1.Ordering;
-    } });
-    var sinkStatus_1 = require_sinkStatus();
-    Object.defineProperty(exports2, "SinkStatus", { enumerable: true, get: function() {
-      return sinkStatus_1.SinkStatus;
-    } });
-    var sinkStatusIn_1 = require_sinkStatusIn();
-    Object.defineProperty(exports2, "SinkStatusIn", { enumerable: true, get: function() {
-      return sinkStatusIn_1.SinkStatusIn;
-    } });
-    var statusCodeClass_1 = require_statusCodeClass();
-    Object.defineProperty(exports2, "StatusCodeClass", { enumerable: true, get: function() {
-      return statusCodeClass_1.StatusCodeClass;
-    } });
-  }
-});
-
-// ../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/index.js
-var require_dist10 = __commonJS({
-  "../../node_modules/.pnpm/svix@1.92.2/node_modules/svix/dist/index.js"(exports2) {
-    "use strict";
-    var __createBinding = exports2 && exports2.__createBinding || (Object.create ? (function(o2, m2, k3, k22) {
-      if (k22 === void 0) k22 = k3;
-      var desc2 = Object.getOwnPropertyDescriptor(m2, k3);
-      if (!desc2 || ("get" in desc2 ? !m2.__esModule : desc2.writable || desc2.configurable)) {
-        desc2 = { enumerable: true, get: function() {
-          return m2[k3];
-        } };
-      }
-      Object.defineProperty(o2, k22, desc2);
-    }) : (function(o2, m2, k3, k22) {
-      if (k22 === void 0) k22 = k3;
-      o2[k22] = m2[k3];
-    }));
-    var __exportStar = exports2 && exports2.__exportStar || function(m2, exports3) {
-      for (var p in m2) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports3, p)) __createBinding(exports3, m2, p);
-    };
-    Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.Svix = exports2.messageInRaw = exports2.ValidationError = exports2.HttpErrorOut = exports2.HTTPValidationError = exports2.ApiException = void 0;
-    var application_1 = require_application2();
-    var authentication_1 = require_authentication();
-    var backgroundTask_1 = require_backgroundTask();
-    var connector_1 = require_connector();
-    var endpoint_1 = require_endpoint();
-    var environment_1 = require_environment();
-    var eventType_1 = require_eventType();
-    var health_1 = require_health();
-    var ingest_1 = require_ingest();
-    var integration_1 = require_integration();
-    var message_1 = require_message();
-    var messageAttempt_1 = require_messageAttempt();
-    var operationalWebhook_1 = require_operationalWebhook();
-    var statistics_1 = require_statistics();
-    var streaming_1 = require_streaming();
-    var operationalWebhookEndpoint_1 = require_operationalWebhookEndpoint();
-    var util_1 = require_util3();
-    Object.defineProperty(exports2, "ApiException", { enumerable: true, get: function() {
-      return util_1.ApiException;
-    } });
-    var HttpErrors_1 = require_HttpErrors();
-    Object.defineProperty(exports2, "HTTPValidationError", { enumerable: true, get: function() {
-      return HttpErrors_1.HTTPValidationError;
-    } });
-    Object.defineProperty(exports2, "HttpErrorOut", { enumerable: true, get: function() {
-      return HttpErrors_1.HttpErrorOut;
-    } });
-    Object.defineProperty(exports2, "ValidationError", { enumerable: true, get: function() {
-      return HttpErrors_1.ValidationError;
-    } });
-    __exportStar(require_webhook(), exports2);
-    __exportStar(require_models(), exports2);
-    var message_2 = require_message();
-    Object.defineProperty(exports2, "messageInRaw", { enumerable: true, get: function() {
-      return message_2.messageInRaw;
-    } });
-    var REGIONS = [
-      { region: "us", url: "https://api.us.svix.com" },
-      { region: "eu", url: "https://api.eu.svix.com" },
-      { region: "in", url: "https://api.in.svix.com" },
-      { region: "ca", url: "https://api.ca.svix.com" },
-      { region: "au", url: "https://api.au.svix.com" }
-    ];
-    var Svix = class {
-      constructor(token2, options = {}) {
-        var _a6, _b, _c;
-        const regionalUrl = (_a6 = REGIONS.find((x4) => x4.region === token2.split(".")[1])) === null || _a6 === void 0 ? void 0 : _a6.url;
-        const baseUrl2 = (_c = (_b = options.serverUrl) !== null && _b !== void 0 ? _b : regionalUrl) !== null && _c !== void 0 ? _c : "https://api.svix.com";
-        if (options.retryScheduleInMs) {
-          this.requestCtx = {
-            baseUrl: baseUrl2,
-            token: token2,
-            timeout: options.requestTimeout,
-            retryScheduleInMs: options.retryScheduleInMs,
-            fetch: options.fetch
-          };
-          return;
-        }
-        if (options.numRetries) {
-          this.requestCtx = {
-            baseUrl: baseUrl2,
-            token: token2,
-            timeout: options.requestTimeout,
-            numRetries: options.numRetries,
-            fetch: options.fetch
-          };
-          return;
-        }
-        this.requestCtx = {
-          baseUrl: baseUrl2,
-          token: token2,
-          timeout: options.requestTimeout,
-          fetch: options.fetch
-        };
-      }
-      get application() {
-        return new application_1.Application(this.requestCtx);
-      }
-      get authentication() {
-        return new authentication_1.Authentication(this.requestCtx);
-      }
-      get backgroundTask() {
-        return new backgroundTask_1.BackgroundTask(this.requestCtx);
-      }
-      get connector() {
-        return new connector_1.Connector(this.requestCtx);
-      }
-      get endpoint() {
-        return new endpoint_1.Endpoint(this.requestCtx);
-      }
-      get environment() {
-        return new environment_1.Environment(this.requestCtx);
-      }
-      get eventType() {
-        return new eventType_1.EventType(this.requestCtx);
-      }
-      get health() {
-        return new health_1.Health(this.requestCtx);
-      }
-      get ingest() {
-        return new ingest_1.Ingest(this.requestCtx);
-      }
-      get integration() {
-        return new integration_1.Integration(this.requestCtx);
-      }
-      get message() {
-        return new message_1.Message(this.requestCtx);
-      }
-      get messageAttempt() {
-        return new messageAttempt_1.MessageAttempt(this.requestCtx);
-      }
-      get operationalWebhook() {
-        return new operationalWebhook_1.OperationalWebhook(this.requestCtx);
-      }
-      get statistics() {
-        return new statistics_1.Statistics(this.requestCtx);
-      }
-      get streaming() {
-        return new streaming_1.Streaming(this.requestCtx);
-      }
-      get operationalWebhookEndpoint() {
-        return new operationalWebhookEndpoint_1.OperationalWebhookEndpoint(this.requestCtx);
-      }
-    };
-    exports2.Svix = Svix;
   }
 });
 
@@ -77049,9 +69663,9 @@ function withBrackets(str, brackets) {
   const rbr = typeof brackets[1] === "string" ? brackets[1] : "]";
   return lbr + str + rbr;
 }
-function pathRewrite(path6, rewriter, baseUrl2, metadata, elem) {
+function pathRewrite(path6, rewriter, baseUrl, metadata, elem) {
   const modifiedPath = typeof rewriter === "function" ? rewriter(path6, metadata, elem) : path6;
-  return modifiedPath[0] === "/" && baseUrl2 ? trimCharacterEnd(baseUrl2, "/") + modifiedPath : modifiedPath;
+  return modifiedPath[0] === "/" && baseUrl ? trimCharacterEnd(baseUrl, "/") + modifiedPath : modifiedPath;
 }
 function formatImage(elem, walk, builder, formatOptions) {
   const attribs = elem.attribs || {};
@@ -108840,7 +101454,7 @@ var require_package5 = __commonJS({
 });
 
 // ../../node_modules/.pnpm/gaxios@7.1.4/node_modules/gaxios/build/cjs/src/util.cjs
-var require_util4 = __commonJS({
+var require_util3 = __commonJS({
   "../../node_modules/.pnpm/gaxios@7.1.4/node_modules/gaxios/build/cjs/src/util.cjs"(exports2, module2) {
     "use strict";
     var pkg = require_package5();
@@ -108859,7 +101473,7 @@ var require_common3 = __commonJS({
     exports2.GaxiosError = exports2.GAXIOS_ERROR_SYMBOL = void 0;
     exports2.defaultErrorRedactor = defaultErrorRedactor;
     var extend_1 = __importDefault(require_extend());
-    var util_cjs_1 = __importDefault(require_util4());
+    var util_cjs_1 = __importDefault(require_util3());
     var pkg = util_cjs_1.default.pkg;
     exports2.GAXIOS_ERROR_SYMBOL = /* @__PURE__ */ Symbol.for(`${pkg.name}-gaxios-error`);
     var GaxiosError = class _GaxiosError extends Error {
@@ -115174,7 +107788,7 @@ var init_referrer = __esm({
 });
 
 // ../../node_modules/.pnpm/node-fetch@3.3.2/node_modules/node-fetch/src/request.js
-var import_node_url, import_node_util3, INTERNALS3, isRequest, doBadDataWarn, Request2, getNodeRequestOptions;
+var import_node_url, import_node_util3, INTERNALS3, isRequest, doBadDataWarn, Request, getNodeRequestOptions;
 var init_request = __esm({
   "../../node_modules/.pnpm/node-fetch@3.3.2/node_modules/node-fetch/src/request.js"() {
     import_node_url = require("node:url");
@@ -115194,7 +107808,7 @@ var init_request = __esm({
       ".data is not a valid RequestInit property, use .body instead",
       "https://github.com/node-fetch/node-fetch/issues/1000 (request)"
     );
-    Request2 = class _Request extends Body {
+    Request = class _Request extends Body {
       constructor(input2, init = {}) {
         let parsedURL;
         if (isRequest(input2)) {
@@ -115309,7 +107923,7 @@ var init_request = __esm({
         return "Request";
       }
     };
-    Object.defineProperties(Request2.prototype, {
+    Object.defineProperties(Request.prototype, {
       method: { enumerable: true },
       url: { enumerable: true },
       headers: { enumerable: true },
@@ -115400,7 +108014,7 @@ __export(src_exports2, {
   File: () => file_default,
   FormData: () => FormData2,
   Headers: () => Headers2,
-  Request: () => Request2,
+  Request: () => Request,
   Response: () => Response2,
   blobFrom: () => blobFrom,
   blobFromSync: () => blobFromSync,
@@ -115411,7 +108025,7 @@ __export(src_exports2, {
 });
 async function fetch2(url3, options_) {
   return new Promise((resolve, reject) => {
-    const request = new Request2(url3, options_);
+    const request = new Request(url3, options_);
     const { parsedURL, options } = getNodeRequestOptions(request);
     if (!supportedSchemas.has(parsedURL.protocol)) {
       throw new TypeError(`node-fetch cannot load ${url3}. URL scheme "${parsedURL.protocol.replace(/:$/, "")}" is not supported.`);
@@ -115541,7 +108155,7 @@ async function fetch2(url3, options_) {
             if (responseReferrerPolicy) {
               requestOptions.referrerPolicy = responseReferrerPolicy;
             }
-            resolve(fetch2(new Request2(locationURL, requestOptions)));
+            resolve(fetch2(new Request(locationURL, requestOptions)));
             finalize2();
             return;
           }
@@ -116709,14 +109323,14 @@ var require_src15 = __commonJS({
       "bios-only": "treat the result of a BIOS probe as canonical (don't fall back to pinging)",
       "ping-only": "skip the BIOS probe, and go straight to pinging"
     });
-    function getBaseUrl(baseUrl2) {
-      if (!baseUrl2) {
-        baseUrl2 = process.env.GCE_METADATA_IP || process.env.GCE_METADATA_HOST || exports2.HOST_ADDRESS;
+    function getBaseUrl(baseUrl) {
+      if (!baseUrl) {
+        baseUrl = process.env.GCE_METADATA_IP || process.env.GCE_METADATA_HOST || exports2.HOST_ADDRESS;
       }
-      if (!/^https?:\/\//.test(baseUrl2)) {
-        baseUrl2 = `http://${baseUrl2}`;
+      if (!/^https?:\/\//.test(baseUrl)) {
+        baseUrl = `http://${baseUrl}`;
       }
-      return new URL(exports2.BASE_PATH, baseUrl2).href;
+      return new URL(exports2.BASE_PATH, baseUrl).href;
     }
     function validate3(options) {
       Object.keys(options).forEach((key) => {
@@ -117112,7 +109726,7 @@ var require_crypto6 = __commonJS({
 });
 
 // ../../node_modules/.pnpm/google-auth-library@10.6.2/node_modules/google-auth-library/build/src/util.js
-var require_util5 = __commonJS({
+var require_util4 = __commonJS({
   "../../node_modules/.pnpm/google-auth-library@10.6.2/node_modules/google-auth-library/build/src/util.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
@@ -117347,7 +109961,7 @@ var require_authclient2 = __commonJS({
     exports2.AuthClient = exports2.DEFAULT_EAGER_REFRESH_THRESHOLD_MILLIS = exports2.DEFAULT_UNIVERSE = void 0;
     var events_1 = require("events");
     var gaxios_1 = require_src13();
-    var util_1 = require_util5();
+    var util_1 = require_util4();
     var google_logging_utils_1 = require_src14();
     var shared_cjs_1 = require_shared2();
     exports2.DEFAULT_UNIVERSE = "googleapis.com";
@@ -117484,11 +110098,11 @@ var require_authclient2 = __commonJS({
             const nodeVersion = process.version.replace(/^v/, "");
             config2.headers.set("x-goog-api-client", `gl-node/${nodeVersion}`);
           }
-          const userAgent2 = config2.headers.get("User-Agent");
-          if (!userAgent2) {
+          const userAgent = config2.headers.get("User-Agent");
+          if (!userAgent) {
             config2.headers.set("User-Agent", shared_cjs_1.USER_AGENT);
-          } else if (!userAgent2.includes(`${shared_cjs_1.PRODUCT_NAME}/`)) {
-            config2.headers.set("User-Agent", `${userAgent2} ${shared_cjs_1.USER_AGENT}`);
+          } else if (!userAgent.includes(`${shared_cjs_1.PRODUCT_NAME}/`)) {
+            config2.headers.set("User-Agent", `${userAgent} ${shared_cjs_1.USER_AGENT}`);
           }
           try {
             const symbols = config2;
@@ -117636,7 +110250,7 @@ var require_oauth2client2 = __commonJS({
     var querystring2 = require("querystring");
     var stream = require("stream");
     var formatEcdsa = require_ecdsa_sig_formatter();
-    var util_1 = require_util5();
+    var util_1 = require_util4();
     var crypto_1 = require_crypto6();
     var authclient_1 = require_authclient2();
     var loginticket_1 = require_loginticket2();
@@ -118940,7 +111554,7 @@ var require_jwtaccess2 = __commonJS({
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.JWTAccess = void 0;
     var jws = require_jws();
-    var util_1 = require_util5();
+    var util_1 = require_util4();
     var DEFAULT_HEADER = {
       alg: "RS256",
       typ: "JWT"
@@ -119511,7 +112125,7 @@ var require_impersonated2 = __commonJS({
     exports2.Impersonated = exports2.IMPERSONATED_ACCOUNT_TYPE = void 0;
     var oauth2client_1 = require_oauth2client2();
     var gaxios_1 = require_src13();
-    var util_1 = require_util5();
+    var util_1 = require_util4();
     exports2.IMPERSONATED_ACCOUNT_TYPE = "impersonated_service_account";
     var Impersonated = class _Impersonated extends oauth2client_1.OAuth2Client {
       sourceClient;
@@ -119839,7 +112453,7 @@ var require_stscredentials2 = __commonJS({
     var gaxios_1 = require_src13();
     var authclient_1 = require_authclient2();
     var oauth2common_1 = require_oauth2common2();
-    var util_1 = require_util5();
+    var util_1 = require_util4();
     var StsCredentials = class _StsCredentials extends oauth2common_1.OAuthClientAuthHandler {
       #tokenExchangeEndpoint;
       /**
@@ -119928,7 +112542,7 @@ var require_baseexternalclient2 = __commonJS({
     var stream = require("stream");
     var authclient_1 = require_authclient2();
     var sts = require_stscredentials2();
-    var util_1 = require_util5();
+    var util_1 = require_util4();
     var shared_cjs_1 = require_shared2();
     var STS_GRANT_TYPE = "urn:ietf:params:oauth:grant-type:token-exchange";
     var STS_REQUEST_TOKEN_TYPE = "urn:ietf:params:oauth:token-type:access_token";
@@ -120426,7 +113040,7 @@ var require_certificatesubjecttokensupplier = __commonJS({
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.CertificateSubjectTokenSupplier = exports2.InvalidConfigurationError = exports2.CertificateSourceUnavailableError = exports2.CERTIFICATE_CONFIGURATION_ENV_VARIABLE = void 0;
-    var util_1 = require_util5();
+    var util_1 = require_util4();
     var fs7 = require("fs");
     var crypto_1 = require("crypto");
     var https2 = require("https");
@@ -120611,7 +113225,7 @@ var require_identitypoolclient2 = __commonJS({
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.IdentityPoolClient = void 0;
     var baseexternalclient_1 = require_baseexternalclient2();
-    var util_1 = require_util5();
+    var util_1 = require_util4();
     var filesubjecttokensupplier_1 = require_filesubjecttokensupplier2();
     var urlsubjecttokensupplier_1 = require_urlsubjecttokensupplier2();
     var certificatesubjecttokensupplier_1 = require_certificatesubjecttokensupplier();
@@ -121030,7 +113644,7 @@ var require_awsclient2 = __commonJS({
     var awsrequestsigner_1 = require_awsrequestsigner2();
     var baseexternalclient_1 = require_baseexternalclient2();
     var defaultawssecuritycredentialssupplier_1 = require_defaultawssecuritycredentialssupplier2();
-    var util_1 = require_util5();
+    var util_1 = require_util4();
     var gaxios_1 = require_src13();
     var AwsClient = class _AwsClient extends baseexternalclient_1.BaseExternalAccountClient {
       environmentId;
@@ -121793,7 +114407,7 @@ var require_googleauth2 = __commonJS({
     var baseexternalclient_1 = require_baseexternalclient2();
     var authclient_1 = require_authclient2();
     var externalAccountAuthorizedUserClient_1 = require_externalAccountAuthorizedUserClient2();
-    var util_1 = require_util5();
+    var util_1 = require_util4();
     exports2.GoogleAuthExceptionMessages = {
       API_KEY_WITH_CREDENTIALS: "API Keys and Credentials are mutually exclusive authentication methods and cannot be used together.",
       NO_PROJECT_ID_FOUND: "Unable to detect a Project Id in the current environment. \nTo learn more about authentication and Google APIs, visit: \nhttps://cloud.google.com/docs/authentication/getting-started",
@@ -129127,64 +121741,38 @@ __export(gateway_credentials_exports, {
   resolveClapayGatewayCredentials: () => resolveClapayGatewayCredentials,
   resolvePawaPayCredentials: () => resolvePawaPayCredentials
 });
-async function resolvePawaPayCredentials(routeApiKey) {
-  let token2 = routeApiKey?.trim() || null;
-  let env = null;
-  if (!token2) {
-    try {
-      const rows = await db.select().from(systemSettingsTable).where(eq(systemSettingsTable.key, "pawapay_api_token")).limit(1);
-      token2 = rows[0]?.value?.trim() || null;
-    } catch {
-    }
-  }
-  try {
-    const envRows = await db.select().from(systemSettingsTable).where(eq(systemSettingsTable.key, "pawapay_env")).limit(1);
-    const dbEnv = envRows[0]?.value?.trim().toLowerCase();
-    if (dbEnv === "sandbox" || dbEnv === "production") env = dbEnv;
-  } catch {
-  }
-  if (!token2) token2 = process.env.PAWAPAY_API_TOKEN?.trim() || null;
-  if (!env) {
-    const rawEnvVar = process.env.PAWAPAY_ENV?.trim().toLowerCase();
-    env = rawEnvVar === "production" ? "production" : "sandbox";
-  }
+async function resolvePawaPayCredentials() {
+  const token2 = process.env.PAWAPAY_API_TOKEN?.trim() || null;
+  const rawEnv = process.env.PAWAPAY_ENV?.trim().toLowerCase();
+  const env = rawEnv === "production" ? "production" : "sandbox";
   if (!token2) return null;
   return { token: token2, env };
 }
-async function resolveClapayCredentials(routeApiKey, routeApiUrl) {
-  let token2 = routeApiKey?.trim() || null;
-  let baseUrl2 = routeApiUrl?.trim() || null;
-  if (!token2) {
-    try {
-      const rows = await db.select().from(systemSettingsTable).where(eq(systemSettingsTable.key, "clapay_api_token")).limit(1);
-      token2 = rows[0]?.value?.trim() || null;
-    } catch {
-    }
-  }
-  if (!baseUrl2) {
+async function resolveClapayCredentials(routeApiUrl) {
+  const token2 = process.env.CLAPAY_API_TOKEN?.trim() || null;
+  if (!token2) return null;
+  let baseUrl = routeApiUrl?.trim() || null;
+  if (!baseUrl) {
     try {
       const urlRows = await db.select().from(systemSettingsTable).where(eq(systemSettingsTable.key, "clapay_base_url")).limit(1);
-      baseUrl2 = urlRows[0]?.value?.trim() || null;
+      baseUrl = urlRows[0]?.value?.trim() || null;
     } catch {
     }
   }
-  if (!token2) token2 = process.env.CLAPAY_API_TOKEN?.trim() || null;
-  if (!baseUrl2) baseUrl2 = process.env.CLAPAY_BASE_URL?.trim() || null;
-  if (!token2) return null;
-  return { token: token2, baseUrl: baseUrl2 ?? void 0 };
+  if (!baseUrl) baseUrl = process.env.CLAPAY_BASE_URL?.trim() || null;
+  return { token: token2, baseUrl: baseUrl ?? void 0 };
 }
 async function resolveClapayGatewayCredentials(gatewayId) {
   const [gateway] = await db.select({
     id: paymentGatewaysTable.id,
     slug: paymentGatewaysTable.slug,
-    apiKey: paymentGatewaysTable.apiKey,
     apiUrl: paymentGatewaysTable.apiUrl,
     active: paymentGatewaysTable.active
   }).from(paymentGatewaysTable).where(eq(paymentGatewaysTable.id, gatewayId)).limit(1);
-  if (!gateway || !gateway.active || !gateway.slug.toLowerCase().includes("clapay") || !gateway.apiKey?.trim()) {
+  if (!gateway || !gateway.active || !gateway.slug.toLowerCase().includes("clapay")) {
     return null;
   }
-  return { token: gateway.apiKey.trim(), baseUrl: gateway.apiUrl?.trim() || void 0 };
+  return resolveClapayCredentials(gateway.apiUrl);
 }
 var init_gateway_credentials = __esm({
   "src/lib/gateway-credentials.ts"() {
@@ -129341,10 +121929,10 @@ var init_clapay = __esm({
       getCatalogueCacheKey() {
         return (0, import_node_crypto9.createHash)("sha256").update(JSON.stringify([this.baseUrl, this.token])).digest("hex");
       }
-      constructor(token2, baseUrl2 = "https://nw-api.clapay.app/nowallet/api", requestTimeoutMs = 3e4) {
+      constructor(token2, baseUrl = "https://nw-api.clapay.app/nowallet/api", requestTimeoutMs = 3e4) {
         this.token = token2;
         this.requestTimeoutMs = Math.min(3e4, Math.max(500, requestTimeoutMs));
-        this.baseUrl = baseUrl2.replace(/\/$/, "").replace(/\/nowallet\/api$/, "");
+        this.baseUrl = baseUrl.replace(/\/$/, "").replace(/\/nowallet\/api$/, "");
       }
       buildUrl(path6, params) {
         const encoded = path6.split("/").map((seg) => encodeURIComponent(decodeURIComponent(seg))).join("/");
@@ -152644,13 +145232,13 @@ var Service = class _Service {
     });
     delete reqOpts.interceptors_;
     const pkg = this.packageJson;
-    let userAgent2 = getUserAgentString();
+    let userAgent = getUserAgentString();
     if (this.providedUserAgent) {
-      userAgent2 = `${this.providedUserAgent} ${userAgent2}`;
+      userAgent = `${this.providedUserAgent} ${userAgent}`;
     }
     reqOpts.headers = {
       ...reqOpts.headers,
-      "User-Agent": userAgent2,
+      "User-Agent": userAgent,
       "x-goog-api-client": `${getRuntimeTrackingString()} gccl/${pkg.version}-${getModuleFormat()} gccl-invocation-id/${v4_default()}`
     };
     if (reqOpts[GCCL_GCS_CMD_KEY]) {
@@ -162465,7 +155053,7 @@ var Storage = class _Storage extends Service {
       customEndpoint = true;
     }
     options = Object.assign({}, options, { apiEndpoint });
-    const baseUrl2 = EMULATOR_HOST || `${options.apiEndpoint}/storage/v1`;
+    const baseUrl = EMULATOR_HOST || `${options.apiEndpoint}/storage/v1`;
     const config2 = {
       apiEndpoint: options.apiEndpoint,
       retryOptions: {
@@ -162477,7 +155065,7 @@ var Storage = class _Storage extends Service {
         retryableErrorFn: ((_l2 = options.retryOptions) === null || _l2 === void 0 ? void 0 : _l2.retryableErrorFn) ? (_m = options.retryOptions) === null || _m === void 0 ? void 0 : _m.retryableErrorFn : RETRYABLE_ERR_FN_DEFAULT,
         idempotencyStrategy: ((_o2 = options.retryOptions) === null || _o2 === void 0 ? void 0 : _o2.idempotencyStrategy) !== void 0 ? (_p = options.retryOptions) === null || _p === void 0 ? void 0 : _p.idempotencyStrategy : IDEMPOTENCY_STRATEGY_DEFAULT
       },
-      baseUrl: baseUrl2,
+      baseUrl,
       customEndpoint,
       useAuthWithCustomEndpoint: options === null || options === void 0 ? void 0 : options.useAuthWithCustomEndpoint,
       projectIdRequired: false,
@@ -165724,7 +158312,7 @@ var SEND_TIMEOUT_MS = 15e3;
 var CONSECUTIVE_ERROR_THRESHOLD = 5;
 var CONSECUTIVE_ERROR_DEGRADED = 2;
 
-// ../../node_modules/.pnpm/postal-mime@2.7.4/node_modules/postal-mime/src/decode-strings.js
+// ../../node_modules/.pnpm/postal-mime@2.7.6/node_modules/postal-mime/src/decode-strings.js
 var textEncoder = new TextEncoder();
 var base64Chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 var base64Lookup = new Uint8Array(256);
@@ -165758,8 +158346,13 @@ function decodeBase642(base643) {
   }
   return arrayBuffer;
 }
+var charsetAliases = /* @__PURE__ */ new Map([
+  ["iso-8859-8-i", "iso-8859-8"],
+  ["iso-8859-8-e", "iso-8859-8"]
+]);
 function getDecoder(charset) {
-  charset = charset || "utf8";
+  charset = (charset || "utf8").trim().toLowerCase();
+  charset = charsetAliases.get(charset) || charset;
   let decoder2;
   try {
     decoder2 = new TextDecoder(charset);
@@ -165923,7 +158516,7 @@ function decodeParameterValueContinuations(header) {
   });
 }
 
-// ../../node_modules/.pnpm/postal-mime@2.7.4/node_modules/postal-mime/src/pass-through-decoder.js
+// ../../node_modules/.pnpm/postal-mime@2.7.6/node_modules/postal-mime/src/pass-through-decoder.js
 var PassThroughDecoder = class {
   constructor() {
     this.chunks = [];
@@ -165937,7 +158530,7 @@ var PassThroughDecoder = class {
   }
 };
 
-// ../../node_modules/.pnpm/postal-mime@2.7.4/node_modules/postal-mime/src/base64-decoder.js
+// ../../node_modules/.pnpm/postal-mime@2.7.6/node_modules/postal-mime/src/base64-decoder.js
 var Base64Decoder = class {
   constructor(opts) {
     opts = opts || {};
@@ -165973,7 +158566,7 @@ var Base64Decoder = class {
   }
 };
 
-// ../../node_modules/.pnpm/postal-mime@2.7.4/node_modules/postal-mime/src/qp-decoder.js
+// ../../node_modules/.pnpm/postal-mime@2.7.6/node_modules/postal-mime/src/qp-decoder.js
 var VALID_QP_REGEX = /^=[a-f0-9]{2}$/i;
 var QP_SPLIT_REGEX = /(?==[a-f0-9]{2})/i;
 var SOFT_LINE_BREAK_REGEX = /=\r?\n/g;
@@ -166068,7 +158661,7 @@ var QPDecoder = class {
   }
 };
 
-// ../../node_modules/.pnpm/postal-mime@2.7.4/node_modules/postal-mime/src/mime-node.js
+// ../../node_modules/.pnpm/postal-mime@2.7.6/node_modules/postal-mime/src/mime-node.js
 var defaultDecoder = getDecoder();
 var MimeNode = class {
   constructor(options) {
@@ -166130,6 +158723,7 @@ var MimeNode = class {
     }
     await this.finalizeChildNodes();
     this.content = this.contentDecoder ? await this.contentDecoder.finalize() : null;
+    this.contentDecoder = false;
     this.state = "finished";
   }
   async finalizeChildNodes() {
@@ -166343,7 +158937,7 @@ var MimeNode = class {
   }
 };
 
-// ../../node_modules/.pnpm/postal-mime@2.7.4/node_modules/postal-mime/src/html-entities.js
+// ../../node_modules/.pnpm/postal-mime@2.7.6/node_modules/postal-mime/src/html-entities.js
 var htmlEntities = {
   "&AElig": "\xC6",
   "&AElig;": "\xC6",
@@ -168579,7 +161173,7 @@ var htmlEntities = {
 };
 var html_entities_default = htmlEntities;
 
-// ../../node_modules/.pnpm/postal-mime@2.7.4/node_modules/postal-mime/src/text-format.js
+// ../../node_modules/.pnpm/postal-mime@2.7.6/node_modules/postal-mime/src/text-format.js
 function decodeHTMLEntities(str) {
   return str.replace(/&(#\d+|#x[a-f0-9]+|[a-z]+\d*);?/gi, (match2, entity) => {
     if (typeof html_entities_default[match2] === "string") {
@@ -168800,7 +161394,7 @@ function formatHtmlHeader(message) {
   return template;
 }
 
-// ../../node_modules/.pnpm/postal-mime@2.7.4/node_modules/postal-mime/src/address-parser.js
+// ../../node_modules/.pnpm/postal-mime@2.7.6/node_modules/postal-mime/src/address-parser.js
 function _handleAddress(tokens, depth) {
   let isGroup = false;
   let state = "text";
@@ -169086,7 +161680,7 @@ function addressParser(str, options) {
 }
 var address_parser_default = addressParser;
 
-// ../../node_modules/.pnpm/postal-mime@2.7.4/node_modules/postal-mime/src/base64-encoder.js
+// ../../node_modules/.pnpm/postal-mime@2.7.6/node_modules/postal-mime/src/base64-encoder.js
 function base64ArrayBuffer(arrayBuffer) {
   var base643 = "";
   var encodings = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
@@ -169119,23 +161713,44 @@ function base64ArrayBuffer(arrayBuffer) {
   return base643;
 }
 
-// ../../node_modules/.pnpm/postal-mime@2.7.4/node_modules/postal-mime/src/postal-mime.js
+// ../../node_modules/.pnpm/postal-mime@2.7.6/node_modules/postal-mime/src/postal-mime.js
 var MAX_NESTING_DEPTH = 256;
 var MAX_HEADERS_SIZE = 2 * 1024 * 1024;
+var MAX_RFC822_NESTING_DEPTH = 10;
 function toCamelCase2(key) {
   return key.replace(/-(.)/g, (o2, c2) => c2.toUpperCase());
 }
+function parseLimitOption(value, defaultValue, name3) {
+  if (value === void 0 || value === null) {
+    return defaultValue;
+  }
+  if (typeof value !== "number" || !Number.isInteger(value) || value < 0) {
+    throw new TypeError(`${name3} must be a non-negative integer`);
+  }
+  return value;
+}
 var PostalMime = class _PostalMime {
-  static parse(buf, options) {
+  // async so that an invalid option rejects the returned promise instead of throwing
+  // synchronously, which would escape a `.catch()` chain
+  static async parse(buf, options) {
     const parser = new _PostalMime(options);
     return parser.parse(buf);
   }
-  constructor(options) {
+  // rfc822NestingDepth is internal state that nested parsers receive from their parent.
+  // It is deliberately a separate argument rather than an option, so that forwarding a
+  // caller supplied options object can not seed it and switch the recursion limit off.
+  constructor(options, rfc822NestingDepth = 0) {
     this.options = options || {};
     this.mimeOptions = {
-      maxNestingDepth: this.options.maxNestingDepth || MAX_NESTING_DEPTH,
-      maxHeadersSize: this.options.maxHeadersSize || MAX_HEADERS_SIZE
+      maxNestingDepth: parseLimitOption(this.options.maxNestingDepth, MAX_NESTING_DEPTH, "maxNestingDepth"),
+      maxHeadersSize: parseLimitOption(this.options.maxHeadersSize, MAX_HEADERS_SIZE, "maxHeadersSize")
     };
+    this.maxRfc822NestingDepth = parseLimitOption(
+      this.options.maxRfc822NestingDepth,
+      MAX_RFC822_NESTING_DEPTH,
+      "maxRfc822NestingDepth"
+    );
+    this.rfc822NestingDepth = rfc822NestingDepth;
     this.root = this.currentNode = new MimeNode({
       postalMime: this,
       ...this.mimeOptions
@@ -169235,8 +161850,20 @@ var PostalMime = class _PostalMime {
       alternative = alternative || false;
       related = related || false;
       if (!node2.contentType.multipart) {
-        if (this.isInlineMessageRfc822(node2) && !forceRfc822Attachments) {
-          const subParser = new _PostalMime();
+        const inlineRfc822 = this.isInlineMessageRfc822(node2) && !forceRfc822Attachments;
+        const rfc822DepthExceeded = inlineRfc822 && this.rfc822NestingDepth >= this.maxRfc822NestingDepth;
+        if (inlineRfc822 && !rfc822DepthExceeded) {
+          const subParser = new _PostalMime(
+            {
+              // Only the limits are inherited. Options that decide how a part
+              // is classified stay with the parser that was configured.
+              ...this.mimeOptions,
+              maxRfc822NestingDepth: this.maxRfc822NestingDepth,
+              // attachments are encoded by the parent parser, keep raw buffers here
+              attachmentEncoding: "arraybuffer"
+            },
+            this.rfc822NestingDepth + 1
+          );
           node2.subMessage = await subParser.parse(node2.content);
           if (!textMap.has(node2)) {
             textMap.set(node2, {});
@@ -169277,8 +161904,11 @@ var PostalMime = class _PostalMime {
             mimeType: node2.contentType.parsed.value,
             disposition: node2.contentDisposition?.parsed?.value || null
           };
-          if (related && node2.contentId) {
+          if (related && node2.contentId && !rfc822DepthExceeded) {
             attachment.related = true;
+          }
+          if (rfc822DepthExceeded) {
+            attachment.rfc822DepthExceeded = true;
           }
           if (node2.contentDescription) {
             attachment.description = node2.contentDescription;
@@ -169551,9 +162181,13 @@ var PostalMime = class _PostalMime {
   }
 };
 
-// ../../node_modules/.pnpm/resend@6.12.3_@react-email+render@1.1.2_react-dom@19.1.0_react@19.1.0__react@19.1.0_/node_modules/resend/dist/index.mjs
-var import_svix = __toESM(require_dist10(), 1);
-var version4 = "6.12.3";
+// ../../node_modules/.pnpm/resend@6.38.0_@react-email+render@1.1.2_react-dom@19.1.0_react@19.1.0__react@19.1.0_/node_modules/resend/dist/index.mjs
+var import_standardwebhooks = __toESM(require_dist9(), 1);
+var version4 = "6.38.0";
+function buildPaginationUrl(base, options) {
+  const queryString = buildPaginationQuery(options);
+  return queryString ? `${base}?${queryString}` : base;
+}
 function buildPaginationQuery(options) {
   const searchParams = new URLSearchParams();
   if (options.limit !== void 0) searchParams.set("limit", options.limit.toString());
@@ -169565,26 +162199,28 @@ var ApiKeys = class {
   constructor(resend) {
     this.resend = resend;
   }
-  async create(payload, options = {}) {
-    return await this.resend.post("/api-keys", payload, options);
+  async create(payload, requestOptions = {}) {
+    return await this.resend.post("/api-keys", payload, requestOptions);
   }
-  async list(options = {}) {
-    const queryString = buildPaginationQuery(options);
-    const url3 = queryString ? `/api-keys?${queryString}` : "/api-keys";
-    return await this.resend.get(url3);
+  async list(options = {}, requestOptions = {}) {
+    const url3 = buildPaginationUrl("/api-keys", options);
+    return await this.resend.get(url3, requestOptions);
   }
-  async remove(id) {
-    return await this.resend.delete(`/api-keys/${id}`);
+  async update(id, payload, requestOptions = {}) {
+    return await this.resend.patch(`/api-keys/${id}`, payload, requestOptions);
+  }
+  async remove(id, requestOptions = {}) {
+    return await this.resend.delete(`/api-keys/${id}`, void 0, requestOptions);
   }
 };
 var AutomationRuns = class {
   constructor(resend) {
     this.resend = resend;
   }
-  async get(options) {
-    return await this.resend.get(`/automations/${options.automationId}/runs/${options.runId}`);
+  async get(options, requestOptions = {}) {
+    return await this.resend.get(`/automations/${options.automationId}/runs/${options.runId}`, requestOptions);
   }
-  async list(options) {
+  async list(options, requestOptions = {}) {
     const queryString = buildPaginationQuery(options);
     const searchParams = new URLSearchParams(queryString);
     if (options.status) {
@@ -169593,16 +162229,41 @@ var AutomationRuns = class {
     }
     const qs2 = searchParams.toString();
     const url3 = qs2 ? `/automations/${options.automationId}/runs?${qs2}` : `/automations/${options.automationId}/runs`;
-    return await this.resend.get(url3);
+    return await this.resend.get(url3, requestOptions);
   }
 };
+var TRIGGER_FIELDS = { eventName: "event_name" };
+var SEND_EMAIL_FIELDS = {
+  template: "template",
+  subject: "subject",
+  from: "from",
+  replyTo: "reply_to",
+  topicId: "topic_id"
+};
+var WAIT_FOR_EVENT_FIELDS = {
+  eventName: "event_name",
+  timeout: "timeout",
+  filterRule: "filter_rule"
+};
+var CONTACT_UPDATE_FIELDS = {
+  firstName: "first_name",
+  lastName: "last_name",
+  unsubscribed: "unsubscribed",
+  properties: "properties"
+};
+var ADD_TO_SEGMENT_FIELDS = { segmentId: "segment_id" };
+function renameFields(config2, fields) {
+  const result = {};
+  for (const sdkField of Object.keys(fields)) result[fields[sdkField]] = config2[sdkField];
+  return result;
+}
 function parseStepConfig(step) {
   switch (step.type) {
     case "trigger":
       return {
         key: step.key,
         type: step.type,
-        config: { event_name: step.config.eventName }
+        config: renameFields(step.config, TRIGGER_FIELDS)
       };
     case "delay":
       return {
@@ -169614,22 +162275,13 @@ function parseStepConfig(step) {
       return {
         key: step.key,
         type: step.type,
-        config: {
-          template: step.config.template,
-          subject: step.config.subject,
-          from: step.config.from,
-          reply_to: step.config.replyTo
-        }
+        config: renameFields(step.config, SEND_EMAIL_FIELDS)
       };
     case "wait_for_event":
       return {
         key: step.key,
         type: step.type,
-        config: {
-          event_name: step.config.eventName,
-          timeout: step.config.timeout,
-          filter_rule: step.config.filterRule
-        }
+        config: renameFields(step.config, WAIT_FOR_EVENT_FIELDS)
       };
     case "condition":
       return {
@@ -169641,12 +162293,7 @@ function parseStepConfig(step) {
       return {
         key: step.key,
         type: step.type,
-        config: {
-          first_name: step.config.firstName,
-          last_name: step.config.lastName,
-          unsubscribed: step.config.unsubscribed,
-          properties: step.config.properties
-        }
+        config: renameFields(step.config, CONTACT_UPDATE_FIELDS)
       };
     case "contact_delete":
       return {
@@ -169658,7 +162305,7 @@ function parseStepConfig(step) {
       return {
         key: step.key,
         type: step.type,
-        config: { segment_id: step.config.segmentId }
+        config: renameFields(step.config, ADD_TO_SEGMENT_FIELDS)
       };
   }
 }
@@ -169690,37 +162337,51 @@ var Automations = class {
     this.resend = resend;
     this.runs = new AutomationRuns(this.resend);
   }
-  async create(payload) {
-    return await this.resend.post("/automations", parseAutomationToApiOptions(payload));
+  async create(payload, requestOptions = {}) {
+    return await this.resend.post("/automations", parseAutomationToApiOptions(payload), requestOptions);
   }
-  async list(options = {}) {
+  async list(options = {}, requestOptions = {}) {
     const params = [buildPaginationQuery(options)];
     if (options.status) params.push(`status=${encodeURIComponent(options.status)}`);
     const qs2 = params.filter(Boolean).join("&");
     const url3 = qs2 ? `/automations?${qs2}` : "/automations";
-    return await this.resend.get(url3);
+    return await this.resend.get(url3, requestOptions);
   }
-  async get(id) {
-    return await this.resend.get(`/automations/${id}`);
+  async get(id, requestOptions = {}) {
+    return await this.resend.get(`/automations/${id}`, requestOptions);
   }
-  async remove(id) {
-    return await this.resend.delete(`/automations/${id}`);
+  async remove(id, requestOptions = {}) {
+    return await this.resend.delete(`/automations/${id}`, void 0, requestOptions);
   }
-  async update(id, payload) {
+  async update(id, payload, requestOptions = {}) {
     const apiPayload = {};
     if (payload.name !== void 0) apiPayload.name = payload.name;
     if (payload.status !== void 0) apiPayload.status = payload.status;
     if (payload.steps !== void 0) apiPayload.steps = payload.steps.map(parseStepConfig);
     if (payload.connections !== void 0) apiPayload.connections = payload.connections.map(parseConnection);
-    return await this.resend.patch(`/automations/${id}`, apiPayload);
+    return await this.resend.patch(`/automations/${id}`, apiPayload, requestOptions);
   }
-  async stop(id) {
-    return await this.resend.post(`/automations/${id}/stop`);
+  async duplicate(id, requestOptions = {}) {
+    return await this.resend.post(`/automations/${id}/duplicate`, void 0, requestOptions);
+  }
+  async stop(id, requestOptions = {}) {
+    return await this.resend.post(`/automations/${id}/stop`, void 0, requestOptions);
   }
 };
+function encodeBase642(bytes) {
+  if (typeof Buffer !== "undefined") return Buffer.from(bytes.buffer, bytes.byteOffset, bytes.byteLength).toString("base64");
+  let binary = "";
+  for (let i2 = 0; i2 < bytes.length; i2 += 32768) binary += String.fromCharCode(...bytes.subarray(i2, i2 + 32768));
+  return btoa(binary);
+}
+function parseAttachmentContent(content) {
+  if (ArrayBuffer.isView(content)) return encodeBase642(new Uint8Array(content.buffer, content.byteOffset, content.byteLength));
+  if (content instanceof ArrayBuffer) return encodeBase642(new Uint8Array(content));
+  return content;
+}
 function parseAttachments(attachments) {
   return attachments?.map((attachment) => ({
-    content: attachment.content,
+    content: parseAttachmentContent(attachment.content),
     filename: attachment.filename,
     path: attachment.path,
     content_type: attachment.contentType,
@@ -169757,28 +162418,28 @@ async function render3(node2) {
   }
   return render4(node2);
 }
-var Batch = class {
+var Batch$1 = class {
   constructor(resend) {
     this.resend = resend;
   }
-  async send(payload, options) {
-    return this.create(payload, options);
+  async send(payload, requestOptions) {
+    return this.create(payload, requestOptions);
   }
-  async create(payload, options) {
+  async create(payload, requestOptions) {
     const emails = [];
     for (const email3 of payload) {
-      if (email3.react) {
-        email3.html = await render3(email3.react);
-        email3.react = void 0;
+      const body = { ...email3 };
+      if (body.react) {
+        body.html = await render3(body.react);
+        body.react = void 0;
       }
-      emails.push(parseEmailToApiOptions(email3));
+      emails.push(parseEmailToApiOptions(body));
     }
+    const headers = new Headers({ "x-batch-validation": requestOptions?.batchValidation ?? "strict" });
+    for (const [key, value] of new Headers(requestOptions?.headers || void 0)) headers.set(key, value);
     return await this.resend.post("/emails/batch", emails, {
-      ...options,
-      headers: {
-        "x-batch-validation": options?.batchValidation ?? "strict",
-        ...options?.headers
-      }
+      ...requestOptions,
+      headers
     });
   }
 };
@@ -169786,53 +162447,84 @@ var Broadcasts = class {
   constructor(resend) {
     this.resend = resend;
   }
-  async create(payload, options = {}) {
-    if (payload.react) payload.html = await render3(payload.react);
+  async create(payload, requestOptions = {}) {
+    const html = payload.react ? await render3(payload.react) : payload.html;
     return await this.resend.post("/broadcasts", {
       name: payload.name,
       segment_id: payload.segmentId,
       audience_id: payload.audienceId,
       preview_text: payload.previewText,
       from: payload.from,
-      html: payload.html,
+      html,
       reply_to: payload.replyTo,
       subject: payload.subject,
       text: payload.text,
       topic_id: payload.topicId,
       send: payload.send,
       scheduled_at: payload.scheduledAt
-    }, options);
+    }, requestOptions);
   }
-  async send(id, payload) {
-    return await this.resend.post(`/broadcasts/${id}/send`, { scheduled_at: payload?.scheduledAt });
+  async send(id, payload, requestOptions = {}) {
+    return await this.resend.post(`/broadcasts/${id}/send`, { scheduled_at: payload?.scheduledAt }, requestOptions);
   }
-  async list(options = {}) {
-    const queryString = buildPaginationQuery(options);
-    const url3 = queryString ? `/broadcasts?${queryString}` : "/broadcasts";
-    return await this.resend.get(url3);
+  async list(options = {}, requestOptions = {}) {
+    const url3 = buildPaginationUrl("/broadcasts", options);
+    return await this.resend.get(url3, requestOptions);
   }
-  async get(id) {
-    return await this.resend.get(`/broadcasts/${id}`);
+  async get(id, requestOptions = {}) {
+    return await this.resend.get(`/broadcasts/${id}`, requestOptions);
   }
-  async remove(id) {
-    return await this.resend.delete(`/broadcasts/${id}`);
+  async recipients(id, options, requestOptions = {}) {
+    const url3 = `/broadcasts/${id}/recipients?${buildRecipientsQuery(options)}`;
+    return await this.resend.get(url3, requestOptions);
   }
-  async update(id, payload) {
-    if (payload.react) payload.html = await render3(payload.react);
+  async clickedLinks(id, options = {}, requestOptions = {}) {
+    const url3 = buildPaginationUrl(`/broadcasts/${id}/clicked-links`, options);
+    return await this.resend.get(url3, requestOptions);
+  }
+  async remove(id, requestOptions = {}) {
+    return await this.resend.delete(`/broadcasts/${id}`, void 0, requestOptions);
+  }
+  async cancel(id, requestOptions = {}) {
+    return await this.resend.post(`/broadcasts/${id}/cancel`, void 0, requestOptions);
+  }
+  async duplicate(id, requestOptions = {}) {
+    return await this.resend.post(`/broadcasts/${id}/duplicate`, void 0, requestOptions);
+  }
+  async update(id, payload, requestOptions = {}) {
+    const html = payload.react ? await render3(payload.react) : payload.html;
     return await this.resend.patch(`/broadcasts/${id}`, {
       name: payload.name,
       segment_id: payload.segmentId,
       audience_id: payload.audienceId,
       from: payload.from,
-      html: payload.html,
+      html,
       text: payload.text,
       subject: payload.subject,
       reply_to: payload.replyTo,
       preview_text: payload.previewText,
       topic_id: payload.topicId
-    });
+    }, requestOptions);
   }
 };
+function buildRecipientsQuery(options) {
+  const { type, email: email3, bounceType, ...pagination } = options;
+  const searchParams = new URLSearchParams(buildPaginationQuery(pagination));
+  searchParams.set("type", type);
+  if (email3 !== void 0) searchParams.set("email", email3);
+  if (bounceType !== void 0) searchParams.set("bounce_type", bounceType);
+  return searchParams.toString();
+}
+var DOT_SEGMENT = /^(?:\.|%2e){1,2}$/i;
+function stripIgnoredCharacters(requestPath) {
+  let path6 = requestPath.replace(/[\t\n\r]/g, "");
+  while (path6.length > 0 && path6.charCodeAt(path6.length - 1) <= 32) path6 = path6.slice(0, -1);
+  return path6;
+}
+function hasDotSegment(requestPath) {
+  const [pathname] = stripIgnoredCharacters(requestPath).split(/[?#]/);
+  return pathname.split(/[\\/]/).some((segment) => DOT_SEGMENT.test(segment));
+}
 function parseContactPropertyFromApi(contactProperty) {
   return {
     id: contactProperty.id,
@@ -169854,14 +162546,13 @@ var ContactProperties = class {
   constructor(resend) {
     this.resend = resend;
   }
-  async create(options) {
+  async create(options, requestOptions = {}) {
     const apiOptions = parseContactPropertyToApiOptions(options);
-    return await this.resend.post("/contact-properties", apiOptions);
+    return await this.resend.post("/contact-properties", apiOptions, requestOptions);
   }
-  async list(options = {}) {
-    const queryString = buildPaginationQuery(options);
-    const url3 = queryString ? `/contact-properties?${queryString}` : "/contact-properties";
-    const response = await this.resend.get(url3);
+  async list(options = {}, requestOptions = {}) {
+    const url3 = buildPaginationUrl("/contact-properties", options);
+    const response = await this.resend.get(url3, requestOptions);
     if (response.data) return {
       data: {
         ...response.data,
@@ -169872,7 +162563,7 @@ var ContactProperties = class {
     };
     return response;
   }
-  async get(id) {
+  async get(id, requestOptions = {}) {
     if (!id) return {
       data: null,
       headers: null,
@@ -169882,7 +162573,7 @@ var ContactProperties = class {
         name: "missing_required_field"
       }
     };
-    const response = await this.resend.get(`/contact-properties/${id}`);
+    const response = await this.resend.get(`/contact-properties/${id}`, requestOptions);
     if (response.data) return {
       data: {
         object: "contact_property",
@@ -169893,7 +162584,7 @@ var ContactProperties = class {
     };
     return response;
   }
-  async update(payload) {
+  async update(payload, requestOptions = {}) {
     if (!payload.id) return {
       data: null,
       headers: null,
@@ -169904,9 +162595,9 @@ var ContactProperties = class {
       }
     };
     const apiOptions = parseContactPropertyToApiOptions(payload);
-    return await this.resend.patch(`/contact-properties/${payload.id}`, apiOptions);
+    return await this.resend.patch(`/contact-properties/${payload.id}`, apiOptions, requestOptions);
   }
-  async remove(id) {
+  async remove(id, requestOptions = {}) {
     if (!id) return {
       data: null,
       headers: null,
@@ -169916,14 +162607,56 @@ var ContactProperties = class {
         name: "missing_required_field"
       }
     };
-    return await this.resend.delete(`/contact-properties/${id}`);
+    return await this.resend.delete(`/contact-properties/${id}`, void 0, requestOptions);
+  }
+};
+var ContactImports = class {
+  constructor(resend) {
+    this.resend = resend;
+  }
+  async create(payload, requestOptions = {}) {
+    const formData = this.buildCreateFormData(payload);
+    return this.resend.post("/contacts/imports", formData, requestOptions);
+  }
+  async list(options = {}, requestOptions = {}) {
+    const searchParams = new URLSearchParams(buildPaginationQuery(options));
+    if (options.status !== void 0) searchParams.set("status", options.status);
+    const queryString = searchParams.toString();
+    const url3 = queryString ? `/contacts/imports?${queryString}` : "/contacts/imports";
+    return this.resend.get(url3, requestOptions);
+  }
+  async get(id, requestOptions = {}) {
+    return this.resend.get(`/contacts/imports/${id}`, requestOptions);
+  }
+  buildCreateFormData(payload) {
+    const formData = new FormData();
+    formData.append("file", payload.file);
+    this.appendField(formData, "column_map", this.buildColumnMap(payload.columnMap ?? null));
+    this.appendField(formData, "on_conflict", payload.onConflict ?? null);
+    this.appendField(formData, "segments", payload.segments ?? null);
+    this.appendField(formData, "topics", payload.topics ?? null);
+    return formData;
+  }
+  buildColumnMap(columnMap) {
+    if (columnMap === null) return null;
+    return {
+      email: columnMap.email,
+      first_name: columnMap.firstName,
+      last_name: columnMap.lastName,
+      unsubscribed: columnMap.unsubscribed,
+      properties: columnMap.properties
+    };
+  }
+  appendField(formData, name3, value) {
+    if (value === null) return;
+    formData.append(name3, typeof value === "string" ? value : JSON.stringify(value));
   }
 };
 var ContactSegments = class {
   constructor(resend) {
     this.resend = resend;
   }
-  async list(options) {
+  async list(options, requestOptions = {}) {
     if (!options.contactId && !options.email) return {
       data: null,
       headers: null,
@@ -169933,12 +162666,10 @@ var ContactSegments = class {
         name: "missing_required_field"
       }
     };
-    const identifier = options.email ? options.email : options.contactId;
-    const queryString = buildPaginationQuery(options);
-    const url3 = queryString ? `/contacts/${identifier}/segments?${queryString}` : `/contacts/${identifier}/segments`;
-    return await this.resend.get(url3);
+    const url3 = buildPaginationUrl(`/contacts/${options.email ? options.email : options.contactId}/segments`, options);
+    return await this.resend.get(url3, requestOptions);
   }
-  async add(options) {
+  async add(options, requestOptions = {}) {
     if (!options.contactId && !options.email) return {
       data: null,
       headers: null,
@@ -169949,9 +162680,9 @@ var ContactSegments = class {
       }
     };
     const identifier = options.email ? options.email : options.contactId;
-    return this.resend.post(`/contacts/${identifier}/segments/${options.segmentId}`);
+    return this.resend.post(`/contacts/${identifier}/segments/${options.segmentId}`, void 0, requestOptions);
   }
-  async remove(options) {
+  async remove(options, requestOptions = {}) {
     if (!options.contactId && !options.email) return {
       data: null,
       headers: null,
@@ -169962,14 +162693,14 @@ var ContactSegments = class {
       }
     };
     const identifier = options.email ? options.email : options.contactId;
-    return this.resend.delete(`/contacts/${identifier}/segments/${options.segmentId}`);
+    return this.resend.delete(`/contacts/${identifier}/segments/${options.segmentId}`, void 0, requestOptions);
   }
 };
 var ContactTopics = class {
   constructor(resend) {
     this.resend = resend;
   }
-  async update(payload) {
+  async update(payload, requestOptions = {}) {
     if (!payload.id && !payload.email) return {
       data: null,
       headers: null,
@@ -169980,9 +162711,9 @@ var ContactTopics = class {
       }
     };
     const identifier = payload.email ? payload.email : payload.id;
-    return this.resend.patch(`/contacts/${identifier}/topics`, payload.topics);
+    return this.resend.patch(`/contacts/${identifier}/topics`, payload.topics, requestOptions);
   }
-  async list(options) {
+  async list(options, requestOptions = {}) {
     if (!options.id && !options.email) return {
       data: null,
       headers: null,
@@ -169992,19 +162723,18 @@ var ContactTopics = class {
         name: "missing_required_field"
       }
     };
-    const identifier = options.email ? options.email : options.id;
-    const queryString = buildPaginationQuery(options);
-    const url3 = queryString ? `/contacts/${identifier}/topics?${queryString}` : `/contacts/${identifier}/topics`;
-    return this.resend.get(url3);
+    const url3 = buildPaginationUrl(`/contacts/${options.email ? options.email : options.id}/topics`, options);
+    return this.resend.get(url3, requestOptions);
   }
 };
 var Contacts = class {
   constructor(resend) {
     this.resend = resend;
+    this.imports = new ContactImports(this.resend);
     this.topics = new ContactTopics(this.resend);
     this.segments = new ContactSegments(this.resend);
   }
-  async create(payload, options = {}) {
+  async create(payload, requestOptions = {}) {
     if ("audienceId" in payload) {
       if ("segments" in payload || "topics" in payload) return {
         data: null,
@@ -170021,7 +162751,7 @@ var Contacts = class {
         first_name: payload.firstName,
         last_name: payload.lastName,
         properties: payload.properties
-      }, options);
+      }, requestOptions);
     }
     return await this.resend.post("/contacts", {
       unsubscribed: payload.unsubscribed,
@@ -170031,21 +162761,19 @@ var Contacts = class {
       properties: payload.properties,
       segments: payload.segments,
       topics: payload.topics
-    }, options);
+    }, requestOptions);
   }
-  async list(options = {}) {
+  async list(options = {}, requestOptions = {}) {
     const segmentId = options.segmentId ?? options.audienceId;
     if (!segmentId) {
-      const queryString2 = buildPaginationQuery(options);
-      const url4 = queryString2 ? `/contacts?${queryString2}` : "/contacts";
-      return await this.resend.get(url4);
+      const url4 = buildPaginationUrl("/contacts", options);
+      return await this.resend.get(url4, requestOptions);
     }
-    const queryString = buildPaginationQuery(options);
-    const url3 = queryString ? `/segments/${segmentId}/contacts?${queryString}` : `/segments/${segmentId}/contacts`;
-    return await this.resend.get(url3);
+    const url3 = buildPaginationUrl(`/segments/${segmentId}/contacts`, options);
+    return await this.resend.get(url3, requestOptions);
   }
-  async get(options) {
-    if (typeof options === "string") return this.resend.get(`/contacts/${options}`);
+  async get(options, requestOptions = {}) {
+    if (typeof options === "string") return this.resend.get(`/contacts/${options}`, requestOptions);
     if (!options.id && !options.email) return {
       data: null,
       headers: null,
@@ -170055,10 +162783,10 @@ var Contacts = class {
         name: "missing_required_field"
       }
     };
-    if (!options.audienceId) return this.resend.get(`/contacts/${options?.email ? options?.email : options?.id}`);
-    return this.resend.get(`/audiences/${options.audienceId}/contacts/${options?.email ? options?.email : options?.id}`);
+    if (!options.audienceId) return this.resend.get(`/contacts/${options?.email ? options?.email : options?.id}`, requestOptions);
+    return this.resend.get(`/audiences/${options.audienceId}/contacts/${options?.email ? options?.email : options?.id}`, requestOptions);
   }
-  async update(options) {
+  async update(options, requestOptions = {}) {
     if (!options.id && !options.email) return {
       data: null,
       headers: null,
@@ -170073,16 +162801,16 @@ var Contacts = class {
       first_name: options.firstName,
       last_name: options.lastName,
       properties: options.properties
-    });
+    }, requestOptions);
     return await this.resend.patch(`/audiences/${options.audienceId}/contacts/${options?.email ? options?.email : options?.id}`, {
       unsubscribed: options.unsubscribed,
       first_name: options.firstName,
       last_name: options.lastName,
       properties: options.properties
-    });
+    }, requestOptions);
   }
-  async remove(payload) {
-    if (typeof payload === "string") return this.resend.delete(`/contacts/${payload}`);
+  async remove(payload, requestOptions = {}) {
+    if (typeof payload === "string") return this.resend.delete(`/contacts/${payload}`, void 0, requestOptions);
     if (!payload.id && !payload.email) return {
       data: null,
       headers: null,
@@ -170092,8 +162820,8 @@ var Contacts = class {
         name: "missing_required_field"
       }
     };
-    if (!payload.audienceId) return this.resend.delete(`/contacts/${payload?.email ? payload?.email : payload?.id}`);
-    return this.resend.delete(`/audiences/${payload.audienceId}/contacts/${payload?.email ? payload?.email : payload?.id}`);
+    if (!payload.audienceId) return this.resend.delete(`/contacts/${payload?.email ? payload?.email : payload?.id}`, void 0, requestOptions);
+    return this.resend.delete(`/audiences/${payload.audienceId}/contacts/${payload?.email ? payload?.email : payload?.id}`, void 0, requestOptions);
   }
 };
 function parseDomainToApiOptions(domain2) {
@@ -170108,65 +162836,84 @@ function parseDomainToApiOptions(domain2) {
     tracking_subdomain: domain2.trackingSubdomain
   };
 }
-var Domains = class {
+var DomainClaims = class {
   constructor(resend) {
     this.resend = resend;
   }
-  async create(payload, options = {}) {
-    return await this.resend.post("/domains", parseDomainToApiOptions(payload), options);
+  async create(payload, requestOptions = {}) {
+    return await this.resend.post("/domains/claim", {
+      name: payload.name,
+      region: payload.region,
+      custom_return_path: payload.customReturnPath,
+      open_tracking: payload.openTracking,
+      click_tracking: payload.clickTracking,
+      tracking_subdomain: payload.trackingSubdomain
+    }, requestOptions);
   }
-  async list(options = {}) {
-    const queryString = buildPaginationQuery(options);
-    const url3 = queryString ? `/domains?${queryString}` : "/domains";
-    return await this.resend.get(url3);
+  async get(domainId, requestOptions = {}) {
+    return await this.resend.get(`/domains/${domainId}/claim`, requestOptions);
   }
-  async get(id) {
-    return await this.resend.get(`/domains/${id}`);
+  async verify(domainId, requestOptions = {}) {
+    return await this.resend.post(`/domains/${domainId}/claim/verify`, void 0, requestOptions);
   }
-  async update(payload) {
+};
+var Domains = class {
+  constructor(resend) {
+    this.resend = resend;
+    this.claims = new DomainClaims(this.resend);
+  }
+  async create(payload, requestOptions = {}) {
+    return await this.resend.post("/domains", parseDomainToApiOptions(payload), requestOptions);
+  }
+  async list(options = {}, requestOptions = {}) {
+    const url3 = buildPaginationUrl("/domains", options);
+    return await this.resend.get(url3, requestOptions);
+  }
+  async get(id, requestOptions = {}) {
+    return await this.resend.get(`/domains/${id}`, requestOptions);
+  }
+  async update(payload, requestOptions = {}) {
     return await this.resend.patch(`/domains/${payload.id}`, {
       click_tracking: payload.clickTracking,
       open_tracking: payload.openTracking,
       tls: payload.tls,
       capabilities: payload.capabilities,
       tracking_subdomain: payload.trackingSubdomain
-    });
+    }, requestOptions);
   }
-  async remove(id) {
-    return await this.resend.delete(`/domains/${id}`);
+  async remove(id, requestOptions = {}) {
+    return await this.resend.delete(`/domains/${id}`, void 0, requestOptions);
   }
-  async verify(id) {
-    return await this.resend.post(`/domains/${id}/verify`);
+  async verify(id, requestOptions = {}) {
+    return await this.resend.post(`/domains/${id}/verify`, void 0, requestOptions);
   }
 };
 var Attachments$1 = class {
   constructor(resend) {
     this.resend = resend;
   }
-  async get(options) {
+  async get(options, requestOptions = {}) {
     const { emailId, id } = options;
-    return await this.resend.get(`/emails/${emailId}/attachments/${id}`);
+    return await this.resend.get(`/emails/${emailId}/attachments/${id}`, requestOptions);
   }
-  async list(options) {
+  async list(options, requestOptions = {}) {
     const { emailId } = options;
-    const queryString = buildPaginationQuery(options);
-    const url3 = queryString ? `/emails/${emailId}/attachments?${queryString}` : `/emails/${emailId}/attachments`;
-    return await this.resend.get(url3);
+    const url3 = buildPaginationUrl(`/emails/${emailId}/attachments`, options);
+    return await this.resend.get(url3, requestOptions);
   }
 };
 var Attachments = class {
   constructor(resend) {
     this.resend = resend;
   }
-  async get(options) {
+  async get(options, requestOptions = {}) {
     const { emailId, id } = options;
-    return await this.resend.get(`/emails/receiving/${emailId}/attachments/${id}`);
+    return await this.resend.get(`/emails/receiving/${emailId}/attachments/${id}`, requestOptions);
   }
-  async list(options) {
+  async list(options, requestOptions = {}) {
     const { emailId } = options;
-    const queryString = buildPaginationQuery(options);
-    const url3 = queryString ? `/emails/receiving/${emailId}/attachments?${queryString}` : `/emails/receiving/${emailId}/attachments`;
-    return await this.resend.get(url3);
+    const url3 = buildPaginationUrl(`/emails/receiving/${emailId}/attachments`, options);
+    return await this.resend.get(url3, requestOptions);
   }
 };
 var Receiving = class {
@@ -170174,18 +162921,21 @@ var Receiving = class {
     this.resend = resend;
     this.attachments = new Attachments(resend);
   }
-  async get(id) {
-    return await this.resend.get(`/emails/receiving/${id}`);
+  async get(id, options = {}, requestOptions = {}) {
+    const searchParams = new URLSearchParams();
+    if (options.html_format !== void 0) searchParams.set("html_format", options.html_format);
+    const queryString = searchParams.toString();
+    const path6 = queryString ? `/emails/receiving/${id}?${queryString}` : `/emails/receiving/${id}`;
+    return await this.resend.get(path6, requestOptions);
   }
-  async list(options = {}) {
-    const queryString = buildPaginationQuery(options);
-    const url3 = queryString ? `/emails/receiving?${queryString}` : "/emails/receiving";
-    return await this.resend.get(url3);
+  async list(options = {}, requestOptions = {}) {
+    const url3 = buildPaginationUrl("/emails/receiving", options);
+    return await this.resend.get(url3, requestOptions);
   }
-  async forward(options) {
+  async forward(options, requestOptions = {}) {
     const { emailId, to: to3, from } = options;
     const passthrough = options.passthrough !== false;
-    const emailResponse = await this.get(emailId);
+    const emailResponse = await this.get(emailId, {}, { signal: requestOptions.signal });
     if (emailResponse.error) return {
       data: null,
       error: emailResponse.error,
@@ -170197,7 +162947,7 @@ var Receiving = class {
       to: to3,
       from,
       subject: originalSubject
-    });
+    }, requestOptions);
     const forwardSubject = originalSubject.startsWith("Fwd:") ? originalSubject : `Fwd: ${originalSubject}`;
     return this.forwardWrapped(email3, {
       to: to3,
@@ -170205,9 +162955,9 @@ var Receiving = class {
       subject: forwardSubject,
       text: "text" in options ? options.text : void 0,
       html: "html" in options ? options.html : void 0
-    });
+    }, requestOptions);
   }
-  async forwardPassthrough(email3, options) {
+  async forwardPassthrough(email3, options, requestOptions) {
     const { to: to3, from, subject } = options;
     if (!email3.raw?.download_url) return {
       data: null,
@@ -170218,18 +162968,13 @@ var Receiving = class {
       },
       headers: null
     };
-    const rawResponse = await fetch(email3.raw.download_url);
-    if (!rawResponse.ok) return {
+    const raw = await this.downloadRaw(email3.raw.download_url, requestOptions.signal);
+    if (raw.error) return {
       data: null,
-      error: {
-        name: "application_error",
-        message: "Failed to download raw email content",
-        statusCode: rawResponse.status
-      },
+      error: raw.error,
       headers: null
     };
-    const rawEmailContent = await rawResponse.text();
-    const parsed = await PostalMime.parse(rawEmailContent, { attachmentEncoding: "base64" });
+    const parsed = await PostalMime.parse(raw.content, { attachmentEncoding: "base64" });
     const attachments = parsed.attachments.map((attachment) => {
       const contentId = attachment.contentId ? attachment.contentId.replace(/^<|>$/g, "") : void 0;
       return {
@@ -170246,9 +162991,9 @@ var Receiving = class {
       text: parsed.text || void 0,
       html: parsed.html || void 0,
       attachments: attachments.length > 0 ? attachments : void 0
-    });
+    }, requestOptions);
   }
-  async forwardWrapped(email3, options) {
+  async forwardWrapped(email3, options, requestOptions) {
     const { to: to3, from, subject, text: text2, html } = options;
     if (!email3.raw?.download_url) return {
       data: null,
@@ -170259,17 +163004,12 @@ var Receiving = class {
       },
       headers: null
     };
-    const rawResponse = await fetch(email3.raw.download_url);
-    if (!rawResponse.ok) return {
+    const raw = await this.downloadRaw(email3.raw.download_url, requestOptions.signal);
+    if (raw.error) return {
       data: null,
-      error: {
-        name: "application_error",
-        message: "Failed to download raw email content",
-        statusCode: rawResponse.status
-      },
+      error: raw.error,
       headers: null
     };
-    const rawEmailContent = await rawResponse.text();
     return await this.resend.post("/emails", {
       from,
       to: to3,
@@ -170278,10 +163018,36 @@ var Receiving = class {
       html,
       attachments: [{
         filename: "forwarded_message.eml",
-        content: Buffer.from(rawEmailContent).toString("base64"),
+        content: Buffer.from(raw.content).toString("base64"),
         content_type: "message/rfc822"
       }]
-    });
+    }, requestOptions);
+  }
+  async downloadRaw(url3, signal) {
+    try {
+      const response = await fetch(url3, { signal });
+      if (!response.ok) return {
+        content: null,
+        error: {
+          name: "application_error",
+          message: "Failed to download raw email content",
+          statusCode: response.status
+        }
+      };
+      return {
+        content: await response.arrayBuffer(),
+        error: null
+      };
+    } catch {
+      return {
+        content: null,
+        error: {
+          name: "application_error",
+          message: "Failed to download raw email content",
+          statusCode: null
+        }
+      };
+    }
   }
 };
 var Emails = class {
@@ -170290,85 +163056,462 @@ var Emails = class {
     this.attachments = new Attachments$1(resend);
     this.receiving = new Receiving(resend);
   }
-  async send(payload, options = {}) {
-    return this.create(payload, options);
+  async send(payload, requestOptions = {}) {
+    return this.create(payload, requestOptions);
   }
-  async create(payload, options = {}) {
-    if (payload.react) payload.html = await render3(payload.react);
-    return await this.resend.post("/emails", parseEmailToApiOptions(payload), options);
+  async create(payload, requestOptions = {}) {
+    const body = { ...payload };
+    if (payload.react) body.html = await render3(payload.react);
+    return await this.resend.post("/emails", parseEmailToApiOptions(body), requestOptions);
   }
-  async get(id) {
-    return await this.resend.get(`/emails/${id}`);
+  async get(id, requestOptions = {}) {
+    return await this.resend.get(`/emails/${id}`, requestOptions);
   }
-  async list(options = {}) {
-    const queryString = buildPaginationQuery(options);
-    const url3 = queryString ? `/emails?${queryString}` : "/emails";
-    return await this.resend.get(url3);
+  async list(options = {}, requestOptions = {}) {
+    const url3 = buildPaginationUrl("/emails", options);
+    return await this.resend.get(url3, requestOptions);
   }
-  async update(payload) {
-    return await this.resend.patch(`/emails/${payload.id}`, { scheduled_at: payload.scheduledAt });
+  async update(payload, requestOptions = {}) {
+    return await this.resend.patch(`/emails/${payload.id}`, { scheduled_at: payload.scheduledAt }, requestOptions);
   }
-  async cancel(id) {
-    return await this.resend.post(`/emails/${id}/cancel`);
+  async cancel(id, requestOptions = {}) {
+    return await this.resend.post(`/emails/${id}/cancel`, void 0, requestOptions);
+  }
+  async share(id, payload, requestOptions = {}) {
+    return await this.resend.post(`/emails/${id}/share`, { expires_in: payload?.expiresIn }, requestOptions);
+  }
+  async metrics(options = {}, requestOptions = {}) {
+    const queryString = buildMetricsQuery(options);
+    const url3 = queryString ? `/emails/metrics?${queryString}` : "/emails/metrics";
+    return await this.resend.get(url3, requestOptions);
   }
 };
-var Events = class {
+function buildMetricsQuery(options) {
+  const params = {
+    start_date: options.startDate,
+    end_date: options.endDate,
+    timezone: options.timezone,
+    granularity: options.granularity,
+    metrics: options.metrics?.join(","),
+    dimensions: options.dimensions?.join(","),
+    domain_id: options.domainId?.join(","),
+    email_id: options.emailId?.join(","),
+    broadcast_id: options.broadcastId?.join(",")
+  };
+  const searchParams = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) if (value !== void 0 && value !== "") searchParams.set(key, value);
+  return searchParams.toString();
+}
+var Events$1 = class {
   constructor(resend) {
     this.resend = resend;
   }
-  async send(payload) {
-    return await this.resend.post("/events/send", parseEventToApiOptions(payload));
+  async send(payload, requestOptions = {}) {
+    return await this.resend.post("/events/send", parseEventToApiOptions(payload), requestOptions);
   }
-  async create(payload) {
-    return await this.resend.post("/events", payload);
+  async create(payload, requestOptions = {}) {
+    return await this.resend.post("/events", payload, requestOptions);
   }
-  async get(identifier) {
-    return await this.resend.get(`/events/${encodeURIComponent(identifier)}`);
+  async get(identifier, requestOptions = {}) {
+    return await this.resend.get(`/events/${encodeURIComponent(identifier)}`, requestOptions);
   }
-  async list(options = {}) {
-    const queryString = buildPaginationQuery(options);
-    const url3 = queryString ? `/events?${queryString}` : "/events";
-    return await this.resend.get(url3);
+  async list(options = {}, requestOptions = {}) {
+    const url3 = buildPaginationUrl("/events", options);
+    return await this.resend.get(url3, requestOptions);
   }
-  async update(identifier, payload) {
-    return await this.resend.patch(`/events/${encodeURIComponent(identifier)}`, payload);
+  async update(identifier, payload, requestOptions = {}) {
+    return await this.resend.patch(`/events/${encodeURIComponent(identifier)}`, payload, requestOptions);
   }
-  async remove(identifier) {
-    return await this.resend.delete(`/events/${encodeURIComponent(identifier)}`);
+  async remove(identifier, requestOptions = {}) {
+    return await this.resend.delete(`/events/${encodeURIComponent(identifier)}`, void 0, requestOptions);
+  }
+};
+function buildInboxPath(selector) {
+  const idOrEmail = selector?.inboxId ?? selector?.emailAddress;
+  return idOrEmail ? `/inboxes/${encodeURIComponent(idOrEmail)}` : void 0;
+}
+var missingInboxError = () => ({
+  data: null,
+  headers: null,
+  error: {
+    message: "Missing `inboxId` or `emailAddress` field.",
+    statusCode: null,
+    name: "missing_required_field"
+  }
+});
+var InboxAgent = class {
+  constructor(resend) {
+    this.resend = resend;
+  }
+  async get(options, requestOptions = {}) {
+    const inboxPath = buildInboxPath(options);
+    if (!inboxPath) return missingInboxError();
+    return this.resend.get(`${inboxPath}/agent`, requestOptions);
+  }
+  async update(options, requestOptions = {}) {
+    const inboxPath = buildInboxPath(options);
+    if (!inboxPath) return missingInboxError();
+    const { instructions, tone, actions } = options;
+    return this.resend.patch(`${inboxPath}/agent`, {
+      instructions,
+      tone,
+      actions
+    }, requestOptions);
+  }
+};
+function buildInboxCursorUrl(base, options = {}) {
+  const searchParams = new URLSearchParams();
+  for (const [key, value] of Object.entries(options)) {
+    if (value === void 0) continue;
+    searchParams.set(key, Array.isArray(value) ? value.join(",") : String(value));
+  }
+  const queryString = searchParams.toString();
+  return queryString ? `${base}?${queryString}` : base;
+}
+var InboxDrafts = class {
+  constructor(resend) {
+    this.resend = resend;
+  }
+  async list(options, requestOptions = {}) {
+    const inboxPath = buildInboxPath(options);
+    if (!inboxPath) return missingInboxError();
+    const { limit, after, before } = options;
+    const url3 = buildInboxCursorUrl(`${inboxPath}/drafts`, {
+      limit,
+      after,
+      before
+    });
+    return this.resend.get(url3, requestOptions);
+  }
+  async create(payload, options = {}) {
+    const inboxPath = buildInboxPath(payload);
+    if (!inboxPath) return missingInboxError();
+    const { inboxId, emailAddress, threadId, replyToEmailId, attachments, ...content } = payload;
+    return this.resend.post(`${inboxPath}/drafts`, {
+      ...content,
+      attachments: parseAttachments(attachments),
+      thread_id: threadId,
+      reply_to_email_id: replyToEmailId
+    }, options);
+  }
+  async get(options, requestOptions = {}) {
+    const inboxPath = buildInboxPath(options);
+    if (!inboxPath) return missingInboxError();
+    return this.resend.get(`${inboxPath}/drafts/${options.draftId}`, requestOptions);
+  }
+  async update(options, requestOptions = {}) {
+    const inboxPath = buildInboxPath(options);
+    if (!inboxPath) return missingInboxError();
+    const { inboxId, emailAddress, draftId, attachments, ...content } = options;
+    return this.resend.patch(`${inboxPath}/drafts/${draftId}`, {
+      ...content,
+      attachments: attachments === null ? null : parseAttachments(attachments)
+    }, requestOptions);
+  }
+  async remove(options, requestOptions = {}) {
+    const inboxPath = buildInboxPath(options);
+    if (!inboxPath) return missingInboxError();
+    return this.resend.delete(`${inboxPath}/drafts/${options.draftId}`, void 0, requestOptions);
+  }
+  async send(payload, options = {}) {
+    const inboxPath = buildInboxPath(payload);
+    if (!inboxPath) return missingInboxError();
+    const { draftId, headers } = payload;
+    return this.resend.post(`${inboxPath}/drafts/${draftId}/send`, headers ? { headers } : void 0, options);
+  }
+};
+var InboxLabels = class {
+  constructor(resend) {
+    this.resend = resend;
+  }
+  async list(options, requestOptions = {}) {
+    const inboxPath = buildInboxPath(options);
+    if (!inboxPath) return missingInboxError();
+    return this.resend.get(`${inboxPath}/labels`, requestOptions);
+  }
+  async create(payload, options = {}) {
+    const inboxPath = buildInboxPath(payload);
+    if (!inboxPath) return missingInboxError();
+    const { name: name3, color } = payload;
+    return this.resend.post(`${inboxPath}/labels`, {
+      name: name3,
+      color
+    }, options);
+  }
+  async update(options, requestOptions = {}) {
+    const inboxPath = buildInboxPath(options);
+    if (!inboxPath) return missingInboxError();
+    const { labelId, name: name3, color } = options;
+    return this.resend.patch(`${inboxPath}/labels/${labelId}`, {
+      name: name3,
+      color
+    }, requestOptions);
+  }
+  async remove(options, requestOptions = {}) {
+    const inboxPath = buildInboxPath(options);
+    if (!inboxPath) return missingInboxError();
+    return this.resend.delete(`${inboxPath}/labels/${options.labelId}`, void 0, requestOptions);
+  }
+};
+var InboxThreadEmails = class {
+  constructor(resend) {
+    this.resend = resend;
+  }
+  async list(options, requestOptions = {}) {
+    const inboxPath = buildInboxPath(options);
+    if (!inboxPath) return missingInboxError();
+    const { inboxId, emailAddress, threadId, ...pagination } = options;
+    const url3 = buildPaginationUrl(`${inboxPath}/threads/${threadId}/emails`, pagination);
+    return this.resend.get(url3, requestOptions);
+  }
+  async get(options, requestOptions = {}) {
+    const inboxPath = buildInboxPath(options);
+    if (!inboxPath) return missingInboxError();
+    const { threadId, emailId } = options;
+    return this.resend.get(`${inboxPath}/threads/${threadId}/emails/${emailId}`, requestOptions);
+  }
+  async reply(payload, options = {}) {
+    const inboxPath = buildInboxPath(payload);
+    if (!inboxPath) return missingInboxError();
+    const { threadId, emailId, cc, bcc, html, text: text2, subject, replyAll, attachments, headers } = payload;
+    return this.resend.post(`${inboxPath}/threads/${threadId}/emails/${emailId}/reply`, {
+      cc,
+      bcc,
+      html,
+      text: text2,
+      subject,
+      reply_all: replyAll,
+      attachments: parseAttachments(attachments),
+      headers
+    }, options);
+  }
+  async forward(payload, options = {}) {
+    const inboxPath = buildInboxPath(payload);
+    if (!inboxPath) return missingInboxError();
+    const { threadId, emailId, to: to3, cc, bcc, html, text: text2, subject, attachments, headers } = payload;
+    return this.resend.post(`${inboxPath}/threads/${threadId}/emails/${emailId}/forward`, {
+      to: to3,
+      cc,
+      bcc,
+      html,
+      text: text2,
+      subject,
+      attachments: parseAttachments(attachments),
+      headers
+    }, options);
+  }
+};
+var InboxThreadLabels = class {
+  constructor(resend) {
+    this.resend = resend;
+  }
+  async add(options, requestOptions = {}) {
+    const inboxPath = buildInboxPath(options);
+    if (!inboxPath) return missingInboxError();
+    const { threadId, labels } = options;
+    return this.resend.post(`${inboxPath}/threads/${threadId}/labels`, { labels }, requestOptions);
+  }
+  async set(options, requestOptions = {}) {
+    const inboxPath = buildInboxPath(options);
+    if (!inboxPath) return missingInboxError();
+    const { threadId, labels } = options;
+    return this.resend.put(`${inboxPath}/threads/${threadId}/labels`, { labels }, requestOptions);
+  }
+  async remove(options, requestOptions = {}) {
+    const inboxPath = buildInboxPath(options);
+    if (!inboxPath) return missingInboxError();
+    const { threadId, labelId } = options;
+    return this.resend.delete(`${inboxPath}/threads/${threadId}/labels/${labelId}`, void 0, requestOptions);
+  }
+};
+var InboxThreads = class {
+  constructor(resend) {
+    this.resend = resend;
+    this.emails = new InboxThreadEmails(resend);
+    this.labels = new InboxThreadLabels(resend);
+  }
+  async list(options, requestOptions = {}) {
+    const inboxPath = buildInboxPath(options);
+    if (!inboxPath) return missingInboxError();
+    const { folders, labels, read, limit, after, before } = options;
+    const url3 = buildInboxCursorUrl(`${inboxPath}/threads`, {
+      folders,
+      labels,
+      read,
+      limit,
+      after,
+      before
+    });
+    return this.resend.get(url3, requestOptions);
+  }
+  async search(options, requestOptions = {}) {
+    const inboxPath = buildInboxPath(options);
+    if (!inboxPath) return missingInboxError();
+    const { folders, labels, read, query, from, to: to3, cc, bcc, hasAttachment, startDate, endDate, limit, after, before } = options;
+    const url3 = buildInboxCursorUrl(`${inboxPath}/threads/search`, {
+      folders,
+      labels,
+      read,
+      query,
+      from,
+      to: to3,
+      cc,
+      bcc,
+      has_attachment: hasAttachment,
+      start_date: startDate,
+      end_date: endDate,
+      limit,
+      after,
+      before
+    });
+    return this.resend.get(url3, requestOptions);
+  }
+  async get(options, requestOptions = {}) {
+    const inboxPath = buildInboxPath(options);
+    if (!inboxPath) return missingInboxError();
+    return this.resend.get(`${inboxPath}/threads/${options.threadId}`, requestOptions);
+  }
+  async update(options, requestOptions = {}) {
+    const inboxPath = buildInboxPath(options);
+    if (!inboxPath) return missingInboxError();
+    const { threadId, read, folder } = options;
+    return this.resend.patch(`${inboxPath}/threads/${threadId}`, {
+      read,
+      folder
+    }, requestOptions);
+  }
+  async remove(options, requestOptions = {}) {
+    const inboxPath = buildInboxPath(options);
+    if (!inboxPath) return missingInboxError();
+    return this.resend.delete(`${inboxPath}/threads/${options.threadId}`, void 0, requestOptions);
+  }
+};
+var Inboxes = class {
+  constructor(resend) {
+    this.resend = resend;
+    this.threads = new InboxThreads(resend);
+    this.labels = new InboxLabels(resend);
+    this.drafts = new InboxDrafts(resend);
+    this.agent = new InboxAgent(resend);
+  }
+  async create(payload, options = {}) {
+    return this.resend.post("/inboxes", {
+      email_address: payload.emailAddress,
+      name: payload.name,
+      forwarding: payload.forwarding,
+      from_name: payload.fromName
+    }, options);
+  }
+  async list(options = {}, requestOptions = {}) {
+    const url3 = buildPaginationUrl("/inboxes", options);
+    return this.resend.get(url3, requestOptions);
+  }
+  async get(idOrEmail, requestOptions = {}) {
+    return this.resend.get(`/inboxes/${encodeURIComponent(idOrEmail)}`, requestOptions);
+  }
+  async update(idOrEmail, payload, requestOptions = {}) {
+    return this.resend.patch(`/inboxes/${encodeURIComponent(idOrEmail)}`, {
+      name: payload.name,
+      from_name: payload.fromName
+    }, requestOptions);
+  }
+  async remove(idOrEmail, requestOptions = {}) {
+    return this.resend.delete(`/inboxes/${encodeURIComponent(idOrEmail)}`, void 0, requestOptions);
   }
 };
 var Logs = class {
   constructor(resend) {
     this.resend = resend;
   }
-  async list(options = {}) {
-    const queryString = buildPaginationQuery(options);
-    const url3 = queryString ? `/logs?${queryString}` : "/logs";
-    return await this.resend.get(url3);
+  async list(options = {}, requestOptions = {}) {
+    const url3 = buildPaginationUrl("/logs", options);
+    return await this.resend.get(url3, requestOptions);
   }
-  async get(id) {
-    return await this.resend.get(`/logs/${id}`);
+  async get(id, requestOptions = {}) {
+    return await this.resend.get(`/logs/${id}`, requestOptions);
+  }
+};
+var OAuthGrants = class {
+  constructor(resend) {
+    this.resend = resend;
+  }
+  async list(options = {}, requestOptions = {}) {
+    const url3 = buildPaginationUrl("/oauth/grants", options);
+    return await this.resend.get(url3, requestOptions);
+  }
+  async revoke(id, requestOptions = {}) {
+    return await this.resend.delete(`/oauth/grants/${id}`, void 0, requestOptions);
   }
 };
 var Segments = class {
   constructor(resend) {
     this.resend = resend;
   }
-  async create(payload, options = {}) {
-    return await this.resend.post("/segments", payload, options);
+  async create(payload, requestOptions = {}) {
+    return await this.resend.post("/segments", payload, requestOptions);
   }
-  async list(options = {}) {
-    const queryString = buildPaginationQuery(options);
-    const url3 = queryString ? `/segments?${queryString}` : "/segments";
-    return await this.resend.get(url3);
+  async list(options = {}, requestOptions = {}) {
+    const url3 = buildPaginationUrl("/segments", options);
+    return await this.resend.get(url3, requestOptions);
   }
-  async get(id) {
-    return await this.resend.get(`/segments/${id}`);
+  async get(id, requestOptions = {}) {
+    return await this.resend.get(`/segments/${id}`, requestOptions);
   }
-  async remove(id) {
-    return await this.resend.delete(`/segments/${id}`);
+  async update(id, payload, requestOptions = {}) {
+    return await this.resend.patch(`/segments/${id}`, payload, requestOptions);
+  }
+  async remove(id, requestOptions = {}) {
+    return await this.resend.delete(`/segments/${id}`, void 0, requestOptions);
   }
 };
+var Batch = class {
+  constructor(resend) {
+    this.resend = resend;
+  }
+  async add(options, requestOptions = {}) {
+    return this.resend.post("/suppressions/batch/add", options, requestOptions);
+  }
+  async remove(options, requestOptions = {}) {
+    return this.resend.post("/suppressions/batch/remove", options, requestOptions);
+  }
+};
+var missingIdentifierError = () => ({
+  data: null,
+  headers: null,
+  error: {
+    message: "Missing `id` field.",
+    statusCode: null,
+    name: "missing_required_field"
+  }
+});
+var Suppressions = class {
+  constructor(resend) {
+    this.resend = resend;
+    this.batch = new Batch(resend);
+  }
+  async add(options, requestOptions = {}) {
+    return this.resend.post("/suppressions", options, requestOptions);
+  }
+  async list(options = {}, requestOptions = {}) {
+    const queryString = buildSuppressionsQuery(options);
+    const url3 = queryString ? `/suppressions?${queryString}` : "/suppressions";
+    return this.resend.get(url3, requestOptions);
+  }
+  async get(idOrEmail, requestOptions = {}) {
+    if (!idOrEmail) return missingIdentifierError();
+    return this.resend.get(`/suppressions/${encodeURIComponent(idOrEmail)}`, requestOptions);
+  }
+  async remove(idOrEmail, requestOptions = {}) {
+    if (!idOrEmail) return missingIdentifierError();
+    return this.resend.delete(`/suppressions/${encodeURIComponent(idOrEmail)}`, void 0, requestOptions);
+  }
+};
+function buildSuppressionsQuery(options) {
+  const { origin, ...pagination } = options;
+  const searchParams = new URLSearchParams(buildPaginationQuery(pagination));
+  if (origin) searchParams.set("origin", origin);
+  return searchParams.toString();
+}
 function getPaginationQueryProperties(options = {}) {
   const query = new URLSearchParams();
   if (options.before) query.set("before", options.before);
@@ -170403,69 +163546,62 @@ var ChainableTemplateResult = class {
   then(onfulfilled, onrejected) {
     return this.promise.then(onfulfilled, onrejected);
   }
-  async publish() {
-    const { data, error: error62 } = await this.promise;
+  async publish(requestOptions = {}) {
+    const { data, error: error62, headers } = await this.promise;
     if (error62) return {
       data: null,
-      headers: null,
+      headers,
       error: error62
     };
-    return this.publishFn(data.id);
+    return this.publishFn(data.id, requestOptions);
   }
 };
 var Templates = class {
   constructor(resend) {
     this.resend = resend;
   }
-  create(payload) {
-    return new ChainableTemplateResult(this.performCreate(payload), this.publish.bind(this));
+  create(payload, requestOptions = {}) {
+    return new ChainableTemplateResult(this.performCreate(payload, requestOptions), this.publish.bind(this));
   }
-  async performCreate(payload) {
-    if (payload.react) {
-      if (!this.renderAsync) try {
-        const { renderAsync: renderAsync2 } = await Promise.resolve().then(() => (init_node2(), node_exports));
-        this.renderAsync = renderAsync2;
-      } catch {
-        throw new Error("Failed to render React component. Make sure to install `@react-email/render`");
-      }
-      payload.html = await this.renderAsync(payload.react);
-    }
-    return this.resend.post("/templates", parseTemplateToApiOptions(payload));
+  async performCreate(payload, requestOptions) {
+    const body = { ...payload };
+    if (payload.react) body.html = await render3(payload.react);
+    return this.resend.post("/templates", parseTemplateToApiOptions(body), requestOptions);
   }
-  async remove(identifier) {
-    return await this.resend.delete(`/templates/${identifier}`);
+  async remove(identifier, requestOptions = {}) {
+    return await this.resend.delete(`/templates/${identifier}`, void 0, requestOptions);
   }
-  async get(identifier) {
-    return await this.resend.get(`/templates/${identifier}`);
+  async get(identifier, requestOptions = {}) {
+    return await this.resend.get(`/templates/${identifier}`, requestOptions);
   }
-  async list(options = {}) {
-    return this.resend.get(`/templates${getPaginationQueryProperties(options)}`);
+  async list(options = {}, requestOptions = {}) {
+    return this.resend.get(`/templates${getPaginationQueryProperties(options)}`, requestOptions);
   }
-  duplicate(identifier) {
-    return new ChainableTemplateResult(this.resend.post(`/templates/${identifier}/duplicate`), this.publish.bind(this));
+  duplicate(identifier, requestOptions = {}) {
+    return new ChainableTemplateResult(this.resend.post(`/templates/${identifier}/duplicate`, void 0, requestOptions), this.publish.bind(this));
   }
-  async publish(identifier) {
-    return await this.resend.post(`/templates/${identifier}/publish`);
+  async publish(identifier, requestOptions = {}) {
+    return await this.resend.post(`/templates/${identifier}/publish`, void 0, requestOptions);
   }
-  async update(identifier, payload) {
-    return await this.resend.patch(`/templates/${identifier}`, parseTemplateToApiOptions(payload));
+  async update(identifier, payload, requestOptions = {}) {
+    return await this.resend.patch(`/templates/${identifier}`, parseTemplateToApiOptions(payload), requestOptions);
   }
 };
 var Topics = class {
   constructor(resend) {
     this.resend = resend;
   }
-  async create(payload) {
+  async create(payload, requestOptions = {}) {
     const { defaultSubscription, ...body } = payload;
     return await this.resend.post("/topics", {
       ...body,
       default_subscription: defaultSubscription
-    });
+    }, requestOptions);
   }
-  async list() {
-    return await this.resend.get("/topics");
+  async list(requestOptions = {}) {
+    return await this.resend.get("/topics", requestOptions);
   }
-  async get(id) {
+  async get(id, requestOptions = {}) {
     if (!id) return {
       data: null,
       headers: null,
@@ -170475,9 +163611,9 @@ var Topics = class {
         name: "missing_required_field"
       }
     };
-    return await this.resend.get(`/topics/${id}`);
+    return await this.resend.get(`/topics/${id}`, requestOptions);
   }
-  async update(payload) {
+  async update(payload, requestOptions = {}) {
     if (!payload.id) return {
       data: null,
       headers: null,
@@ -170487,9 +163623,9 @@ var Topics = class {
         name: "missing_required_field"
       }
     };
-    return await this.resend.patch(`/topics/${payload.id}`, payload);
+    return await this.resend.patch(`/topics/${payload.id}`, payload, requestOptions);
   }
-  async remove(id) {
+  async remove(id, requestOptions = {}) {
     if (!id) return {
       data: null,
       headers: null,
@@ -170499,103 +163635,187 @@ var Topics = class {
         name: "missing_required_field"
       }
     };
-    return await this.resend.delete(`/topics/${id}`);
+    return await this.resend.delete(`/topics/${id}`, void 0, requestOptions);
+  }
+};
+var Usage = class {
+  constructor(resend) {
+    this.resend = resend;
+  }
+  async get(requestOptions = {}) {
+    return await this.resend.get("/usage", requestOptions);
+  }
+};
+var Attempts = class {
+  constructor(resend) {
+    this.resend = resend;
+  }
+  async list(options, requestOptions = {}) {
+    const { webhookId, eventId } = options;
+    const url3 = buildPaginationUrl(`/webhooks/${webhookId}/events/${eventId}/attempts`, options);
+    return await this.resend.get(url3, requestOptions);
+  }
+};
+var Events = class {
+  constructor(resend) {
+    this.resend = resend;
+    this.attempts = new Attempts(resend);
+  }
+  async list(options, requestOptions = {}) {
+    const { webhookId } = options;
+    const url3 = buildPaginationUrl(`/webhooks/${webhookId}/events`, options);
+    return await this.resend.get(url3, requestOptions);
+  }
+  async get(options, requestOptions = {}) {
+    const { webhookId, eventId } = options;
+    return await this.resend.get(`/webhooks/${webhookId}/events/${eventId}`, requestOptions);
+  }
+  async replay(options, requestOptions = {}) {
+    const { webhookId, eventId } = options;
+    return await this.resend.post(`/webhooks/${webhookId}/events/${eventId}/replay`, void 0, requestOptions);
   }
 };
 var Webhooks = class {
   constructor(resend) {
     this.resend = resend;
+    this.events = new Events(resend);
   }
-  async create(payload, options = {}) {
-    return await this.resend.post("/webhooks", payload, options);
+  async create(payload, requestOptions = {}) {
+    return await this.resend.post("/webhooks", payload, requestOptions);
   }
-  async get(id) {
-    return await this.resend.get(`/webhooks/${id}`);
+  async get(id, requestOptions = {}) {
+    return await this.resend.get(`/webhooks/${id}`, requestOptions);
   }
-  async list(options = {}) {
-    const queryString = buildPaginationQuery(options);
-    const url3 = queryString ? `/webhooks?${queryString}` : "/webhooks";
-    return await this.resend.get(url3);
+  async list(options = {}, requestOptions = {}) {
+    const url3 = buildPaginationUrl("/webhooks", options);
+    return await this.resend.get(url3, requestOptions);
   }
-  async update(id, payload) {
-    return await this.resend.patch(`/webhooks/${id}`, payload);
+  async update(id, payload, requestOptions = {}) {
+    return await this.resend.patch(`/webhooks/${id}`, payload, requestOptions);
   }
-  async remove(id) {
-    return await this.resend.delete(`/webhooks/${id}`);
+  async remove(id, requestOptions = {}) {
+    return await this.resend.delete(`/webhooks/${id}`, void 0, requestOptions);
+  }
+  async rotateSigningSecret(id, requestOptions = {}) {
+    return await this.resend.post(`/webhooks/${id}/signing-secret/rotate`, void 0, requestOptions);
   }
   verify(payload) {
-    return new import_svix.Webhook(payload.webhookSecret).verify(payload.payload, {
-      "svix-id": payload.headers.id,
-      "svix-timestamp": payload.headers.timestamp,
-      "svix-signature": payload.headers.signature
+    return new import_standardwebhooks.Webhook(payload.webhookSecret).verify(payload.payload, {
+      "webhook-id": payload.headers.id,
+      "webhook-timestamp": payload.headers.timestamp,
+      "webhook-signature": payload.headers.signature
     });
   }
 };
 var defaultBaseUrl = "https://api.resend.com";
 var defaultUserAgent = `resend-node:${version4}`;
-var baseUrl = typeof process !== "undefined" && process.env ? process.env.RESEND_BASE_URL || defaultBaseUrl : defaultBaseUrl;
-var userAgent = typeof process !== "undefined" && process.env ? process.env.RESEND_USER_AGENT || defaultUserAgent : defaultUserAgent;
+function getDefaultBaseUrl() {
+  return typeof process !== "undefined" && process.env ? process.env.RESEND_BASE_URL || defaultBaseUrl : defaultBaseUrl;
+}
+function getDefaultUserAgent() {
+  return typeof process !== "undefined" && process.env ? process.env.RESEND_USER_AGENT || defaultUserAgent : defaultUserAgent;
+}
+function isDebugEnabled() {
+  return typeof process !== "undefined" && process.env ? process.env.RESEND_DEBUG === "true" : false;
+}
 var Resend = class {
-  constructor(key) {
+  constructor(key, options) {
     this.key = key;
     this.segments = new Segments(this);
     this.apiKeys = new ApiKeys(this);
     this.audiences = this.segments;
     this.automations = new Automations(this);
-    this.batch = new Batch(this);
+    this.batch = new Batch$1(this);
     this.broadcasts = new Broadcasts(this);
     this.contactProperties = new ContactProperties(this);
     this.contacts = new Contacts(this);
     this.domains = new Domains(this);
     this.emails = new Emails(this);
-    this.events = new Events(this);
+    this.events = new Events$1(this);
+    this.inboxes = new Inboxes(this);
     this.logs = new Logs(this);
+    this.oauthGrants = new OAuthGrants(this);
+    this.suppressions = new Suppressions(this);
     this.templates = new Templates(this);
     this.topics = new Topics(this);
+    this.usage = new Usage(this);
     this.webhooks = new Webhooks(this);
     if (!key) {
       if (typeof process !== "undefined" && process.env) this.key = process.env.RESEND_API_KEY;
       if (!this.key) throw new Error('Missing API key. Pass it to the constructor `new Resend("re_123")`');
     }
+    this.baseUrl = options?.baseUrl ?? getDefaultBaseUrl();
+    this.userAgent = options?.userAgent ?? getDefaultUserAgent();
+    this.debug = isDebugEnabled();
     this.headers = new Headers({
       Authorization: `Bearer ${this.key}`,
-      "User-Agent": userAgent,
+      "User-Agent": this.userAgent,
       "Content-Type": "application/json"
     });
   }
+  logError(error62, path6, status) {
+    if (!this.debug) return;
+    console.error("[Resend API Error]:", {
+      ...status !== void 0 && { status },
+      error: error62,
+      path: path6
+    });
+  }
   async fetchRequest(path6, options = {}) {
+    if (hasDotSegment(path6)) return {
+      data: null,
+      error: {
+        message: "Path parameters cannot be `.` or `..`.",
+        statusCode: null,
+        name: "invalid_parameter"
+      },
+      headers: null
+    };
+    const { signal } = options;
     try {
-      const response = await fetch(`${baseUrl}${path6}`, options);
+      const response = await fetch(`${this.baseUrl}${path6}`, options);
       if (!response.ok) try {
         const rawError = await response.text();
+        const parsedError = JSON.parse(rawError);
+        this.logError(parsedError, path6, response.status);
         return {
           data: null,
-          error: JSON.parse(rawError),
+          error: parsedError,
           headers: Object.fromEntries(response.headers.entries())
         };
       } catch (err) {
-        if (err instanceof SyntaxError) return {
-          data: null,
-          error: {
+        if (signal?.aborted && err === signal.reason) throw err;
+        if (err instanceof SyntaxError) {
+          const error63 = {
             name: "application_error",
             statusCode: response.status,
             message: "Internal server error. We are unable to process your request right now, please try again later."
-          },
-          headers: Object.fromEntries(response.headers.entries())
-        };
+          };
+          this.logError(error63, path6, response.status);
+          return {
+            data: null,
+            error: error63,
+            headers: Object.fromEntries(response.headers.entries())
+          };
+        }
         const error62 = {
           message: response.statusText,
           statusCode: response.status,
           name: "application_error"
         };
-        if (err instanceof Error) return {
-          data: null,
-          error: {
+        if (err instanceof Error) {
+          const errorWithMessage = {
             ...error62,
             message: err.message
-          },
-          headers: Object.fromEntries(response.headers.entries())
-        };
+          };
+          this.logError(errorWithMessage, path6, response.status);
+          return {
+            data: null,
+            error: errorWithMessage,
+            headers: Object.fromEntries(response.headers.entries())
+          };
+        }
+        this.logError(error62, path6, response.status);
         return {
           data: null,
           error: error62,
@@ -170608,24 +163828,28 @@ var Resend = class {
         headers: Object.fromEntries(response.headers.entries())
       };
     } catch {
+      const error62 = {
+        name: "application_error",
+        statusCode: null,
+        message: "Unable to fetch data. The request could not be resolved."
+      };
+      this.logError(error62, path6);
       return {
         data: null,
-        error: {
-          name: "application_error",
-          statusCode: null,
-          message: "Unable to fetch data. The request could not be resolved."
-        },
+        error: error62,
         headers: null
       };
     }
   }
   async post(path6, entity, options = {}) {
     const headers = new Headers(this.headers);
+    const isFormData = typeof FormData !== "undefined" && entity instanceof FormData;
+    if (isFormData) headers.delete("Content-Type");
     if (options.headers) for (const [key, value] of new Headers(options.headers).entries()) headers.set(key, value);
     if (options.idempotencyKey) headers.set("Idempotency-Key", options.idempotencyKey);
     const requestOptions = {
       method: "POST",
-      body: JSON.stringify(entity),
+      body: isFormData ? entity : JSON.stringify(entity),
       ...options,
       headers
     };
@@ -170663,11 +163887,14 @@ var Resend = class {
     };
     return this.fetchRequest(path6, requestOptions);
   }
-  async delete(path6, query) {
+  async delete(path6, query, options = {}) {
+    const headers = new Headers(this.headers);
+    if (options.headers) for (const [key, value] of new Headers(options.headers).entries()) headers.set(key, value);
     const requestOptions = {
       method: "DELETE",
-      body: JSON.stringify(query),
-      headers: this.headers
+      body: query === void 0 ? void 0 : JSON.stringify(query),
+      ...options,
+      headers
     };
     return this.fetchRequest(path6, requestOptions);
   }
@@ -174485,13 +167712,12 @@ async function getPawaPayClientForDeposit(deposit, database = db) {
     const [gateway] = await database.select({
       id: paymentGatewaysTable.id,
       slug: paymentGatewaysTable.slug,
-      apiKey: paymentGatewaysTable.apiKey,
       active: paymentGatewaysTable.active
     }).from(paymentGatewaysTable).where(eq(paymentGatewaysTable.id, gatewayConfigId)).limit(1);
-    if (!gateway || !gateway.active || !gateway.slug.toLowerCase().includes("pawapay") || !gateway.apiKey?.trim()) {
+    if (!gateway || !gateway.active || !gateway.slug.toLowerCase().includes("pawapay")) {
       return null;
     }
-    const credentials2 = await resolvePawaPayCredentials(gateway.apiKey);
+    const credentials2 = await resolvePawaPayCredentials();
     return credentials2 ? new PawaPayClient(credentials2.token, credentials2.env) : null;
   }
   const credentials = await resolvePawaPayCredentials();
@@ -174994,12 +168220,15 @@ router9.delete("/admin/payment-routing/operators/:id", requireAdmin, async (req,
 });
 router9.get("/admin/payment-routing/gateways", requireAdmin, async (_req, res) => {
   const rows = await db.select().from(paymentGatewaysTable).orderBy(asc(paymentGatewaysTable.name));
-  const masked = rows.map((g) => ({
-    ...g,
-    apiKey: g.apiKey ? `${g.apiKey.slice(0, 4)}${"\u2022".repeat(Math.max(0, g.apiKey.length - 4))}` : null,
-    apiSecret: g.apiSecret ? "\u2022".repeat(12) : null,
-    webhookSecret: g.webhookSecret ? "\u2022".repeat(12) : null
-  }));
+  const masked = rows.map((g) => {
+    const environmentCredentials = /pawapay|clapay/i.test(g.slug);
+    return {
+      ...g,
+      apiKey: environmentCredentials ? null : g.apiKey ? `${g.apiKey.slice(0, 4)}${"\u2022".repeat(Math.max(0, g.apiKey.length - 4))}` : null,
+      apiSecret: environmentCredentials ? null : g.apiSecret ? "\u2022".repeat(12) : null,
+      webhookSecret: environmentCredentials ? null : g.webhookSecret ? "\u2022".repeat(12) : null
+    };
+  });
   res.json({ gateways: masked });
 });
 router9.post("/admin/payment-routing/gateways", requireAdmin, async (req, res) => {
@@ -175022,14 +168251,20 @@ router9.post("/admin/payment-routing/gateways", requireAdmin, async (req, res) =
     res.status(400).json({ error: "Nom et slug requis" });
     return;
   }
+  const environmentCredentials = /pawapay|clapay/i.test(slug);
+  if (environmentCredentials && [apiKey, apiSecret, webhookSecret].some((value) => value?.trim())) {
+    const envName = slug.toLowerCase().includes("pawapay") ? "PAWAPAY_API_TOKEN" : "CLAPAY_API_TOKEN";
+    res.status(400).json({ error: `Les identifiants doivent \xEAtre configur\xE9s dans ${envName} sur Plesk.` });
+    return;
+  }
   const [gw] = await db.insert(paymentGatewaysTable).values({
     name: name3.trim(),
     slug: slug.trim().toLowerCase(),
     logoUrl: logoUrl || null,
     apiUrl: apiUrl || null,
-    apiKey: apiKey || null,
-    apiSecret: apiSecret || null,
-    webhookSecret: webhookSecret || null,
+    apiKey: environmentCredentials ? null : apiKey || null,
+    apiSecret: environmentCredentials ? null : apiSecret || null,
+    webhookSecret: environmentCredentials ? null : webhookSecret || null,
     type: type || "both",
     supportedCountries: supportedCountries ?? [],
     supportedOperators: supportedOperators ?? [],
@@ -175043,14 +168278,28 @@ router9.post("/admin/payment-routing/gateways", requireAdmin, async (req, res) =
 router9.put("/admin/payment-routing/gateways/:id", requireAdmin, async (req, res) => {
   const { id } = req.params;
   const body = req.body;
+  const [currentGateway] = await db.select({
+    slug: paymentGatewaysTable.slug
+  }).from(paymentGatewaysTable).where(eq(paymentGatewaysTable.id, id)).limit(1);
+  if (!currentGateway) {
+    res.status(404).json({ error: "Passerelle introuvable" });
+    return;
+  }
+  const resultingSlug = (body.slug?.trim() ? body.slug : currentGateway.slug).trim().toLowerCase();
+  const environmentCredentials = /pawapay|clapay/i.test(currentGateway.slug) || /pawapay|clapay/i.test(resultingSlug);
+  if (environmentCredentials && [body.apiKey, body.apiSecret, body.webhookSecret].some((value) => value?.trim())) {
+    const envName = /pawapay/i.test(currentGateway.slug) || resultingSlug.includes("pawapay") ? "PAWAPAY_API_TOKEN" : "CLAPAY_API_TOKEN";
+    res.status(400).json({ error: `Les identifiants doivent \xEAtre configur\xE9s dans ${envName} sur Plesk.` });
+    return;
+  }
   const [gw] = await db.update(paymentGatewaysTable).set({
     ...body.name && { name: body.name.trim() },
     ...body.slug && { slug: body.slug.trim().toLowerCase() },
     ...body.logoUrl !== void 0 && { logoUrl: body.logoUrl },
     ...body.apiUrl !== void 0 && { apiUrl: body.apiUrl },
-    ...body.apiKey !== void 0 && body.apiKey !== "\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022" && { apiKey: body.apiKey },
-    ...body.apiSecret !== void 0 && body.apiSecret !== "\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022" && { apiSecret: body.apiSecret },
-    ...body.webhookSecret !== void 0 && body.webhookSecret !== "\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022" && { webhookSecret: body.webhookSecret },
+    ...!environmentCredentials && body.apiKey !== void 0 && body.apiKey !== "\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022" && { apiKey: body.apiKey },
+    ...!environmentCredentials && body.apiSecret !== void 0 && body.apiSecret !== "\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022" && { apiSecret: body.apiSecret },
+    ...!environmentCredentials && body.webhookSecret !== void 0 && body.webhookSecret !== "\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022" && { webhookSecret: body.webhookSecret },
     ...body.type && { type: body.type },
     ...body.supportedCountries !== void 0 && { supportedCountries: body.supportedCountries },
     ...body.supportedOperators !== void 0 && { supportedOperators: body.supportedOperators },
@@ -175082,9 +168331,9 @@ router9.post("/admin/payment-routing/gateways/:id/test", requireAdmin, async (re
   const start2 = Date.now();
   if (slug === "pawapay" || slug.includes("pawapay")) {
     const { resolvePawaPayCredentials: resolvePawaPayCredentials2 } = await Promise.resolve().then(() => (init_gateway_credentials(), gateway_credentials_exports));
-    const creds = await resolvePawaPayCredentials2(gw.apiKey);
+    const creds = await resolvePawaPayCredentials2();
     if (!creds) {
-      res.json({ status: "no_token", message: "Aucun token PawaPay configur\xE9. Ajoutez la cl\xE9 API dans les param\xE8tres syst\xE8me (Param\xE8tres \u2192 pawapay_api_token)." });
+      res.json({ status: "no_token", message: "PAWAPAY_API_TOKEN doit \xEAtre configur\xE9 dans les variables d\u2019environnement Plesk." });
       return;
     }
     try {
@@ -175126,9 +168375,9 @@ router9.post("/admin/payment-routing/gateways/:id/test", requireAdmin, async (re
   }
   if (slug === "clapay" || slug.includes("clapay")) {
     const { resolveClapayCredentials: resolveClapayCredentials2 } = await Promise.resolve().then(() => (init_gateway_credentials(), gateway_credentials_exports));
-    const creds = await resolveClapayCredentials2(gw.apiKey, gw.apiUrl);
+    const creds = await resolveClapayCredentials2(gw.apiUrl);
     if (!creds) {
-      res.json({ status: "no_token", message: "Aucun token Clapay configur\xE9. Ajoutez la cl\xE9 API dans les param\xE8tres syst\xE8me (Param\xE8tres \u2192 clapay_api_token)." });
+      res.json({ status: "no_token", message: "Configurez CLAPAY_API_TOKEN dans les variables d\u2019environnement Plesk." });
       return;
     }
     try {
@@ -175467,16 +168716,10 @@ router9.post("/admin/payment-routing/pawapay-sync", requireAdmin, async (req, re
       return s3.split("_")[0] ?? s3;
     };
     var providerToSlug = providerToSlug2;
-    let token2 = process.env.PAWAPAY_API_TOKEN ?? null;
-    let envStr = process.env.PAWAPAY_ENV?.trim().toLowerCase() ?? null;
-    if (!token2 || !envStr) {
-      const [tokenRow] = await db.select().from(systemSettingsTable).where(eq(systemSettingsTable.key, "pawapay_api_token")).limit(1);
-      const [envRow] = await db.select().from(systemSettingsTable).where(eq(systemSettingsTable.key, "pawapay_env")).limit(1);
-      if (!token2) token2 = tokenRow?.value?.trim() || null;
-      if (!envStr) envStr = envRow?.value?.trim().toLowerCase() || null;
-    }
-    if (!token2) {
-      res.status(400).json({ error: "Aucun token PawaPay configur\xE9. Ajoutez la cl\xE9 'pawapay_api_token' dans les Param\xE8tres syst\xE8me." });
+    const { resolvePawaPayCredentials: resolvePawaPayCredentials2 } = await Promise.resolve().then(() => (init_gateway_credentials(), gateway_credentials_exports));
+    const credentials = await resolvePawaPayCredentials2();
+    if (!credentials) {
+      res.status(400).json({ error: "Configurez PAWAPAY_API_TOKEN dans les variables d\u2019environnement Plesk." });
       return;
     }
     const allGateways = await db.select().from(paymentGatewaysTable);
@@ -175486,8 +168729,8 @@ router9.post("/admin/payment-routing/pawapay-sync", requireAdmin, async (req, re
       return;
     }
     const { PawaPayClient: PawaPayClient2, ISO2_TO_ISO3: ISO2_TO_ISO32 } = await Promise.resolve().then(() => (init_pawapay(), pawapay_exports));
-    const env = envStr === "production" ? "production" : "sandbox";
-    const client = new PawaPayClient2(token2, env);
+    const env = credentials.env;
+    const client = new PawaPayClient2(credentials.token, env);
     const config2 = await client.getActiveConfiguration();
     const iso3ToIso2 = {};
     for (const [iso2, iso3] of Object.entries(ISO2_TO_ISO32)) {
@@ -175773,15 +169016,15 @@ var GatewayRouteUnavailableError = class extends Error {
     this.name = "GatewayRouteUnavailableError";
   }
 };
-async function buildPawaPayClient(route) {
-  const creds = await resolvePawaPayCredentials(route.apiKey);
+async function buildPawaPayClient() {
+  const creds = await resolvePawaPayCredentials();
   if (!creds) return null;
   return new PawaPayClient(creds.token, creds.env);
 }
 async function buildClapayClient(route) {
-  const token2 = route.apiKey?.trim();
-  if (!token2) return null;
-  return new ClapayClient(token2, route.apiUrl ?? void 0);
+  const creds = await resolveClapayCredentials(route.apiUrl);
+  if (!creds) return null;
+  return new ClapayClient(creds.token, creds.baseUrl);
 }
 async function resolveGateway(countryCode, methodSlug, _amount) {
   const country = countryCode.toUpperCase();
@@ -175798,7 +169041,7 @@ async function resolveGateway(countryCode, methodSlug, _amount) {
   logger.info({ country, operatorSlug, gateway: route.gatewaySlug, priority: route.priority }, "[PaymentRouter] Route resolved");
   const slug = route.gatewaySlug.toLowerCase();
   if (slug.includes("pawapay") || slug === "pawapay") {
-    const client = await buildPawaPayClient(route);
+    const client = await buildPawaPayClient();
     if (!client) {
       logger.warn({ routeId: route.routeId }, "[PaymentRouter] PawaPay route found but no API token available");
       return null;
@@ -175809,7 +169052,7 @@ async function resolveGateway(countryCode, methodSlug, _amount) {
     const client = await buildClapayClient(route);
     if (!client) {
       logger.warn({ routeId: route.routeId }, "[PaymentRouter] Clapay route found but no API token available");
-      throw new GatewayRouteUnavailableError("La passerelle Clapay s\xE9lectionn\xE9e ne poss\xE8de pas de cl\xE9 API d\xE9di\xE9e.");
+      throw new GatewayRouteUnavailableError("Configurez CLAPAY_API_TOKEN dans les variables d\u2019environnement Plesk.");
     }
     return { type: "clapay", client, gatewayId: route.gatewayId, gatewaySlug: route.gatewaySlug, gatewayName: route.gatewayName, routeId: route.routeId, priority: route.priority };
   }
@@ -175875,7 +169118,8 @@ async function resolveWalletGateway(countryCode, methodSlug, amountXof) {
   if (dynamicRoute) {
     routingSource = "dynamic";
     if (dynamicRoute.type === "pawapay") {
-      pawaPayCtx = { client: dynamicRoute.client, env: process.env.PAWAPAY_ENV ?? "sandbox" };
+      const pawaPayEnv = process.env.PAWAPAY_ENV?.trim().toLowerCase();
+      pawaPayCtx = { client: dynamicRoute.client, env: pawaPayEnv === "production" ? "production" : "sandbox" };
       gateway = "pawapay";
     } else {
       clapayCtx = { client: dynamicRoute.client };
@@ -177279,12 +170523,12 @@ async function readResponseBody(response) {
   }
 }
 var HttpClient = class {
-  constructor({ apiKey, baseUrl: baseUrl2, timeoutMs = 3e4, fetchImpl, userAgent: userAgent2, getJwtToken } = {}) {
+  constructor({ apiKey, baseUrl, timeoutMs = 3e4, fetchImpl, userAgent, getJwtToken } = {}) {
     this.apiKey = apiKey;
-    this.baseUrl = (baseUrl2 || "https://api.nowpayments.io").replace(/\/$/, "");
+    this.baseUrl = (baseUrl || "https://api.nowpayments.io").replace(/\/$/, "");
     this.timeoutMs = timeoutMs;
     this.fetchImpl = fetchImpl || globalThis.fetch;
-    this.userAgent = userAgent2 || "@nowpayments-sdk/node/0.2.1";
+    this.userAgent = userAgent || "@nowpayments-sdk/node/0.2.1";
     this.getJwtToken = getJwtToken;
     if (typeof this.fetchImpl !== "function") {
       throw new NetworkError("No fetch implementation is available. Use Node.js >= 18 or pass { fetch } to the SDK constructor.", {
@@ -178723,11 +171967,16 @@ function createClapayCatalogueSource() {
       for (const { slug } of known) {
         const route = await resolvePaymentRoute(countryCode, slug, "deposit");
         if (!route) continue;
-        if (!route.gatewaySlug.toLowerCase().includes("clapay") || !route.apiKey?.trim()) {
+        if (!route.gatewaySlug.toLowerCase().includes("clapay")) {
           routing.set(slug, { kind: "other" });
           continue;
         }
-        const client = new ClapayClient(route.apiKey, route.apiUrl ?? void 0, 12e3);
+        const creds = await resolveClapayCredentials(route.apiUrl);
+        if (!creds) {
+          routing.set(slug, { kind: "other" });
+          continue;
+        }
+        const client = new ClapayClient(creds.token, creds.baseUrl, 12e3);
         const key = client.getCatalogueCacheKey();
         clients.set(key, client);
         routing.set(slug, { kind: "clapay", key });
@@ -179882,7 +173131,7 @@ router13.get("/admin/api-providers", requireAdmin2, async (_req, res) => {
   res.json(rows);
 });
 router13.post("/admin/api-providers", requireAdmin2, async (req, res) => {
-  const { name: name3, slug, apiKey, baseUrl: baseUrl2, active, priority, markup } = req.body;
+  const { name: name3, slug, apiKey, baseUrl, active, priority, markup } = req.body;
   if (!name3 || !slug) {
     res.status(400).json({ error: "Nom et slug requis" });
     return;
@@ -179892,7 +173141,7 @@ router13.post("/admin/api-providers", requireAdmin2, async (req, res) => {
       name: String(name3),
       slug: String(slug),
       apiKey: String(apiKey || ""),
-      baseUrl: String(baseUrl2 || ""),
+      baseUrl: String(baseUrl || ""),
       active: Boolean(active),
       priority: Number(priority || 1),
       markup: Number(markup || 400)
@@ -179901,7 +173150,7 @@ router13.post("/admin/api-providers", requireAdmin2, async (req, res) => {
       set: {
         name: String(name3),
         apiKey: String(apiKey || ""),
-        baseUrl: String(baseUrl2 || ""),
+        baseUrl: String(baseUrl || ""),
         active: Boolean(active),
         priority: Number(priority || 1),
         markup: Number(markup || 400)
@@ -179916,11 +173165,11 @@ router13.post("/admin/api-providers", requireAdmin2, async (req, res) => {
 });
 router13.put("/admin/api-providers/:providerId", requireAdmin2, async (req, res) => {
   const providerId = String(req.params.providerId);
-  const { name: name3, apiKey, baseUrl: baseUrl2, active, priority, markup } = req.body;
+  const { name: name3, apiKey, baseUrl, active, priority, markup } = req.body;
   const updates = {};
   if (name3 !== void 0) updates.name = String(name3);
   if (apiKey !== void 0) updates.apiKey = String(apiKey);
-  if (baseUrl2 !== void 0) updates.baseUrl = String(baseUrl2);
+  if (baseUrl !== void 0) updates.baseUrl = String(baseUrl);
   if (active !== void 0) updates.active = Boolean(active);
   if (priority !== void 0) updates.priority = Number(priority);
   if (markup !== void 0) updates.markup = Number(markup);
@@ -179983,10 +173232,10 @@ router13.post("/admin/api-providers/:providerId/test", requireAdmin2, async (req
     }
     return;
   }
-  const baseUrl2 = provider.baseUrl || "https://api.example.com";
+  const baseUrl = provider.baseUrl || "https://api.example.com";
   const start2 = Date.now();
   try {
-    const resp = await fetch(baseUrl2, { method: "HEAD", signal: AbortSignal.timeout(5e3) });
+    const resp = await fetch(baseUrl, { method: "HEAD", signal: AbortSignal.timeout(5e3) });
     const latencyMs = Date.now() - start2;
     res.json({ success: resp.ok || resp.status < 500, message: `HTTP ${resp.status} (${latencyMs}ms)`, latencyMs });
   } catch (e3) {
@@ -180043,11 +173292,14 @@ router13.get("/admin/api-providers/sync-status", requireAdmin2, async (_req, res
   });
 });
 router13.get("/admin/settings", requireAdmin2, async (_req, res) => {
-  const rows = await db.select().from(systemSettingsTable);
-  const settings = {};
-  for (const row of rows) {
-    settings[row.key] = row.value;
-  }
+  const environmentOnlyCredentialSettings = /* @__PURE__ */ new Set([
+    "pawapay_api_token",
+    "pawapay_env",
+    "pawapay_webhook_secret",
+    "clapay_api_token"
+  ]);
+  const rows = await db.select().from(systemSettingsTable).where(notInArray(sql`lower(${systemSettingsTable.key})`, [...environmentOnlyCredentialSettings]));
+  const settings = Object.fromEntries(rows.map((row) => [row.key, row.value]));
   res.json(settings);
 });
 router13.put("/admin/settings", requireAdmin2, async (req, res) => {
@@ -180056,15 +173308,19 @@ router13.put("/admin/settings", requireAdmin2, async (req, res) => {
     res.status(400).json({ error: "Donn\xE9es invalides" });
     return;
   }
+  const environmentOnlyCredentialSettings = /* @__PURE__ */ new Set([
+    "pawapay_api_token",
+    "pawapay_env",
+    "pawapay_webhook_secret",
+    "clapay_api_token"
+  ]);
+  if (Object.keys(updates).some((key) => environmentOnlyCredentialSettings.has(key.toLowerCase()))) {
+    res.status(400).json({ error: "Les identifiants PawaPay et Clapay doivent \xEAtre configur\xE9s dans les variables d\u2019environnement Plesk." });
+    return;
+  }
   try {
     for (const [key, value] of Object.entries(updates)) {
       await db.insert(systemSettingsTable).values({ key, value: String(value) }).onConflictDoUpdate({ target: systemSettingsTable.key, set: { value: String(value) } });
-    }
-    if (typeof updates["pawapay_api_token"] === "string" && updates["pawapay_api_token"].trim()) {
-      await db.update(paymentGatewaysTable).set({ apiKey: updates["pawapay_api_token"].trim() }).where(eq(paymentGatewaysTable.slug, "pawapay"));
-    }
-    if (typeof updates["clapay_api_token"] === "string" && updates["clapay_api_token"].trim()) {
-      await db.update(paymentGatewaysTable).set({ apiKey: updates["clapay_api_token"].trim() }).where(eq(paymentGatewaysTable.slug, "clapay"));
     }
     clearSettingsCache();
     if (typeof updates["app_url"] === "string" && updates["app_url"].trim()) {
@@ -180079,22 +173335,18 @@ router13.put("/admin/settings", requireAdmin2, async (req, res) => {
     res.status(500).json({ error: "Erreur lors de la sauvegarde : " + e3.message });
   }
 });
-router13.post("/admin/pawapay/test", requireAdmin2, async (req, res) => {
-  const bodyToken = req.body.token;
-  const bodyEnv = req.body.env;
-  let token2 = bodyToken?.trim() || null;
-  let env = bodyEnv === "production" ? "production" : "sandbox";
-  if (!token2) {
-    const rows = await db.select().from(systemSettingsTable).where(eq(systemSettingsTable.key, "pawapay_api_token")).limit(1);
-    token2 = rows[0]?.value ?? null;
-    const envRow = await db.select().from(systemSettingsTable).where(eq(systemSettingsTable.key, "pawapay_env")).limit(1);
-    env = envRow[0]?.value ?? "sandbox";
-  }
-  if (!token2) {
-    res.status(400).json({ success: false, message: "Aucun token PawaPay configur\xE9." });
+router13.post("/admin/pawapay/test", requireAdmin2, async (_req, res) => {
+  const { resolvePawaPayCredentials: resolvePawaPayCredentials2 } = await Promise.resolve().then(() => (init_gateway_credentials(), gateway_credentials_exports));
+  const credentials = await resolvePawaPayCredentials2();
+  if (!credentials) {
+    res.status(400).json({
+      success: false,
+      message: "Configurez PAWAPAY_API_TOKEN dans les variables d\u2019environnement Plesk."
+    });
     return;
   }
   const { PawaPayClient: PawaPayClient2 } = await Promise.resolve().then(() => (init_pawapay(), pawapay_exports));
+  const { token: token2, env } = credentials;
   const client = new PawaPayClient2(token2, env);
   const start2 = Date.now();
   try {
@@ -180205,23 +173457,18 @@ router13.post("/admin/pawapay/simulate-deposit", requireAdmin2, async (req, res)
   }
 });
 router13.post("/admin/clapay/test", requireAdmin2, async (req, res) => {
-  const { token: bodyToken, baseUrl: bodyBaseUrl } = req.body;
-  let token2 = bodyToken?.trim() || null;
-  let baseUrl2 = bodyBaseUrl?.trim() || null;
-  if (!token2) {
-    const rows = await db.select().from(systemSettingsTable).where(eq(systemSettingsTable.key, "clapay_api_token")).limit(1);
-    token2 = rows[0]?.value ?? null;
-    if (token2 && !baseUrl2) {
-      const urlRow = await db.select().from(systemSettingsTable).where(eq(systemSettingsTable.key, "clapay_base_url")).limit(1);
-      baseUrl2 = urlRow[0]?.value ?? null;
-    }
-  }
-  if (!token2) {
-    res.status(400).json({ success: false, message: "Aucun token Clapay configur\xE9." });
+  const { baseUrl } = req.body;
+  const { resolveClapayCredentials: resolveClapayCredentials2 } = await Promise.resolve().then(() => (init_gateway_credentials(), gateway_credentials_exports));
+  const credentials = await resolveClapayCredentials2(baseUrl);
+  if (!credentials) {
+    res.status(400).json({
+      success: false,
+      message: "Configurez CLAPAY_API_TOKEN dans les variables d\u2019environnement Plesk."
+    });
     return;
   }
   const { ClapayClient: ClapayClient2 } = await Promise.resolve().then(() => (init_clapay(), clapay_exports));
-  const client = new ClapayClient2(token2, baseUrl2 ?? void 0);
+  const client = new ClapayClient2(credentials.token, credentials.baseUrl);
   const start2 = Date.now();
   try {
     const countries = await client.getCountries();
@@ -180959,18 +174206,16 @@ router13.get("/admin/diagnostics", requireAdmin2, async (_req, res) => {
     checks.push({ name: "google", label: "Google OAuth", status: "ok", detail });
   }
   try {
-    const tokenRow = await db.select().from(systemSettingsTable).where(eq(systemSettingsTable.key, "pawapay_api_token")).limit(1);
-    const envRow = await db.select().from(systemSettingsTable).where(eq(systemSettingsTable.key, "pawapay_env")).limit(1);
-    const token2 = tokenRow[0]?.value ?? process.env.PAWAPAY_API_TOKEN ?? null;
-    if (!token2) {
+    const { resolvePawaPayCredentials: resolvePawaPayCredentials2 } = await Promise.resolve().then(() => (init_gateway_credentials(), gateway_credentials_exports));
+    const credentials = await resolvePawaPayCredentials2();
+    if (!credentials) {
       checks.push({ name: "pawapay", label: "PawaPay", status: "warn", detail: "Token API non configur\xE9" });
     } else {
-      const env = envRow[0]?.value ?? process.env.PAWAPAY_ENV ?? "sandbox";
       const { PawaPayClient: PawaPayClient2 } = await Promise.resolve().then(() => (init_pawapay(), pawapay_exports));
-      const client = new PawaPayClient2(token2, env);
+      const client = new PawaPayClient2(credentials.token, credentials.env);
       const t0 = Date.now();
       await client.getActiveConfiguration();
-      checks.push({ name: "pawapay", label: "PawaPay", status: "ok", detail: `Connect\xE9 (${env})`, latencyMs: Date.now() - t0 });
+      checks.push({ name: "pawapay", label: "PawaPay", status: "ok", detail: `Connect\xE9 (${credentials.env})`, latencyMs: Date.now() - t0 });
     }
   } catch (e3) {
     const msg = e3 instanceof Error ? e3.message : String(e3);
@@ -181379,7 +174624,7 @@ function getBearerToken(req) {
   if (!auth?.startsWith("Bearer ")) return null;
   return auth.slice(7);
 }
-async function logAccess(ip, action, success2, email3, details, userAgent2) {
+async function logAccess(ip, action, success2, email3, details, userAgent) {
   try {
     await db.insert(adminAccessLogsTable).values({
       ip,
@@ -181387,7 +174632,7 @@ async function logAccess(ip, action, success2, email3, details, userAgent2) {
       success: success2,
       email: email3 ?? null,
       details: details ?? null,
-      userAgent: userAgent2 ?? null
+      userAgent: userAgent ?? null
     });
   } catch (err) {
     logger.error({ err }, "Failed to log admin access");
@@ -184646,8 +177891,8 @@ var RequestUrl = class {
   toString() {
     var _a6, _b;
     const apiVersion = ((_a6 = this.requestOptions) === null || _a6 === void 0 ? void 0 : _a6.apiVersion) || DEFAULT_API_VERSION;
-    const baseUrl2 = ((_b = this.requestOptions) === null || _b === void 0 ? void 0 : _b.baseUrl) || DEFAULT_BASE_URL;
-    let url3 = `${baseUrl2}/${apiVersion}/${this.model}:${this.task}`;
+    const baseUrl = ((_b = this.requestOptions) === null || _b === void 0 ? void 0 : _b.baseUrl) || DEFAULT_BASE_URL;
+    let url3 = `${baseUrl}/${apiVersion}/${this.model}:${this.task}`;
     if (this.stream) {
       url3 += "?alt=sse";
     }
@@ -186823,10 +180068,10 @@ router31.post("/push/subscribe", requireAuth, async (req, res) => {
     res.status(400).json({ error: "Subscription invalide." });
     return;
   }
-  const userAgent2 = req.headers["user-agent"] ?? null;
-  await db.insert(pushSubscriptionsTable).values({ userId: user.id, endpoint, p256dh: keys.p256dh, auth: keys.auth, userAgent: userAgent2 }).onConflictDoUpdate({
+  const userAgent = req.headers["user-agent"] ?? null;
+  await db.insert(pushSubscriptionsTable).values({ userId: user.id, endpoint, p256dh: keys.p256dh, auth: keys.auth, userAgent }).onConflictDoUpdate({
     target: pushSubscriptionsTable.endpoint,
-    set: { userId: user.id, p256dh: keys.p256dh, auth: keys.auth, userAgent: userAgent2 }
+    set: { userId: user.id, p256dh: keys.p256dh, auth: keys.auth, userAgent }
   });
   logger.info({ userId: user.id }, "[push] Subscription saved");
   res.json({ success: true });
@@ -186937,10 +180182,10 @@ var SITEMAP_PAGES = [
   { path: "/legal/mentions-legales", priority: "0.5", changefreq: "yearly" },
   { path: "/legal/cookies", priority: "0.4", changefreq: "yearly" }
 ];
-function buildSitemap(baseUrl2) {
+function buildSitemap(baseUrl) {
   const today = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
   const urls = SITEMAP_PAGES.map(({ path: path6, priority, changefreq }) => {
-    const loc = `${baseUrl2}${path6}`;
+    const loc = `${baseUrl}${path6}`;
     return [
       "  <url>",
       `    <loc>${loc}</loc>`,
@@ -186961,14 +180206,14 @@ function buildSitemap(baseUrl2) {
   ].join("\n");
 }
 router34.get("/sitemap.xml", (_req, res) => {
-  const baseUrl2 = getAppUrl();
-  const xml = buildSitemap(baseUrl2);
+  const baseUrl = getAppUrl();
+  const xml = buildSitemap(baseUrl);
   res.setHeader("Content-Type", "application/xml; charset=utf-8");
   res.setHeader("Cache-Control", "public, max-age=3600, stale-while-revalidate=86400");
   res.status(200).send(xml);
 });
 router34.get("/robots.txt", (_req, res) => {
-  const baseUrl2 = getAppUrl();
+  const baseUrl = getAppUrl();
   const content = [
     "User-agent: *",
     "",
@@ -187005,7 +180250,7 @@ router34.get("/robots.txt", (_req, res) => {
     "# API",
     "Disallow: /api/",
     "",
-    `Sitemap: ${baseUrl2}/sitemap.xml`
+    `Sitemap: ${baseUrl}/sitemap.xml`
   ].join("\n");
   res.setHeader("Content-Type", "text/plain; charset=utf-8");
   res.setHeader("Cache-Control", "public, max-age=86400");
@@ -187917,34 +181162,24 @@ init_src();
 init_drizzle_orm();
 init_logger2();
 async function upsertGateway(params) {
-  const existing = await db.select({ id: paymentGatewaysTable.id, apiKey: paymentGatewaysTable.apiKey }).from(paymentGatewaysTable).where(eq(paymentGatewaysTable.slug, params.slug)).limit(1);
+  const existing = await db.select({ id: paymentGatewaysTable.id }).from(paymentGatewaysTable).where(eq(paymentGatewaysTable.slug, params.slug)).limit(1);
   if (existing.length > 0) {
-    if (params.apiKey) {
-      await db.update(paymentGatewaysTable).set({
-        apiKey: params.apiKey,
-        ...params.apiUrl ? { apiUrl: params.apiUrl } : {},
-        ...params.apiSecret ? { apiSecret: params.apiSecret } : {},
-        updatedAt: /* @__PURE__ */ new Date()
-      }).where(eq(paymentGatewaysTable.slug, params.slug));
-    }
-    return { id: existing[0].id, slug: params.slug, apiKey: params.apiKey ?? existing[0].apiKey };
+    return { id: existing[0].id, slug: params.slug };
   }
   const [inserted] = await db.insert(paymentGatewaysTable).values({
     name: params.name,
     slug: params.slug,
     logoUrl: params.logoUrl ?? null,
     apiUrl: params.apiUrl ?? null,
-    apiKey: params.apiKey ?? null,
-    apiSecret: params.apiSecret ?? null,
     type: params.type ?? "deposit",
     supportedCountries: params.supportedCountries ?? [],
     supportedOperators: params.supportedOperators ?? [],
     active: true,
     testMode: false,
     notes: params.notes ?? null
-  }).returning({ id: paymentGatewaysTable.id, apiKey: paymentGatewaysTable.apiKey });
+  }).returning({ id: paymentGatewaysTable.id });
   logger.info({ slug: params.slug }, "[seed-routing] Gateway inserted");
-  return { id: inserted.id, slug: params.slug, apiKey: inserted.apiKey };
+  return { id: inserted.id, slug: params.slug };
 }
 async function upsertOperator(params) {
   const existing = await db.select({ id: mobileOperatorsTable.id }).from(mobileOperatorsTable).where(eq(mobileOperatorsTable.slug, params.slug)).limit(1);
@@ -188129,7 +181364,6 @@ async function seedRoutingData() {
       name: "PawaPay",
       logoUrl: "https://pawapay.com/favicon.ico",
       apiUrl: "https://api.pawapay.io",
-      apiKey: process.env.PAWAPAY_API_TOKEN ?? null,
       type: "deposit",
       supportedCountries: [
         "CI",
@@ -188168,7 +181402,6 @@ async function seedRoutingData() {
       name: "Clapay",
       logoUrl: "https://clapay.net/favicon.ico",
       apiUrl: process.env.CLAPAY_BASE_URL ?? "https://nw-api.clapay.app/nowallet/api",
-      apiKey: process.env.CLAPAY_API_TOKEN ?? null,
       type: "deposit",
       supportedCountries: ["CI", "SN", "CM", "BF", "BJ", "ML", "GN", "NE", "TG"],
       supportedOperators: ["orange", "mtn", "wave", "moov", "free"],
@@ -188312,8 +181545,8 @@ async function seedRoutingData() {
     for (const op of operators) {
       await upsertOperator(op);
     }
-    const pawaPayKey = process.env.PAWAPAY_API_TOKEN?.trim() || pawaPayGw.apiKey?.trim() || null;
-    const clapayKey = process.env.CLAPAY_API_TOKEN?.trim() || clapayGw.apiKey?.trim() || null;
+    const pawaPayKey = process.env.PAWAPAY_API_TOKEN?.trim() || null;
+    const clapayKey = process.env.CLAPAY_API_TOKEN?.trim() || null;
     const hasPawaPay = !!pawaPayKey;
     const hasClapay = !!clapayKey;
     logger.info(

@@ -24,7 +24,7 @@ import { eq } from "drizzle-orm";
 import { logger } from "./logger";
 
 /* ── Types ── */
-interface GatewayRecord { id: string; slug: string; apiKey: string | null }
+interface GatewayRecord { id: string; slug: string }
 
 /* ═══════════════════════════════════════════════════════════════
    PHASE 1 — GATEWAYS
@@ -35,32 +35,19 @@ async function upsertGateway(params: {
   name: string;
   logoUrl?: string;
   apiUrl?: string;
-  apiKey?: string | null;
-  apiSecret?: string | null;
   type?: string;
   supportedCountries?: string[];
   supportedOperators?: string[];
   notes?: string;
 }): Promise<GatewayRecord> {
   const existing = await db
-    .select({ id: paymentGatewaysTable.id, apiKey: paymentGatewaysTable.apiKey })
+    .select({ id: paymentGatewaysTable.id })
     .from(paymentGatewaysTable)
     .where(eq(paymentGatewaysTable.slug, params.slug))
     .limit(1);
 
   if (existing.length > 0) {
-    if (params.apiKey) {
-      await db
-        .update(paymentGatewaysTable)
-        .set({
-          apiKey:  params.apiKey,
-          ...(params.apiUrl    ? { apiUrl:    params.apiUrl    } : {}),
-          ...(params.apiSecret ? { apiSecret: params.apiSecret } : {}),
-          updatedAt: new Date(),
-        })
-        .where(eq(paymentGatewaysTable.slug, params.slug));
-    }
-    return { id: existing[0].id, slug: params.slug, apiKey: params.apiKey ?? existing[0].apiKey };
+    return { id: existing[0].id, slug: params.slug };
   }
 
   const [inserted] = await db
@@ -70,8 +57,6 @@ async function upsertGateway(params: {
       slug:               params.slug,
       logoUrl:            params.logoUrl   ?? null,
       apiUrl:             params.apiUrl    ?? null,
-      apiKey:             params.apiKey    ?? null,
-      apiSecret:          params.apiSecret ?? null,
       type:               params.type      ?? "deposit",
       supportedCountries: params.supportedCountries ?? [],
       supportedOperators: params.supportedOperators ?? [],
@@ -79,10 +64,10 @@ async function upsertGateway(params: {
       testMode:           false,
       notes:              params.notes ?? null,
     })
-    .returning({ id: paymentGatewaysTable.id, apiKey: paymentGatewaysTable.apiKey });
+    .returning({ id: paymentGatewaysTable.id });
 
   logger.info({ slug: params.slug }, "[seed-routing] Gateway inserted");
-  return { id: inserted.id, slug: params.slug, apiKey: inserted.apiKey };
+  return { id: inserted.id, slug: params.slug };
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -361,7 +346,6 @@ export async function seedRoutingData(): Promise<void> {
       name: "PawaPay",
       logoUrl: "https://pawapay.com/favicon.ico",
       apiUrl:  "https://api.pawapay.io",
-      apiKey:  process.env.PAWAPAY_API_TOKEN ?? null,
       type:    "deposit",
       supportedCountries: [
         "CI","SN","CM","GH","TZ","UG","ZM","ZW","CD","BJ","BF","ML","MG","RW","MZ","MW",
@@ -376,7 +360,6 @@ export async function seedRoutingData(): Promise<void> {
       name: "Clapay",
       logoUrl: "https://clapay.net/favicon.ico",
       apiUrl:  process.env.CLAPAY_BASE_URL ?? "https://nw-api.clapay.app/nowallet/api",
-      apiKey:  process.env.CLAPAY_API_TOKEN ?? null,
       type:    "deposit",
       supportedCountries: ["CI","SN","CM","BF","BJ","ML","GN","NE","TG"],
       supportedOperators: ["orange","mtn","wave","moov","free"],
@@ -430,9 +413,9 @@ export async function seedRoutingData(): Promise<void> {
     }
 
     /* ── Phase 3: Routes ── */
-    /* Determine which gateways are "live" (have an API key in env or just saved in DB) */
-    const pawaPayKey = process.env.PAWAPAY_API_TOKEN?.trim() || pawaPayGw.apiKey?.trim() || null;
-    const clapayKey  = process.env.CLAPAY_API_TOKEN?.trim()  || clapayGw.apiKey?.trim()  || null;
+    /* PawaPay availability is based only on the Plesk environment variable. */
+    const pawaPayKey = process.env.PAWAPAY_API_TOKEN?.trim() || null;
+    const clapayKey  = process.env.CLAPAY_API_TOKEN?.trim() || null;
     const hasPawaPay = !!pawaPayKey;
     const hasClapay  = !!clapayKey;
 

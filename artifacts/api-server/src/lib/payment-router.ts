@@ -10,7 +10,7 @@ import { eq } from "drizzle-orm";
 import { resolvePaymentRoute, type ResolvedRoute } from "../routes/admin-payment-routing";
 import { PawaPayClient, getProviderForCountry } from "./pawapay";
 import { ClapayClient } from "./clapay";
-import { resolvePawaPayCredentials } from "./gateway-credentials";
+import { resolvePawaPayCredentials, resolveClapayCredentials } from "./gateway-credentials";
 import { logger } from "./logger";
 
 /* ── Operator slug normalizer ────────────────────────────────────────────
@@ -90,18 +90,18 @@ export class GatewayRouteUnavailableError extends Error {
   }
 }
 
-/* ── Build clients for selected dynamic routes. Clapay requires a route-local
- * key; global credentials are not substituted for a selected route. ── */
-async function buildPawaPayClient(route: ResolvedRoute): Promise<PawaPayClient | null> {
-  const creds = await resolvePawaPayCredentials(route.apiKey);
+/* ── Build clients from server environment credentials; route URLs remain
+ * non-secret gateway metadata. ── */
+async function buildPawaPayClient(): Promise<PawaPayClient | null> {
+  const creds = await resolvePawaPayCredentials();
   if (!creds) return null;
   return new PawaPayClient(creds.token, creds.env);
 }
 
 async function buildClapayClient(route: ResolvedRoute): Promise<ClapayClient | null> {
-  const token = route.apiKey?.trim();
-  if (!token) return null;
-  return new ClapayClient(token, route.apiUrl ?? undefined);
+  const creds = await resolveClapayCredentials(route.apiUrl);
+  if (!creds) return null;
+  return new ClapayClient(creds.token, creds.baseUrl);
 }
 
 /* ════════════════════════════════════════════════════════════════════
@@ -136,7 +136,7 @@ export async function resolveGateway(
   const slug = route.gatewaySlug.toLowerCase();
 
   if (slug.includes("pawapay") || slug === "pawapay") {
-    const client = await buildPawaPayClient(route);
+    const client = await buildPawaPayClient();
     if (!client) {
       logger.warn({ routeId: route.routeId }, "[PaymentRouter] PawaPay route found but no API token available");
       return null;
@@ -148,7 +148,7 @@ export async function resolveGateway(
     const client = await buildClapayClient(route);
     if (!client) {
       logger.warn({ routeId: route.routeId }, "[PaymentRouter] Clapay route found but no API token available");
-      throw new GatewayRouteUnavailableError("La passerelle Clapay sélectionnée ne possède pas de clé API dédiée.");
+      throw new GatewayRouteUnavailableError("Configurez CLAPAY_API_TOKEN dans les variables d’environnement Plesk.");
     }
     return { type: "clapay", client, gatewayId: route.gatewayId, gatewaySlug: route.gatewaySlug, gatewayName: route.gatewayName, routeId: route.routeId, priority: route.priority };
   }

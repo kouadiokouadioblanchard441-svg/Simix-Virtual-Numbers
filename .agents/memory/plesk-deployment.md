@@ -13,6 +13,7 @@ description: How this project (Simix) deploys to Plesk hosting outside Replit â€
 ## Secrets source of truth
 - Production credentials must be configured in Plesk's Node.js environment settings, not as literal values in source files or `.replit`. Keep code and PM2 configuration limited to reading/pass-through of environment variables.
 - Startup requires `DATABASE_URL` (or `SUPABASE_DATABASE_URL`), `SESSION_SECRET`, `ADMIN_JWT_SECRET`, and `ENCRYPTION_KEY`; configure provider-specific credentials there for whichever integrations are enabled.
+- PawaPay and Clapay API credentials are Plesk environment-only (`PAWAPAY_API_TOKEN`, `PAWAPAY_ENV`, `CLAPAY_API_TOKEN`); do not resolve them from admin settings or gateway database records.
 
 **Why:** The user asked that production secrets live in the real Plesk environment, not in code.
 

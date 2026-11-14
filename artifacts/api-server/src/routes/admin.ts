@@ -3,7 +3,7 @@
  * Accessible at /api/admin/*
  */
 import { Router, type IRouter, type Request, type Response, type NextFunction } from "express";
-import { desc, eq, count, sql, and, gte, lte, like, or, inArray } from "drizzle-orm";
+import { desc, eq, count, sql, and, gte, lte, like, or, inArray, notInArray } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 import {
   db,
@@ -1315,15 +1315,31 @@ router.get("/admin/api-providers/sync-status", requireAdmin, async (_req, res): 
 
 /* ─────────────────── SYSTEM SETTINGS ─────────────────── */
 router.get("/admin/settings", requireAdmin, async (_req, res): Promise<void> => {
-  const rows = await db.select().from(systemSettingsTable);
-  const settings: Record<string, string> = {};
-  for (const row of rows) { settings[row.key] = row.value; }
+  const environmentOnlyCredentialSettings = new Set([
+    "pawapay_api_token",
+    "pawapay_env",
+    "pawapay_webhook_secret",
+    "clapay_api_token",
+  ]);
+  const rows = await db.select().from(systemSettingsTable)
+    .where(notInArray(sql`lower(${systemSettingsTable.key})`, [...environmentOnlyCredentialSettings]));
+  const settings = Object.fromEntries(rows.map(row => [row.key, row.value]));
   res.json(settings);
 });
 
 router.put("/admin/settings", requireAdmin, async (req, res): Promise<void> => {
   const updates = req.body as Record<string, string>;
   if (!updates || typeof updates !== "object") { res.status(400).json({ error: "Données invalides" }); return; }
+  const environmentOnlyCredentialSettings = new Set([
+    "pawapay_api_token",
+    "pawapay_env",
+    "pawapay_webhook_secret",
+    "clapay_api_token",
+  ]);
+  if (Object.keys(updates).some(key => environmentOnlyCredentialSettings.has(key.toLowerCase()))) {
+    res.status(400).json({ error: "Les identifiants PawaPay et Clapay doivent être configurés dans les variables d’environnement Plesk." });
+    return;
+  }
 
   try {
     for (const [key, value] of Object.entries(updates)) {
@@ -1331,20 +1347,6 @@ router.put("/admin/settings", requireAdmin, async (req, res): Promise<void> => {
         .insert(systemSettingsTable)
         .values({ key, value: String(value) })
         .onConflictDoUpdate({ target: systemSettingsTable.key, set: { value: String(value) } });
-    }
-
-    /* Keep payment_gateways.apiKey in sync — the payment router reads the
-     * gateway record FIRST, before falling back to system_settings, so a
-     * stale apiKey there would silently shadow a freshly-saved token here. */
-    if (typeof updates["pawapay_api_token"] === "string" && updates["pawapay_api_token"].trim()) {
-      await db.update(paymentGatewaysTable)
-        .set({ apiKey: updates["pawapay_api_token"].trim() })
-        .where(eq(paymentGatewaysTable.slug, "pawapay"));
-    }
-    if (typeof updates["clapay_api_token"] === "string" && updates["clapay_api_token"].trim()) {
-      await db.update(paymentGatewaysTable)
-        .set({ apiKey: updates["clapay_api_token"].trim() })
-        .where(eq(paymentGatewaysTable.slug, "clapay"));
     }
 
     /* Invalidate settings cache so changes apply within 30s */
@@ -1366,27 +1368,19 @@ router.put("/admin/settings", requireAdmin, async (req, res): Promise<void> => {
 });
 
 /* ─────────────────── PAWAPAY CONNECTION TEST ─────────────────── */
-router.post("/admin/pawapay/test", requireAdmin, async (req, res): Promise<void> => {
-  /* Read token + env from request body (unsaved form values) or fall back to DB */
-  const bodyToken = (req.body as { token?: string; env?: string }).token;
-  const bodyEnv   = (req.body as { token?: string; env?: string }).env as "sandbox" | "production" | undefined;
-
-  let token = bodyToken?.trim() || null;
-  let env: "sandbox" | "production" = bodyEnv === "production" ? "production" : "sandbox";
-
-  if (!token) {
-    const rows = await db.select().from(systemSettingsTable).where(eq(systemSettingsTable.key, "pawapay_api_token")).limit(1);
-    token = rows[0]?.value ?? null;
-    const envRow = await db.select().from(systemSettingsTable).where(eq(systemSettingsTable.key, "pawapay_env")).limit(1);
-    env = (envRow[0]?.value as "sandbox" | "production") ?? "sandbox";
-  }
-
-  if (!token) {
-    res.status(400).json({ success: false, message: "Aucun token PawaPay configuré." });
+router.post("/admin/pawapay/test", requireAdmin, async (_req, res): Promise<void> => {
+  const { resolvePawaPayCredentials } = await import("../lib/gateway-credentials");
+  const credentials = await resolvePawaPayCredentials();
+  if (!credentials) {
+    res.status(400).json({
+      success: false,
+      message: "Configurez PAWAPAY_API_TOKEN dans les variables d’environnement Plesk.",
+    });
     return;
   }
 
   const { PawaPayClient } = await import("../lib/pawapay");
+  const { token, env } = credentials;
   const client = new PawaPayClient(token, env);
   const start = Date.now();
 
@@ -1540,30 +1534,19 @@ router.post("/admin/pawapay/simulate-deposit", requireAdmin, async (req, res): P
 
 /* ─────────────────── CLAPAY CONNECTION TEST ─────────────────── */
 router.post("/admin/clapay/test", requireAdmin, async (req, res): Promise<void> => {
-  const { token: bodyToken, baseUrl: bodyBaseUrl } = req.body as { token?: string; baseUrl?: string };
-
-  let token = bodyToken?.trim() || null;
-  let baseUrl = bodyBaseUrl?.trim() || null;
-
-  if (!token) {
-    const rows = await db.select().from(systemSettingsTable)
-      .where(eq(systemSettingsTable.key, "clapay_api_token")).limit(1);
-    token = rows[0]?.value ?? null;
-
-    if (token && !baseUrl) {
-      const urlRow = await db.select().from(systemSettingsTable)
-        .where(eq(systemSettingsTable.key, "clapay_base_url")).limit(1);
-      baseUrl = urlRow[0]?.value ?? null;
-    }
-  }
-
-  if (!token) {
-    res.status(400).json({ success: false, message: "Aucun token Clapay configuré." });
+  const { baseUrl } = req.body as { baseUrl?: string };
+  const { resolveClapayCredentials } = await import("../lib/gateway-credentials");
+  const credentials = await resolveClapayCredentials(baseUrl);
+  if (!credentials) {
+    res.status(400).json({
+      success: false,
+      message: "Configurez CLAPAY_API_TOKEN dans les variables d’environnement Plesk.",
+    });
     return;
   }
 
   const { ClapayClient } = await import("../lib/clapay");
-  const client = new ClapayClient(token, baseUrl ?? undefined);
+  const client = new ClapayClient(credentials.token, credentials.baseUrl);
   const start = Date.now();
 
   try {
@@ -2605,18 +2588,16 @@ router.get("/admin/diagnostics", requireAdmin, async (_req, res): Promise<void> 
 
   /* ── PawaPay ── */
   try {
-    const tokenRow = await db.select().from(systemSettingsTable).where(eq(systemSettingsTable.key, "pawapay_api_token")).limit(1);
-    const envRow   = await db.select().from(systemSettingsTable).where(eq(systemSettingsTable.key, "pawapay_env")).limit(1);
-    const token = tokenRow[0]?.value ?? process.env.PAWAPAY_API_TOKEN ?? null;
-    if (!token) {
+    const { resolvePawaPayCredentials } = await import("../lib/gateway-credentials");
+    const credentials = await resolvePawaPayCredentials();
+    if (!credentials) {
       checks.push({ name: "pawapay", label: "PawaPay", status: "warn", detail: "Token API non configuré" });
     } else {
-      const env = (envRow[0]?.value ?? process.env.PAWAPAY_ENV ?? "sandbox") as "sandbox" | "production";
       const { PawaPayClient } = await import("../lib/pawapay");
-      const client = new PawaPayClient(token, env);
+      const client = new PawaPayClient(credentials.token, credentials.env);
       const t0 = Date.now();
       await client.getActiveConfiguration();
-      checks.push({ name: "pawapay", label: "PawaPay", status: "ok", detail: `Connecté (${env})`, latencyMs: Date.now() - t0 });
+      checks.push({ name: "pawapay", label: "PawaPay", status: "ok", detail: `Connecté (${credentials.env})`, latencyMs: Date.now() - t0 });
     }
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);

@@ -177,15 +177,14 @@ export async function getPawaPayClientForDeposit(
     const [gateway] = await database.select({
       id: paymentGatewaysTable.id,
       slug: paymentGatewaysTable.slug,
-      apiKey: paymentGatewaysTable.apiKey,
       active: paymentGatewaysTable.active,
     }).from(paymentGatewaysTable)
       .where(eq(paymentGatewaysTable.id, gatewayConfigId))
       .limit(1);
-    if (!gateway || !gateway.active || !gateway.slug.toLowerCase().includes("pawapay") || !gateway.apiKey?.trim()) {
+    if (!gateway || !gateway.active || !gateway.slug.toLowerCase().includes("pawapay")) {
       return null;
     }
-    const credentials = await resolvePawaPayCredentials(gateway.apiKey);
+    const credentials = await resolvePawaPayCredentials();
     return credentials ? new PawaPayClient(credentials.token, credentials.env) : null;
   }
 

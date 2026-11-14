@@ -699,6 +699,10 @@ function GatewaysSection({ toast }: { toast: ReturnType<typeof useToast> }) {
   const [testResults, setTestResults] = useState<Record<string, { status: string; message: string; responseTimeMs?: number }>>({});
   const [testing, setTesting] = useState<string | null>(null);
   const [form, setForm] = useState<Partial<Gateway>>({});
+  const originalGatewaySlug = modal && modal !== "create" ? modal.slug.toLowerCase() : "";
+  const gatewaySlugForForm = (form.slug?.trim() || originalGatewaySlug).toLowerCase();
+  const isEnvironmentCredentialGateway =
+    /pawapay|clapay/.test(originalGatewaySlug) || /pawapay|clapay/.test(gatewaySlugForForm);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -715,8 +719,11 @@ function GatewaysSection({ toast }: { toast: ReturnType<typeof useToast> }) {
     const isEdit = modal !== "create";
     const body = {
       name: form.name, slug: form.slug, logoUrl: form.logoUrl,
-      apiUrl: form.apiUrl, apiKey: form.apiKey, apiSecret: form.apiSecret,
-      webhookSecret: form.webhookSecret, type: form.type,
+      apiUrl: form.apiUrl,
+      ...(!isEnvironmentCredentialGateway
+        ? { apiKey: form.apiKey, apiSecret: form.apiSecret, webhookSecret: form.webhookSecret }
+        : {}),
+      type: form.type,
       supportedCountries: form.supportedCountries ?? [],
       supportedOperators: form.supportedOperators ?? [],
       active: form.active, testMode: form.testMode, notes: form.notes,
@@ -854,11 +861,23 @@ function GatewaysSection({ toast }: { toast: ReturnType<typeof useToast> }) {
               <Input label="Slug *" value={form.slug ?? ""} onChange={e => setForm(p => ({ ...p, slug: e.target.value }))} placeholder="pawapay" />
             </div>
             <Input label="URL API" value={form.apiUrl ?? ""} onChange={e => setForm(p => ({ ...p, apiUrl: e.target.value }))} placeholder="https://api.pawapay.io" />
-            <div className="grid grid-cols-2 gap-3">
-              <Input label="Clé API" type="password" value={form.apiKey ?? ""} onChange={e => setForm(p => ({ ...p, apiKey: e.target.value }))} placeholder="sk_live_…" />
-              <Input label="Secret API" type="password" value={form.apiSecret ?? ""} onChange={e => setForm(p => ({ ...p, apiSecret: e.target.value }))} placeholder="secret_…" />
-            </div>
-            <Input label="Webhook Secret" type="password" value={form.webhookSecret ?? ""} onChange={e => setForm(p => ({ ...p, webhookSecret: e.target.value }))} placeholder="whsec_…" />
+            {isEnvironmentCredentialGateway ? (
+              <div className="rounded-lg border border-orange-500/20 bg-orange-500/5 p-3 text-xs text-zinc-300">
+                {gatewaySlugForForm.includes("pawapay") ? (
+                  <>La clé PawaPay se configure uniquement dans la variable <code className="text-orange-300">PAWAPAY_API_TOKEN</code> de Plesk.</>
+                ) : (
+                  <>La clé Clapay se configure uniquement dans la variable <code className="text-orange-300">CLAPAY_API_TOKEN</code> de Plesk.</>
+                )}
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-3">
+                <Input label="Clé API" type="password" value={form.apiKey ?? ""} onChange={e => setForm(p => ({ ...p, apiKey: e.target.value }))} placeholder="sk_live_…" />
+                <Input label="Secret API" type="password" value={form.apiSecret ?? ""} onChange={e => setForm(p => ({ ...p, apiSecret: e.target.value }))} placeholder="secret_…" />
+              </div>
+            )}
+            {!isEnvironmentCredentialGateway && (
+              <Input label="Webhook Secret" type="password" value={form.webhookSecret ?? ""} onChange={e => setForm(p => ({ ...p, webhookSecret: e.target.value }))} placeholder="whsec_…" />
+            )}
             <Sel label="Type de transaction" value={form.type ?? "both"} onChange={e => setForm(p => ({ ...p, type: e.target.value }))}>
               <option value="deposit">Dépôt uniquement</option>
               <option value="withdrawal">Retrait uniquement</option>

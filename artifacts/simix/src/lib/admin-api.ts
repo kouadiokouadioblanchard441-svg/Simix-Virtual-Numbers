@@ -206,7 +206,7 @@ export const adminApi = {
     req<{ success: boolean; message: string; depositId?: string; userId?: string; amount?: number; status?: string }>(
       "POST", "/admin/pawapay/simulate-deposit", { depositId, status, depositedAmount }
     ),
-  testPawaPay: (token?: string, env?: string) => req<{
+  testPawaPay: () => req<{
     success: boolean;
     message: string;
     latencyMs?: number;
@@ -214,7 +214,7 @@ export const adminApi = {
     activeCount?: number;
     totalCount?: number;
     operators?: { name: string; country: string; currency: string }[];
-  }>("POST", "/admin/pawapay/test", { token, env }),
+  }>("POST", "/admin/pawapay/test", {}),
   syncPawapayCorrespondents: () => req<{
     success: boolean;
     summary: {
@@ -231,13 +231,13 @@ export const adminApi = {
   }>("POST", "/admin/payment-routing/pawapay-sync"),
 
   /* ── Clapay ── */
-  testClapay: (token?: string, baseUrl?: string) => req<{
+  testClapay: (baseUrl?: string) => req<{
     success: boolean;
     message: string;
     latencyMs?: number;
     countryCount?: number;
     countries?: { code: string; name: string; currency: string }[];
-  }>("POST", "/admin/clapay/test", { token, baseUrl }),
+  }>("POST", "/admin/clapay/test", { baseUrl }),
   getPendingClapayDeposits: () => req<Array<{
     id: string;
     externalDepositId: string;

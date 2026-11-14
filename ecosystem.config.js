@@ -25,9 +25,10 @@ module.exports = {
         FIVESIM_API_KEY: process.env.FIVESIM_API_KEY || '',
 
         // ── Passerelles de paiement ──────────────────────────────────────
-        PAWAPAY_API_TOKEN: process.env.PAWAPAY_API_TOKEN || '',
-        PAWAPAY_ENV: 'production',           // 'production' ou 'sandbox'
-        CLAPAY_API_TOKEN: process.env.CLAPAY_API_TOKEN || '',
+        PAWAPAY_API_TOKEN: process.env.PAWAPAY_API_TOKEN,
+        PAWAPAY_ENV: process.env.PAWAPAY_ENV,
+        CLAPAY_API_TOKEN: process.env.CLAPAY_API_TOKEN,
+        CLAPAY_BASE_URL: process.env.CLAPAY_BASE_URL,
         MOBILE_MONEY_GATEWAY: 'pawapay',     // 'pawapay' ou 'clapay'
 
         // ── Email (Resend) ────────────────────────────────────────────────

@@ -14,10 +14,7 @@ import {
 } from "./gateway-credentials";
 import { matchesMobileOperatorMethod } from "./wallet-payment-classification";
 
-/* ── Load PawaPay client from env or DB ── */
-/* ── Credential resolution is centralized in lib/gateway-credentials.ts —
- * see that file for the single documented priority order (DB always wins
- * over env vars) shared by every PawaPay/Clapay code path in the app. ── */
+/* ── PawaPay credentials are read only from the Plesk environment. ── */
 export async function getPawaPayClient(): Promise<{ client: PawaPayClient; env: string } | null> {
   const creds = await resolvePawaPayCredentials();
   if (!creds) return null;
@@ -77,7 +74,8 @@ export async function resolveWalletGateway(countryCode: string, methodSlug: stri
   if (dynamicRoute) {
     routingSource = "dynamic";
     if (dynamicRoute.type === "pawapay") {
-      pawaPayCtx = { client: dynamicRoute.client, env: process.env.PAWAPAY_ENV ?? "sandbox" };
+      const pawaPayEnv = process.env.PAWAPAY_ENV?.trim().toLowerCase();
+      pawaPayCtx = { client: dynamicRoute.client, env: pawaPayEnv === "production" ? "production" : "sandbox" };
       gateway = "pawapay";
     } else {
       clapayCtx = { client: dynamicRoute.client };
