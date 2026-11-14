@@ -34,6 +34,7 @@ import { clearSettingsCache, getSettingInt } from "../lib/settings";
 import { setAppUrl, clearAppUrlCache } from "../lib/app-url";
 import { requireAdminJwt } from "../lib/admin-jwt-middleware";
 import { syncClapayCatalogue } from "../lib/clapay-catalogue-sync";
+import { sendDepositCreditAlert } from "../lib/telegram";
 
 const router: IRouter = Router();
 
@@ -1484,6 +1485,15 @@ router.post("/admin/pawapay/simulate-deposit", requireAdmin, async (req, res): P
       .set({ balance: sql`${usersTable.balance} + ${actualAmount}` })
       .where(eq(usersTable.id, tx.userId));
 
+    void sendDepositCreditAlert({
+      userId: tx.userId,
+      amount: actualAmount,
+      gateway: "PawaPay (simulation)",
+      operator: tx.method ?? "Mobile Money",
+      transactionId: String(tx.id),
+      ip: req.ip,
+    });
+
     logger.info({ depositId, userId: tx.userId, amount: actualAmount }, "[PawaPay SIM] Deposit simulated as COMPLETED");
 
     /* ── Send deposit confirmation email for simulated deposits ── */
@@ -1644,6 +1654,15 @@ router.post("/admin/clapay/simulate-deposit", requireAdmin, async (req, res): Pr
     await db.update(usersTable)
       .set({ balance: sql`${usersTable.balance} + ${actualAmount}` })
       .where(eq(usersTable.id, tx.userId));
+
+    void sendDepositCreditAlert({
+      userId: tx.userId,
+      amount: actualAmount,
+      gateway: "Clapay (simulation)",
+      operator: tx.method ?? "Mobile Money",
+      transactionId: String(tx.id),
+      ip: req.ip,
+    });
 
     logger.info({ depositId, userId: tx.userId, amount: actualAmount }, "[Clapay SIM] Deposit simulated as COMPLETED");
 

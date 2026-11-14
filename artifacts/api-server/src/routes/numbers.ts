@@ -455,7 +455,7 @@ router.post("/numbers", requireAuth, async (req, res): Promise<void> => {
   void (async () => {
     try {
       const geo = await lookupIp(ip);
-      auditLog({ userId: user.id, userName: user.fullName, action: "number_buy", entity: "virtual_number", entityId: vn!.id, ip, userAgent: ua, severity: "info", description: `Achat ${service.name} ${country.name} — ${price} FCFA` });
+      auditLog({ userId: user.id, userName: user.fullName, action: "number_buy", entity: "virtual_number", entityId: vn!.id, ip, userAgent: ua, severity: "info", description: `Achat ${service.name} ${country.name} — ${price} FCFA`, notifyTelegram: false });
       await sendNumberBuyAlert({
         userId: user.id,
         userName: user.fullName,

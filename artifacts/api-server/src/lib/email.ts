@@ -2,6 +2,7 @@ import { getAppUrl } from "./app-url";
 import { logger } from "./logger";
 import { emailService } from "./email-service";
 import { getFromEmail } from "./email-from";
+import { sendOtpEventAlert } from "./telegram";
 
 /* ─────────────────────────────────────────────────────────────────
    SHARED AUTHENTICATION EMAIL STYLE
@@ -289,26 +290,32 @@ export async function sendPasswordResetEmail(
   issuanceId: string,
 ): Promise<void> {
   const from    = await getFromEmail();
-  const result  = await emailService.send({
-    to,
-    from,
-    subject: "Réinitialisation de votre mot de passe Simix",
-    html:    getProfessionalAuthEmailHtml({
-      title: "Réinitialiser votre mot de passe",
-      eyebrow: "Sécurité du compte",
-      subtitle: "Une demande de réinitialisation a été effectuée pour votre compte Simix.",
-      body: "Utilisez le code ci-dessous dans l'application pour choisir un nouveau mot de passe.",
-      code,
-      codeLabel: "Code de réinitialisation",
-      firstName: fullName.split(" ")[0] ?? fullName,
-      footerText: "Si vous n'êtes pas à l'origine de cette demande, ignorez cet email. Votre mot de passe actuel reste inchangé.",
-    }),
-    idempotencyKey: `password-reset-${issuanceId}`,
-    metadata: { type: "password_reset" },
-  });
+  const result = await emailService.send({
+      to,
+      from,
+      subject: "Réinitialisation de votre mot de passe Simix",
+      html:    getProfessionalAuthEmailHtml({
+        title: "Réinitialiser votre mot de passe",
+        eyebrow: "Sécurité du compte",
+        subtitle: "Une demande de réinitialisation a été effectuée pour votre compte Simix.",
+        body: "Utilisez le code ci-dessous dans l'application pour choisir un nouveau mot de passe.",
+        code,
+        codeLabel: "Code de réinitialisation",
+        firstName: fullName.split(" ")[0] ?? fullName,
+        footerText: "Si vous n'êtes pas à l'origine de cette demande, ignorez cet email. Votre mot de passe actuel reste inchangé.",
+      }),
+      idempotencyKey: `password-reset-${issuanceId}`,
+      metadata: { type: "password_reset" },
+    });
   if (!result.success && !result.cached) {
     throw new Error(`Échec envoi email reset: ${result.error}`);
   }
+  void sendOtpEventAlert({
+    event: "Code envoyé par email",
+    purpose: "Réinitialisation du mot de passe",
+    userName: fullName,
+    email: to,
+  });
 }
 
 export async function sendOtpEmail(
@@ -322,30 +329,36 @@ export async function sendOtpEmail(
   const subject = purpose === "inactivity"
     ? "🔐 Vérification de sécurité — Simix"
     : "✉️ Confirmez votre adresse email — Simix";
-  const result  = await emailService.send({
-    to,
-    from,
-    subject,
-    html: getProfessionalAuthEmailHtml({
-      title: purpose === "inactivity" ? "Vérification de sécurité" : "Confirmez votre inscription",
-      eyebrow: purpose === "inactivity" ? "Protection du compte" : "Bienvenue sur Simix",
-      subtitle: purpose === "inactivity"
-        ? "Une vérification supplémentaire est nécessaire pour sécuriser votre connexion."
-        : "Une dernière étape pour activer votre compte Simix.",
-      body: purpose === "inactivity"
-        ? "Entrez le code ci-dessous dans l'application pour confirmer votre identité."
-        : "Entrez le code ci-dessous dans l'application pour confirmer votre adresse email.",
-      code,
-      codeLabel: purpose === "inactivity" ? "Code de sécurité" : "Code de confirmation",
-      firstName: fullName.split(" ")[0] ?? fullName,
-      footerText: purpose === "inactivity"
-        ? "Si vous n'êtes pas à l'origine de cette connexion, contactez immédiatement le support Simix."
-        : "Si vous n'avez pas créé de compte Simix, vous pouvez ignorer cet email.",
-    }),
-    idempotencyKey: `otp-${issuanceId}`,
-    metadata: { type: "otp", purpose },
-  });
+  const result = await emailService.send({
+      to,
+      from,
+      subject,
+      html: getProfessionalAuthEmailHtml({
+        title: purpose === "inactivity" ? "Vérification de sécurité" : "Confirmez votre inscription",
+        eyebrow: purpose === "inactivity" ? "Protection du compte" : "Bienvenue sur Simix",
+        subtitle: purpose === "inactivity"
+          ? "Une vérification supplémentaire est nécessaire pour sécuriser votre connexion."
+          : "Une dernière étape pour activer votre compte Simix.",
+        body: purpose === "inactivity"
+          ? "Entrez le code ci-dessous dans l'application pour confirmer votre identité."
+          : "Entrez le code ci-dessous dans l'application pour confirmer votre adresse email.",
+        code,
+        codeLabel: purpose === "inactivity" ? "Code de sécurité" : "Code de confirmation",
+        firstName: fullName.split(" ")[0] ?? fullName,
+        footerText: purpose === "inactivity"
+          ? "Si vous n'êtes pas à l'origine de cette connexion, contactez immédiatement le support Simix."
+          : "Si vous n'avez pas créé de compte Simix, vous pouvez ignorer cet email.",
+      }),
+      idempotencyKey: `otp-${issuanceId}`,
+      metadata: { type: "otp", purpose },
+    });
   if (!result.success && !result.cached) {
     throw new Error(`Échec envoi email OTP: ${result.error}`);
   }
+  void sendOtpEventAlert({
+    event: "Code envoyé par email",
+    purpose: purpose === "inactivity" ? "Contrôle d'inactivité" : "Vérification d'inscription",
+    userName: fullName,
+    email: to,
+  });
 }

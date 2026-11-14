@@ -14,7 +14,7 @@
  *  - suspicious    : activité suspecte détectée
  *  - audit         : action d'administration
  */
-import { db, systemSettingsTable } from "@workspace/db";
+import { db, systemSettingsTable, usersTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { logger } from "./logger";
 import { countryFlag, type GeoInfo } from "./geoip";
@@ -107,9 +107,11 @@ function parseUserAgent(ua: string): { browser: string; os: string; device: stri
    ══════════════════════════════════════════════════════ */
 
 export interface LoginAlertData {
-  userId: string;
-  userName: string;
-  userPhone: string | null;
+  userId?: string;
+  userName?: string;
+  userPhone?: string | null;
+  userEmail?: string | null;
+  attemptedIdentifier?: string;
   ip: string;
   userAgent: string;
   geo: Partial<GeoInfo>;
@@ -126,9 +128,17 @@ export async function sendLoginAlert(data: LoginAlertData): Promise<void> {
   const lines = [
     `<b>${icon} ${title}</b>`,
     ``,
-    `👤 <b>Utilisateur :</b> ${esc(data.userName)}`,
-    `📞 <b>Téléphone :</b> <code>${esc(data.userPhone)}</code>`,
-    `🆔 <b>ID :</b> <code>${esc(data.userId)}</code>`,
+    `👤 <b>Utilisateur :</b> ${esc(data.userName ?? "Non identifié")}`,
+    ...(data.userPhone
+      ? [`📞 <b>Téléphone :</b> <code>${esc(data.userPhone)}</code>`]
+      : data.userEmail
+        ? [`✉️ <b>Email :</b> ${esc(data.userEmail)}`]
+        : data.attemptedIdentifier
+          ? [`🔎 <b>Identifiant tenté :</b> <code>${esc(data.attemptedIdentifier)}</code>`]
+          : data.userName || data.userId
+            ? [`📞 <b>Téléphone :</b> <code>–</code>`]
+            : []),
+    ...(data.userId ? [`🆔 <b>ID :</b> <code>${esc(data.userId)}</code>`] : []),
     ``,
     `🌐 <b>Adresse IP :</b> <code>${esc(data.ip)}</code>`,
     `${flag} <b>Pays :</b> ${esc(data.geo.country)}`,
@@ -179,30 +189,34 @@ export async function sendRegisterAlert(data: RegisterAlertData): Promise<void> 
 export interface DepositAlertData {
   userId: string;
   userName: string;
-  userPhone: string;
+  userPhone: string | null;
   amount: number;
   currency: string;
   gateway: string;
   operator: string;
   countryCode: string;
-  ip: string;
-  geo: Partial<GeoInfo>;
+  ip?: string;
+  geo?: Partial<GeoInfo>;
   transactionId: string;
 }
 
 export async function sendDepositAlert(data: DepositAlertData): Promise<void> {
-  const flag = countryFlag(data.geo.countryCode ?? data.countryCode);
+  const flag = countryFlag(data.geo?.countryCode ?? data.countryCode);
+  const contextLines = [
+    ...(data.ip ? [`🌐 <b>IP :</b> <code>${esc(data.ip)}</code>`] : []),
+    ...(data.geo?.city || data.geo?.country
+      ? [`${flag} <b>Localisation :</b> ${esc(data.geo.city)}, ${esc(data.geo.country)}`]
+      : []),
+  ];
   const lines = [
     `<b>💰 Nouvelle recharge</b>`,
     ``,
     `👤 <b>Utilisateur :</b> ${esc(data.userName)} (<code>${esc(data.userPhone)}</code>)`,
-    `💵 <b>Montant :</b> <b>${data.amount.toLocaleString()} ${esc(data.currency)}</b>`,
+    `💵 <b>Montant :</b> <b>${data.amount.toLocaleString("fr-FR")} ${esc(data.currency)}</b>`,
     `🏦 <b>Gateway :</b> ${esc(data.gateway)}`,
     `📱 <b>Opérateur :</b> ${esc(data.operator)}`,
     `🔖 <b>Transaction ID :</b> <code>${esc(data.transactionId)}</code>`,
-    ``,
-    `🌐 <b>IP :</b> <code>${esc(data.ip)}</code>`,
-    `${flag} <b>Localisation :</b> ${esc(data.geo.city)}, ${esc(data.geo.country)}`,
+    ...(contextLines.length > 0 ? ["", ...contextLines] : []),
     ``,
     `🕒 ${new Date().toLocaleString("fr-FR", { timeZone: "Africa/Abidjan" })}`,
   ];
@@ -240,6 +254,38 @@ export async function sendNumberBuyAlert(data: NumberBuyAlertData): Promise<void
   await sendMessage(lines.join("\n"));
 }
 
+export async function sendDepositCreditAlert(data: {
+  userId: string;
+  amount: number;
+  gateway: string;
+  operator: string;
+  transactionId: string;
+  ip?: string;
+}): Promise<void> {
+  try {
+    const [user] = await db.select({
+      fullName: usersTable.fullName,
+      phone: usersTable.phone,
+      countryCode: usersTable.countryCode,
+    }).from(usersTable).where(eq(usersTable.id, data.userId)).limit(1);
+    await sendDepositAlert({
+      userId: data.userId,
+      userName: user?.fullName ?? "Utilisateur",
+      userPhone: user?.phone ?? null,
+      amount: data.amount,
+      currency: "FCFA",
+      gateway: data.gateway,
+      operator: data.operator,
+      countryCode: user?.countryCode ?? "",
+      ip: data.ip,
+      geo: {},
+      transactionId: data.transactionId,
+    });
+  } catch (err) {
+    logger.warn({ err: (err as Error).message, transactionId: data.transactionId }, "[Telegram] Deposit alert failed");
+  }
+}
+
 export interface AuditAlertData {
   action: string;
   description: string;
@@ -263,6 +309,35 @@ export async function sendAuditAlert(data: AuditAlertData): Promise<void> {
     ...(data.userId ? [`🆔 <b>ID :</b> <code>${esc(data.userId)}</code>`] : []),
     ...(data.ip ? [`🌐 <b>IP :</b> <code>${esc(data.ip)}</code>`] : []),
     ...(data.geo?.city ? [`${flag} <b>Localisation :</b> ${esc(data.geo.city)}, ${esc(data.geo.country)}`] : []),
+    ``,
+    `🕒 ${new Date().toLocaleString("fr-FR", { timeZone: "Africa/Abidjan" })}`,
+  ];
+  await sendMessage(lines.join("\n"));
+}
+
+export interface OtpEventAlertData {
+  event: string;
+  purpose: string;
+  userId?: string;
+  userName?: string;
+  email?: string;
+  identifier?: string;
+  ip?: string;
+  detail?: string;
+}
+
+/** Sends OTP lifecycle status only. Never accepts or includes the OTP value. */
+export async function sendOtpEventAlert(data: OtpEventAlertData): Promise<void> {
+  const lines = [
+    `<b>🔐 OTP — ${esc(data.event)}</b>`,
+    ``,
+    `🎯 <b>Motif :</b> ${esc(data.purpose)}`,
+    ...(data.userName ? [`👤 <b>Utilisateur :</b> ${esc(data.userName)}`] : []),
+    ...(data.userId ? [`🆔 <b>ID :</b> <code>${esc(data.userId)}</code>`] : []),
+    ...(data.email ? [`✉️ <b>Email :</b> ${esc(data.email)}`] : []),
+    ...(data.identifier ? [`🔎 <b>Identifiant :</b> <code>${esc(data.identifier)}</code>`] : []),
+    ...(data.ip ? [`🌐 <b>IP :</b> <code>${esc(data.ip)}</code>`] : []),
+    ...(data.detail ? [`📋 <b>Détail :</b> ${esc(data.detail)}`] : []),
     ``,
     `🕒 ${new Date().toLocaleString("fr-FR", { timeZone: "Africa/Abidjan" })}`,
   ];

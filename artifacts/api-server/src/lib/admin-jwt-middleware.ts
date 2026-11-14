@@ -4,6 +4,7 @@
  */
 import type { Request, Response, NextFunction } from "express";
 import { verifyAdminJwt, type AdminJwtPayload } from "./admin-jwt";
+import { sendAuditAlert } from "./telegram";
 
 declare global {
   namespace Express {
@@ -30,5 +31,21 @@ export function requireAdminJwt(
     return;
   }
   req.adminPayload = payload;
+
+  if (["POST", "PUT", "PATCH", "DELETE"].includes(req.method.toUpperCase())) {
+    res.once("finish", () => {
+      const status = res.statusCode;
+      const route = req.originalUrl.split("?")[0] || req.path;
+      void sendAuditAlert({
+        action: `Admin ${req.method.toUpperCase()}`,
+        description: `${route} — HTTP ${status}`,
+        userId: payload.sub,
+        userName: payload.name || payload.email,
+        ip: req.ip,
+        severity: status >= 500 ? "critical" : status >= 400 ? "warning" : "info",
+      });
+    });
+  }
+
   next();
 }

@@ -2,6 +2,7 @@ import { and, eq, isNull, like, sql } from "drizzle-orm";
 import { db, fxProfitsTable, transactionsTable, usersTable } from "@workspace/db";
 import type { ClapayClient, ClapayGatewayMeta, ClapayPaymentStatusResponse } from "./clapay";
 import { normalizeClapayStatus, parseClapayMeta } from "./clapay";
+import { sendDepositCreditAlert } from "./telegram";
 
 const STATUS_CACHE_MS = 3_000;
 const STATUS_CACHE_MAX_ENTRIES = 1_000;
@@ -274,7 +275,7 @@ export async function settleVerifiedClapayDeposit(
   externalDepositId: string,
   database: typeof db = db,
 ): Promise<{ settled: boolean; transactionId?: string; userId?: string; amount?: number }> {
-  return database.transaction(async (tx) => {
+  const outcome = await database.transaction(async (tx) => {
     const [deposit] = await tx.select().from(transactionsTable)
       .where(and(
         eq(transactionsTable.externalDepositId, externalDepositId),
@@ -336,6 +337,23 @@ export async function settleVerifiedClapayDeposit(
       amount: deposit.amount,
     };
   });
+
+  if (
+    database === db
+    && outcome.settled
+    && outcome.transactionId
+    && outcome.userId
+    && outcome.amount !== undefined
+  ) {
+    void sendDepositCreditAlert({
+      userId: outcome.userId,
+      amount: outcome.amount,
+      gateway: "Clapay",
+      operator: "Mobile Money",
+      transactionId: outcome.transactionId,
+    });
+  }
+  return outcome;
 }
 
 export async function failClapayDeposit(

@@ -15,6 +15,7 @@ import { getAppUrl } from "../lib/app-url";
 import { broadcastNotification } from "./notifications";
 import { notificationsTable } from "@workspace/db";
 import { randomUUID } from "node:crypto";
+import { sendDepositCreditAlert } from "../lib/telegram";
 
 const router: IRouter = Router();
 
@@ -90,6 +91,13 @@ async function creditCryptoDeposit(
 
   if (notif) broadcastNotification(notif);
 
+  void sendDepositCreditAlert({
+    userId,
+    amount: amountFcfa,
+    gateway: "Crypto (NowPayments)",
+    operator: "Crypto",
+    transactionId: txId,
+  });
   logger.info({ paymentId, userId, amountFcfa, partial }, "[Crypto] Balance credited");
   return true;
 }

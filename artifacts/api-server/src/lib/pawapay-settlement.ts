@@ -13,6 +13,7 @@ import {
   type PawaPayDepositSearchResult,
 } from "./pawapay";
 import { resolvePawaPayCredentials } from "./gateway-credentials";
+import { sendDepositCreditAlert } from "./telegram";
 
 export type PawaPayGatewayMeta = {
   expectedAmount?: string | number;
@@ -197,7 +198,7 @@ export async function settleVerifiedPawaPayDeposit(
   data: PawaPayDepositData,
   database: typeof db | any = db,
 ): Promise<PawaPaySettlementOutcome> {
-  return database.transaction(async (tx: any) => {
+  const outcome = await database.transaction(async (tx: any) => {
     const [deposit] = await tx.select().from(transactionsTable)
       .where(and(
         eq(transactionsTable.externalDepositId, externalDepositId),
@@ -250,6 +251,23 @@ export async function settleVerifiedPawaPayDeposit(
       .where(eq(fxProfitsTable.transactionId, deposit.id));
     return { settled: false, failed: true, ignored: false, transactionId: deposit.id };
   });
+
+  if (
+    database === db
+    && outcome.settled
+    && outcome.transactionId
+    && outcome.userId
+    && outcome.amount !== undefined
+  ) {
+    void sendDepositCreditAlert({
+      userId: outcome.userId,
+      amount: outcome.amount,
+      gateway: "PawaPay",
+      operator: "Mobile Money",
+      transactionId: outcome.transactionId,
+    });
+  }
+  return outcome;
 }
 
 /** Fail an initiation only when the caller has definitive rejection evidence. */

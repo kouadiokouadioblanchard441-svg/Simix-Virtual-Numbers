@@ -20,8 +20,59 @@ import { createOtp, isUserInactive } from "../lib/otp";
 import { sendOtpEmail } from "../lib/email";
 import { requireTurnstile } from "../middlewares/turnstile";
 import { lookupIp } from "../lib/geoip";
-import { sendLoginAlert, sendRegisterAlert } from "../lib/telegram";
+import {
+  sendLoginAlert,
+  sendRegisterAlert,
+  sendOtpEventAlert,
+  type LoginAlertData,
+} from "../lib/telegram";
 import { auditLog } from "../lib/audit";
+
+function notifyLoginAlert(data: Omit<LoginAlertData, "geo">): void {
+  void (async () => {
+    try {
+      const geo = data.ip && data.ip !== "unknown" ? await lookupIp(data.ip) : {};
+      await sendLoginAlert({ ...data, geo });
+    } catch {
+      /* Login alerts are non-critical and never block authentication. */
+    }
+  })();
+}
+
+function notifyRegistration(user: {
+  id: string;
+  fullName: string;
+  phone: string | null;
+  countryCode: string | null;
+}, ip: string, userAgent: string): void {
+  void (async () => {
+    try {
+      const geo = await lookupIp(ip);
+      await sendRegisterAlert({
+        userId: user.id,
+        userName: user.fullName,
+        userPhone: user.phone,
+        countryCode: user.countryCode ?? "",
+        ip,
+        geo,
+      });
+      auditLog({
+        userId: user.id,
+        userName: user.fullName,
+        action: "register",
+        entity: "user",
+        entityId: user.id,
+        ip,
+        userAgent,
+        severity: "info",
+        description: `Nouvel utilisateur inscrit: ${user.phone}`,
+        notifyTelegram: false,
+      });
+    } catch {
+      /* Registration alerts are non-critical. */
+    }
+  })();
+}
 
 function generateReferralCode(): string {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -128,6 +179,7 @@ router.post("/auth/register", requireTurnstile, async (req, res): Promise<void> 
   /* Skip OTP if email verification is disabled by admin */
   if (!await isEmailOtpEnabled()) {
     await db.update(usersTable).set({ emailVerified: true, lastLoginAt: new Date() }).where(eq(usersTable.id, user.id));
+    notifyRegistration(user, ip, req.headers["user-agent"] ?? "");
     res.json({ user: { ...toUser(user), emailVerified: true }, token: session.id });
     return;
   }
@@ -139,23 +191,19 @@ router.post("/auth/register", requireTurnstile, async (req, res): Promise<void> 
   } catch (emailErr) {
     emailDeliveryFailed = true;
     logger.error({ err: emailErr }, "[auth] registration OTP email error");
+    void sendOtpEventAlert({
+      event: "Échec d'envoi du code",
+      purpose: "Vérification d'inscription",
+      userId: user.id,
+      userName: user.fullName,
+      email: safeEmail,
+      ip: req.ip,
+      detail: "Le code n'a pas pu être généré ou envoyé.",
+    });
   }
 
   /* Telegram alert + audit log — fire-and-forget */
-  void (async () => {
-    try {
-      const geo = await lookupIp(ip);
-      await sendRegisterAlert({
-        userId: user.id,
-        userName: user.fullName,
-        userPhone: user.phone,
-        countryCode: user.countryCode ?? "",
-        ip,
-        geo,
-      });
-      auditLog({ userId: user.id, userName: user.fullName, action: "register", entity: "user", entityId: user.id, ip, userAgent: req.headers["user-agent"] ?? "", severity: "info", description: `Nouvel utilisateur inscrit: ${user.phone}` });
-    } catch { /* non-fatal */ }
-  })();
+  notifyRegistration(user, ip, req.headers["user-agent"] ?? "");
 
   res.json({
     user: toUser(user),
@@ -171,6 +219,16 @@ router.post("/auth/login", requireTurnstile, async (req, res): Promise<void> => 
 
   const parsed = LoginBody.safeParse(req.body);
   if (!parsed.success) {
+    const attemptedIdentifier = typeof req.body?.identifier === "string"
+      ? req.body.identifier.slice(0, 120)
+      : undefined;
+    notifyLoginAlert({
+      attemptedIdentifier,
+      ip,
+      userAgent: ua,
+      success: false,
+      failReason: "Paramètres de connexion invalides",
+    });
     res.status(400).json({ error: parsed.error.message });
     return;
   }
@@ -181,6 +239,14 @@ router.post("/auth/login", requireTurnstile, async (req, res): Promise<void> => 
   /* ── Brute-force check BEFORE hitting the DB ── */
   const risk = assessLoginRisk(ip, normalized);
   if (risk.level === "dangerous") {
+    notifyLoginAlert({
+      userName: "Tentative suspecte",
+      attemptedIdentifier: normalized,
+      ip,
+      userAgent: ua,
+      success: false,
+      failReason: "Trop de tentatives détectées",
+    });
     await logSecurityEvent({
       eventType: "brute_force_detected",
       severity: "critical",
@@ -207,12 +273,29 @@ router.post("/auth/login", requireTurnstile, async (req, res): Promise<void> => 
     /* Record failed attempt */
     isRateLimited(`login_fail_ip:${ip}`, 99999, 15 * 60_000);
     isRateLimited(`login_fail_user:${normalized}`, 99999, 15 * 60_000);
+    notifyLoginAlert({
+      userName: "Compte introuvable",
+      attemptedIdentifier: normalized,
+      ip,
+      userAgent: ua,
+      success: false,
+      failReason: "Identifiants invalides",
+    });
     res.status(401).json({ error: "Identifiants invalides" });
     return;
   }
 
   /* Blocked user check */
   if (user.status === "Bloqué") {
+    notifyLoginAlert({
+      userId: user.id,
+      userName: user.fullName,
+      userPhone: user.phone,
+      ip,
+      userAgent: ua,
+      success: false,
+      failReason: "Compte suspendu",
+    });
     res.status(403).json({
       error: "Votre compte a été suspendu.",
       reason: user.blockedReason ?? "Activité suspecte détectée",
@@ -221,6 +304,15 @@ router.post("/auth/login", requireTurnstile, async (req, res): Promise<void> => 
   }
 
   if (!user.passwordHash) {
+    notifyLoginAlert({
+      userId: user.id,
+      userName: user.fullName,
+      userPhone: user.phone,
+      ip,
+      userAgent: ua,
+      success: false,
+      failReason: "Ce compte utilise la connexion Google",
+    });
     res.status(401).json({
       error: "Ce compte utilise la connexion Google. Veuillez vous connecter avec Google.",
     });
@@ -243,6 +335,15 @@ router.post("/auth/login", requireTurnstile, async (req, res): Promise<void> => 
         riskScore: risk.score,
       });
     }
+    notifyLoginAlert({
+      userId: user.id,
+      userName: user.fullName,
+      userPhone: user.phone,
+      ip,
+      userAgent: ua,
+      success: false,
+      failReason: "Mot de passe incorrect",
+    });
     res.status(401).json({ error: "Identifiants invalides" });
     return;
   }
@@ -271,6 +372,15 @@ router.post("/auth/login", requireTurnstile, async (req, res): Promise<void> => 
     } catch (emailErr) {
       emailDeliveryFailed = true;
       logger.error({ err: emailErr }, "[auth] email verification OTP error");
+      void sendOtpEventAlert({
+        event: "Échec d'envoi du code",
+        purpose: "Vérification de l'adresse email",
+        userId: user.id,
+        userName: user.fullName,
+        email: user.email,
+        ip,
+        detail: "Le code n'a pas pu être généré ou envoyé.",
+      });
     }
     res.json({
       user: toUser(user),
@@ -288,6 +398,15 @@ router.post("/auth/login", requireTurnstile, async (req, res): Promise<void> => 
       await sendOtpEmail(user.email, otpCode, "inactivity", user.fullName, issuanceId);
     } catch (emailErr) {
       logger.error({ err: emailErr }, "[auth] inactivity OTP email error");
+      void sendOtpEventAlert({
+        event: "Échec d'envoi du code",
+        purpose: "Contrôle d'inactivité",
+        userId: user.id,
+        userName: user.fullName,
+        email: user.email,
+        ip,
+        detail: "Le code n'a pas pu être généré ou envoyé.",
+      });
     }
     res.json({ user: toUser(user), token: session.id, requiresInactivityCheck: true });
     return;

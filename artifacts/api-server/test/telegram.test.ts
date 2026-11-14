@@ -8,6 +8,7 @@ import type {
   RegisterAlertData,
   NumberBuyAlertData,
 } from "../src/lib/telegram";
+import type { GeoInfo } from "../src/lib/geoip";
 
 // Compile only telegram.ts, without resolving/importing its runtime dependencies.
 // The VM has no process, real database, logger, or network access.
@@ -18,6 +19,19 @@ type TelegramModule = {
   sendRegisterAlert(data: RegisterAlertData): Promise<void>;
   sendLoginAlert(data: LoginAlertData): Promise<void>;
   sendNumberBuyAlert(data: NumberBuyAlertData): Promise<void>;
+  sendDepositAlert(data: {
+    userId: string; userName: string; userPhone: string | null; amount: number;
+    currency: string; gateway: string; operator: string; countryCode: string;
+    ip?: string; geo?: Partial<GeoInfo>; transactionId: string;
+  }): Promise<void>;
+  sendAuditAlert(data: {
+    action: string; description: string; userId?: string; userName?: string;
+    ip?: string; geo?: Partial<GeoInfo>; severity?: "info" | "warning" | "critical";
+  }): Promise<void>;
+  sendOtpEventAlert(data: {
+    event: string; purpose: string; userId?: string; userName?: string;
+    email?: string; identifier?: string; ip?: string; detail?: string;
+  }): Promise<void>;
 };
 
 async function harness() {
@@ -99,11 +113,11 @@ async function harness() {
   });
   return {
     alerts: module.exports as TelegramModule,
-    assertMessage(expectedText: string) {
+    assertMessage(expectedText: string, expectedFlags: string[] = ["CI"]) {
       assert.deepEqual(settingsRead.sort(), [
         "telegram_alerts_enabled", "telegram_bot_token", "telegram_chat_id",
       ]);
-      assert.deepEqual(flags, ["CI"]);
+      assert.deepEqual(flags, expectedFlags);
       assert.equal(requests.length, 1, "Each alert sends exactly one message");
       const { url, init } = requests[0]!;
       assert.equal(url, "https://api.telegram.org/botfake-test-token/sendMessage");
@@ -234,3 +248,103 @@ for (const scenario of cases) {
     ].join("\n"));
   });
 }
+
+test("failed login for an unknown account reports the attempted identifier only", async () => {
+  const h = await harness();
+  await h.alerts.sendLoginAlert({
+    attemptedIdentifier: "person@example.test",
+    ip: "192.0.2.10",
+    userAgent: "Mozilla/5.0 (Linux; Android 14) Chrome/120.0 Mobile",
+    geo: {},
+    success: false,
+    failReason: "Identifiants invalides",
+  });
+
+  h.assertMessage([
+    "<b>🚨 Tentative de connexion échouée</b>", "",
+    "👤 <b>Utilisateur :</b> Non identifié",
+    "🔎 <b>Identifiant tenté :</b> <code>person@example.test</code>",
+    "",
+    "🌐 <b>Adresse IP :</b> <code>192.0.2.10</code>",
+    "🇨🇮 <b>Pays :</b> –",
+    "🏙️ <b>Ville :</b> –",
+    "📍 <b>Région :</b> –",
+    "📡 <b>FAI / ISP :</b> –",
+    "🕐 <b>Fuseau :</b> –", "",
+    "📱 Mobile <b>Appareil :</b> Mobile",
+    "🌍 <b>Navigateur :</b> Chrome",
+    "💻 <b>Système :</b> Android", "",
+    "❌ <b>Raison échec :</b> Identifiants invalides", "", timestamp,
+  ].join("\n"), [""]);
+});
+
+test("OTP alert reports status and context without exposing the code", async () => {
+  const h = await harness();
+  await h.alerts.sendOtpEventAlert({
+    event: "Échec de vérification",
+    purpose: "Réinitialisation du mot de passe",
+    userId: "user-test-123",
+    userName: "Alice Test",
+    email: "alice@example.test",
+    ip: "192.0.2.11",
+    detail: "Code incorrect; valeur non transmise.",
+  });
+
+  h.assertMessage([
+    "<b>🔐 OTP — Échec de vérification</b>", "",
+    "🎯 <b>Motif :</b> Réinitialisation du mot de passe",
+    "👤 <b>Utilisateur :</b> Alice Test",
+    "🆔 <b>ID :</b> <code>user-test-123</code>",
+    "✉️ <b>Email :</b> alice@example.test",
+    "🌐 <b>IP :</b> <code>192.0.2.11</code>",
+    "📋 <b>Détail :</b> Code incorrect; valeur non transmise.", "",
+    timestamp,
+  ].join("\n"), []);
+});
+
+test("deposit alert formats a confirmed credit without request IP data", async () => {
+  const h = await harness();
+  await h.alerts.sendDepositAlert({
+    userId: "user-test-123",
+    userName: "Alice Test",
+    userPhone: "+2250100000000",
+    amount: 5000,
+    currency: "FCFA",
+    gateway: "PawaPay",
+    operator: "Orange Money",
+    countryCode: "CI",
+    transactionId: "tx-test-123",
+    geo: {},
+  });
+
+  h.assertMessage([
+    "<b>💰 Nouvelle recharge</b>", "",
+    "👤 <b>Utilisateur :</b> Alice Test (<code>+2250100000000</code>)",
+    `💵 <b>Montant :</b> <b>5\u202f000 FCFA</b>`,
+    "🏦 <b>Gateway :</b> PawaPay",
+    "📱 <b>Opérateur :</b> Orange Money",
+    "🔖 <b>Transaction ID :</b> <code>tx-test-123</code>", "",
+    timestamp,
+  ].join("\n"));
+});
+
+test("audit alert reports admin action and HTTP result without request body", async () => {
+  const h = await harness();
+  await h.alerts.sendAuditAlert({
+    action: "Admin PATCH",
+    description: "/api/admin/settings — HTTP 200",
+    userId: "admin-test-1",
+    userName: "admin@example.test",
+    ip: "192.0.2.12",
+    severity: "info",
+  });
+
+  h.assertMessage([
+    "<b>ℹ️ Audit — Admin PATCH</b>", "",
+    "📋 <b>Description :</b> /api/admin/settings — HTTP 200",
+    "👤 <b>Utilisateur :</b> admin@example.test",
+    "🆔 <b>ID :</b> <code>admin-test-1</code>",
+    "🌐 <b>IP :</b> <code>192.0.2.12</code>", "",
+    timestamp,
+  ].join("\n"), []);
+});

@@ -5,6 +5,8 @@ import { eq, or } from "drizzle-orm";
 import { db, usersTable } from "@workspace/db";
 import { createSession, setSessionCookie } from "../lib/auth";
 import { logger } from "../lib/logger";
+import { lookupIp } from "../lib/geoip";
+import { sendLoginAlert, sendRegisterAlert } from "../lib/telegram";
 
 const router: IRouter = Router();
 
@@ -58,6 +60,51 @@ function getRedirectUri(req: { headers: { host?: string | undefined; "x-forwarde
 function isSecureRequest(req: any): boolean {
   const proto = req.headers["x-forwarded-proto"] as string | string[] | undefined;
   return (req.secure as boolean) || proto === "https" || (Array.isArray(proto) && proto[0] === "https");
+}
+
+function notifyGoogleAttempt(
+  ip: string,
+  userAgent: string,
+  data: {
+    success: boolean;
+    failReason?: string;
+    userId?: string;
+    userName?: string;
+    userPhone?: string | null;
+    userEmail?: string | null;
+    countryCode?: string | null;
+    registered?: boolean;
+  },
+): void {
+  void (async () => {
+    try {
+      const geo = ip && ip !== "unknown" ? await lookupIp(ip) : {};
+      await sendLoginAlert({
+        userId: data.userId,
+        userName: data.userName,
+        userPhone: data.userPhone,
+        userEmail: data.userEmail,
+        attemptedIdentifier: data.userEmail ?? undefined,
+        ip,
+        userAgent,
+        geo,
+        success: data.success,
+        failReason: data.failReason,
+      });
+      if (data.success && data.registered && data.userId) {
+        await sendRegisterAlert({
+          userId: data.userId,
+          userName: data.userName ?? "Utilisateur Google",
+          userPhone: data.userPhone ?? null,
+          countryCode: data.countryCode ?? "",
+          ip,
+          geo,
+        });
+      }
+    } catch {
+      /* Google login alerts are non-critical and never block OAuth. */
+    }
+  })();
 }
 
 /* Cookie options — secure flag is dynamic so it works in all environments */
@@ -151,6 +198,10 @@ router.get("/auth/google/callback", async (req, res): Promise<void> => {
   /* ── User denied consent ── */
   if (error) {
     logger.warn({ error, ip }, "[google-auth] OAuth denied by user");
+    notifyGoogleAttempt(ip, req.headers["user-agent"] ?? "", {
+      success: false,
+      failReason: "Connexion Google annulée ou refusée",
+    });
     res.redirect("/?error=google_denied");
     return;
   }
@@ -160,6 +211,10 @@ router.get("/auth/google/callback", async (req, res): Promise<void> => {
 
   if (!savedState) {
     logger.error({ ip }, "[google-auth] oauth_state cookie missing — possible cookie issue or expired session");
+    notifyGoogleAttempt(ip, req.headers["user-agent"] ?? "", {
+      success: false,
+      failReason: "Session Google expirée ou cookie de sécurité absent",
+    });
     res.redirect("/?error=google_session_expired");
     return;
   }
@@ -169,6 +224,10 @@ router.get("/auth/google/callback", async (req, res): Promise<void> => {
       { ip, stateMatch: state === savedState, hasState: !!state, hasSavedState: !!savedState },
       "[google-auth] State mismatch — possible CSRF or cookie not sent",
     );
+    notifyGoogleAttempt(ip, req.headers["user-agent"] ?? "", {
+      success: false,
+      failReason: "Échec de vérification de l'état de sécurité Google",
+    });
     res.redirect("/?error=invalid_state");
     return;
   }
@@ -191,6 +250,10 @@ router.get("/auth/google/callback", async (req, res): Promise<void> => {
 
   if (!code || typeof code !== "string") {
     logger.error({ ip }, "[google-auth] Authorization code missing");
+    notifyGoogleAttempt(ip, req.headers["user-agent"] ?? "", {
+      success: false,
+      failReason: "Code d'autorisation Google absent",
+    });
     res.redirect("/?error=missing_code");
     return;
   }
@@ -212,6 +275,10 @@ router.get("/auth/google/callback", async (req, res): Promise<void> => {
         ? JSON.stringify((tokenErr as Record<string, { data?: unknown }>).response?.data ?? {})
         : msg;
       logger.error({ err: msg, googleCode, ip, redirectUri }, "[google-auth] Token exchange failed");
+      notifyGoogleAttempt(ip, req.headers["user-agent"] ?? "", {
+        success: false,
+        failReason: "Échange du code Google refusé",
+      });
       const reason = encodeURIComponent(googleCode.slice(0, 120));
       res.redirect(`/?error=google_token_exchange_failed&reason=${reason}`);
       return;
@@ -221,6 +288,10 @@ router.get("/auth/google/callback", async (req, res): Promise<void> => {
 
     if (!tokens.id_token) {
       logger.error({ ip }, "[google-auth] No id_token in Google response");
+      notifyGoogleAttempt(ip, req.headers["user-agent"] ?? "", {
+        success: false,
+        failReason: "Google n'a pas fourni de jeton d'identité",
+      });
       res.redirect("/?error=google_no_token");
       return;
     }
@@ -235,12 +306,20 @@ router.get("/auth/google/callback", async (req, res): Promise<void> => {
     } catch (verifyErr: unknown) {
       const msg = verifyErr instanceof Error ? verifyErr.message : String(verifyErr);
       logger.error({ err: msg, ip }, "[google-auth] ID token verification failed");
+      notifyGoogleAttempt(ip, req.headers["user-agent"] ?? "", {
+        success: false,
+        failReason: "Jeton d'identité Google invalide",
+      });
       res.redirect("/?error=google_invalid_token");
       return;
     }
 
     if (!payload) {
       logger.error({ ip }, "[google-auth] Empty payload from Google");
+      notifyGoogleAttempt(ip, req.headers["user-agent"] ?? "", {
+        success: false,
+        failReason: "Réponse d'identité Google vide",
+      });
       res.redirect("/?error=google_invalid_token");
       return;
     }
@@ -253,6 +332,10 @@ router.get("/auth/google/callback", async (req, res): Promise<void> => {
 
     if (!email) {
       logger.error({ googleId, ip }, "[google-auth] Google did not return an email address");
+      notifyGoogleAttempt(ip, req.headers["user-agent"] ?? "", {
+        success: false,
+        failReason: "Adresse email absente de l'identité Google",
+      });
       res.redirect("/?error=google_no_email");
       return;
     }
@@ -266,6 +349,7 @@ router.get("/auth/google/callback", async (req, res): Promise<void> => {
       .where(or(eq(usersTable.googleId, googleId), eq(usersTable.email, email)))
       .limit(1);
 
+    let registered = false;
     if (!user) {
       /* New user — resolve referrer then create account */
       let referrerId: string | null = null;
@@ -308,6 +392,7 @@ router.get("/auth/google/callback", async (req, res): Promise<void> => {
       }
 
       user = created;
+      registered = true;
       logger.info({ userId: user.id, email, referralCode: newReferralCode, referredBy: referrerId }, "[google-auth] New Google user created");
 
     } else {
@@ -334,6 +419,14 @@ router.get("/auth/google/callback", async (req, res): Promise<void> => {
 
     if (user.status === "Bloqué") {
       logger.warn({ userId: user.id, ip }, "[google-auth] Blocked user attempted login");
+      notifyGoogleAttempt(ip, req.headers["user-agent"] ?? "", {
+        success: false,
+        failReason: "Compte suspendu",
+        userId: user.id,
+        userName: user.fullName ?? fullName,
+        userPhone: user.phone,
+        userEmail: user.email,
+      });
       res.redirect("/?error=account_blocked");
       return;
     }
@@ -342,6 +435,15 @@ router.get("/auth/google/callback", async (req, res): Promise<void> => {
     const session = await createSession(user.id);
     setSessionCookie(res, session.id, session.expiresAt);
 
+    notifyGoogleAttempt(ip, req.headers["user-agent"] ?? "", {
+      success: true,
+      userId: user.id,
+      userName: user.fullName ?? fullName,
+      userPhone: user.phone,
+      userEmail: user.email,
+      countryCode: user.countryCode,
+      registered,
+    });
     logger.info({ userId: user.id, sessionId: session.id, ip }, "[google-auth] Session created — redirecting to dashboard");
 
     res.redirect("/dashboard");
@@ -349,6 +451,10 @@ router.get("/auth/google/callback", async (req, res): Promise<void> => {
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
     logger.error({ err: msg, ip }, "[google-auth] Unexpected error in OAuth callback");
+    notifyGoogleAttempt(ip, req.headers["user-agent"] ?? "", {
+      success: false,
+      failReason: "Erreur inattendue pendant la connexion Google",
+    });
     res.redirect("/?error=google_auth_failed");
   }
 });

@@ -165073,6 +165073,263 @@ async function getFromEmail() {
   return `Simix <noreply@${domain2}>`;
 }
 
+// src/lib/telegram.ts
+init_src();
+init_drizzle_orm();
+init_logger2();
+
+// src/lib/geoip.ts
+init_logger2();
+var PRIVATE_IP_RE = /^(127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|::1$|localhost)/;
+async function lookupIp(ip) {
+  if (!ip || ip === "unknown" || PRIVATE_IP_RE.test(ip)) {
+    return { ip, country: "R\xE9seau local", countryCode: "LAN", city: "\u2013", isp: "\u2013" };
+  }
+  try {
+    const cleanIp = ip.replace(/^::ffff:/, "");
+    const url3 = `http://ip-api.com/json/${cleanIp}?fields=status,message,country,countryCode,region,regionName,city,zip,lat,lon,timezone,isp,org,query`;
+    const res = await fetch(url3, { signal: AbortSignal.timeout(4e3) });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    if (data.status !== "success") {
+      logger.debug({ ip, msg: data.message }, "[geoip] Lookup failed");
+      return { ip };
+    }
+    return {
+      ip: data.query ?? cleanIp,
+      country: data.country ?? "",
+      countryCode: data.countryCode ?? "",
+      region: data.regionName ?? "",
+      city: data.city ?? "",
+      zip: data.zip ?? "",
+      timezone: data.timezone ?? "",
+      isp: data.isp ?? "",
+      org: data.org ?? "",
+      lat: data.lat ?? 0,
+      lon: data.lon ?? 0
+    };
+  } catch (err) {
+    logger.debug({ ip, err: err.message }, "[geoip] Request error");
+    return { ip };
+  }
+}
+function countryFlag(code) {
+  if (!code || code.length !== 2) return "\u{1F30D}";
+  return String.fromCodePoint(
+    ...code.toUpperCase().split("").map((c2) => 127456 - 65 + c2.charCodeAt(0))
+  );
+}
+
+// src/lib/telegram.ts
+var credsCache = null;
+var credsCacheTs = 0;
+var CREDS_TTL_MS = 6e4;
+async function getTelegramCreds() {
+  if (credsCache && Date.now() - credsCacheTs < CREDS_TTL_MS) return credsCache;
+  try {
+    const [tokenRow, chatRow, enabledRow] = await Promise.all([
+      db.select().from(systemSettingsTable).where(eq(systemSettingsTable.key, "telegram_bot_token")).limit(1),
+      db.select().from(systemSettingsTable).where(eq(systemSettingsTable.key, "telegram_chat_id")).limit(1),
+      db.select().from(systemSettingsTable).where(eq(systemSettingsTable.key, "telegram_alerts_enabled")).limit(1)
+    ]);
+    const enabled = enabledRow[0]?.value?.trim();
+    if (enabled === "false" || enabled === "0") return null;
+    const botToken = tokenRow[0]?.value?.trim() || null;
+    const chatId = chatRow[0]?.value?.trim() || null;
+    if (!botToken || !chatId) return null;
+    credsCache = { botToken, chatId };
+    credsCacheTs = Date.now();
+    return credsCache;
+  } catch {
+    return null;
+  }
+}
+async function sendMessage(text2) {
+  const creds = await getTelegramCreds();
+  if (!creds) return;
+  try {
+    const url3 = `https://api.telegram.org/bot${creds.botToken}/sendMessage`;
+    const res = await fetch(url3, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ chat_id: creds.chatId, text: text2, parse_mode: "HTML", disable_web_page_preview: true }),
+      signal: AbortSignal.timeout(5e3)
+    });
+    if (!res.ok) {
+      const body = await res.text();
+      logger.warn({ status: res.status, body }, "[Telegram] sendMessage failed");
+    }
+  } catch (err) {
+    logger.debug({ err: err.message }, "[Telegram] sendMessage error");
+  }
+}
+function esc2(s3) {
+  return (s3 ?? "\u2013").replace(/[<>&]/g, (c2) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;" })[c2] ?? c2);
+}
+function parseUserAgent(ua3) {
+  const s3 = ua3.toLowerCase();
+  let browser = "Inconnu";
+  let os2 = "Inconnu";
+  let device = "Desktop";
+  if (s3.includes("edg/") || s3.includes("edge/")) browser = "Microsoft Edge";
+  else if (s3.includes("opr/") || s3.includes("opera/")) browser = "Opera";
+  else if (s3.includes("chrome/") && !s3.includes("chromium")) browser = "Chrome";
+  else if (s3.includes("firefox/")) browser = "Firefox";
+  else if (s3.includes("safari/") && !s3.includes("chrome")) browser = "Safari";
+  else if (s3.includes("samsungbrowser/")) browser = "Samsung Browser";
+  else if (s3.includes("ucbrowser/")) browser = "UC Browser";
+  if (s3.includes("windows")) os2 = "Windows";
+  else if (s3.includes("android")) os2 = "Android";
+  else if (s3.includes("iphone") || s3.includes("ipad")) os2 = "iOS";
+  else if (s3.includes("mac os x")) os2 = "macOS";
+  else if (s3.includes("linux")) os2 = "Linux";
+  if (s3.includes("mobile") || s3.includes("android") || s3.includes("iphone")) device = "\u{1F4F1} Mobile";
+  else if (s3.includes("tablet") || s3.includes("ipad")) device = "\u{1F4DF} Tablette";
+  else device = "\u{1F5A5}\uFE0F Desktop";
+  return { browser, os: os2, device };
+}
+async function sendLoginAlert(data) {
+  const { browser, os: os2, device } = parseUserAgent(data.userAgent);
+  const flag = countryFlag(data.geo.countryCode ?? "");
+  const icon = data.success ? "\u2705" : "\u{1F6A8}";
+  const title = data.success ? "Nouvelle connexion" : "Tentative de connexion \xE9chou\xE9e";
+  const lines = [
+    `<b>${icon} ${title}</b>`,
+    ``,
+    `\u{1F464} <b>Utilisateur :</b> ${esc2(data.userName ?? "Non identifi\xE9")}`,
+    ...data.userPhone ? [`\u{1F4DE} <b>T\xE9l\xE9phone :</b> <code>${esc2(data.userPhone)}</code>`] : data.userEmail ? [`\u2709\uFE0F <b>Email :</b> ${esc2(data.userEmail)}`] : data.attemptedIdentifier ? [`\u{1F50E} <b>Identifiant tent\xE9 :</b> <code>${esc2(data.attemptedIdentifier)}</code>`] : data.userName || data.userId ? [`\u{1F4DE} <b>T\xE9l\xE9phone :</b> <code>\u2013</code>`] : [],
+    ...data.userId ? [`\u{1F194} <b>ID :</b> <code>${esc2(data.userId)}</code>`] : [],
+    ``,
+    `\u{1F310} <b>Adresse IP :</b> <code>${esc2(data.ip)}</code>`,
+    `${flag} <b>Pays :</b> ${esc2(data.geo.country)}`,
+    `\u{1F3D9}\uFE0F <b>Ville :</b> ${esc2(data.geo.city)}`,
+    `\u{1F4CD} <b>R\xE9gion :</b> ${esc2(data.geo.region)}`,
+    `\u{1F4E1} <b>FAI / ISP :</b> ${esc2(data.geo.isp)}`,
+    `\u{1F550} <b>Fuseau :</b> ${esc2(data.geo.timezone)}`,
+    ``,
+    `${device} <b>Appareil :</b> ${device.replace(/^.+ /, "")}`,
+    `\u{1F30D} <b>Navigateur :</b> ${esc2(browser)}`,
+    `\u{1F4BB} <b>Syst\xE8me :</b> ${esc2(os2)}`,
+    ...data.failReason ? [``, `\u274C <b>Raison \xE9chec :</b> ${esc2(data.failReason)}`] : [],
+    ``,
+    `\u{1F552} ${(/* @__PURE__ */ new Date()).toLocaleString("fr-FR", { timeZone: "Africa/Abidjan" })}`
+  ];
+  await sendMessage(lines.join("\n"));
+}
+async function sendRegisterAlert(data) {
+  const flag = countryFlag(data.geo.countryCode ?? data.countryCode);
+  const lines = [
+    `<b>\u{1F389} Nouvel utilisateur inscrit</b>`,
+    ``,
+    `\u{1F464} <b>Nom :</b> ${esc2(data.userName)}`,
+    `\u{1F4DE} <b>T\xE9l\xE9phone :</b> <code>${esc2(data.userPhone)}</code>`,
+    `\u{1F30D} <b>Pays compte :</b> ${esc2(data.countryCode)}`,
+    `\u{1F194} <b>ID :</b> <code>${esc2(data.userId)}</code>`,
+    ``,
+    `\u{1F310} <b>IP :</b> <code>${esc2(data.ip)}</code>`,
+    `${flag} <b>Localisation :</b> ${esc2(data.geo.city)}, ${esc2(data.geo.country)}`,
+    `\u{1F4E1} <b>FAI :</b> ${esc2(data.geo.isp)}`,
+    ``,
+    `\u{1F552} ${(/* @__PURE__ */ new Date()).toLocaleString("fr-FR", { timeZone: "Africa/Abidjan" })}`
+  ];
+  await sendMessage(lines.join("\n"));
+}
+async function sendDepositAlert(data) {
+  const flag = countryFlag(data.geo?.countryCode ?? data.countryCode);
+  const contextLines = [
+    ...data.ip ? [`\u{1F310} <b>IP :</b> <code>${esc2(data.ip)}</code>`] : [],
+    ...data.geo?.city || data.geo?.country ? [`${flag} <b>Localisation :</b> ${esc2(data.geo.city)}, ${esc2(data.geo.country)}`] : []
+  ];
+  const lines = [
+    `<b>\u{1F4B0} Nouvelle recharge</b>`,
+    ``,
+    `\u{1F464} <b>Utilisateur :</b> ${esc2(data.userName)} (<code>${esc2(data.userPhone)}</code>)`,
+    `\u{1F4B5} <b>Montant :</b> <b>${data.amount.toLocaleString("fr-FR")} ${esc2(data.currency)}</b>`,
+    `\u{1F3E6} <b>Gateway :</b> ${esc2(data.gateway)}`,
+    `\u{1F4F1} <b>Op\xE9rateur :</b> ${esc2(data.operator)}`,
+    `\u{1F516} <b>Transaction ID :</b> <code>${esc2(data.transactionId)}</code>`,
+    ...contextLines.length > 0 ? ["", ...contextLines] : [],
+    ``,
+    `\u{1F552} ${(/* @__PURE__ */ new Date()).toLocaleString("fr-FR", { timeZone: "Africa/Abidjan" })}`
+  ];
+  await sendMessage(lines.join("\n"));
+}
+async function sendNumberBuyAlert(data) {
+  const flag = countryFlag(data.geo.countryCode ?? "");
+  const lines = [
+    `<b>\u{1F4F2} Achat num\xE9ro virtuel</b>`,
+    ``,
+    `\u{1F464} <b>Utilisateur :</b> ${esc2(data.userName)} (<code>${esc2(data.userPhone)}</code>)`,
+    `\u{1F527} <b>Service :</b> ${esc2(data.service)}`,
+    `\u{1F30D} <b>Pays num\xE9ro :</b> ${esc2(data.numberCountry)}`,
+    `\u{1F4F1} <b>Num\xE9ro :</b> <code>${esc2(data.virtualNumber)}</code>`,
+    `\u{1F4B5} <b>Prix :</b> ${data.price.toLocaleString()} FCFA`,
+    ``,
+    `\u{1F310} <b>IP :</b> <code>${esc2(data.ip)}</code>`,
+    `${flag} <b>Localisation :</b> ${esc2(data.geo.city)}, ${esc2(data.geo.country)}`,
+    ``,
+    `\u{1F552} ${(/* @__PURE__ */ new Date()).toLocaleString("fr-FR", { timeZone: "Africa/Abidjan" })}`
+  ];
+  await sendMessage(lines.join("\n"));
+}
+async function sendDepositCreditAlert(data) {
+  try {
+    const [user] = await db.select({
+      fullName: usersTable.fullName,
+      phone: usersTable.phone,
+      countryCode: usersTable.countryCode
+    }).from(usersTable).where(eq(usersTable.id, data.userId)).limit(1);
+    await sendDepositAlert({
+      userId: data.userId,
+      userName: user?.fullName ?? "Utilisateur",
+      userPhone: user?.phone ?? null,
+      amount: data.amount,
+      currency: "FCFA",
+      gateway: data.gateway,
+      operator: data.operator,
+      countryCode: user?.countryCode ?? "",
+      ip: data.ip,
+      geo: {},
+      transactionId: data.transactionId
+    });
+  } catch (err) {
+    logger.warn({ err: err.message, transactionId: data.transactionId }, "[Telegram] Deposit alert failed");
+  }
+}
+async function sendAuditAlert(data) {
+  const icons = { info: "\u2139\uFE0F", warning: "\u26A0\uFE0F", critical: "\u{1F534}" };
+  const icon = icons[data.severity ?? "info"] ?? "\u2139\uFE0F";
+  const flag = data.geo?.countryCode ? countryFlag(data.geo.countryCode) : "";
+  const lines = [
+    `<b>${icon} Audit \u2014 ${esc2(data.action)}</b>`,
+    ``,
+    `\u{1F4CB} <b>Description :</b> ${esc2(data.description)}`,
+    ...data.userName ? [`\u{1F464} <b>Utilisateur :</b> ${esc2(data.userName)}`] : [],
+    ...data.userId ? [`\u{1F194} <b>ID :</b> <code>${esc2(data.userId)}</code>`] : [],
+    ...data.ip ? [`\u{1F310} <b>IP :</b> <code>${esc2(data.ip)}</code>`] : [],
+    ...data.geo?.city ? [`${flag} <b>Localisation :</b> ${esc2(data.geo.city)}, ${esc2(data.geo.country)}`] : [],
+    ``,
+    `\u{1F552} ${(/* @__PURE__ */ new Date()).toLocaleString("fr-FR", { timeZone: "Africa/Abidjan" })}`
+  ];
+  await sendMessage(lines.join("\n"));
+}
+async function sendOtpEventAlert(data) {
+  const lines = [
+    `<b>\u{1F510} OTP \u2014 ${esc2(data.event)}</b>`,
+    ``,
+    `\u{1F3AF} <b>Motif :</b> ${esc2(data.purpose)}`,
+    ...data.userName ? [`\u{1F464} <b>Utilisateur :</b> ${esc2(data.userName)}`] : [],
+    ...data.userId ? [`\u{1F194} <b>ID :</b> <code>${esc2(data.userId)}</code>`] : [],
+    ...data.email ? [`\u2709\uFE0F <b>Email :</b> ${esc2(data.email)}`] : [],
+    ...data.identifier ? [`\u{1F50E} <b>Identifiant :</b> <code>${esc2(data.identifier)}</code>`] : [],
+    ...data.ip ? [`\u{1F310} <b>IP :</b> <code>${esc2(data.ip)}</code>`] : [],
+    ...data.detail ? [`\u{1F4CB} <b>D\xE9tail :</b> ${esc2(data.detail)}`] : [],
+    ``,
+    `\u{1F552} ${(/* @__PURE__ */ new Date()).toLocaleString("fr-FR", { timeZone: "Africa/Abidjan" })}`
+  ];
+  await sendMessage(lines.join("\n"));
+}
+
 // src/lib/email.ts
 function escapeEmailHtml(value) {
   return value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
@@ -165331,6 +165588,12 @@ async function sendPasswordResetEmail(to3, code, fullName, issuanceId) {
   if (!result.success && !result.cached) {
     throw new Error(`\xC9chec envoi email reset: ${result.error}`);
   }
+  void sendOtpEventAlert({
+    event: "Code envoy\xE9 par email",
+    purpose: "R\xE9initialisation du mot de passe",
+    userName: fullName,
+    email: to3
+  });
 }
 async function sendOtpEmail(to3, code, purpose, fullName, issuanceId) {
   const from = await getFromEmail();
@@ -165355,6 +165618,12 @@ async function sendOtpEmail(to3, code, purpose, fullName, issuanceId) {
   if (!result.success && !result.cached) {
     throw new Error(`\xC9chec envoi email OTP: ${result.error}`);
   }
+  void sendOtpEventAlert({
+    event: "Code envoy\xE9 par email",
+    purpose: purpose === "inactivity" ? "Contr\xF4le d'inactivit\xE9" : "V\xE9rification d'inscription",
+    userName: fullName,
+    email: to3
+  });
 }
 
 // src/lib/turnstile.ts
@@ -165408,208 +165677,13 @@ async function requireTurnstile(req, res, next) {
   }
 }
 
-// src/lib/geoip.ts
-init_logger2();
-var PRIVATE_IP_RE = /^(127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|::1$|localhost)/;
-async function lookupIp(ip) {
-  if (!ip || ip === "unknown" || PRIVATE_IP_RE.test(ip)) {
-    return { ip, country: "R\xE9seau local", countryCode: "LAN", city: "\u2013", isp: "\u2013" };
-  }
-  try {
-    const cleanIp = ip.replace(/^::ffff:/, "");
-    const url3 = `http://ip-api.com/json/${cleanIp}?fields=status,message,country,countryCode,region,regionName,city,zip,lat,lon,timezone,isp,org,query`;
-    const res = await fetch(url3, { signal: AbortSignal.timeout(4e3) });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const data = await res.json();
-    if (data.status !== "success") {
-      logger.debug({ ip, msg: data.message }, "[geoip] Lookup failed");
-      return { ip };
-    }
-    return {
-      ip: data.query ?? cleanIp,
-      country: data.country ?? "",
-      countryCode: data.countryCode ?? "",
-      region: data.regionName ?? "",
-      city: data.city ?? "",
-      zip: data.zip ?? "",
-      timezone: data.timezone ?? "",
-      isp: data.isp ?? "",
-      org: data.org ?? "",
-      lat: data.lat ?? 0,
-      lon: data.lon ?? 0
-    };
-  } catch (err) {
-    logger.debug({ ip, err: err.message }, "[geoip] Request error");
-    return { ip };
-  }
-}
-function countryFlag(code) {
-  if (!code || code.length !== 2) return "\u{1F30D}";
-  return String.fromCodePoint(
-    ...code.toUpperCase().split("").map((c2) => 127456 - 65 + c2.charCodeAt(0))
-  );
-}
-
-// src/lib/telegram.ts
-init_src();
-init_drizzle_orm();
-init_logger2();
-var credsCache = null;
-var credsCacheTs = 0;
-var CREDS_TTL_MS = 6e4;
-async function getTelegramCreds() {
-  if (credsCache && Date.now() - credsCacheTs < CREDS_TTL_MS) return credsCache;
-  try {
-    const [tokenRow, chatRow, enabledRow] = await Promise.all([
-      db.select().from(systemSettingsTable).where(eq(systemSettingsTable.key, "telegram_bot_token")).limit(1),
-      db.select().from(systemSettingsTable).where(eq(systemSettingsTable.key, "telegram_chat_id")).limit(1),
-      db.select().from(systemSettingsTable).where(eq(systemSettingsTable.key, "telegram_alerts_enabled")).limit(1)
-    ]);
-    const enabled = enabledRow[0]?.value?.trim();
-    if (enabled === "false" || enabled === "0") return null;
-    const botToken = tokenRow[0]?.value?.trim() || null;
-    const chatId = chatRow[0]?.value?.trim() || null;
-    if (!botToken || !chatId) return null;
-    credsCache = { botToken, chatId };
-    credsCacheTs = Date.now();
-    return credsCache;
-  } catch {
-    return null;
-  }
-}
-async function sendMessage(text2) {
-  const creds = await getTelegramCreds();
-  if (!creds) return;
-  try {
-    const url3 = `https://api.telegram.org/bot${creds.botToken}/sendMessage`;
-    const res = await fetch(url3, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ chat_id: creds.chatId, text: text2, parse_mode: "HTML", disable_web_page_preview: true }),
-      signal: AbortSignal.timeout(5e3)
-    });
-    if (!res.ok) {
-      const body = await res.text();
-      logger.warn({ status: res.status, body }, "[Telegram] sendMessage failed");
-    }
-  } catch (err) {
-    logger.debug({ err: err.message }, "[Telegram] sendMessage error");
-  }
-}
-function esc2(s3) {
-  return (s3 ?? "\u2013").replace(/[<>&]/g, (c2) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;" })[c2] ?? c2);
-}
-function parseUserAgent(ua3) {
-  const s3 = ua3.toLowerCase();
-  let browser = "Inconnu";
-  let os2 = "Inconnu";
-  let device = "Desktop";
-  if (s3.includes("edg/") || s3.includes("edge/")) browser = "Microsoft Edge";
-  else if (s3.includes("opr/") || s3.includes("opera/")) browser = "Opera";
-  else if (s3.includes("chrome/") && !s3.includes("chromium")) browser = "Chrome";
-  else if (s3.includes("firefox/")) browser = "Firefox";
-  else if (s3.includes("safari/") && !s3.includes("chrome")) browser = "Safari";
-  else if (s3.includes("samsungbrowser/")) browser = "Samsung Browser";
-  else if (s3.includes("ucbrowser/")) browser = "UC Browser";
-  if (s3.includes("windows")) os2 = "Windows";
-  else if (s3.includes("android")) os2 = "Android";
-  else if (s3.includes("iphone") || s3.includes("ipad")) os2 = "iOS";
-  else if (s3.includes("mac os x")) os2 = "macOS";
-  else if (s3.includes("linux")) os2 = "Linux";
-  if (s3.includes("mobile") || s3.includes("android") || s3.includes("iphone")) device = "\u{1F4F1} Mobile";
-  else if (s3.includes("tablet") || s3.includes("ipad")) device = "\u{1F4DF} Tablette";
-  else device = "\u{1F5A5}\uFE0F Desktop";
-  return { browser, os: os2, device };
-}
-async function sendLoginAlert(data) {
-  const { browser, os: os2, device } = parseUserAgent(data.userAgent);
-  const flag = countryFlag(data.geo.countryCode ?? "");
-  const icon = data.success ? "\u2705" : "\u{1F6A8}";
-  const title = data.success ? "Nouvelle connexion" : "Tentative de connexion \xE9chou\xE9e";
-  const lines = [
-    `<b>${icon} ${title}</b>`,
-    ``,
-    `\u{1F464} <b>Utilisateur :</b> ${esc2(data.userName)}`,
-    `\u{1F4DE} <b>T\xE9l\xE9phone :</b> <code>${esc2(data.userPhone)}</code>`,
-    `\u{1F194} <b>ID :</b> <code>${esc2(data.userId)}</code>`,
-    ``,
-    `\u{1F310} <b>Adresse IP :</b> <code>${esc2(data.ip)}</code>`,
-    `${flag} <b>Pays :</b> ${esc2(data.geo.country)}`,
-    `\u{1F3D9}\uFE0F <b>Ville :</b> ${esc2(data.geo.city)}`,
-    `\u{1F4CD} <b>R\xE9gion :</b> ${esc2(data.geo.region)}`,
-    `\u{1F4E1} <b>FAI / ISP :</b> ${esc2(data.geo.isp)}`,
-    `\u{1F550} <b>Fuseau :</b> ${esc2(data.geo.timezone)}`,
-    ``,
-    `${device} <b>Appareil :</b> ${device.replace(/^.+ /, "")}`,
-    `\u{1F30D} <b>Navigateur :</b> ${esc2(browser)}`,
-    `\u{1F4BB} <b>Syst\xE8me :</b> ${esc2(os2)}`,
-    ...data.failReason ? [``, `\u274C <b>Raison \xE9chec :</b> ${esc2(data.failReason)}`] : [],
-    ``,
-    `\u{1F552} ${(/* @__PURE__ */ new Date()).toLocaleString("fr-FR", { timeZone: "Africa/Abidjan" })}`
-  ];
-  await sendMessage(lines.join("\n"));
-}
-async function sendRegisterAlert(data) {
-  const flag = countryFlag(data.geo.countryCode ?? data.countryCode);
-  const lines = [
-    `<b>\u{1F389} Nouvel utilisateur inscrit</b>`,
-    ``,
-    `\u{1F464} <b>Nom :</b> ${esc2(data.userName)}`,
-    `\u{1F4DE} <b>T\xE9l\xE9phone :</b> <code>${esc2(data.userPhone)}</code>`,
-    `\u{1F30D} <b>Pays compte :</b> ${esc2(data.countryCode)}`,
-    `\u{1F194} <b>ID :</b> <code>${esc2(data.userId)}</code>`,
-    ``,
-    `\u{1F310} <b>IP :</b> <code>${esc2(data.ip)}</code>`,
-    `${flag} <b>Localisation :</b> ${esc2(data.geo.city)}, ${esc2(data.geo.country)}`,
-    `\u{1F4E1} <b>FAI :</b> ${esc2(data.geo.isp)}`,
-    ``,
-    `\u{1F552} ${(/* @__PURE__ */ new Date()).toLocaleString("fr-FR", { timeZone: "Africa/Abidjan" })}`
-  ];
-  await sendMessage(lines.join("\n"));
-}
-async function sendNumberBuyAlert(data) {
-  const flag = countryFlag(data.geo.countryCode ?? "");
-  const lines = [
-    `<b>\u{1F4F2} Achat num\xE9ro virtuel</b>`,
-    ``,
-    `\u{1F464} <b>Utilisateur :</b> ${esc2(data.userName)} (<code>${esc2(data.userPhone)}</code>)`,
-    `\u{1F527} <b>Service :</b> ${esc2(data.service)}`,
-    `\u{1F30D} <b>Pays num\xE9ro :</b> ${esc2(data.numberCountry)}`,
-    `\u{1F4F1} <b>Num\xE9ro :</b> <code>${esc2(data.virtualNumber)}</code>`,
-    `\u{1F4B5} <b>Prix :</b> ${data.price.toLocaleString()} FCFA`,
-    ``,
-    `\u{1F310} <b>IP :</b> <code>${esc2(data.ip)}</code>`,
-    `${flag} <b>Localisation :</b> ${esc2(data.geo.city)}, ${esc2(data.geo.country)}`,
-    ``,
-    `\u{1F552} ${(/* @__PURE__ */ new Date()).toLocaleString("fr-FR", { timeZone: "Africa/Abidjan" })}`
-  ];
-  await sendMessage(lines.join("\n"));
-}
-async function sendAuditAlert(data) {
-  const icons = { info: "\u2139\uFE0F", warning: "\u26A0\uFE0F", critical: "\u{1F534}" };
-  const icon = icons[data.severity ?? "info"] ?? "\u2139\uFE0F";
-  const flag = data.geo?.countryCode ? countryFlag(data.geo.countryCode) : "";
-  const lines = [
-    `<b>${icon} Audit \u2014 ${esc2(data.action)}</b>`,
-    ``,
-    `\u{1F4CB} <b>Description :</b> ${esc2(data.description)}`,
-    ...data.userName ? [`\u{1F464} <b>Utilisateur :</b> ${esc2(data.userName)}`] : [],
-    ...data.userId ? [`\u{1F194} <b>ID :</b> <code>${esc2(data.userId)}</code>`] : [],
-    ...data.ip ? [`\u{1F310} <b>IP :</b> <code>${esc2(data.ip)}</code>`] : [],
-    ...data.geo?.city ? [`${flag} <b>Localisation :</b> ${esc2(data.geo.city)}, ${esc2(data.geo.country)}`] : [],
-    ``,
-    `\u{1F552} ${(/* @__PURE__ */ new Date()).toLocaleString("fr-FR", { timeZone: "Africa/Abidjan" })}`
-  ];
-  await sendMessage(lines.join("\n"));
-}
-
 // src/lib/audit.ts
 init_src();
 init_logger2();
 function auditLog(entry) {
   void (async () => {
+    let geo = {};
     try {
-      let geo = {};
       if (entry.ip) geo = await lookupIp(entry.ip);
       await db.insert(auditLogsTable).values({
         userId: entry.userId ?? null,
@@ -165625,7 +165699,11 @@ function auditLog(entry) {
         description: entry.description ?? null,
         metadata: entry.metadata ? entry.metadata : null
       });
-      if (entry.notifyTelegram) {
+    } catch (err) {
+      logger.debug({ err: err.message, action: entry.action }, "[audit] log failed");
+    }
+    if (entry.notifyTelegram !== false) {
+      try {
         await sendAuditAlert({
           action: entry.action,
           description: entry.description ?? entry.action,
@@ -165636,14 +165714,51 @@ function auditLog(entry) {
           severity: entry.severity,
           metadata: entry.metadata
         });
+      } catch (err) {
+        logger.debug({ err: err.message, action: entry.action }, "[audit] Telegram alert failed");
       }
-    } catch (err) {
-      logger.debug({ err: err.message, action: entry.action }, "[audit] log failed");
     }
   })();
 }
 
 // src/routes/auth.ts
+function notifyLoginAlert(data) {
+  void (async () => {
+    try {
+      const geo = data.ip && data.ip !== "unknown" ? await lookupIp(data.ip) : {};
+      await sendLoginAlert({ ...data, geo });
+    } catch {
+    }
+  })();
+}
+function notifyRegistration(user, ip, userAgent) {
+  void (async () => {
+    try {
+      const geo = await lookupIp(ip);
+      await sendRegisterAlert({
+        userId: user.id,
+        userName: user.fullName,
+        userPhone: user.phone,
+        countryCode: user.countryCode ?? "",
+        ip,
+        geo
+      });
+      auditLog({
+        userId: user.id,
+        userName: user.fullName,
+        action: "register",
+        entity: "user",
+        entityId: user.id,
+        ip,
+        userAgent,
+        severity: "info",
+        description: `Nouvel utilisateur inscrit: ${user.phone}`,
+        notifyTelegram: false
+      });
+    } catch {
+    }
+  })();
+}
 function generateReferralCode() {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
   let code = "SX";
@@ -165712,6 +165827,7 @@ router3.post("/auth/register", requireTurnstile, async (req, res) => {
   setSessionCookie(res, session.id, session.expiresAt);
   if (!await isEmailOtpEnabled()) {
     await db.update(usersTable).set({ emailVerified: true, lastLoginAt: /* @__PURE__ */ new Date() }).where(eq(usersTable.id, user.id));
+    notifyRegistration(user, ip, req.headers["user-agent"] ?? "");
     res.json({ user: { ...toUser(user), emailVerified: true }, token: session.id });
     return;
   }
@@ -165722,22 +165838,17 @@ router3.post("/auth/register", requireTurnstile, async (req, res) => {
   } catch (emailErr) {
     emailDeliveryFailed = true;
     logger.error({ err: emailErr }, "[auth] registration OTP email error");
+    void sendOtpEventAlert({
+      event: "\xC9chec d'envoi du code",
+      purpose: "V\xE9rification d'inscription",
+      userId: user.id,
+      userName: user.fullName,
+      email: safeEmail,
+      ip: req.ip,
+      detail: "Le code n'a pas pu \xEAtre g\xE9n\xE9r\xE9 ou envoy\xE9."
+    });
   }
-  void (async () => {
-    try {
-      const geo = await lookupIp(ip);
-      await sendRegisterAlert({
-        userId: user.id,
-        userName: user.fullName,
-        userPhone: user.phone,
-        countryCode: user.countryCode ?? "",
-        ip,
-        geo
-      });
-      auditLog({ userId: user.id, userName: user.fullName, action: "register", entity: "user", entityId: user.id, ip, userAgent: req.headers["user-agent"] ?? "", severity: "info", description: `Nouvel utilisateur inscrit: ${user.phone}` });
-    } catch {
-    }
-  })();
+  notifyRegistration(user, ip, req.headers["user-agent"] ?? "");
   res.json({
     user: toUser(user),
     token: session.id,
@@ -165750,6 +165861,14 @@ router3.post("/auth/login", requireTurnstile, async (req, res) => {
   const ua3 = req.headers["user-agent"] ?? "";
   const parsed = LoginBody.safeParse(req.body);
   if (!parsed.success) {
+    const attemptedIdentifier = typeof req.body?.identifier === "string" ? req.body.identifier.slice(0, 120) : void 0;
+    notifyLoginAlert({
+      attemptedIdentifier,
+      ip,
+      userAgent: ua3,
+      success: false,
+      failReason: "Param\xE8tres de connexion invalides"
+    });
     res.status(400).json({ error: parsed.error.message });
     return;
   }
@@ -165757,6 +165876,14 @@ router3.post("/auth/login", requireTurnstile, async (req, res) => {
   const normalized = identifier.replace(/\s+/g, "");
   const risk = assessLoginRisk(ip, normalized);
   if (risk.level === "dangerous") {
+    notifyLoginAlert({
+      userName: "Tentative suspecte",
+      attemptedIdentifier: normalized,
+      ip,
+      userAgent: ua3,
+      success: false,
+      failReason: "Trop de tentatives d\xE9tect\xE9es"
+    });
     await logSecurityEvent({
       eventType: "brute_force_detected",
       severity: "critical",
@@ -165776,10 +165903,27 @@ router3.post("/auth/login", requireTurnstile, async (req, res) => {
   if (!user) {
     isRateLimited(`login_fail_ip:${ip}`, 99999, 15 * 6e4);
     isRateLimited(`login_fail_user:${normalized}`, 99999, 15 * 6e4);
+    notifyLoginAlert({
+      userName: "Compte introuvable",
+      attemptedIdentifier: normalized,
+      ip,
+      userAgent: ua3,
+      success: false,
+      failReason: "Identifiants invalides"
+    });
     res.status(401).json({ error: "Identifiants invalides" });
     return;
   }
   if (user.status === "Bloqu\xE9") {
+    notifyLoginAlert({
+      userId: user.id,
+      userName: user.fullName,
+      userPhone: user.phone,
+      ip,
+      userAgent: ua3,
+      success: false,
+      failReason: "Compte suspendu"
+    });
     res.status(403).json({
       error: "Votre compte a \xE9t\xE9 suspendu.",
       reason: user.blockedReason ?? "Activit\xE9 suspecte d\xE9tect\xE9e"
@@ -165787,6 +165931,15 @@ router3.post("/auth/login", requireTurnstile, async (req, res) => {
     return;
   }
   if (!user.passwordHash) {
+    notifyLoginAlert({
+      userId: user.id,
+      userName: user.fullName,
+      userPhone: user.phone,
+      ip,
+      userAgent: ua3,
+      success: false,
+      failReason: "Ce compte utilise la connexion Google"
+    });
     res.status(401).json({
       error: "Ce compte utilise la connexion Google. Veuillez vous connecter avec Google."
     });
@@ -165807,6 +165960,15 @@ router3.post("/auth/login", requireTurnstile, async (req, res) => {
         riskScore: risk.score
       });
     }
+    notifyLoginAlert({
+      userId: user.id,
+      userName: user.fullName,
+      userPhone: user.phone,
+      ip,
+      userAgent: ua3,
+      success: false,
+      failReason: "Mot de passe incorrect"
+    });
     res.status(401).json({ error: "Identifiants invalides" });
     return;
   }
@@ -165828,6 +165990,15 @@ router3.post("/auth/login", requireTurnstile, async (req, res) => {
     } catch (emailErr) {
       emailDeliveryFailed = true;
       logger.error({ err: emailErr }, "[auth] email verification OTP error");
+      void sendOtpEventAlert({
+        event: "\xC9chec d'envoi du code",
+        purpose: "V\xE9rification de l'adresse email",
+        userId: user.id,
+        userName: user.fullName,
+        email: user.email,
+        ip,
+        detail: "Le code n'a pas pu \xEAtre g\xE9n\xE9r\xE9 ou envoy\xE9."
+      });
     }
     res.json({
       user: toUser(user),
@@ -165843,6 +166014,15 @@ router3.post("/auth/login", requireTurnstile, async (req, res) => {
       await sendOtpEmail(user.email, otpCode, "inactivity", user.fullName, issuanceId);
     } catch (emailErr) {
       logger.error({ err: emailErr }, "[auth] inactivity OTP email error");
+      void sendOtpEventAlert({
+        event: "\xC9chec d'envoi du code",
+        purpose: "Contr\xF4le d'inactivit\xE9",
+        userId: user.id,
+        userName: user.fullName,
+        email: user.email,
+        ip,
+        detail: "Le code n'a pas pu \xEAtre g\xE9n\xE9r\xE9 ou envoy\xE9."
+      });
     }
     res.json({ user: toUser(user), token: session.id, requiresInactivityCheck: true });
     return;
@@ -166121,6 +166301,36 @@ function isSecureRequest(req) {
   const proto = req.headers["x-forwarded-proto"];
   return req.secure || proto === "https" || Array.isArray(proto) && proto[0] === "https";
 }
+function notifyGoogleAttempt(ip, userAgent, data) {
+  void (async () => {
+    try {
+      const geo = ip && ip !== "unknown" ? await lookupIp(ip) : {};
+      await sendLoginAlert({
+        userId: data.userId,
+        userName: data.userName,
+        userPhone: data.userPhone,
+        userEmail: data.userEmail,
+        attemptedIdentifier: data.userEmail ?? void 0,
+        ip,
+        userAgent,
+        geo,
+        success: data.success,
+        failReason: data.failReason
+      });
+      if (data.success && data.registered && data.userId) {
+        await sendRegisterAlert({
+          userId: data.userId,
+          userName: data.userName ?? "Utilisateur Google",
+          userPhone: data.userPhone ?? null,
+          countryCode: data.countryCode ?? "",
+          ip,
+          geo
+        });
+      }
+    } catch {
+    }
+  })();
+}
 function oauthStateCookieOptions(secure) {
   return {
     httpOnly: true,
@@ -166178,12 +166388,20 @@ router4.get("/auth/google/callback", async (req, res) => {
   const ip = req.headers["x-forwarded-for"]?.split(",")[0]?.trim() ?? req.ip;
   if (error62) {
     logger.warn({ error: error62, ip }, "[google-auth] OAuth denied by user");
+    notifyGoogleAttempt(ip, req.headers["user-agent"] ?? "", {
+      success: false,
+      failReason: "Connexion Google annul\xE9e ou refus\xE9e"
+    });
     res.redirect("/?error=google_denied");
     return;
   }
   const savedState = req.cookies?.oauth_state;
   if (!savedState) {
     logger.error({ ip }, "[google-auth] oauth_state cookie missing \u2014 possible cookie issue or expired session");
+    notifyGoogleAttempt(ip, req.headers["user-agent"] ?? "", {
+      success: false,
+      failReason: "Session Google expir\xE9e ou cookie de s\xE9curit\xE9 absent"
+    });
     res.redirect("/?error=google_session_expired");
     return;
   }
@@ -166192,6 +166410,10 @@ router4.get("/auth/google/callback", async (req, res) => {
       { ip, stateMatch: state === savedState, hasState: !!state, hasSavedState: !!savedState },
       "[google-auth] State mismatch \u2014 possible CSRF or cookie not sent"
     );
+    notifyGoogleAttempt(ip, req.headers["user-agent"] ?? "", {
+      success: false,
+      failReason: "\xC9chec de v\xE9rification de l'\xE9tat de s\xE9curit\xE9 Google"
+    });
     res.redirect("/?error=invalid_state");
     return;
   }
@@ -166207,6 +166429,10 @@ router4.get("/auth/google/callback", async (req, res) => {
   }
   if (!code || typeof code !== "string") {
     logger.error({ ip }, "[google-auth] Authorization code missing");
+    notifyGoogleAttempt(ip, req.headers["user-agent"] ?? "", {
+      success: false,
+      failReason: "Code d'autorisation Google absent"
+    });
     res.redirect("/?error=missing_code");
     return;
   }
@@ -166222,6 +166448,10 @@ router4.get("/auth/google/callback", async (req, res) => {
       const msg = tokenErr instanceof Error ? tokenErr.message : String(tokenErr);
       const googleCode = tokenErr?.response ? JSON.stringify(tokenErr.response?.data ?? {}) : msg;
       logger.error({ err: msg, googleCode, ip, redirectUri }, "[google-auth] Token exchange failed");
+      notifyGoogleAttempt(ip, req.headers["user-agent"] ?? "", {
+        success: false,
+        failReason: "\xC9change du code Google refus\xE9"
+      });
       const reason = encodeURIComponent(googleCode.slice(0, 120));
       res.redirect(`/?error=google_token_exchange_failed&reason=${reason}`);
       return;
@@ -166229,6 +166459,10 @@ router4.get("/auth/google/callback", async (req, res) => {
     client.setCredentials(tokens);
     if (!tokens.id_token) {
       logger.error({ ip }, "[google-auth] No id_token in Google response");
+      notifyGoogleAttempt(ip, req.headers["user-agent"] ?? "", {
+        success: false,
+        failReason: "Google n'a pas fourni de jeton d'identit\xE9"
+      });
       res.redirect("/?error=google_no_token");
       return;
     }
@@ -166242,11 +166476,19 @@ router4.get("/auth/google/callback", async (req, res) => {
     } catch (verifyErr) {
       const msg = verifyErr instanceof Error ? verifyErr.message : String(verifyErr);
       logger.error({ err: msg, ip }, "[google-auth] ID token verification failed");
+      notifyGoogleAttempt(ip, req.headers["user-agent"] ?? "", {
+        success: false,
+        failReason: "Jeton d'identit\xE9 Google invalide"
+      });
       res.redirect("/?error=google_invalid_token");
       return;
     }
     if (!payload) {
       logger.error({ ip }, "[google-auth] Empty payload from Google");
+      notifyGoogleAttempt(ip, req.headers["user-agent"] ?? "", {
+        success: false,
+        failReason: "R\xE9ponse d'identit\xE9 Google vide"
+      });
       res.redirect("/?error=google_invalid_token");
       return;
     }
@@ -166257,11 +166499,16 @@ router4.get("/auth/google/callback", async (req, res) => {
     const googleEmailVerified = payload.email_verified ?? false;
     if (!email3) {
       logger.error({ googleId, ip }, "[google-auth] Google did not return an email address");
+      notifyGoogleAttempt(ip, req.headers["user-agent"] ?? "", {
+        success: false,
+        failReason: "Adresse email absente de l'identit\xE9 Google"
+      });
       res.redirect("/?error=google_no_email");
       return;
     }
     logger.info({ googleId, email: email3, ip }, "[google-auth] Google identity verified");
     let [user] = await db.select().from(usersTable).where(or(eq(usersTable.googleId, googleId), eq(usersTable.email, email3))).limit(1);
+    let registered = false;
     if (!user) {
       let referrerId = null;
       if (incomingRefCode) {
@@ -166293,6 +166540,7 @@ router4.get("/auth/google/callback", async (req, res) => {
         return;
       }
       user = created;
+      registered = true;
       logger.info({ userId: user.id, email: email3, referralCode: newReferralCode, referredBy: referrerId }, "[google-auth] New Google user created");
     } else {
       const updates = {
@@ -166309,16 +166557,37 @@ router4.get("/auth/google/callback", async (req, res) => {
     }
     if (user.status === "Bloqu\xE9") {
       logger.warn({ userId: user.id, ip }, "[google-auth] Blocked user attempted login");
+      notifyGoogleAttempt(ip, req.headers["user-agent"] ?? "", {
+        success: false,
+        failReason: "Compte suspendu",
+        userId: user.id,
+        userName: user.fullName ?? fullName,
+        userPhone: user.phone,
+        userEmail: user.email
+      });
       res.redirect("/?error=account_blocked");
       return;
     }
     const session = await createSession(user.id);
     setSessionCookie(res, session.id, session.expiresAt);
+    notifyGoogleAttempt(ip, req.headers["user-agent"] ?? "", {
+      success: true,
+      userId: user.id,
+      userName: user.fullName ?? fullName,
+      userPhone: user.phone,
+      userEmail: user.email,
+      countryCode: user.countryCode,
+      registered
+    });
     logger.info({ userId: user.id, sessionId: session.id, ip }, "[google-auth] Session created \u2014 redirecting to dashboard");
     res.redirect("/dashboard");
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     logger.error({ err: msg, ip }, "[google-auth] Unexpected error in OAuth callback");
+    notifyGoogleAttempt(ip, req.headers["user-agent"] ?? "", {
+      success: false,
+      failReason: "Erreur inattendue pendant la connexion Google"
+    });
     res.redirect("/?error=google_auth_failed");
   }
 });
@@ -167543,7 +167812,7 @@ router8.post("/numbers", requireAuth, async (req, res) => {
   void (async () => {
     try {
       const geo = await lookupIp(ip);
-      auditLog({ userId: user.id, userName: user.fullName, action: "number_buy", entity: "virtual_number", entityId: vn3.id, ip, userAgent: ua3, severity: "info", description: `Achat ${service.name} ${country.name} \u2014 ${price} FCFA` });
+      auditLog({ userId: user.id, userName: user.fullName, action: "number_buy", entity: "virtual_number", entityId: vn3.id, ip, userAgent: ua3, severity: "info", description: `Achat ${service.name} ${country.name} \u2014 ${price} FCFA`, notifyTelegram: false });
       await sendNumberBuyAlert({
         userId: user.id,
         userName: user.fullName,
@@ -167742,7 +168011,7 @@ async function getPawaPayClientForDeposit(deposit, database = db) {
   return credentials ? new PawaPayClient(credentials.token, credentials.env) : null;
 }
 async function settleVerifiedPawaPayDeposit(externalDepositId, data, database = db) {
-  return database.transaction(async (tx) => {
+  const outcome = await database.transaction(async (tx) => {
     const [deposit] = await tx.select().from(transactionsTable).where(and(
       eq(transactionsTable.externalDepositId, externalDepositId),
       eq(transactionsTable.type, "recharge")
@@ -167779,6 +168048,16 @@ async function settleVerifiedPawaPayDeposit(externalDepositId, data, database = 
     await tx.update(fxProfitsTable).set({ status: "failed" }).where(eq(fxProfitsTable.transactionId, deposit.id));
     return { settled: false, failed: true, ignored: false, transactionId: deposit.id };
   });
+  if (database === db && outcome.settled && outcome.transactionId && outcome.userId && outcome.amount !== void 0) {
+    void sendDepositCreditAlert({
+      userId: outcome.userId,
+      amount: outcome.amount,
+      gateway: "PawaPay",
+      operator: "Mobile Money",
+      transactionId: outcome.transactionId
+    });
+  }
+  return outcome;
 }
 async function failPawaPayDeposit(externalDepositId, database = db) {
   return database.transaction(async (tx) => {
@@ -167996,7 +168275,7 @@ function getClapayActionFields(meta3) {
   };
 }
 async function settleVerifiedClapayDeposit(externalDepositId, database = db) {
-  return database.transaction(async (tx) => {
+  const outcome = await database.transaction(async (tx) => {
     const [deposit] = await tx.select().from(transactionsTable).where(and(
       eq(transactionsTable.externalDepositId, externalDepositId),
       eq(transactionsTable.type, "recharge")
@@ -168039,6 +168318,16 @@ async function settleVerifiedClapayDeposit(externalDepositId, database = db) {
       amount: deposit.amount
     };
   });
+  if (database === db && outcome.settled && outcome.transactionId && outcome.userId && outcome.amount !== void 0) {
+    void sendDepositCreditAlert({
+      userId: outcome.userId,
+      amount: outcome.amount,
+      gateway: "Clapay",
+      operator: "Mobile Money",
+      transactionId: outcome.transactionId
+    });
+  }
+  return outcome;
 }
 async function failClapayDeposit(externalDepositId, database = db) {
   return database.transaction(async (tx) => {
@@ -168136,6 +168425,20 @@ function requireAdminJwt(req, res, next) {
     return;
   }
   req.adminPayload = payload;
+  if (["POST", "PUT", "PATCH", "DELETE"].includes(req.method.toUpperCase())) {
+    res.once("finish", () => {
+      const status = res.statusCode;
+      const route = req.originalUrl.split("?")[0] || req.path;
+      void sendAuditAlert({
+        action: `Admin ${req.method.toUpperCase()}`,
+        description: `${route} \u2014 HTTP ${status}`,
+        userId: payload.sub,
+        userName: payload.name || payload.email,
+        ip: req.ip,
+        severity: status >= 500 ? "critical" : status >= 400 ? "warning" : "info"
+      });
+    });
+  }
   next();
 }
 
@@ -171481,6 +171784,13 @@ async function creditCryptoDeposit(txId, userId, amountFcfa, paymentId, partial2
     type: "deposit_success"
   }).returning();
   if (notif) broadcastNotification(notif);
+  void sendDepositCreditAlert({
+    userId,
+    amount: amountFcfa,
+    gateway: "Crypto (NowPayments)",
+    operator: "Crypto",
+    transactionId: txId
+  });
   logger.info({ paymentId, userId, amountFcfa, partial: partial2 }, "[Crypto] Balance credited");
   return true;
 }
@@ -173434,6 +173744,14 @@ router13.post("/admin/pawapay/simulate-deposit", requireAdmin2, async (req, res)
       return;
     }
     await db.update(usersTable).set({ balance: sql`${usersTable.balance} + ${actualAmount}` }).where(eq(usersTable.id, tx.userId));
+    void sendDepositCreditAlert({
+      userId: tx.userId,
+      amount: actualAmount,
+      gateway: "PawaPay (simulation)",
+      operator: tx.method ?? "Mobile Money",
+      transactionId: String(tx.id),
+      ip: req.ip
+    });
     logger.info({ depositId, userId: tx.userId, amount: actualAmount }, "[PawaPay SIM] Deposit simulated as COMPLETED");
     try {
       const [userRow] = await db.select({ email: usersTable.email, fullName: usersTable.fullName, balance: usersTable.balance }).from(usersTable).where(eq(usersTable.id, tx.userId)).limit(1);
@@ -173554,6 +173872,14 @@ router13.post("/admin/clapay/simulate-deposit", requireAdmin2, async (req, res) 
       return;
     }
     await db.update(usersTable).set({ balance: sql`${usersTable.balance} + ${actualAmount}` }).where(eq(usersTable.id, tx.userId));
+    void sendDepositCreditAlert({
+      userId: tx.userId,
+      amount: actualAmount,
+      gateway: "Clapay (simulation)",
+      operator: tx.method ?? "Mobile Money",
+      transactionId: String(tx.id),
+      ip: req.ip
+    });
     logger.info({ depositId, userId: tx.userId, amount: actualAmount }, "[Clapay SIM] Deposit simulated as COMPLETED");
     try {
       const [userRow] = await db.select({ email: usersTable.email, fullName: usersTable.fullName, balance: usersTable.balance }).from(usersTable).where(eq(usersTable.id, tx.userId)).limit(1);
@@ -174655,6 +174981,13 @@ async function logAccess(ip, action, success2, email3, details, userAgent) {
   } catch (err) {
     logger.error({ err }, "Failed to log admin access");
   }
+  void sendAuditAlert({
+    action: `Admin access \u2014 ${action}`,
+    description: success2 ? "Acc\xE8s administrateur accept\xE9" : "Tentative d\u2019acc\xE8s administrateur refus\xE9e",
+    userName: email3,
+    ip,
+    severity: success2 ? "info" : "warning"
+  });
 }
 router15.post("/admin-auth/verify-token", async (req, res) => {
   const ip = getIp(req);
@@ -174700,6 +175033,7 @@ router15.post("/admin-auth/login", async (req, res) => {
   }
   const { email: email3, password, fingerprint } = req.body;
   if (!email3 || !password) {
+    await logAccess(ip, "login_missing_fields", false, typeof email3 === "string" ? email3 : void 0, {}, ua3);
     res.status(400).json({ error: "Email and password are required" });
     return;
   }
@@ -179757,11 +180091,29 @@ router28.post("/auth/otp/send", requireAuth, async (req, res) => {
   const user = req.user;
   const ip = req.ip ?? "unknown";
   if (isRateLimited(`otp_send:${user.id}`, 5, 60 * 6e4)) {
+    void sendOtpEventAlert({
+      event: "Demande de code bloqu\xE9e",
+      purpose: user.emailVerified ? "Contr\xF4le d'inactivit\xE9" : "V\xE9rification d'inscription",
+      userId: user.id,
+      userName: user.fullName,
+      email: user.email,
+      ip,
+      detail: "Limite de demandes atteinte."
+    });
     res.status(429).json({ error: "Trop de demandes. R\xE9essayez dans une heure." });
     return;
   }
   const purpose = user.emailVerified ? "inactivity_check" : "email_verification";
   if (await hasRecentOtp(user.id, purpose, 60)) {
+    void sendOtpEventAlert({
+      event: "Demande de code bloqu\xE9e",
+      purpose: purpose === "email_verification" ? "V\xE9rification d'inscription" : "Contr\xF4le d'inactivit\xE9",
+      userId: user.id,
+      userName: user.fullName,
+      email: user.email,
+      ip,
+      detail: "D\xE9lai d'attente de 60 secondes non \xE9coul\xE9."
+    });
     res.status(429).json({ error: "Un code a d\xE9j\xE0 \xE9t\xE9 envoy\xE9. Attendez 60 secondes avant de renvoyer." });
     return;
   }
@@ -179771,6 +180123,15 @@ router28.post("/auth/otp/send", requireAuth, async (req, res) => {
     res.json({ success: true, message: `Code envoy\xE9 \xE0 ${user.email}` });
   } catch (err) {
     logger.error({ err }, "[otp] send error");
+    void sendOtpEventAlert({
+      event: "\xC9chec de demande de code",
+      purpose: purpose === "email_verification" ? "V\xE9rification d'inscription" : "Contr\xF4le d'inactivit\xE9",
+      userId: user.id,
+      userName: user.fullName,
+      email: user.email,
+      ip,
+      detail: "La g\xE9n\xE9ration ou l'envoi du code a \xE9chou\xE9."
+    });
     res.status(500).json({ error: "Impossible d'envoyer l'email. V\xE9rifiez votre adresse email." });
   }
 });
@@ -179779,16 +180140,43 @@ router28.post("/auth/otp/verify", requireAuth, async (req, res) => {
   const ip = req.ip ?? "unknown";
   const { code } = req.body;
   if (!code || typeof code !== "string" || !/^\d{6}$/.test(code)) {
+    void sendOtpEventAlert({
+      event: "Tentative de v\xE9rification refus\xE9e",
+      purpose: user.emailVerified ? "Contr\xF4le d'inactivit\xE9" : "V\xE9rification d'inscription",
+      userId: user.id,
+      userName: user.fullName,
+      email: user.email,
+      ip,
+      detail: "Format de code invalide; la valeur saisie n'est pas transmise."
+    });
     res.status(400).json({ error: "Code invalide. Entrez les 6 chiffres." });
     return;
   }
   if (isRateLimited(`otp_verify:${user.id}`, 10, 15 * 6e4)) {
+    void sendOtpEventAlert({
+      event: "V\xE9rification bloqu\xE9e",
+      purpose: user.emailVerified ? "Contr\xF4le d'inactivit\xE9" : "V\xE9rification d'inscription",
+      userId: user.id,
+      userName: user.fullName,
+      email: user.email,
+      ip,
+      detail: "Limite de tentatives atteinte."
+    });
     res.status(429).json({ error: "Trop de tentatives. R\xE9essayez dans 15 minutes." });
     return;
   }
   const purpose = user.emailVerified ? "inactivity_check" : "email_verification";
   const result = await verifyOtp(user.id, code, purpose);
   if (!result.success) {
+    void sendOtpEventAlert({
+      event: "\xC9chec de v\xE9rification",
+      purpose: purpose === "email_verification" ? "V\xE9rification d'inscription" : "Contr\xF4le d'inactivit\xE9",
+      userId: user.id,
+      userName: user.fullName,
+      email: user.email,
+      ip,
+      detail: result.error
+    });
     res.status(400).json({ error: result.error });
     return;
   }
@@ -179797,15 +180185,41 @@ router28.post("/auth/otp/verify", requireAuth, async (req, res) => {
     lastLoginAt: /* @__PURE__ */ new Date(),
     verified: true
   }).where(eq(usersTable.id, user.id));
+  void sendOtpEventAlert({
+    event: "V\xE9rification r\xE9ussie",
+    purpose: purpose === "email_verification" ? "V\xE9rification d'inscription" : "Contr\xF4le d'inactivit\xE9",
+    userId: user.id,
+    userName: user.fullName,
+    email: user.email,
+    ip
+  });
   res.json({ success: true, message: "Email v\xE9rifi\xE9 avec succ\xE8s." });
 });
 router28.post("/auth/otp/resend", requireAuth, async (req, res) => {
   const user = req.user;
   if (isRateLimited(`otp_resend:${user.id}`, 3, 60 * 6e4)) {
+    void sendOtpEventAlert({
+      event: "Renvoi de code bloqu\xE9",
+      purpose: user.emailVerified ? "Contr\xF4le d'inactivit\xE9" : "V\xE9rification d'inscription",
+      userId: user.id,
+      userName: user.fullName,
+      email: user.email,
+      ip: req.ip ?? "unknown",
+      detail: "Limite de renvois atteinte."
+    });
     res.status(429).json({ error: "Limite de renvoi atteinte. R\xE9essayez dans une heure." });
     return;
   }
   if (await hasRecentOtp(user.id, "email_verification", 60)) {
+    void sendOtpEventAlert({
+      event: "Renvoi de code bloqu\xE9",
+      purpose: user.emailVerified ? "Contr\xF4le d'inactivit\xE9" : "V\xE9rification d'inscription",
+      userId: user.id,
+      userName: user.fullName,
+      email: user.email,
+      ip: req.ip ?? "unknown",
+      detail: "D\xE9lai d'attente de 60 secondes non \xE9coul\xE9."
+    });
     res.status(429).json({ error: "Attendez 60 secondes avant de renvoyer le code." });
     return;
   }
@@ -179816,6 +180230,15 @@ router28.post("/auth/otp/resend", requireAuth, async (req, res) => {
     res.json({ success: true, message: `Nouveau code envoy\xE9 \xE0 ${user.email}` });
   } catch (err) {
     logger.error({ err }, "[otp] resend error");
+    void sendOtpEventAlert({
+      event: "\xC9chec de renvoi de code",
+      purpose: user.emailVerified ? "Contr\xF4le d'inactivit\xE9" : "V\xE9rification d'inscription",
+      userId: user.id,
+      userName: user.fullName,
+      email: user.email,
+      ip: req.ip ?? "unknown",
+      detail: "La g\xE9n\xE9ration ou l'envoi du code a \xE9chou\xE9."
+    });
     res.status(500).json({ error: "Impossible d'envoyer l'email." });
   }
 });
@@ -179838,14 +180261,34 @@ init_drizzle_orm();
 init_src();
 init_logger2();
 var router29 = (0, import_express30.Router)();
+function maskIdentifier(value) {
+  const emailAt = value.indexOf("@");
+  if (emailAt > 0) return `${value[0]}***${value.slice(emailAt)}`;
+  if (value.length <= 4) return "***";
+  return `${value.slice(0, 2)}***${value.slice(-2)}`;
+}
+function notifyResetEvent(event, ip, user, identifier, detail) {
+  void sendOtpEventAlert({
+    event,
+    purpose: "R\xE9initialisation du mot de passe",
+    userId: user?.id,
+    userName: user?.fullName ?? void 0,
+    email: user?.email,
+    identifier: identifier ? maskIdentifier(identifier) : void 0,
+    ip,
+    detail
+  });
+}
 router29.post("/auth/forgot-password", requireTurnstile, async (req, res) => {
   const ip = req.ip ?? "unknown";
   if (isRateLimited(`forgot_pwd:${ip}`, 5, 60 * 6e4)) {
+    notifyResetEvent("Demande de r\xE9initialisation bloqu\xE9e", ip, void 0, void 0, "Limite de demandes atteinte.");
     res.status(429).json({ error: "Trop de tentatives. R\xE9essayez dans une heure." });
     return;
   }
   const { identifier } = req.body;
   if (!identifier || typeof identifier !== "string" || identifier.trim().length < 3) {
+    notifyResetEvent("Demande de r\xE9initialisation invalide", ip, void 0, void 0, "Identifiant absent ou invalide.");
     res.status(400).json({ error: "Veuillez fournir votre email ou num\xE9ro de t\xE9l\xE9phone." });
     return;
   }
@@ -179858,10 +180301,17 @@ router29.post("/auth/forgot-password", requireTurnstile, async (req, res) => {
     )
   ).limit(1);
   if (!user || !user.passwordHash) {
+    notifyResetEvent(
+      user ? "Demande sans mot de passe local" : "Demande sans compte correspondant",
+      ip,
+      user ? { id: user.id, fullName: user.fullName, email: user.email } : void 0,
+      user ? void 0 : normalized
+    );
     res.json({ success: true, message: "Si un compte correspond, un email a \xE9t\xE9 envoy\xE9." });
     return;
   }
   if (await hasRecentOtp(user.id, "password_reset", 60)) {
+    notifyResetEvent("Demande de code bloqu\xE9e", ip, user, void 0, "D\xE9lai d'attente de 60 secondes non \xE9coul\xE9.");
     res.status(429).json({ error: "Un code a d\xE9j\xE0 \xE9t\xE9 envoy\xE9. Attendez 60 secondes." });
     return;
   }
@@ -179870,68 +180320,82 @@ router29.post("/auth/forgot-password", requireTurnstile, async (req, res) => {
     await sendPasswordResetEmail(user.email, code, user.fullName, issuanceId);
   } catch (err) {
     logger.error({ err }, "[forgot-password] send email error");
+    notifyResetEvent("\xC9chec de demande de r\xE9initialisation", ip, user, void 0, "La g\xE9n\xE9ration du code ou l'envoi de l'email a \xE9chou\xE9.");
   }
   res.json({ success: true, message: "Si un compte correspond, un email a \xE9t\xE9 envoy\xE9." });
 });
 router29.post("/auth/forgot-password/verify", async (req, res) => {
   const ip = req.ip ?? "unknown";
   if (isRateLimited(`reset_verify:${ip}`, 10, 15 * 6e4)) {
+    notifyResetEvent("V\xE9rification du code bloqu\xE9e", ip, void 0, void 0, "Limite de tentatives atteinte.");
     res.status(429).json({ error: "Trop de tentatives. R\xE9essayez dans 15 minutes." });
     return;
   }
   const { userId, code } = req.body;
   if (!userId || !code || typeof code !== "string" || !/^\d{6}$/.test(code)) {
+    notifyResetEvent("Tentative de v\xE9rification refus\xE9e", ip, void 0, void 0, "Param\xE8tres invalides; aucune valeur de code n'est transmise.");
     res.status(400).json({ error: "Param\xE8tres invalides." });
     return;
   }
   const result = await verifyOtp(userId, code, "password_reset");
   if (!result.success) {
+    notifyResetEvent("\xC9chec de v\xE9rification", ip, { id: userId, fullName: null, email: "" }, void 0, result.error);
     res.status(400).json({ error: result.error });
     return;
   }
+  notifyResetEvent("V\xE9rification r\xE9ussie", ip, { id: userId, fullName: null, email: "" });
   res.json({ success: true, resetToken: `${userId}:${code}` });
 });
 router29.post("/auth/reset-password", async (req, res) => {
   const ip = req.ip ?? "unknown";
   if (isRateLimited(`reset_pwd:${ip}`, 5, 60 * 6e4)) {
+    notifyResetEvent("R\xE9initialisation bloqu\xE9e", ip, void 0, void 0, "Limite de demandes atteinte.");
     res.status(429).json({ error: "Trop de tentatives. R\xE9essayez dans une heure." });
     return;
   }
   const { userId, code, newPassword } = req.body;
   if (!userId || !code || !newPassword || typeof newPassword !== "string") {
+    notifyResetEvent("R\xE9initialisation invalide", ip, void 0, void 0, "Param\xE8tres manquants; aucun mot de passe n'est transmis.");
     res.status(400).json({ error: "Param\xE8tres manquants." });
     return;
   }
   if (newPassword.length < 6) {
+    notifyResetEvent("R\xE9initialisation refus\xE9e", ip, void 0, void 0, "Le nouveau mot de passe ne respecte pas la longueur minimale.");
     res.status(400).json({ error: "Le mot de passe doit contenir au moins 6 caract\xE8res." });
     return;
   }
   const [user] = await db.select().from(usersTable).where(eq(usersTable.id, userId)).limit(1);
   if (!user) {
+    notifyResetEvent("R\xE9initialisation refus\xE9e", ip, void 0, void 0, "Compte introuvable.");
     res.status(404).json({ error: "Compte introuvable." });
     return;
   }
   const passwordHash = await bcryptjs_default.hash(newPassword, 12);
   await db.update(usersTable).set({ passwordHash, lastLoginAt: /* @__PURE__ */ new Date() }).where(eq(usersTable.id, userId));
+  notifyResetEvent("Mot de passe r\xE9initialis\xE9", ip, user);
   res.json({ success: true, message: "Mot de passe r\xE9initialis\xE9 avec succ\xE8s." });
 });
 router29.post("/auth/forgot-password/resend", async (req, res) => {
   const ip = req.ip ?? "unknown";
   if (isRateLimited(`reset_resend:${ip}`, 3, 60 * 6e4)) {
+    notifyResetEvent("Renvoi de code bloqu\xE9", ip, void 0, void 0, "Limite de renvois atteinte.");
     res.status(429).json({ error: "Limite atteinte. R\xE9essayez dans une heure." });
     return;
   }
   const { userId } = req.body;
   if (!userId) {
+    notifyResetEvent("Renvoi de code invalide", ip, void 0, void 0, "Identifiant de compte manquant.");
     res.status(400).json({ error: "Param\xE8tre manquant." });
     return;
   }
   const [user] = await db.select().from(usersTable).where(eq(usersTable.id, userId)).limit(1);
   if (!user) {
+    notifyResetEvent("Renvoi demand\xE9 pour un compte introuvable", ip, void 0, String(userId));
     res.json({ success: true });
     return;
   }
   if (await hasRecentOtp(user.id, "password_reset", 60)) {
+    notifyResetEvent("Renvoi de code bloqu\xE9", ip, user, void 0, "D\xE9lai d'attente de 60 secondes non \xE9coul\xE9.");
     res.status(429).json({ error: "Attendez 60 secondes avant de renvoyer." });
     return;
   }
@@ -179941,6 +180405,7 @@ router29.post("/auth/forgot-password/resend", async (req, res) => {
     res.json({ success: true });
   } catch (err) {
     logger.error({ err }, "[forgot-password] resend email error");
+    notifyResetEvent("\xC9chec de renvoi de code", ip, user, void 0, "La g\xE9n\xE9ration du code ou l'envoi de l'email a \xE9chou\xE9.");
     res.status(500).json({ error: "Impossible d'envoyer l'email." });
   }
 });

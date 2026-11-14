@@ -25,8 +25,8 @@ export interface AuditEntry {
 
 export function auditLog(entry: AuditEntry): void {
   void (async () => {
+    let geo: Partial<GeoInfo> = {};
     try {
-      let geo: Partial<GeoInfo> = {};
       if (entry.ip) geo = await lookupIp(entry.ip);
 
       await db.insert(auditLogsTable).values({
@@ -43,8 +43,12 @@ export function auditLog(entry: AuditEntry): void {
         description: entry.description ?? null,
         metadata: entry.metadata ? (entry.metadata as Record<string, unknown>) : null,
       });
+    } catch (err) {
+      logger.debug({ err: (err as Error).message, action: entry.action }, "[audit] log failed");
+    }
 
-      if (entry.notifyTelegram) {
+    if (entry.notifyTelegram !== false) {
+      try {
         await sendAuditAlert({
           action: entry.action,
           description: entry.description ?? entry.action,
@@ -55,9 +59,9 @@ export function auditLog(entry: AuditEntry): void {
           severity: entry.severity,
           metadata: entry.metadata,
         });
+      } catch (err) {
+        logger.debug({ err: (err as Error).message, action: entry.action }, "[audit] Telegram alert failed");
       }
-    } catch (err) {
-      logger.debug({ err: (err as Error).message, action: entry.action }, "[audit] log failed");
     }
   })();
 }

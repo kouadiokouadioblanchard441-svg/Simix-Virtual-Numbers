@@ -13,6 +13,7 @@ import { db, usersTable, adminAccessLogsTable } from "@workspace/db";
 import { signAdminJwt, verifyAdminJwt } from "../lib/admin-jwt";
 import { isRateLimited, getHitCount, resetKey } from "../lib/rate-limiter";
 import { logger } from "../lib/logger";
+import { sendAuditAlert } from "../lib/telegram";
 
 const router: IRouter = Router();
 
@@ -52,6 +53,13 @@ async function logAccess(
   } catch (err) {
     logger.error({ err }, "Failed to log admin access");
   }
+  void sendAuditAlert({
+    action: `Admin access — ${action}`,
+    description: success ? "Accès administrateur accepté" : "Tentative d’accès administrateur refusée",
+    userName: email,
+    ip,
+    severity: success ? "info" : "warning",
+  });
 }
 
 /* ─── POST /api/admin-auth/verify-token ─────────────────────
@@ -126,6 +134,7 @@ router.post("/admin-auth/login", async (req: Request, res: Response): Promise<vo
   };
 
   if (!email || !password) {
+    await logAccess(ip, "login_missing_fields", false, typeof email === "string" ? email : undefined, {}, ua);
     res.status(400).json({ error: "Email and password are required" });
     return;
   }
