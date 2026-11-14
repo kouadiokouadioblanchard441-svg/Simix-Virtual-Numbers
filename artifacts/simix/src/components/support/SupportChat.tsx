@@ -60,8 +60,15 @@ function SimiaAvatar({
   avatarUrl?: string;
   name?: string;
 }) {
-  const [imgError, setImgError] = useState(false);
-  const showImage = avatarUrl && !imgError;
+  const [useDefaultImage, setUseDefaultImage] = useState(false);
+  const [defaultImageFailed, setDefaultImageFailed] = useState(false);
+  useEffect(() => {
+    setUseDefaultImage(false);
+    setDefaultImageFailed(false);
+  }, [avatarUrl]);
+
+  const imageSrc = useDefaultImage || !avatarUrl ? "/support-avatar.png" : avatarUrl;
+  const showImage = !defaultImageFailed;
 
   return (
     <div className="relative flex-shrink-0" style={{ width: size, height: size }}>
@@ -80,10 +87,16 @@ function SimiaAvatar({
       >
         {showImage ? (
           <img
-            src={avatarUrl}
+            src={imageSrc}
             alt={name}
             className="w-full h-full object-cover"
-            onError={() => setImgError(true)}
+            onError={() => {
+              if (!useDefaultImage && avatarUrl && avatarUrl !== "/support-avatar.png") {
+                setUseDefaultImage(true);
+              } else {
+                setDefaultImageFailed(true);
+              }
+            }}
           />
         ) : (
           <Bot size={size * 0.5} color="white" />
