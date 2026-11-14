@@ -542,20 +542,40 @@ router.get("/support/config", async (req, res): Promise<void> => {
 
 /* ── POST chat message (SSE streaming) ───────────────────── */
 router.post("/support/chat", async (req, res): Promise<void> => {
-  const { sessionId, message, imageData, language } = req.body as {
-    sessionId: string;
-    message: string;
-    imageData?: string;
-    language?: string;
-  };
+  const body = (req.body ?? {}) as Record<string, unknown>;
+  const sessionId = body.sessionId;
+  const rawMessage = body.message;
+  const imageData = body.imageData;
+  const language = typeof body.language === "string" ? body.language : undefined;
 
-  if (!sessionId || sessionId.length < 8) {
+  if (typeof sessionId !== "string" || sessionId.length < 8 || sessionId.length > 200) {
     res.status(400).json({ error: "Session ID requis" });
     return;
   }
-  if (!message?.trim() && !imageData) {
+  if (rawMessage !== undefined && typeof rawMessage !== "string") {
+    res.status(400).json({ error: "Message invalide" });
+    return;
+  }
+  if (imageData !== undefined && typeof imageData !== "string") {
+    res.status(400).json({ error: "Image invalide" });
+    return;
+  }
+  const message = typeof rawMessage === "string" ? rawMessage : "";
+  if (!message.trim() && !imageData) {
     res.status(400).json({ error: "Message requis" });
     return;
+  }
+  if (imageData) {
+    const imageMatch = /^data:(image\/[A-Za-z0-9.+-]+);base64,([A-Za-z0-9+/]+={0,2})$/i.exec(imageData);
+    const maxImageBytes = 5 * 1024 * 1024;
+    if (!imageMatch || imageMatch[2]!.length > Math.ceil(maxImageBytes * 4 / 3) + 4) {
+      res.status(400).json({ error: "Format ou taille d’image invalide (5 Mo maximum)" });
+      return;
+    }
+    if (Buffer.from(imageMatch[2]!, "base64").byteLength > maxImageBytes) {
+      res.status(400).json({ error: "Format ou taille d’image invalide (5 Mo maximum)" });
+      return;
+    }
   }
 
   /* ── Check if AI is enabled ── */
@@ -601,6 +621,18 @@ router.post("/support/chat", async (req, res): Promise<void> => {
     conv = created!;
   }
 
+  /* Apply the same hourly cap to both AI and human-takeover conversations. */
+  const hourAgo = new Date(Date.now() - 60 * 60 * 1000);
+  const recentMsgs = await db
+    .select()
+    .from(supportMessagesTable)
+    .where(and(eq(supportMessagesTable.conversationId, conv.id), gte(supportMessagesTable.createdAt, hourAgo)));
+
+  if (recentMsgs.filter(m => m.role === "user").length >= 30) {
+    res.status(429).json({ error: "Trop de messages. Réessayez dans une heure." });
+    return;
+  }
+
   /* ── Human takeover — block AI ── */
   if (conv.isHumanTakeover && conv.status === "takeover") {
     await db.insert(supportMessagesTable).values({
@@ -623,18 +655,6 @@ router.post("/support/chat", async (req, res): Promise<void> => {
     res.write(`data: ${JSON.stringify({ content: "Un agent humain a pris en charge votre conversation. Vous recevrez une réponse très bientôt." })}\n\n`);
     res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
     res.end();
-    return;
-  }
-
-  /* ── Rate limit: 30 messages per session per hour ── */
-  const hourAgo = new Date(Date.now() - 60 * 60 * 1000);
-  const recentMsgs = await db
-    .select()
-    .from(supportMessagesTable)
-    .where(and(eq(supportMessagesTable.conversationId, conv.id), gte(supportMessagesTable.createdAt, hourAgo)));
-
-  if (recentMsgs.filter(m => m.role === "user").length >= 30) {
-    res.status(429).json({ error: "Trop de messages. Réessayez dans une heure." });
     return;
   }
 

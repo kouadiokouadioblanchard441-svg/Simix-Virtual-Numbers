@@ -323,10 +323,11 @@ const rawBodyCapture = (req: express.Request, _res: express.Response, buf: Buffe
   (req as express.Request & { rawBody?: string }).rawBody = buf.toString("utf8");
 };
 
-/* Routes that accept base64-encoded images in the JSON body (banners, site
- * content, etc.) need a much higher limit than plain API calls — a single
- * uploaded image encoded as base64 can easily be several MB.               */
+/* Routes that accept base64-encoded images in the JSON body (support chat,
+ * banners, site content, etc.) need a higher limit — an image grows by about
+ * one third when encoded as base64.                                        */
 const LARGE_JSON_PATH_PREFIXES = [
+  "/api/support/chat",
   "/api/admin/banners",
   "/api/admin/site-content",
 ];

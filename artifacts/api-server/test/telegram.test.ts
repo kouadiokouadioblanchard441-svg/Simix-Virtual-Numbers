@@ -42,6 +42,8 @@ async function harness() {
   const requests: Array<{ url: string; init: RequestInit }> = [];
   const settingsRead: string[] = [];
   const flags: string[] = [];
+  const warnings: Array<{ fields: unknown; message: string }> = [];
+  let telegramResult: unknown = { ok: true };
   const settings: Record<string, string> = {
     telegram_bot_token: " fake-test-token ",
     telegram_chat_id: " fake-test-chat ",
@@ -77,7 +79,7 @@ async function harness() {
     },
     "./logger": {
       logger: {
-        warn: () => assert.fail("Unexpected Telegram warning"),
+        warn: (fields: unknown, message: string) => warnings.push({ fields, message }),
         debug: () => assert.fail("Unexpected Telegram error"),
       },
     },
@@ -110,9 +112,10 @@ async function harness() {
     Blob,
     Buffer,
     FormData,
+    setTimeout,
     fetch: async (url: string, init: RequestInit) => {
       requests.push({ url, init });
-      return { ok: true };
+      return { ok: true, status: 200, json: async () => telegramResult };
     },
   });
   return {
@@ -135,7 +138,7 @@ async function harness() {
         disable_web_page_preview: true,
       });
     },
-    assertSupportAlert(expectedText: string, withImage: boolean) {
+    assertSupportAlert(expectedText: string, withImage: boolean, imageMethod = "sendPhoto") {
       assert.equal(requests.length, withImage ? 2 : 1);
       const textRequest = requests[0]!;
       assert.equal(textRequest.url, "https://api.telegram.org/botfake-test-token/sendMessage");
@@ -146,7 +149,7 @@ async function harness() {
       assert.equal(textPayload.text, expectedText);
       if (withImage) {
         const photoRequest = requests[1]!;
-        assert.equal(photoRequest.url, "https://api.telegram.org/botfake-test-token/sendPhoto");
+        assert.equal(photoRequest.url, `https://api.telegram.org/botfake-test-token/${imageMethod}`);
         assert.equal(photoRequest.init.method, "POST");
         assert.equal(photoRequest.init.signal, "mock-timeout-signal-10000");
         assert.ok(photoRequest.init.body instanceof FormData);
@@ -159,7 +162,8 @@ async function harness() {
           "🆔 <code>user-42</code>",
           "🗂️ Conversation <code>conversation-7</code>",
         ].join("\n"));
-        assert.equal((form.get("photo") as Blob).type, "image/png");
+        const field = imageMethod === "sendPhoto" ? "photo" : "document";
+        assert.equal((form.get(field) as Blob).type, imageMethod === "sendPhoto" ? "image/png" : "image/webp");
       }
     },
     supportTextMessages() {
@@ -167,6 +171,10 @@ async function harness() {
         .filter(request => request.url.endsWith("/sendMessage"))
         .map(request => JSON.parse(String(request.init.body)).text as string);
     },
+    setTelegramResult(result: unknown) {
+      telegramResult = result;
+    },
+    warnings,
   };
 }
 
@@ -391,7 +399,7 @@ test("support message forwards escaped identity, redacts labeled secrets, and se
     conversationId: "conversation-7",
     userId: "user-42",
     userName: "Alice <Test>",
-    message: "Mon mot de passe est secret-123 et <bonjour>",
+    message: "Mon mot de passe est secret avec espaces; et <bonjour>; mon code est 123456; Bearer abcdefghijklmnop; sk-12345678901234567890",
     hasImage: true,
     imageData: "data:image/png;base64,aGVsbG8=",
   });
@@ -402,7 +410,7 @@ test("support message forwards escaped identity, redacts labeled secrets, and se
     "🆔 <b>ID utilisateur :</b> <code>user-42</code>",
     "🗂️ <b>Conversation :</b> <code>conversation-7</code>",
     "",
-    "<b>Message :</b>\nMon mot de passe est [masqué] et &lt;bonjour&gt;",
+    "<b>Message :</b>\nMon mot de passe est [masqué]; et &lt;bonjour&gt;; mon code est [masqué]; Bearer [masqué]; [secret masqué]",
     "",
     "🖼️ Image jointe (transmission à Telegram demandée)",
     "",
@@ -433,7 +441,7 @@ test("support message without an account sends text only", async () => {
 
 test("long support messages are split without dropping text", async () => {
   const h = await harness();
-  const message = "a".repeat(601);
+  const message = "a".repeat(1801);
   await h.alerts.sendSupportMessageAlert({
     conversationId: "conversation-long",
     userName: "Alice",
@@ -442,8 +450,48 @@ test("long support messages are split without dropping text", async () => {
   });
   const messages = h.supportTextMessages();
   assert.equal(messages.length, 2);
-  assert.ok(messages[0]!.endsWith(`<b>Message :</b>\n${"a".repeat(600)}\n\n${timestamp}`));
+  assert.ok(messages[0]!.endsWith(`<b>Message :</b>\n${"a".repeat(1800)}\n\n${timestamp}`));
   assert.ok(messages[1]!.includes(`<b>Message (suite) :</b>\na`));
   const chunks = messages.map(item => item.match(/<b>Message(?: \(suite\))? :<\/b>\n([^\n]*)/)?.[1] ?? "");
   assert.equal(chunks.join(""), message);
+});
+
+test("support images unsupported by sendPhoto are forwarded as documents", async () => {
+  const h = await harness();
+  await h.alerts.sendSupportMessageAlert({
+    conversationId: "conversation-7",
+    userId: "user-42",
+    userName: "Alice <Test>",
+    message: "Voici l’image",
+    hasImage: true,
+    imageData: "data:image/webp;base64,aGVsbG8=",
+  });
+  h.assertSupportAlert([
+    "<b>💬 Nouveau message au support</b>",
+    "",
+    "👤 <b>Nom :</b> Alice &lt;Test&gt;",
+    "🆔 <b>ID utilisateur :</b> <code>user-42</code>",
+    "🗂️ <b>Conversation :</b> <code>conversation-7</code>",
+    "",
+    "<b>Message :</b>\nVoici l’image",
+    "",
+    "🖼️ Image jointe (transmission à Telegram demandée)",
+    "",
+    timestamp,
+  ].join("\n"), true, "sendDocument");
+});
+
+test("support alert logs Telegram API failures even when HTTP status is successful", async () => {
+  const h = await harness();
+  h.setTelegramResult({ ok: false, description: "bot was blocked" });
+  await h.alerts.sendSupportMessageAlert({
+    conversationId: "conversation-9",
+    userName: "Alice",
+    message: "Bonjour",
+    hasImage: false,
+  });
+  assert.equal(h.warnings.length, 1);
+  assert.equal(h.warnings[0]!.message, "[Telegram] sendMessage failed");
+  assert.equal((h.warnings[0]!.fields as { status: number }).status, 200);
+  assert.equal((h.warnings[0]!.fields as { description: string }).description, "bot was blocked");
 });

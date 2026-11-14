@@ -51,6 +51,21 @@ export function invalidateTelegramCache(): void {
   credsCacheTs = 0;
 }
 
+async function telegramRequestSucceeded(response: Response, action: string): Promise<boolean> {
+  const result = await response.json().catch(() => null) as {
+    ok?: boolean;
+    description?: string;
+  } | null;
+  if (!response.ok || result?.ok !== true) {
+    logger.warn({
+      status: response.status,
+      description: result?.description?.slice(0, 300),
+    }, `[Telegram] ${action} failed`);
+    return false;
+  }
+  return true;
+}
+
 async function sendMessage(text: string): Promise<void> {
   const creds = await getTelegramCreds();
   if (!creds) return;
@@ -62,12 +77,9 @@ async function sendMessage(text: string): Promise<void> {
       body: JSON.stringify({ chat_id: creds.chatId, text, parse_mode: "HTML", disable_web_page_preview: true }),
       signal: AbortSignal.timeout(5000),
     });
-    if (!res.ok) {
-      const body = await res.text();
-      logger.warn({ status: res.status, body }, "[Telegram] sendMessage failed");
-    }
+    await telegramRequestSucceeded(res, "sendMessage");
   } catch (err) {
-    logger.debug({ err: (err as Error).message }, "[Telegram] sendMessage error");
+    logger.warn({ error: err instanceof Error ? err.name : "unknown" }, "[Telegram] sendMessage network error");
   }
 }
 
@@ -356,16 +368,18 @@ export interface SupportMessageAlertData {
 function redactLabeledSecrets(message: string): string {
   return message
     .replace(
-      /((?:mot\s+de\s+passe|password|passcode|code\s+(?:otp|de\s+vérification|de\s+verification|de\s+sécurité|de\s+securite)|otp|pin)\s*(?:(?:est|is)\s+|[:=]\s*|-)\s*)([^\s,;]+)/gi,
+      /((?:mot\s+de\s+passe|password|passcode|(?:verification|security|login|sms|one[- ]time)\s+code|code(?:\s+(?:otp|sms|reçu|recu|received|de\s+(?:vérification|verification|sécurité|securite|connexion|confirmation)))?|otp|pin)\s*(?:(?:est|is)\s+|[:=]\s*|-)\s*)([^\r\n,;]+)/gi,
       "$1[masqué]",
     )
     .replace(
-      /((?:clé\s+(?:api|secrète)|cle\s+(?:api|secrete)|api\s*key|access\s+token|token|secret)\s*(?:(?:est|is)\s+|[:=]\s*|-)\s*)([^\s,;]+)/gi,
+      /((?:clé\s+(?:api|secrète)|cle\s+(?:api|secrete)|api\s*(?:key|token)|access\s+token|token|secret)\s*(?:(?:est|is)\s+|[:=]\s*|-)\s*)([^\r\n,;]+)/gi,
       "$1[masqué]",
-    );
+    )
+    .replace(/\bBearer\s+[A-Za-z0-9._~+/-]+=*/gi, "Bearer [masqué]")
+    .replace(/\b(?:sk-[A-Za-z0-9_-]{16,}|xox[baprs]-[A-Za-z0-9-]{16,}|gh[pousr]_[A-Za-z0-9]{20,}|AIza[A-Za-z0-9_-]{30,})\b/g, "[secret masqué]");
 }
 
-function splitSupportMessage(message: string, maxCharacters = 600): string[] {
+function splitSupportMessage(message: string, maxCharacters = 1800): string[] {
   const characters = Array.from(message);
   if (characters.length === 0) return [""];
   const chunks: string[] = [];
@@ -377,7 +391,7 @@ function splitSupportMessage(message: string, maxCharacters = 600): string[] {
 
 async function sendSupportPhoto(data: SupportMessageAlertData, caption: string): Promise<void> {
   if (!data.imageData) return;
-  const match = /^data:(image\/(?:png|jpeg|webp));base64,([A-Za-z0-9+/]+={0,2})$/.exec(data.imageData);
+  const match = /^data:(image\/[A-Za-z0-9.+-]+);base64,([A-Za-z0-9+/]+={0,2})$/i.exec(data.imageData);
   if (!match || match[2]!.length > Math.ceil(5 * 1024 * 1024 * 4 / 3) + 4) {
     logger.warn({ conversationId: data.conversationId }, "[Telegram] Support image rejected (invalid format or size)");
     return;
@@ -396,17 +410,23 @@ async function sendSupportPhoto(data: SupportMessageAlertData, caption: string):
     form.append("chat_id", creds.chatId);
     form.append("caption", caption.slice(0, 1000));
     form.append("parse_mode", "HTML");
-    form.append("photo", new Blob([imageBytes], { type: match[1] }), `support-image.${match[1]!.split("/")[1]}`);
-    const response = await fetch(`https://api.telegram.org/bot${creds.botToken}/sendPhoto`, {
+    const mimeType = match[1]!.toLowerCase();
+    const extension = mimeType.slice("image/".length).replace(/[^a-z0-9]/g, "") || "image";
+    const usePhoto = mimeType === "image/png" || mimeType === "image/jpeg";
+    const uploadField = usePhoto ? "photo" : "document";
+    const method = usePhoto ? "sendPhoto" : "sendDocument";
+    form.append(uploadField, new Blob([imageBytes], { type: mimeType }), `support-image.${extension}`);
+    const response = await fetch(`https://api.telegram.org/bot${creds.botToken}/${method}`, {
       method: "POST",
       body: form,
       signal: AbortSignal.timeout(10_000),
     });
-    if (!response.ok) {
-      logger.warn({ status: response.status, conversationId: data.conversationId }, "[Telegram] Support image delivery failed");
-    }
+    await telegramRequestSucceeded(response, `support ${uploadField}`);
   } catch (err) {
-    logger.debug({ err: (err as Error).message, conversationId: data.conversationId }, "[Telegram] Support image delivery error");
+    logger.warn({
+      error: err instanceof Error ? err.name : "unknown",
+      conversationId: data.conversationId,
+    }, "[Telegram] Support image delivery network error");
   }
 }
 
@@ -420,6 +440,7 @@ export async function sendSupportMessageAlert(data: SupportMessageAlertData): Pr
     `🗂️ <b>Conversation :</b> <code>${esc(data.conversationId)}</code>`,
   ];
   for (let index = 0; index < chunks.length; index += 1) {
+    if (index > 0) await new Promise(resolve => setTimeout(resolve, 1100));
     const lines = [
       index === 0 ? "<b>💬 Nouveau message au support</b>" : "<b>💬 Suite du message support</b>",
       "",
@@ -433,6 +454,7 @@ export async function sendSupportMessageAlert(data: SupportMessageAlertData): Pr
   }
 
   if (data.hasImage && data.imageData) {
+    if (chunks.length > 0) await new Promise(resolve => setTimeout(resolve, 1100));
     const caption = [
       "🖼️ <b>Image envoyée au support</b>",
       `👤 ${esc(data.userName)}`,
