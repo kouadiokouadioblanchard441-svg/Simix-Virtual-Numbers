@@ -158046,11 +158046,15 @@ init_logger2();
 
 // src/lib/rate-limiter.ts
 var store = /* @__PURE__ */ new Map();
+var temporaryLocks = /* @__PURE__ */ new Map();
 setInterval(() => {
   const cutoff = Date.now() - 5 * 60 * 1e3;
   for (const [key, entry] of store) {
     entry.timestamps = entry.timestamps.filter((t3) => t3 > cutoff);
     if (entry.timestamps.length === 0) store.delete(key);
+  }
+  for (const [key, lockedUntil] of temporaryLocks) {
+    if (lockedUntil <= Date.now()) temporaryLocks.delete(key);
   }
 }, 5 * 60 * 1e3);
 function isRateLimited(key, limit, windowMs) {
@@ -158070,6 +158074,32 @@ function getHitCount(key, windowMs) {
 }
 function resetKey(key) {
   store.delete(key);
+}
+function setTemporaryLock(key, durationMs) {
+  if (durationMs <= 0) {
+    temporaryLocks.delete(key);
+    return;
+  }
+  temporaryLocks.set(key, Date.now() + durationMs);
+}
+function getTemporaryLockRemaining(key) {
+  const lockedUntil = temporaryLocks.get(key);
+  if (lockedUntil === void 0) return 0;
+  const remaining = lockedUntil - Date.now();
+  if (remaining <= 0) {
+    temporaryLocks.delete(key);
+    return 0;
+  }
+  return remaining;
+}
+function resetTemporaryLock(key) {
+  temporaryLocks.delete(key);
+}
+function recordFailedAttemptAndLock(attemptsKey, lockKey, maxFailedAttempts, lockDurationMs) {
+  if (!isRateLimited(attemptsKey, maxFailedAttempts, lockDurationMs)) return false;
+  setTemporaryLock(lockKey, lockDurationMs);
+  resetKey(attemptsKey);
+  return true;
 }
 
 // src/lib/fraud-detection.ts
@@ -158169,48 +158199,64 @@ function generateOtpCode() {
 async function createOtp(userId, purpose) {
   const code = generateOtpCode();
   const expiresAt = new Date(Date.now() + OTP_EXPIRY_MS);
-  await db.update(emailOtpTable).set({ verified: true }).where(
-    and(
-      eq(emailOtpTable.userId, userId),
-      eq(emailOtpTable.purpose, purpose),
-      eq(emailOtpTable.verified, false)
-    )
-  );
-  const [created] = await db.insert(emailOtpTable).values({
-    userId,
-    code,
-    purpose,
-    attempts: 0,
-    verified: false,
-    expiresAt
-  }).returning({ id: emailOtpTable.id });
+  const [created] = await db.transaction(async (tx) => {
+    const [user] = await tx.select({ id: usersTable.id }).from(usersTable).where(eq(usersTable.id, userId)).for("update").limit(1);
+    if (!user) throw new Error("Cannot issue OTP for an unknown user");
+    await tx.update(emailOtpTable).set({ verified: true }).where(
+      and(
+        eq(emailOtpTable.userId, userId),
+        eq(emailOtpTable.purpose, purpose),
+        eq(emailOtpTable.verified, false)
+      )
+    );
+    return tx.insert(emailOtpTable).values({
+      userId,
+      code,
+      purpose,
+      attempts: 0,
+      verified: false,
+      expiresAt
+    }).returning({ id: emailOtpTable.id });
+  });
   return { code, issuanceId: created.id };
 }
 async function verifyOtp(userId, code, purpose) {
-  const [otp] = await db.select().from(emailOtpTable).where(
-    and(
-      eq(emailOtpTable.userId, userId),
-      eq(emailOtpTable.purpose, purpose),
-      eq(emailOtpTable.verified, false),
-      gt(emailOtpTable.expiresAt, /* @__PURE__ */ new Date())
-    )
-  ).orderBy(desc(emailOtpTable.createdAt)).limit(1);
-  if (!otp) {
-    return { success: false, error: "Code expir\xE9 ou introuvable. Demandez un nouveau code." };
-  }
-  if (otp.attempts >= MAX_ATTEMPTS) {
-    return { success: false, error: "Trop de tentatives. Demandez un nouveau code." };
-  }
-  await db.update(emailOtpTable).set({ attempts: otp.attempts + 1 }).where(eq(emailOtpTable.id, otp.id));
-  if (otp.code !== code) {
-    const remaining = MAX_ATTEMPTS - otp.attempts - 1;
-    return {
-      success: false,
-      error: remaining > 0 ? `Code incorrect. Il vous reste ${remaining} tentative${remaining > 1 ? "s" : ""}.` : "Trop de tentatives. Demandez un nouveau code."
-    };
-  }
-  await db.update(emailOtpTable).set({ verified: true }).where(eq(emailOtpTable.id, otp.id));
-  return { success: true };
+  return db.transaction(async (tx) => {
+    const [user] = await tx.select({ id: usersTable.id }).from(usersTable).where(eq(usersTable.id, userId)).for("update").limit(1);
+    if (!user) {
+      return { success: false, error: "Code expir\xE9 ou introuvable. Demandez un nouveau code." };
+    }
+    const [otp] = await tx.select().from(emailOtpTable).where(
+      and(
+        eq(emailOtpTable.userId, userId),
+        eq(emailOtpTable.purpose, purpose),
+        eq(emailOtpTable.verified, false),
+        gt(emailOtpTable.expiresAt, /* @__PURE__ */ new Date())
+      )
+    ).orderBy(desc(emailOtpTable.createdAt)).limit(1).for("update");
+    if (!otp) {
+      return { success: false, error: "Code expir\xE9 ou introuvable. Demandez un nouveau code." };
+    }
+    if (otp.attempts >= MAX_ATTEMPTS) {
+      return { success: false, error: "Trop de tentatives. Demandez un nouveau code." };
+    }
+    const attempts = otp.attempts + 1;
+    await tx.update(emailOtpTable).set({ attempts }).where(eq(emailOtpTable.id, otp.id));
+    if (otp.code !== code) {
+      const remaining = MAX_ATTEMPTS - attempts;
+      return {
+        success: false,
+        error: remaining > 0 ? `Code incorrect. Il vous reste ${remaining} tentative${remaining > 1 ? "s" : ""}.` : "Trop de tentatives. Demandez un nouveau code."
+      };
+    }
+    await tx.update(emailOtpTable).set({ verified: true }).where(eq(emailOtpTable.id, otp.id));
+    return { success: true };
+  });
+}
+function isVerifiedActiveOtp(otp, code, now = /* @__PURE__ */ new Date()) {
+  return Boolean(
+    otp && otp.verified && otp.code === code && otp.expiresAt.getTime() > now.getTime()
+  );
 }
 async function hasRecentOtp(userId, purpose, cooldownSeconds = 60) {
   const cutoff = new Date(Date.now() - cooldownSeconds * 1e3);
@@ -165144,6 +165190,17 @@ async function getTelegramCreds() {
     return null;
   }
 }
+async function telegramRequestSucceeded(response, action) {
+  const result = await response.json().catch(() => null);
+  if (!response.ok || result?.ok !== true) {
+    logger.warn({
+      status: response.status,
+      description: result?.description?.slice(0, 300)
+    }, `[Telegram] ${action} failed`);
+    return false;
+  }
+  return true;
+}
 async function sendMessage(text2) {
   const creds = await getTelegramCreds();
   if (!creds) return;
@@ -165155,12 +165212,9 @@ async function sendMessage(text2) {
       body: JSON.stringify({ chat_id: creds.chatId, text: text2, parse_mode: "HTML", disable_web_page_preview: true }),
       signal: AbortSignal.timeout(5e3)
     });
-    if (!res.ok) {
-      const body = await res.text();
-      logger.warn({ status: res.status, body }, "[Telegram] sendMessage failed");
-    }
+    await telegramRequestSucceeded(res, "sendMessage");
   } catch (err) {
-    logger.debug({ err: err.message }, "[Telegram] sendMessage error");
+    logger.warn({ error: err instanceof Error ? err.name : "unknown" }, "[Telegram] sendMessage network error");
   }
 }
 function esc2(s3) {
@@ -165328,6 +165382,95 @@ async function sendOtpEventAlert(data) {
     `\u{1F552} ${(/* @__PURE__ */ new Date()).toLocaleString("fr-FR", { timeZone: "Africa/Abidjan" })}`
   ];
   await sendMessage(lines.join("\n"));
+}
+function redactLabeledSecrets(message) {
+  return message.replace(
+    /((?:mot\s+de\s+passe|password|passcode|(?:verification|security|login|sms|one[- ]time)\s+code|code(?:\s+(?:otp|sms|reçu|recu|received|de\s+(?:vérification|verification|sécurité|securite|connexion|confirmation)))?|otp|pin)\s*(?:(?:est|is)\s+|[:=]\s*|-)\s*)([^\r\n,;]+)/gi,
+    "$1[masqu\xE9]"
+  ).replace(
+    /((?:clé\s+(?:api|secrète)|cle\s+(?:api|secrete)|api\s*(?:key|token)|access\s+token|token|secret)\s*(?:(?:est|is)\s+|[:=]\s*|-)\s*)([^\r\n,;]+)/gi,
+    "$1[masqu\xE9]"
+  ).replace(/\bBearer\s+[A-Za-z0-9._~+/-]+=*/gi, "Bearer [masqu\xE9]").replace(/\b(?:sk-[A-Za-z0-9_-]{16,}|xox[baprs]-[A-Za-z0-9-]{16,}|gh[pousr]_[A-Za-z0-9]{20,}|AIza[A-Za-z0-9_-]{30,})\b/g, "[secret masqu\xE9]");
+}
+function splitSupportMessage(message, maxCharacters = 1800) {
+  const characters = Array.from(message);
+  if (characters.length === 0) return [""];
+  const chunks = [];
+  for (let start2 = 0; start2 < characters.length; start2 += maxCharacters) {
+    chunks.push(characters.slice(start2, start2 + maxCharacters).join(""));
+  }
+  return chunks;
+}
+async function sendSupportPhoto(data, caption) {
+  if (!data.imageData) return;
+  const match2 = /^data:(image\/[A-Za-z0-9.+-]+);base64,([A-Za-z0-9+/]+={0,2})$/i.exec(data.imageData);
+  if (!match2 || match2[2].length > Math.ceil(5 * 1024 * 1024 * 4 / 3) + 4) {
+    logger.warn({ conversationId: data.conversationId }, "[Telegram] Support image rejected (invalid format or size)");
+    return;
+  }
+  const imageBytes = Buffer.from(match2[2], "base64");
+  if (imageBytes.byteLength > 5 * 1024 * 1024) {
+    logger.warn({ conversationId: data.conversationId }, "[Telegram] Support image rejected (invalid format or size)");
+    return;
+  }
+  const creds = await getTelegramCreds();
+  if (!creds) return;
+  try {
+    const form = new FormData();
+    form.append("chat_id", creds.chatId);
+    form.append("caption", caption.slice(0, 1e3));
+    form.append("parse_mode", "HTML");
+    const mimeType = match2[1].toLowerCase();
+    const extension = mimeType.slice("image/".length).replace(/[^a-z0-9]/g, "") || "image";
+    const usePhoto = mimeType === "image/png" || mimeType === "image/jpeg";
+    const uploadField = usePhoto ? "photo" : "document";
+    const method = usePhoto ? "sendPhoto" : "sendDocument";
+    form.append(uploadField, new Blob([imageBytes], { type: mimeType }), `support-image.${extension}`);
+    const response = await fetch(`https://api.telegram.org/bot${creds.botToken}/${method}`, {
+      method: "POST",
+      body: form,
+      signal: AbortSignal.timeout(1e4)
+    });
+    await telegramRequestSucceeded(response, `support ${uploadField}`);
+  } catch (err) {
+    logger.warn({
+      error: err instanceof Error ? err.name : "unknown",
+      conversationId: data.conversationId
+    }, "[Telegram] Support image delivery network error");
+  }
+}
+async function sendSupportMessageAlert(data) {
+  const safeMessage = redactLabeledSecrets(data.message || (data.hasImage ? "[Image jointe]" : "[Message vide]"));
+  const chunks = splitSupportMessage(safeMessage);
+  const identityLines = [
+    `\u{1F464} <b>Nom :</b> ${esc2(data.userName)}`,
+    ...data.userId ? [`\u{1F194} <b>ID utilisateur :</b> <code>${esc2(data.userId)}</code>`] : ["\u{1F194} <b>Compte :</b> Non connect\xE9"],
+    `\u{1F5C2}\uFE0F <b>Conversation :</b> <code>${esc2(data.conversationId)}</code>`
+  ];
+  for (let index2 = 0; index2 < chunks.length; index2 += 1) {
+    if (index2 > 0) await new Promise((resolve) => setTimeout(resolve, 1100));
+    const lines = [
+      index2 === 0 ? "<b>\u{1F4AC} Nouveau message au support</b>" : "<b>\u{1F4AC} Suite du message support</b>",
+      "",
+      ...identityLines,
+      "",
+      `<b>Message${index2 > 0 ? " (suite)" : ""} :</b>
+${esc2(chunks[index2])}`,
+      ...index2 === 0 && data.hasImage ? ["", "\u{1F5BC}\uFE0F Image jointe (transmission \xE0 Telegram demand\xE9e)"] : [],
+      ...index2 === 0 ? ["", `\u{1F552} ${(/* @__PURE__ */ new Date()).toLocaleString("fr-FR", { timeZone: "Africa/Abidjan" })}`] : []
+    ];
+    await sendMessage(lines.join("\n"));
+  }
+  if (data.hasImage && data.imageData) {
+    if (chunks.length > 0) await new Promise((resolve) => setTimeout(resolve, 1100));
+    const caption = [
+      "\u{1F5BC}\uFE0F <b>Image envoy\xE9e au support</b>",
+      `\u{1F464} ${esc2(data.userName)}`,
+      data.userId ? `\u{1F194} <code>${esc2(data.userId)}</code>` : "Compte non connect\xE9",
+      `\u{1F5C2}\uFE0F Conversation <code>${esc2(data.conversationId)}</code>`
+    ].join("\n");
+    await sendSupportPhoto(data, caption);
+  }
 }
 
 // src/lib/email.ts
@@ -165774,6 +165917,16 @@ async function uniqueReferralCode() {
   return "SX" + Date.now().toString(36).toUpperCase().slice(-8);
 }
 var router3 = (0, import_express4.Router)();
+var LOGIN_ACCOUNT_MAX_FAILURES = 5;
+var LOGIN_ACCOUNT_LOCKOUT_MS = 10 * 6e4;
+function respondWithLoginLockout(res, remainingMs) {
+  const retryAfterSeconds = Math.max(1, Math.ceil(remainingMs / 1e3));
+  const remainingMinutes = Math.max(1, Math.ceil(retryAfterSeconds / 60));
+  res.setHeader("Retry-After", String(retryAfterSeconds));
+  res.status(429).json({
+    error: `Trop de tentatives de connexion. Compte temporairement bloqu\xE9; r\xE9essayez dans ${remainingMinutes} minute${remainingMinutes > 1 ? "s" : ""}.`
+  });
+}
 router3.post("/auth/register", requireTurnstile, async (req, res) => {
   const ip = req.ip ?? "unknown";
   if (!await isRegistrationEnabled()) {
@@ -165874,6 +166027,13 @@ router3.post("/auth/login", requireTurnstile, async (req, res) => {
   }
   const { identifier, password } = parsed.data;
   const normalized = identifier.replace(/\s+/g, "");
+  const normalizedLockIdentifier = normalized.toLowerCase();
+  const identifierLockKey = `login_account_lock_identifier:${normalizedLockIdentifier}`;
+  const identifierLockRemaining = getTemporaryLockRemaining(identifierLockKey);
+  if (identifierLockRemaining > 0) {
+    respondWithLoginLockout(res, identifierLockRemaining);
+    return;
+  }
   const risk = assessLoginRisk(ip, normalized);
   if (risk.level === "dangerous") {
     notifyLoginAlert({
@@ -165903,6 +166063,12 @@ router3.post("/auth/login", requireTurnstile, async (req, res) => {
   if (!user) {
     isRateLimited(`login_fail_ip:${ip}`, 99999, 15 * 6e4);
     isRateLimited(`login_fail_user:${normalized}`, 99999, 15 * 6e4);
+    const lockTriggered = recordFailedAttemptAndLock(
+      `login_account_attempt_identifier:${normalizedLockIdentifier}`,
+      identifierLockKey,
+      LOGIN_ACCOUNT_MAX_FAILURES,
+      LOGIN_ACCOUNT_LOCKOUT_MS
+    );
     notifyLoginAlert({
       userName: "Compte introuvable",
       attemptedIdentifier: normalized,
@@ -165911,7 +166077,11 @@ router3.post("/auth/login", requireTurnstile, async (req, res) => {
       success: false,
       failReason: "Identifiants invalides"
     });
-    res.status(401).json({ error: "Identifiants invalides" });
+    if (lockTriggered) {
+      respondWithLoginLockout(res, LOGIN_ACCOUNT_LOCKOUT_MS);
+    } else {
+      res.status(401).json({ error: "Identifiants invalides" });
+    }
     return;
   }
   if (user.status === "Bloqu\xE9") {
@@ -165928,6 +166098,12 @@ router3.post("/auth/login", requireTurnstile, async (req, res) => {
       error: "Votre compte a \xE9t\xE9 suspendu.",
       reason: user.blockedReason ?? "Activit\xE9 suspecte d\xE9tect\xE9e"
     });
+    return;
+  }
+  const accountLockKey = `login_account_lock_user:${user.id}`;
+  const accountLockRemaining = getTemporaryLockRemaining(accountLockKey);
+  if (accountLockRemaining > 0) {
+    respondWithLoginLockout(res, accountLockRemaining);
     return;
   }
   if (!user.passwordHash) {
@@ -165949,6 +166125,15 @@ router3.post("/auth/login", requireTurnstile, async (req, res) => {
   if (!ok) {
     isRateLimited(`login_fail_ip:${ip}`, 99999, 15 * 6e4);
     isRateLimited(`login_fail_user:${normalized}`, 99999, 15 * 6e4);
+    const lockTriggered = recordFailedAttemptAndLock(
+      `login_account_attempt_user:${user.id}`,
+      accountLockKey,
+      LOGIN_ACCOUNT_MAX_FAILURES,
+      LOGIN_ACCOUNT_LOCKOUT_MS
+    );
+    if (lockTriggered) {
+      setTemporaryLock(identifierLockKey, LOGIN_ACCOUNT_LOCKOUT_MS);
+    }
     if (risk.level === "suspicious") {
       await logSecurityEvent({
         userId: user.id,
@@ -165969,11 +166154,19 @@ router3.post("/auth/login", requireTurnstile, async (req, res) => {
       success: false,
       failReason: "Mot de passe incorrect"
     });
-    res.status(401).json({ error: "Identifiants invalides" });
+    if (lockTriggered) {
+      respondWithLoginLockout(res, LOGIN_ACCOUNT_LOCKOUT_MS);
+    } else {
+      res.status(401).json({ error: "Identifiants invalides" });
+    }
     return;
   }
   resetKey(`login_fail_ip:${ip}`);
   resetKey(`login_fail_user:${normalized}`);
+  resetKey(`login_account_attempt_user:${user.id}`);
+  resetKey(`login_account_attempt_identifier:${normalizedLockIdentifier}`);
+  resetTemporaryLock(accountLockKey);
+  resetTemporaryLock(identifierLockKey);
   const session = await createSession(user.id);
   setSessionCookie(res, session.id, session.expiresAt);
   const otpEnabled = await isEmailOtpEnabled();
@@ -168367,6 +168560,10 @@ var import_express10 = __toESM(require_express2(), 1);
 init_drizzle_orm();
 init_src();
 
+// src/lib/admin-jwt-middleware.ts
+init_drizzle_orm();
+init_src();
+
 // src/lib/admin-jwt.ts
 var import_node_crypto10 = require("node:crypto");
 var EXPIRY_SECONDS = 8 * 3600;
@@ -168412,6 +168609,7 @@ function verifyAdminJwt(token2) {
 }
 
 // src/lib/admin-jwt-middleware.ts
+init_logger2();
 function requireAdminJwt(req, res, next) {
   const auth = req.headers.authorization;
   if (!auth?.startsWith("Bearer ")) {
@@ -168424,22 +168622,36 @@ function requireAdminJwt(req, res, next) {
     res.status(401).json({ error: "Invalid or expired admin session." });
     return;
   }
-  req.adminPayload = payload;
-  if (["POST", "PUT", "PATCH", "DELETE"].includes(req.method.toUpperCase())) {
-    res.once("finish", () => {
-      const status = res.statusCode;
-      const route = req.originalUrl.split("?")[0] || req.path;
-      void sendAuditAlert({
-        action: `Admin ${req.method.toUpperCase()}`,
-        description: `${route} \u2014 HTTP ${status}`,
-        userId: payload.sub,
-        userName: payload.name || payload.email,
-        ip: req.ip,
-        severity: status >= 500 ? "critical" : status >= 400 ? "warning" : "info"
+  return (async () => {
+    let activeAdmin;
+    try {
+      [activeAdmin] = await db.select({ isAdmin: usersTable.isAdmin }).from(usersTable).where(eq(usersTable.id, payload.sub)).limit(1);
+    } catch (error62) {
+      logger.error({ err: error62, adminId: payload.sub }, "[admin-auth] Could not confirm current admin access");
+      res.status(503).json({ error: "Impossible de v\xE9rifier la session administrateur." });
+      return;
+    }
+    if (!activeAdmin?.isAdmin) {
+      res.status(401).json({ error: "Session administrateur r\xE9voqu\xE9e. Veuillez vous reconnecter." });
+      return;
+    }
+    req.adminPayload = payload;
+    if (["POST", "PUT", "PATCH", "DELETE"].includes(req.method.toUpperCase())) {
+      res.once("finish", () => {
+        const status = res.statusCode;
+        const route = req.originalUrl.split("?")[0] || req.path;
+        void sendAuditAlert({
+          action: `Admin ${req.method.toUpperCase()}`,
+          description: `${route} \u2014 HTTP ${status}`,
+          userId: payload.sub,
+          userName: payload.name || payload.email,
+          ip: req.ip,
+          severity: status >= 500 ? "critical" : status >= 400 ? "warning" : "info"
+        });
       });
-    });
-  }
-  next();
+    }
+    next();
+  })();
 }
 
 // src/routes/admin-payment-routing.ts
@@ -171751,6 +171963,40 @@ var CRYPTO_NETWORKS = {
 init_settings();
 init_src();
 var import_node_crypto12 = require("node:crypto");
+
+// src/lib/crypto-settlement-core.ts
+async function settleCryptoDepositAtomically(database, input2) {
+  if (!Number.isSafeInteger(input2.amountFcfa) || input2.amountFcfa <= 0) {
+    throw new Error("Invalid crypto deposit credit amount");
+  }
+  return database.transaction(async (transaction) => {
+    const completed = await transaction.markPendingCompleted(
+      input2.transactionId,
+      input2.payinHash
+    );
+    if (!completed) return false;
+    const credited = await transaction.creditUserBalance(
+      input2.userId,
+      input2.amountFcfa
+    );
+    if (!credited) {
+      throw new Error("Crypto deposit owner was not found; rolling back settlement");
+    }
+    return true;
+  });
+}
+function partialCryptoAmountToFcfa(actuallyPaid, fcfaRate) {
+  if (typeof actuallyPaid !== "number" && typeof actuallyPaid !== "string" || typeof actuallyPaid === "string" && actuallyPaid.trim() === "") return null;
+  const paid = Number(actuallyPaid);
+  const rate = Number(fcfaRate);
+  if (!Number.isFinite(paid) || paid <= 0 || !Number.isFinite(rate) || rate <= 0) {
+    return null;
+  }
+  const amountFcfa = Math.floor(paid * rate);
+  return Number.isSafeInteger(amountFcfa) && amountFcfa > 0 ? amountFcfa : null;
+}
+
+// src/routes/crypto-wallet.ts
 var router11 = (0, import_express12.Router)();
 async function getCryptoWebhookUrl() {
   if (process.env.NOWPAYMENTS_WEBHOOK_URL) return process.env.NOWPAYMENTS_WEBHOOK_URL;
@@ -171761,21 +172007,42 @@ async function getCryptoWebhookUrl() {
 }
 var CRYPTO_PREFIX = "crypto_";
 async function creditCryptoDeposit(txId, userId, amountFcfa, paymentId, partial2 = false, payinHash) {
+  const settlementDatabase = {
+    transaction: (operation) => db.transaction(async (tx) => operation({
+      markPendingCompleted: async (transactionId, incomingPayinHash) => {
+        const [current] = await tx.select({ gatewayMeta: transactionsTable.gatewayMeta }).from(transactionsTable).where(and(
+          eq(transactionsTable.id, transactionId),
+          eq(transactionsTable.status, "pending")
+        )).for("update").limit(1);
+        if (!current) return false;
+        let gatewayMeta;
+        if (incomingPayinHash) {
+          const existing = current.gatewayMeta ? JSON.parse(current.gatewayMeta) : {};
+          gatewayMeta = JSON.stringify({ ...existing, payinHash: incomingPayinHash });
+        }
+        const [updated] = await tx.update(transactionsTable).set({
+          status: "completed",
+          ...gatewayMeta ? { gatewayMeta } : {}
+        }).where(and(
+          eq(transactionsTable.id, transactionId),
+          eq(transactionsTable.status, "pending")
+        )).returning({ id: transactionsTable.id });
+        return Boolean(updated);
+      },
+      creditUserBalance: async (ownerId, amountFcfa2) => {
+        const [updated] = await tx.update(usersTable).set({ balance: sql`${usersTable.balance} + ${amountFcfa2}` }).where(eq(usersTable.id, ownerId)).returning({ id: usersTable.id });
+        return Boolean(updated);
+      }
+    }))
+  };
+  const justCredited = await settleCryptoDepositAtomically(settlementDatabase, {
+    transactionId: txId,
+    userId,
+    amountFcfa,
+    payinHash
+  });
+  if (!justCredited) return false;
   const label = partial2 ? "partiel" : "confirm\xE9";
-  let newGatewayMeta;
-  if (payinHash) {
-    const [current] = await db.select({ gatewayMeta: transactionsTable.gatewayMeta }).from(transactionsTable).where(eq(transactionsTable.id, txId)).limit(1);
-    const existing = current?.gatewayMeta ? JSON.parse(current.gatewayMeta) : {};
-    newGatewayMeta = JSON.stringify({ ...existing, payinHash });
-  }
-  const [justCompleted] = await db.update(transactionsTable).set({ status: "completed", ...newGatewayMeta ? { gatewayMeta: newGatewayMeta } : {} }).where(
-    and(
-      eq(transactionsTable.id, txId),
-      eq(transactionsTable.status, "pending")
-    )
-  ).returning();
-  if (!justCompleted) return false;
-  await db.update(usersTable).set({ balance: sql`${usersTable.balance} + ${amountFcfa}` }).where(eq(usersTable.id, userId));
   const body = partial2 ? `${amountFcfa.toLocaleString("fr-FR")} FCFA cr\xE9dit\xE9s (paiement crypto partiel).` : `${amountFcfa.toLocaleString("fr-FR")} FCFA ont \xE9t\xE9 cr\xE9dit\xE9s via crypto.`;
   const [notif] = await db.insert(notificationsTable).values({
     userId,
@@ -171928,8 +172195,12 @@ router11.get("/wallet/crypto/:paymentId/status", requireAuth, async (req, res) =
     } else if (sdkStatus === "partially_paid") {
       const meta3 = tx.gatewayMeta ? JSON.parse(tx.gatewayMeta) : {};
       const fcfaRate = typeof meta3.fcfaRate === "number" ? meta3.fcfaRate : await getFcfaToUsdRate();
-      const actualPaidFcfa = p.actually_paid ? Math.floor(Number(p.actually_paid) * fcfaRate) : tx.amount;
-      await creditCryptoDeposit(tx.id, user.id, actualPaidFcfa, paymentId, true, p.payin_hash);
+      const actualPaidFcfa = partialCryptoAmountToFcfa(p.actually_paid, fcfaRate);
+      if (actualPaidFcfa === null) {
+        logger.warn({ paymentId }, "[Crypto] Partial payment has no valid received amount; keeping transaction pending");
+      } else {
+        await creditCryptoDeposit(tx.id, user.id, actualPaidFcfa, paymentId, true, p.payin_hash);
+      }
     } else if (sdkStatus === "failed" || sdkStatus === "expired" || sdkStatus === "cancelled" || sdkStatus === "refunded") {
       await db.update(transactionsTable).set({ status: "failed" }).where(and(eq(transactionsTable.id, tx.id), eq(transactionsTable.status, "pending")));
     }
@@ -171981,8 +172252,12 @@ router11.post("/wallet/crypto/webhook", async (req, res) => {
   } else if (sdkStatus === "partially_paid") {
     const meta3 = tx.gatewayMeta ? JSON.parse(tx.gatewayMeta) : {};
     const fcfaRate = typeof meta3.fcfaRate === "number" ? meta3.fcfaRate : await getFcfaToUsdRate();
-    const actualPaidFcfa = payment.actually_paid ? Math.floor(Number(payment.actually_paid) * fcfaRate) : tx.amount;
-    await creditCryptoDeposit(tx.id, tx.userId, actualPaidFcfa, paymentId, true, payment.payin_hash);
+    const actualPaidFcfa = partialCryptoAmountToFcfa(payment.actually_paid, fcfaRate);
+    if (actualPaidFcfa === null) {
+      logger.warn({ paymentId }, "[Crypto Webhook] Partial payment has no valid received amount; keeping transaction pending");
+    } else {
+      await creditCryptoDeposit(tx.id, tx.userId, actualPaidFcfa, paymentId, true, payment.payin_hash);
+    }
   } else if (sdkStatus === "failed" || sdkStatus === "expired" || sdkStatus === "cancelled" || sdkStatus === "refunded") {
     await db.update(transactionsTable).set({ status: "failed" }).where(and(eq(transactionsTable.externalDepositId, externalDepositId), eq(transactionsTable.status, "pending")));
     logger.info({ paymentId, sdkStatus }, "[Crypto Webhook] Transaction marked as failed");
@@ -175117,17 +175392,7 @@ router15.post("/admin-auth/logout", async (req, res) => {
   await logAccess(ip, "logout", true, email3, {}, ua3);
   res.json({ success: true });
 });
-router15.get("/admin-auth/access-logs", async (req, res) => {
-  const token2 = getBearerToken(req);
-  if (!token2) {
-    res.status(401).json({ error: "No token" });
-    return;
-  }
-  const payload = verifyAdminJwt(token2);
-  if (!payload) {
-    res.status(401).json({ error: "Invalid token" });
-    return;
-  }
+router15.get("/admin-auth/access-logs", requireAdminJwt, async (_req, res) => {
   const { desc: descFn } = await Promise.resolve().then(() => (init_drizzle_orm(), drizzle_orm_exports));
   const logs = await db.select().from(adminAccessLogsTable).orderBy(descFn(adminAccessLogsTable.createdAt)).limit(100);
   res.json({ logs });
@@ -179156,6 +179421,28 @@ function providerReset(headers) {
   const date6 = new Date(raw);
   return Number.isNaN(date6.getTime()) ? null : date6;
 }
+function notifySavedSupportMessage(data) {
+  void (async () => {
+    let userName = data.userName?.trim() || null;
+    if (!userName && data.userId) {
+      try {
+        const [user] = await db.select({ fullName: usersTable.fullName, username: usersTable.username }).from(usersTable).where(eq(usersTable.id, data.userId)).limit(1);
+        userName = user?.fullName?.trim() || user?.username?.trim() || null;
+      } catch {
+      }
+    }
+    await sendSupportMessageAlert({
+      conversationId: data.conversationId,
+      ...data.userId ? { userId: data.userId } : {},
+      userName: userName || (data.userId ? "Utilisateur connect\xE9" : "Utilisateur non connect\xE9"),
+      message: data.message,
+      hasImage: Boolean(data.imageData),
+      ...data.imageData ? { imageData: data.imageData } : {}
+    });
+  })().catch((err) => {
+    logger.warn({ err: err instanceof Error ? err.message : "unknown" }, "[Telegram] Support message alert failed");
+  });
+}
 async function requestFromTokenPool(messages, maxTokens) {
   const tokens = await db.select().from(aiProviderTokensTable).where(eq(aiProviderTokensTable.isActive, true)).orderBy(asc(aiProviderTokensTable.priority), asc(aiProviderTokensTable.createdAt));
   if (!tokens.length) throw new Error("No active AI provider tokens");
@@ -179494,14 +179781,39 @@ router26.get("/support/config", async (req, res) => {
   });
 });
 router26.post("/support/chat", async (req, res) => {
-  const { sessionId, message, imageData, language } = req.body;
-  if (!sessionId || sessionId.length < 8) {
+  const body = req.body ?? {};
+  const sessionId = body.sessionId;
+  const rawMessage = body.message;
+  const imageData = body.imageData;
+  const language = typeof body.language === "string" ? body.language : void 0;
+  if (typeof sessionId !== "string" || sessionId.length < 8 || sessionId.length > 200) {
     res.status(400).json({ error: "Session ID requis" });
     return;
   }
-  if (!message?.trim() && !imageData) {
+  if (rawMessage !== void 0 && typeof rawMessage !== "string") {
+    res.status(400).json({ error: "Message invalide" });
+    return;
+  }
+  if (imageData !== void 0 && typeof imageData !== "string") {
+    res.status(400).json({ error: "Image invalide" });
+    return;
+  }
+  const message = typeof rawMessage === "string" ? rawMessage : "";
+  if (!message.trim() && !imageData) {
     res.status(400).json({ error: "Message requis" });
     return;
+  }
+  if (imageData) {
+    const imageMatch = /^data:(image\/[A-Za-z0-9.+-]+);base64,([A-Za-z0-9+/]+={0,2})$/i.exec(imageData);
+    const maxImageBytes = 5 * 1024 * 1024;
+    if (!imageMatch || imageMatch[2].length > Math.ceil(maxImageBytes * 4 / 3) + 4) {
+      res.status(400).json({ error: "Format ou taille d\u2019image invalide (5 Mo maximum)" });
+      return;
+    }
+    if (Buffer.from(imageMatch[2], "base64").byteLength > maxImageBytes) {
+      res.status(400).json({ error: "Format ou taille d\u2019image invalide (5 Mo maximum)" });
+      return;
+    }
   }
   const [aiEnabledCfg] = await db.select().from(aiSupportConfigTable).where(eq(aiSupportConfigTable.key, "ai_enabled")).limit(1);
   if (aiEnabledCfg?.value === "false") {
@@ -179532,6 +179844,13 @@ router26.post("/support/chat", async (req, res) => {
       role: "user",
       content: message || "[Image]",
       imageData: imageData ?? null
+    });
+    notifySavedSupportMessage({
+      conversationId: conv.id,
+      userId: conv.userId ?? req.user?.id ?? null,
+      userName: conv.userName,
+      message,
+      ...imageData ? { imageData } : {}
     });
     res.setHeader("Content-Type", "text/event-stream");
     res.setHeader("Cache-Control", "no-cache");
@@ -179566,6 +179885,13 @@ router26.post("/support/chat", async (req, res) => {
     role: "user",
     content: message || "[Image]",
     imageData: imageData ?? null
+  });
+  notifySavedSupportMessage({
+    conversationId: conv.id,
+    userId: conv.userId ?? req.user?.id ?? null,
+    userName: conv.userName,
+    message,
+    ...imageData ? { imageData } : {}
   });
   const detected = detectLanguage(message || "");
   const effectiveLanguage = detected !== "auto" ? detected : conv.language ?? language ?? "auto";
@@ -180354,7 +180680,7 @@ router29.post("/auth/reset-password", async (req, res) => {
     return;
   }
   const { userId, code, newPassword } = req.body;
-  if (!userId || !code || !newPassword || typeof newPassword !== "string") {
+  if (typeof userId !== "string" || typeof code !== "string" || !/^\d{6}$/.test(code) || typeof newPassword !== "string" || !newPassword) {
     notifyResetEvent("R\xE9initialisation invalide", ip, void 0, void 0, "Param\xE8tres manquants; aucun mot de passe n'est transmis.");
     res.status(400).json({ error: "Param\xE8tres manquants." });
     return;
@@ -180364,15 +180690,36 @@ router29.post("/auth/reset-password", async (req, res) => {
     res.status(400).json({ error: "Le mot de passe doit contenir au moins 6 caract\xE8res." });
     return;
   }
-  const [user] = await db.select().from(usersTable).where(eq(usersTable.id, userId)).limit(1);
-  if (!user) {
-    notifyResetEvent("R\xE9initialisation refus\xE9e", ip, void 0, void 0, "Compte introuvable.");
-    res.status(404).json({ error: "Compte introuvable." });
+  const passwordHash = await bcryptjs_default.hash(newPassword, 12);
+  const resetResult = await db.transaction(async (tx) => {
+    const [user] = await tx.select().from(usersTable).where(eq(usersTable.id, userId)).for("update").limit(1);
+    if (!user) return { success: false };
+    const [otp] = await tx.select().from(emailOtpTable).where(
+      and(
+        eq(emailOtpTable.userId, userId),
+        eq(emailOtpTable.purpose, "password_reset")
+      )
+    ).orderBy(desc(emailOtpTable.createdAt)).limit(1).for("update");
+    if (!isVerifiedActiveOtp(otp, code)) {
+      return { success: false };
+    }
+    const [updatedUser] = await tx.update(usersTable).set({ passwordHash, lastLoginAt: /* @__PURE__ */ new Date() }).where(eq(usersTable.id, userId)).returning();
+    if (!updatedUser) return { success: false };
+    await tx.delete(sessionsTable).where(eq(sessionsTable.userId, userId));
+    await tx.delete(emailOtpTable).where(
+      and(
+        eq(emailOtpTable.userId, userId),
+        eq(emailOtpTable.purpose, "password_reset")
+      )
+    );
+    return { success: true, user };
+  });
+  if (!resetResult.success) {
+    notifyResetEvent("R\xE9initialisation refus\xE9e", ip, void 0, void 0, "Code invalide, expir\xE9 ou d\xE9j\xE0 utilis\xE9.");
+    res.status(400).json({ error: "Code invalide ou expir\xE9. Demandez un nouveau code." });
     return;
   }
-  const passwordHash = await bcryptjs_default.hash(newPassword, 12);
-  await db.update(usersTable).set({ passwordHash, lastLoginAt: /* @__PURE__ */ new Date() }).where(eq(usersTable.id, userId));
-  notifyResetEvent("Mot de passe r\xE9initialis\xE9", ip, user);
+  notifyResetEvent("Mot de passe r\xE9initialis\xE9", ip, resetResult.user);
   res.json({ success: true, message: "Mot de passe r\xE9initialis\xE9 avec succ\xE8s." });
 });
 router29.post("/auth/forgot-password/resend", async (req, res) => {
@@ -181191,6 +181538,7 @@ var rawBodyCapture = (req, _res, buf) => {
   req.rawBody = buf.toString("utf8");
 };
 var LARGE_JSON_PATH_PREFIXES = [
+  "/api/support/chat",
   "/api/admin/banners",
   "/api/admin/site-content"
 ];

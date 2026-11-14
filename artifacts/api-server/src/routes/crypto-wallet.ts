@@ -16,6 +16,11 @@ import { broadcastNotification } from "./notifications";
 import { notificationsTable } from "@workspace/db";
 import { randomUUID } from "node:crypto";
 import { sendDepositCreditAlert } from "../lib/telegram";
+import {
+  partialCryptoAmountToFcfa,
+  settleCryptoDepositAtomically,
+  type CryptoSettlementDatabase,
+} from "../lib/crypto-settlement-core";
 
 const router: IRouter = Router();
 
@@ -46,37 +51,61 @@ async function creditCryptoDeposit(
   partial = false,
   payinHash?: string | null,
 ): Promise<boolean> {
+  const settlementDatabase: CryptoSettlementDatabase = {
+    transaction: (operation) => db.transaction(async (tx) => operation({
+      markPendingCompleted: async (transactionId, incomingPayinHash) => {
+        const [current] = await tx
+          .select({ gatewayMeta: transactionsTable.gatewayMeta })
+          .from(transactionsTable)
+          .where(and(
+            eq(transactionsTable.id, transactionId),
+            eq(transactionsTable.status, "pending"),
+          ))
+          .for("update")
+          .limit(1);
+        if (!current) return false;
+
+        let gatewayMeta: string | undefined;
+        if (incomingPayinHash) {
+          const existing = current.gatewayMeta
+            ? JSON.parse(current.gatewayMeta) as Record<string, unknown>
+            : {};
+          gatewayMeta = JSON.stringify({ ...existing, payinHash: incomingPayinHash });
+        }
+
+        const [updated] = await tx
+          .update(transactionsTable)
+          .set({
+            status: "completed",
+            ...(gatewayMeta ? { gatewayMeta } : {}),
+          })
+          .where(and(
+            eq(transactionsTable.id, transactionId),
+            eq(transactionsTable.status, "pending"),
+          ))
+          .returning({ id: transactionsTable.id });
+        return Boolean(updated);
+      },
+      creditUserBalance: async (ownerId, amountFcfa) => {
+        const [updated] = await tx
+          .update(usersTable)
+          .set({ balance: sql`${usersTable.balance} + ${amountFcfa}` })
+          .where(eq(usersTable.id, ownerId))
+          .returning({ id: usersTable.id });
+        return Boolean(updated);
+      },
+    })),
+  };
+
+  const justCredited = await settleCryptoDepositAtomically(settlementDatabase, {
+    transactionId: txId,
+    userId,
+    amountFcfa,
+    payinHash,
+  });
+  if (!justCredited) return false;
+
   const label = partial ? "partiel" : "confirmé";
-
-  /* Merge payinHash into gatewayMeta if provided */
-  let newGatewayMeta: string | undefined;
-  if (payinHash) {
-    const [current] = await db
-      .select({ gatewayMeta: transactionsTable.gatewayMeta })
-      .from(transactionsTable)
-      .where(eq(transactionsTable.id, txId))
-      .limit(1);
-    const existing = current?.gatewayMeta ? (JSON.parse(current.gatewayMeta) as Record<string, unknown>) : {};
-    newGatewayMeta = JSON.stringify({ ...existing, payinHash });
-  }
-
-  const [justCompleted] = await db
-    .update(transactionsTable)
-    .set({ status: "completed", ...(newGatewayMeta ? { gatewayMeta: newGatewayMeta } : {}) })
-    .where(
-      and(
-        eq(transactionsTable.id, txId),
-        eq(transactionsTable.status, "pending"),
-      ),
-    )
-    .returning();
-
-  if (!justCompleted) return false; /* already processed */
-
-  await db
-    .update(usersTable)
-    .set({ balance: sql`${usersTable.balance} + ${amountFcfa}` })
-    .where(eq(usersTable.id, userId));
 
   const body = partial
     ? `${amountFcfa.toLocaleString("fr-FR")} FCFA crédités (paiement crypto partiel).`
@@ -309,14 +338,17 @@ router.get("/wallet/crypto/:paymentId/status", requireAuth, async (req, res): Pr
       /*
        * User sent less than required. Credit whatever was actually received
        * (NowPayments converts actually_paid to USD; we convert back to FCFA).
-       * If actually_paid is unavailable, credit the full expected amount.
+       * Missing or invalid payment evidence must never fall back to the full
+       * expected amount; leave the transaction pending for a later check.
        */
       const meta = tx.gatewayMeta ? JSON.parse(tx.gatewayMeta) as Record<string, unknown> : {};
       const fcfaRate = typeof meta.fcfaRate === "number" ? meta.fcfaRate : await getFcfaToUsdRate();
-      const actualPaidFcfa = p.actually_paid
-        ? Math.floor(Number(p.actually_paid) * fcfaRate)
-        : tx.amount;
-      await creditCryptoDeposit(tx.id, user.id, actualPaidFcfa, paymentId, true, p.payin_hash);
+      const actualPaidFcfa = partialCryptoAmountToFcfa(p.actually_paid, fcfaRate);
+      if (actualPaidFcfa === null) {
+        logger.warn({ paymentId }, "[Crypto] Partial payment has no valid received amount; keeping transaction pending");
+      } else {
+        await creditCryptoDeposit(tx.id, user.id, actualPaidFcfa, paymentId, true, p.payin_hash);
+      }
     } else if (
       sdkStatus === "failed" ||
       sdkStatus === "expired" ||
@@ -419,10 +451,12 @@ router.post("/wallet/crypto/webhook", async (req, res): Promise<void> => {
      */
     const meta = tx.gatewayMeta ? JSON.parse(tx.gatewayMeta) as Record<string, unknown> : {};
     const fcfaRate = typeof meta.fcfaRate === "number" ? meta.fcfaRate : await getFcfaToUsdRate();
-    const actualPaidFcfa = payment.actually_paid
-      ? Math.floor(Number(payment.actually_paid) * fcfaRate)
-      : tx.amount;
-    await creditCryptoDeposit(tx.id, tx.userId, actualPaidFcfa, paymentId, true, payment.payin_hash);
+    const actualPaidFcfa = partialCryptoAmountToFcfa(payment.actually_paid, fcfaRate);
+    if (actualPaidFcfa === null) {
+      logger.warn({ paymentId }, "[Crypto Webhook] Partial payment has no valid received amount; keeping transaction pending");
+    } else {
+      await creditCryptoDeposit(tx.id, tx.userId, actualPaidFcfa, paymentId, true, payment.payin_hash);
+    }
   } else if (
     sdkStatus === "failed" ||
     sdkStatus === "expired" ||

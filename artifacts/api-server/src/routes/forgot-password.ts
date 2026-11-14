@@ -1,9 +1,9 @@
 import { Router, type IRouter } from "express";
 import bcrypt from "bcryptjs";
-import { eq, or } from "drizzle-orm";
-import { db, usersTable } from "@workspace/db";
+import { and, desc, eq, or } from "drizzle-orm";
+import { db, emailOtpTable, sessionsTable, usersTable } from "@workspace/db";
 import { isRateLimited } from "../lib/rate-limiter";
-import { createOtp, verifyOtp, hasRecentOtp } from "../lib/otp";
+import { createOtp, verifyOtp, hasRecentOtp, isVerifiedActiveOtp } from "../lib/otp";
 import { sendPasswordResetEmail } from "../lib/email";
 import { requireTurnstile } from "../middlewares/turnstile";
 import { logger } from "../lib/logger";
@@ -137,7 +137,13 @@ router.post("/auth/reset-password", async (req, res): Promise<void> => {
 
   const { userId, code, newPassword } = req.body;
 
-  if (!userId || !code || !newPassword || typeof newPassword !== "string") {
+  if (
+    typeof userId !== "string"
+    || typeof code !== "string"
+    || !/^\d{6}$/.test(code)
+    || typeof newPassword !== "string"
+    || !newPassword
+  ) {
     notifyResetEvent("Réinitialisation invalide", ip, undefined, undefined, "Paramètres manquants; aucun mot de passe n'est transmis.");
     res.status(400).json({ error: "Paramètres manquants." });
     return;
@@ -149,27 +155,62 @@ router.post("/auth/reset-password", async (req, res): Promise<void> => {
     return;
   }
 
-  /* Re-verify the OTP is still valid (marked verified = true means it was already consumed) */
-  const [user] = await db
-    .select()
-    .from(usersTable)
-    .where(eq(usersTable.id, userId))
-    .limit(1);
+  const passwordHash = await bcrypt.hash(newPassword, 12);
+  const resetResult = await db.transaction(async (tx) => {
+    /* Serialize OTP issuance, verification, and consumption for this account. */
+    const [user] = await tx
+      .select()
+      .from(usersTable)
+      .where(eq(usersTable.id, userId))
+      .for("update")
+      .limit(1);
+    if (!user) return { success: false as const };
 
-  if (!user) {
-    notifyResetEvent("Réinitialisation refusée", ip, undefined, undefined, "Compte introuvable.");
-    res.status(404).json({ error: "Compte introuvable." });
+    /* Only the newest issued OTP can authorize a reset. Older rows may also be
+       marked verified when a replacement code is issued. */
+    const [otp] = await tx
+      .select()
+      .from(emailOtpTable)
+      .where(
+        and(
+          eq(emailOtpTable.userId, userId),
+          eq(emailOtpTable.purpose, "password_reset"),
+        ),
+      )
+      .orderBy(desc(emailOtpTable.createdAt))
+      .limit(1)
+      .for("update");
+
+    if (!isVerifiedActiveOtp(otp, code)) {
+      return { success: false as const };
+    }
+
+    const [updatedUser] = await tx
+      .update(usersTable)
+      .set({ passwordHash, lastLoginAt: new Date() })
+      .where(eq(usersTable.id, userId))
+      .returning();
+    if (!updatedUser) return { success: false as const };
+
+    /* A successful reset invalidates every logged-in device and all reset codes. */
+    await tx.delete(sessionsTable).where(eq(sessionsTable.userId, userId));
+    await tx.delete(emailOtpTable).where(
+      and(
+        eq(emailOtpTable.userId, userId),
+        eq(emailOtpTable.purpose, "password_reset"),
+      ),
+    );
+
+    return { success: true as const, user };
+  });
+
+  if (!resetResult.success) {
+    notifyResetEvent("Réinitialisation refusée", ip, undefined, undefined, "Code invalide, expiré ou déjà utilisé.");
+    res.status(400).json({ error: "Code invalide ou expiré. Demandez un nouveau code." });
     return;
   }
 
-  const passwordHash = await bcrypt.hash(newPassword, 12);
-
-  await db
-    .update(usersTable)
-    .set({ passwordHash, lastLoginAt: new Date() })
-    .where(eq(usersTable.id, userId));
-
-  notifyResetEvent("Mot de passe réinitialisé", ip, user);
+  notifyResetEvent("Mot de passe réinitialisé", ip, resetResult.user);
   res.json({ success: true, message: "Mot de passe réinitialisé avec succès." });
 });
 

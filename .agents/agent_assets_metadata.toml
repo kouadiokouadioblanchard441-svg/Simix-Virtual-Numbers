@@ -119,87 +119,116 @@ id = "FCS2ekuXvLzokQS_vzl7F"
 uri = "file://attached_assets/avatars/man-1.jpg"
 type = "image"
 title = "man-1 (Chukwuemeka)"
+logical_id = "8e1c9143-c2d2-4c83-8fff-59465fa6573a"
 
 [[outputs]]
 id = "mWsTeTQzQF1O87G1SzrHX"
 uri = "file://attached_assets/avatars/man-2.jpg"
 type = "image"
 title = "man-2 (Jean-Pierre)"
+logical_id = "6ed2ad67-7ac5-43aa-966c-7b818e4b0be8"
 
 [[outputs]]
 id = "BZYRMqSrVOUopZSvDyUGD"
 uri = "file://attached_assets/avatars/man-3.jpg"
 type = "image"
 title = "man-3 (Kofi)"
+logical_id = "bcf91690-3467-4b3a-a26a-b2b54aa18044"
 
 [[outputs]]
 id = "A_C5aqQ8rvL-kLzJH-W8k"
 uri = "file://attached_assets/avatars/woman-1.jpg"
 type = "image"
 title = "woman-1 (Aminata)"
+logical_id = "6c7d918b-d84b-440c-9c24-f2d17f0f4188"
 
 [[outputs]]
 id = "jKTSTmFo83FpV_PmAWUme"
 uri = "file://attached_assets/avatars/woman-2.jpg"
 type = "image"
 title = "woman-2 (Fatou)"
+logical_id = "ac8dafd5-79db-4a25-9301-50835fc45a85"
 
 [[outputs]]
 id = "KYMQAAMq_qUyQuMt4krmZ"
 uri = "file://attached_assets/avatars/woman-3.jpg"
 type = "image"
 title = "woman-3 (Grace)"
+logical_id = "db382336-8d1a-459e-a78b-19b7109d0af6"
 
 [[outputs]]
 id = "uL5-69I5oH2Ep8gu5Tr68"
 uri = "file://attached_assets/avatars/man-1-large.jpg"
 type = "image"
 title = "Chukwuemeka (Nigeria)"
+logical_id = "a175dcc2-b3cd-401c-92d7-76090c23ec52"
 
 [[outputs]]
 id = "JmiY5xgttxnNq00l0h9hn"
 uri = "file://attached_assets/avatars/man-2-large.jpg"
 type = "image"
 title = "Jean-Pierre (Cameroun)"
+logical_id = "57b08d39-bfda-4cf9-ba5c-147ca4ea044c"
 
 [[outputs]]
 id = "6QH4p6IcXlkcIVeBOZKgd"
 uri = "file://attached_assets/avatars/man-3-large.jpg"
 type = "image"
 title = "Kofi (Ghana)"
+logical_id = "5c04b3f0-544e-4023-8aae-58dbf1503f3e"
 
 [[outputs]]
 id = "WWC1oiVWKC3tnjtPijDaH"
 uri = "file://attached_assets/avatars/woman-1-large.jpg"
 type = "image"
 title = "Aminata (Sénégal)"
+logical_id = "b45db225-4955-4225-8146-9a86e54cb2b2"
 
 [[outputs]]
 id = "3ShIQtWLkSzEpzWX9F52f"
 uri = "file://attached_assets/avatars/woman-2-large.jpg"
 type = "image"
 title = "Fatou (Côte d'Ivoire)"
+logical_id = "93c9eaa7-89df-44c9-95a8-8288f56704fb"
 
 [[outputs]]
 id = "nJx49x_ytgGI-hZpUcNYs"
 uri = "file://attached_assets/avatars/woman-3-large.jpg"
 type = "image"
 title = "Grace (Kenya)"
+logical_id = "88f0150e-324f-4b6b-860e-64a0d57ea9ef"
 
 [[outputs]]
 id = "3TqLsWyonmKmmEGtmcnrb"
 uri = "file://public/opengraph.jpg"
 type = "image"
 title = "Image métagraphe SIMIX (1200×630)"
+logical_id = "a27b8993-28f1-458b-bba1-e312cd476f8f"
 
 [[outputs]]
 id = "Gy1DI6K3QJuYnZcNe-04N"
 uri = "file://artifacts/simix/public/logo.svg"
 type = "image"
 title = "Simix — Logo horizontal (SVG vectoriel)"
+logical_id = "8e97a0e8-27d3-4c7f-a83a-e7eed84123f6"
 
 [[outputs]]
 id = "Ks4XNqO9k4zklql0HBxXF"
 uri = "file://artifacts/simix/public/icons/icon-512x512.png"
 type = "image"
 title = "Simix — Icône 512×512 (PNG)"
+logical_id = "2579e658-7c20-4c9c-9a9e-a90ae01a73fb"
+
+[[outputs]]
+id = "I_S7qHE8IPlXoYBY-gXsf"
+uri = "file://threat_model.md"
+type = "text"
+title = "Modèle de menace Simix"
+description = "Référence sur les actifs, frontières de confiance et garanties de sécurité du projet."
+logical_id = "050a00f3-7092-4cc9-aa71-37ff60d6eef9"
+content_hash = "sha256:261986b4dddc2a612d3708ddab2f6b19508a811f735abd2221c8a2e8d6e3e186"
+size = 6787
+mtime_ms = 1794644963931
+storage_uri = "gcs://replit-rams-assets-reed/rams/assets/repl:bca425ed-7e4c-4425-bc67-b54e5a12a3df/050a00f3-7092-4cc9-aa71-37ff60d6eef9/860e9f02-8436-476d-be91-445b38c7c38a"
+storage_version_token = "1794645468932668"
+content_type = "text/markdown"

@@ -11,6 +11,7 @@ import bcrypt from "bcryptjs";
 import { eq } from "drizzle-orm";
 import { db, usersTable, adminAccessLogsTable } from "@workspace/db";
 import { signAdminJwt, verifyAdminJwt } from "../lib/admin-jwt";
+import { requireAdminJwt } from "../lib/admin-jwt-middleware";
 import { isRateLimited, getHitCount, resetKey } from "../lib/rate-limiter";
 import { logger } from "../lib/logger";
 import { sendAuditAlert } from "../lib/telegram";
@@ -254,12 +255,7 @@ router.post("/admin-auth/logout", async (req: Request, res: Response): Promise<v
 /* ─── GET /api/admin-auth/access-logs ──────────────────────
    Returns recent admin access logs (requires admin JWT).
 ────────────────────────────────────────────────────────────── */
-router.get("/admin-auth/access-logs", async (req: Request, res: Response): Promise<void> => {
-  const token = getBearerToken(req);
-  if (!token) { res.status(401).json({ error: "No token" }); return; }
-  const payload = verifyAdminJwt(token);
-  if (!payload) { res.status(401).json({ error: "Invalid token" }); return; }
-
+router.get("/admin-auth/access-logs", requireAdminJwt, async (_req: Request, res: Response): Promise<void> => {
   const { desc: descFn } = await import("drizzle-orm");
   const logs = await db
     .select()
