@@ -5,7 +5,6 @@ import { NavigationRoute, registerRoute } from "workbox-routing";
 import { CacheFirst, NetworkFirst, StaleWhileRevalidate } from "workbox-strategies";
 import { ExpirationPlugin } from "workbox-expiration";
 import { CacheableResponsePlugin } from "workbox-cacheable-response";
-import { BackgroundSyncPlugin } from "workbox-background-sync";
 
 declare const self: ServiceWorkerGlobalScope;
 
@@ -69,13 +68,25 @@ registerRoute(
   })
 );
 
-// ── API GET requests — NetworkFirst with fallback ────────────────────────
-const bgSyncPlugin = new BackgroundSyncPlugin("api-queue", {
-  maxRetentionTime: 60 * 24,
-});
+// Only cache explicitly public API responses. Never store authenticated API
+// data (wallet, history, profile, notifications, or support) in a shared
+// browser cache where it could be shown after another account signs in.
+const PUBLIC_API_CACHE_PATHS = new Set([
+  "/api/config",
+  "/api/countries",
+  "/api/countries/popular",
+  "/api/footer",
+  "/api/health",
+  "/api/healthz",
+  "/api/maintenance/status",
+  "/api/public/registration-countries",
+  "/api/services",
+  "/api/services/popular",
+  "/api/site-content",
+]);
 
 registerRoute(
-  ({ url }) => url.pathname.startsWith("/api/") && !url.pathname.startsWith("/api/auth/"),
+  ({ url }) => PUBLIC_API_CACHE_PATHS.has(url.pathname),
   new NetworkFirst({
     cacheName: `${CACHE_VERSION}-api-responses`,
     networkTimeoutSeconds: 8,
@@ -143,65 +154,6 @@ self.addEventListener("notificationclick", (event) => {
   );
 });
 
-// ── Background Sync ───────────────────────────────────────────────────────
-self.addEventListener("sync", (event) => {
-  if (event.tag === "sync-pending-requests") {
-    event.waitUntil(syncPendingRequests());
-  }
-});
-
-async function syncPendingRequests(): Promise<void> {
-  const db = await openIDB();
-  const requests = await getAllRequests(db);
-  await Promise.allSettled(
-    requests.map(async (req) => {
-      try {
-        await fetch(req.url, { method: req.method, headers: req.headers, body: req.body });
-        await deleteRequest(db, req.id);
-      } catch {
-        /* retry next sync */
-      }
-    })
-  );
-}
-
-// Minimal IDB helpers for background sync queue
-function openIDB(): Promise<IDBDatabase> {
-  return new Promise((res, rej) => {
-    const req = indexedDB.open("simix-sync-queue", 1);
-    req.onupgradeneeded = () =>
-      req.result.createObjectStore("requests", { keyPath: "id", autoIncrement: true });
-    req.onsuccess = () => res(req.result);
-    req.onerror = () => rej(req.error);
-  });
-}
-
-interface SyncRequest {
-  id?: number;
-  url: string;
-  method: string;
-  headers: Record<string, string>;
-  body?: string;
-}
-
-function getAllRequests(db: IDBDatabase): Promise<SyncRequest[]> {
-  return new Promise((res, rej) => {
-    const tx = db.transaction("requests", "readonly");
-    const req = tx.objectStore("requests").getAll();
-    req.onsuccess = () => res(req.result as SyncRequest[]);
-    req.onerror = () => rej(req.error);
-  });
-}
-
-function deleteRequest(db: IDBDatabase, id: number | undefined): Promise<void> {
-  return new Promise((res, rej) => {
-    if (id == null) return res();
-    const tx = db.transaction("requests", "readwrite");
-    const req = tx.objectStore("requests").delete(id);
-    req.onsuccess = () => res();
-    req.onerror = () => rej(req.error);
-  });
-}
 
 // ── Message: skip waiting (from update prompt) ────────────────────────────
 self.addEventListener("message", (event) => {
