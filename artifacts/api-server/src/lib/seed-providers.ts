@@ -55,12 +55,9 @@ export async function seedProvidersFromEnv(): Promise<void> {
 
 /**
  * Bootstrap transactional email providers from Plesk environment variables.
- *
- * The database is the source of truth for provider credentials. Environment
- * variables are bootstrap-only: they may create a missing provider or fill a
- * provider row that has no credential, but they must never overwrite an
- * existing database credential. This prevents Replit/Plesk values from
- * fighting each other when both environments share the database.
+ * Brevo reads BREVO_API_KEY directly at runtime and does not persist that
+ * environment value to the database. Resend retains its existing bootstrap
+ * behavior.
  */
 export async function seedEmailProvidersFromEnv(): Promise<void> {
   const providers = [
@@ -86,6 +83,28 @@ export async function seedEmailProvidersFromEnv(): Promise<void> {
         .from(emailProvidersTable)
         .where(eq(emailProvidersTable.slug, provider.slug))
         .limit(1);
+
+      if (provider.slug === "brevo") {
+        if (existing) {
+          logger.info(
+            { provider: provider.slug },
+            "[seed-email-providers] Brevo uses BREVO_API_KEY from the server environment; existing database credential is retained only as fallback",
+          );
+          continue;
+        }
+        await db.insert(emailProvidersTable).values({
+          name: provider.name,
+          slug: provider.slug,
+          priority: provider.priority,
+          active: true,
+          apiKeyEnc: null,
+        });
+        logger.info(
+          { provider: provider.slug },
+          "[seed-email-providers] Brevo provider created; API key remains in server environment",
+        );
+        continue;
+      }
 
       if (existing) {
         if (existing.apiKeyEnc) {

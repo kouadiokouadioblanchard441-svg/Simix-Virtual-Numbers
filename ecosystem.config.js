@@ -33,6 +33,7 @@ module.exports = {
 
         // ── Email (Resend) ────────────────────────────────────────────────
         RESEND_API_KEY: process.env.RESEND_API_KEY || '',
+        BREVO_API_KEY: process.env.BREVO_API_KEY,
 
         // ── Connexion Google OAuth ────────────────────────────────────────
         GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID || '',

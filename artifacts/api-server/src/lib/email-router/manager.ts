@@ -20,6 +20,7 @@ import {
 } from "@workspace/db";
 import { logger } from "../logger";
 import { encrypt, decrypt } from "./crypto";
+import { resolveProviderApiKey } from "./provider-credentials";
 import {
   SEND_TIMEOUT_MS,
   CONSECUTIVE_ERROR_THRESHOLD,
@@ -191,13 +192,14 @@ class EmailProviderManager {
 
     this.cache = rows.map(r => {
       const sender = getProviderSender(r.slug, r.config as Record<string, string> | null);
+      const providerApiKey = resolveProviderApiKey(r.slug, r.apiKeyEnc);
       return {
       id:               r.id,
       name:             r.name,
       slug:             r.slug,
       priority:         r.priority,
       active:           r.active,
-      apiKey:           r.apiKeyEnc    ? decrypt(r.apiKeyEnc)    : null,
+      apiKey:           providerApiKey.apiKey,
       apiSecret:        r.apiSecretEnc ? decrypt(r.apiSecretEnc) : null,
       domain:           r.domain,
       region:           r.region,
@@ -552,9 +554,10 @@ class EmailProviderManager {
     const adapter = ADAPTERS[row.slug];
     if (!adapter) throw new Error(`Adaptateur "${row.slug}" introuvable`);
     const sender = getProviderSender(row.slug, row.config as Record<string, string> | null);
+    const providerApiKey = resolveProviderApiKey(row.slug, row.apiKeyEnc);
     const resolved: ResolvedProvider = {
       id: row.id, name: row.name, slug: row.slug, priority: row.priority, active: row.active,
-      apiKey: row.apiKeyEnc ? decrypt(row.apiKeyEnc) : null,
+      apiKey: providerApiKey.apiKey,
       apiSecret: row.apiSecretEnc ? decrypt(row.apiSecretEnc) : null,
       domain: row.domain, region: row.region,
       config: row.config as Record<string, string> | null,
@@ -644,8 +647,9 @@ class EmailProviderManager {
       await Promise.allSettled(rows.map(async (row) => {
         const adapter = ADAPTERS[row.slug];
         if (!adapter) return;
+        const providerApiKey = resolveProviderApiKey(row.slug, row.apiKeyEnc);
         const config = {
-          apiKey:    row.apiKeyEnc    ? decrypt(row.apiKeyEnc)    : undefined,
+          apiKey:    providerApiKey.apiKey ?? undefined,
           apiSecret: row.apiSecretEnc ? decrypt(row.apiSecretEnc) : undefined,
           domain:    row.domain       ?? undefined,
           region:    row.region       ?? undefined,

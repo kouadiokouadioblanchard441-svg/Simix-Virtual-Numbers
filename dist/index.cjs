@@ -158248,7 +158248,7 @@ function getAppUrl() {
 init_logger2();
 
 // src/lib/email-router/manager.ts
-var import_crypto8 = require("crypto");
+var import_crypto9 = require("crypto");
 init_drizzle_orm();
 init_src();
 init_src();
@@ -158290,6 +158290,21 @@ function decrypt(ciphertext) {
 function maskApiKey(key) {
   if (!key || key.length < 8) return "****";
   return key.substring(0, 4) + "***" + key.substring(key.length - 4);
+}
+
+// src/lib/email-router/provider-credentials.ts
+function getProviderEnvironmentApiKey(slug) {
+  if (slug.toLowerCase() === "brevo") {
+    return process.env.BREVO_API_KEY?.trim() || null;
+  }
+  return null;
+}
+function resolveProviderApiKey(slug, encryptedDatabaseKey) {
+  const environmentKey = getProviderEnvironmentApiKey(slug);
+  if (environmentKey) return { apiKey: environmentKey, source: "environment" };
+  const databaseKey = encryptedDatabaseKey ? decrypt(encryptedDatabaseKey).trim() : "";
+  if (databaseKey) return { apiKey: databaseKey, source: "database" };
+  return { apiKey: null, source: "none" };
 }
 
 // src/lib/email-router/types.ts
@@ -163976,12 +163991,12 @@ var resendAdapter = {
 };
 
 // src/lib/email-router/adapters/ses.ts
-var import_crypto7 = require("crypto");
+var import_crypto8 = require("crypto");
 function hmac(key, data) {
-  return (0, import_crypto7.createHmac)("sha256", key).update(data).digest();
+  return (0, import_crypto8.createHmac)("sha256", key).update(data).digest();
 }
 function sha256hex(data) {
-  return (0, import_crypto7.createHash)("sha256").update(data).digest("hex");
+  return (0, import_crypto8.createHash)("sha256").update(data).digest("hex");
 }
 function getSigningKey(secret, date6, region) {
   const k1 = hmac("AWS4" + secret, date6);
@@ -164581,13 +164596,14 @@ var EmailProviderManager = class {
     const rows = await db.select().from(emailProvidersTable).where(eq(emailProvidersTable.active, true)).orderBy(asc(emailProvidersTable.priority));
     this.cache = rows.map((r3) => {
       const sender = getProviderSender(r3.slug, r3.config);
+      const providerApiKey = resolveProviderApiKey(r3.slug, r3.apiKeyEnc);
       return {
         id: r3.id,
         name: r3.name,
         slug: r3.slug,
         priority: r3.priority,
         active: r3.active,
-        apiKey: r3.apiKeyEnc ? decrypt(r3.apiKeyEnc) : null,
+        apiKey: providerApiKey.apiKey,
         apiSecret: r3.apiSecretEnc ? decrypt(r3.apiSecretEnc) : null,
         domain: r3.domain,
         region: r3.region,
@@ -164635,7 +164651,7 @@ var EmailProviderManager = class {
   // ── Clé d'idempotence ─────────────────────────────────────────
   makeIdempotencyKey(payload) {
     const ts2 = Math.floor(Date.now() / 6e4);
-    return (0, import_crypto8.createHash)("sha256").update(`${payload.to}|${payload.subject}|${ts2}`).digest("hex").slice(0, 32);
+    return (0, import_crypto9.createHash)("sha256").update(`${payload.to}|${payload.subject}|${ts2}`).digest("hex").slice(0, 32);
   }
   // ── Envoi principal avec failover ─────────────────────────────
   async send(payload, options = {}) {
@@ -164856,13 +164872,14 @@ var EmailProviderManager = class {
     const adapter = ADAPTERS[row.slug];
     if (!adapter) throw new Error(`Adaptateur "${row.slug}" introuvable`);
     const sender = getProviderSender(row.slug, row.config);
+    const providerApiKey = resolveProviderApiKey(row.slug, row.apiKeyEnc);
     const resolved = {
       id: row.id,
       name: row.name,
       slug: row.slug,
       priority: row.priority,
       active: row.active,
-      apiKey: row.apiKeyEnc ? decrypt(row.apiKeyEnc) : null,
+      apiKey: providerApiKey.apiKey,
       apiSecret: row.apiSecretEnc ? decrypt(row.apiSecretEnc) : null,
       domain: row.domain,
       region: row.region,
@@ -164937,8 +164954,9 @@ var EmailProviderManager = class {
       await Promise.allSettled(rows.map(async (row) => {
         const adapter = ADAPTERS[row.slug];
         if (!adapter) return;
+        const providerApiKey = resolveProviderApiKey(row.slug, row.apiKeyEnc);
         const config2 = {
-          apiKey: row.apiKeyEnc ? decrypt(row.apiKeyEnc) : void 0,
+          apiKey: providerApiKey.apiKey ?? void 0,
           apiSecret: row.apiSecretEnc ? decrypt(row.apiSecretEnc) : void 0,
           domain: row.domain ?? void 0,
           region: row.region ?? void 0,
@@ -176503,6 +176521,27 @@ async function seedEmailProvidersFromEnv() {
         id: emailProvidersTable.id,
         apiKeyEnc: emailProvidersTable.apiKeyEnc
       }).from(emailProvidersTable).where(eq(emailProvidersTable.slug, provider.slug)).limit(1);
+      if (provider.slug === "brevo") {
+        if (existing) {
+          logger.info(
+            { provider: provider.slug },
+            "[seed-email-providers] Brevo uses BREVO_API_KEY from the server environment; existing database credential is retained only as fallback"
+          );
+          continue;
+        }
+        await db.insert(emailProvidersTable).values({
+          name: provider.name,
+          slug: provider.slug,
+          priority: provider.priority,
+          active: true,
+          apiKeyEnc: null
+        });
+        logger.info(
+          { provider: provider.slug },
+          "[seed-email-providers] Brevo provider created; API key remains in server environment"
+        );
+        continue;
+      }
       if (existing) {
         if (existing.apiKeyEnc) {
           const existingKey = decrypt(existing.apiKeyEnc).trim();
@@ -176560,11 +176599,10 @@ function safeProvider(r3, role, defaultFrom) {
   const providerConfig = r3.config;
   const senderEmail = providerConfig?.senderEmail?.trim() || configuredSenderEmail || fallbackSender.email;
   const senderName = providerConfig?.senderName?.trim() || configuredSenderName || fallbackSender.name;
-  const databaseApiKey = r3.apiKeyEnc ? decrypt(r3.apiKeyEnc) : "";
+  const resolvedApiKey = resolveProviderApiKey(r3.slug, r3.apiKeyEnc);
   const databaseApiSecret = r3.apiSecretEnc ? decrypt(r3.apiSecretEnc) : "";
-  let apiKeyMasked = null;
-  if (databaseApiKey) apiKeyMasked = maskApiKey(databaseApiKey);
-  const apiKeySource = databaseApiKey ? "database" : "none";
+  const apiKeyMasked = resolvedApiKey.apiKey ? maskApiKey(resolvedApiKey.apiKey) : null;
+  const apiKeySource = resolvedApiKey.source;
   return {
     id: r3.id,
     name: r3.name,
@@ -176625,7 +176663,7 @@ router20.post("/admin/email-providers", async (req, res) => {
     res.status(400).json({ error: "Seuls Resend et Brevo sont autoris\xE9s" });
     return;
   }
-  if (active && !apiKey?.trim()) {
+  if (active && !apiKey?.trim() && !getProviderEnvironmentApiKey(slug)) {
     res.status(400).json({ error: "Une cl\xE9 API est requise pour activer ce fournisseur" });
     return;
   }
@@ -176654,6 +176692,7 @@ router20.put("/admin/email-providers/:id", async (req, res) => {
   const [current] = await db.select({
     active: emailProvidersTable.active,
     apiKeyEnc: emailProvidersTable.apiKeyEnc,
+    slug: emailProvidersTable.slug,
     config: emailProvidersTable.config
   }).from(emailProvidersTable).where(eq(emailProvidersTable.id, id)).limit(1);
   if (!current) {
@@ -176664,7 +176703,8 @@ router20.put("/admin/email-providers/:id", async (req, res) => {
     res.status(400).json({ error: "Seuls Resend et Brevo sont autoris\xE9s" });
     return;
   }
-  const resultingHasApiKey = apiKey === void 0 ? !!(current.apiKeyEnc && decrypt(current.apiKeyEnc).trim()) : !!apiKey.trim();
+  const resultingSlug = slug ?? current.slug;
+  const resultingHasApiKey = !!getProviderEnvironmentApiKey(resultingSlug) || (apiKey === void 0 ? !!(current.apiKeyEnc && decrypt(current.apiKeyEnc).trim()) : !!apiKey.trim());
   const resultingActive = active === void 0 ? current.active : active;
   if (resultingActive && !resultingHasApiKey) {
     res.status(400).json({ error: "Une cl\xE9 API est requise pour activer ce fournisseur" });
@@ -176711,13 +176751,14 @@ router20.post("/admin/email-providers/:id/toggle", async (req, res) => {
   const { id } = req.params;
   const [current] = await db.select({
     active: emailProvidersTable.active,
-    apiKeyEnc: emailProvidersTable.apiKeyEnc
+    apiKeyEnc: emailProvidersTable.apiKeyEnc,
+    slug: emailProvidersTable.slug
   }).from(emailProvidersTable).where(eq(emailProvidersTable.id, id)).limit(1);
   if (!current) {
     res.status(404).json({ error: "Fournisseur introuvable" });
     return;
   }
-  const hasUsableApiKey = !!(current.apiKeyEnc && decrypt(current.apiKeyEnc).trim());
+  const hasUsableApiKey = !!getProviderEnvironmentApiKey(current.slug) || !!(current.apiKeyEnc && decrypt(current.apiKeyEnc).trim());
   if (!current.active && !hasUsableApiKey) {
     res.status(400).json({ error: "Ajoutez ou remplacez la cl\xE9 API avant d'activer ce fournisseur" });
     return;
@@ -181679,14 +181720,14 @@ async function seedCountryPaymentConfigs() {
 }
 
 // src/lib/leader-lock.ts
-var import_crypto15 = require("crypto");
+var import_crypto16 = require("crypto");
 init_drizzle_orm();
 init_src();
 init_logger2();
 var LOCK_ROW_ID = 1;
 var LEASE_MS = 3e4;
 var RENEW_INTERVAL_MS = 1e4;
-var HOLDER_ID = `${process.env["HOSTNAME"] ?? "host"}-${process.pid}-${(0, import_crypto15.randomBytes)(4).toString("hex")}`;
+var HOLDER_ID = `${process.env["HOSTNAME"] ?? "host"}-${process.pid}-${(0, import_crypto16.randomBytes)(4).toString("hex")}`;
 var isLeader = false;
 var renewTimer = null;
 async function ensureRowExists() {

@@ -23,6 +23,7 @@ import {
 import { requireAdminJwt } from "../lib/admin-jwt-middleware";
 import { logger } from "../lib/logger";
 import { encrypt, decrypt, maskApiKey } from "../lib/email-router/crypto";
+import { getProviderEnvironmentApiKey, resolveProviderApiKey } from "../lib/email-router/provider-credentials";
 import { SUPPORTED_PROVIDERS } from "../lib/email-router";
 import { emailService } from "../lib/email-service";
 import { getFromEmail } from "../lib/email-from";
@@ -69,11 +70,10 @@ function safeProvider(
   const providerConfig = r.config as Record<string, string> | null;
   const senderEmail = providerConfig?.senderEmail?.trim() || configuredSenderEmail || fallbackSender.email;
   const senderName = providerConfig?.senderName?.trim() || configuredSenderName || fallbackSender.name;
-  const databaseApiKey = r.apiKeyEnc ? decrypt(r.apiKeyEnc) : "";
+  const resolvedApiKey = resolveProviderApiKey(r.slug, r.apiKeyEnc);
   const databaseApiSecret = r.apiSecretEnc ? decrypt(r.apiSecretEnc) : "";
-  let apiKeyMasked: string | null = null;
-  if (databaseApiKey) apiKeyMasked = maskApiKey(databaseApiKey);
-  const apiKeySource = databaseApiKey ? "database" : "none";
+  const apiKeyMasked = resolvedApiKey.apiKey ? maskApiKey(resolvedApiKey.apiKey) : null;
+  const apiKeySource = resolvedApiKey.source;
   return {
     id:               r.id,
     name:             r.name,
@@ -140,7 +140,7 @@ router.post("/admin/email-providers", async (req: Request, res: Response): Promi
     res.status(400).json({ error: "Seuls Resend et Brevo sont autorisés" });
     return;
   }
-  if (active && !apiKey?.trim()) {
+  if (active && !apiKey?.trim() && !getProviderEnvironmentApiKey(slug)) {
     res.status(400).json({ error: "Une clé API est requise pour activer ce fournisseur" });
     return;
   }
@@ -177,6 +177,7 @@ router.put("/admin/email-providers/:id", async (req: Request<{ id: string }>, re
   const [current] = await db.select({
     active: emailProvidersTable.active,
     apiKeyEnc: emailProvidersTable.apiKeyEnc,
+    slug: emailProvidersTable.slug,
     config: emailProvidersTable.config,
   }).from(emailProvidersTable).where(eq(emailProvidersTable.id, id)).limit(1);
   if (!current) { res.status(404).json({ error: "Fournisseur introuvable" }); return; }
@@ -185,9 +186,12 @@ router.put("/admin/email-providers/:id", async (req: Request<{ id: string }>, re
     return;
   }
 
-  const resultingHasApiKey = apiKey === undefined
-    ? !!(current.apiKeyEnc && decrypt(current.apiKeyEnc).trim())
-    : !!apiKey.trim();
+  const resultingSlug = slug ?? current.slug;
+  const resultingHasApiKey = !!getProviderEnvironmentApiKey(resultingSlug) || (
+    apiKey === undefined
+      ? !!(current.apiKeyEnc && decrypt(current.apiKeyEnc).trim())
+      : !!apiKey.trim()
+  );
   const resultingActive = active === undefined ? current.active : active;
   if (resultingActive && !resultingHasApiKey) {
     res.status(400).json({ error: "Une clé API est requise pour activer ce fournisseur" });
@@ -239,10 +243,12 @@ router.post("/admin/email-providers/:id/toggle", async (req: Request<{ id: strin
   const [current] = await db.select({
     active: emailProvidersTable.active,
     apiKeyEnc: emailProvidersTable.apiKeyEnc,
+    slug: emailProvidersTable.slug,
   })
     .from(emailProvidersTable).where(eq(emailProvidersTable.id, id)).limit(1);
   if (!current) { res.status(404).json({ error: "Fournisseur introuvable" }); return; }
-  const hasUsableApiKey = !!(current.apiKeyEnc && decrypt(current.apiKeyEnc).trim());
+  const hasUsableApiKey = !!getProviderEnvironmentApiKey(current.slug)
+    || !!(current.apiKeyEnc && decrypt(current.apiKeyEnc).trim());
   if (!current.active && !hasUsableApiKey) {
     res.status(400).json({ error: "Ajoutez ou remplacez la clé API avant d'activer ce fournisseur" });
     return;
