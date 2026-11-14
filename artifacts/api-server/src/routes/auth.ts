@@ -1,4 +1,4 @@
-import { Router, type IRouter } from "express";
+import { Router, type IRouter, type Response } from "express";
 import crypto from "node:crypto";
 import bcrypt from "bcryptjs";
 import { eq, or } from "drizzle-orm";
@@ -13,7 +13,14 @@ import {
 } from "../lib/auth";
 import { toUser } from "../lib/serializers";
 import { logger } from "../lib/logger";
-import { isRateLimited, resetKey } from "../lib/rate-limiter";
+import {
+  getTemporaryLockRemaining,
+  isRateLimited,
+  recordFailedAttemptAndLock,
+  resetKey,
+  resetTemporaryLock,
+  setTemporaryLock,
+} from "../lib/rate-limiter";
 import { assessLoginRisk, logSecurityEvent } from "../lib/fraud-detection";
 import { isRegistrationEnabled, isEmailOtpEnabled } from "../lib/settings";
 import { createOtp, isUserInactive } from "../lib/otp";
@@ -92,6 +99,17 @@ async function uniqueReferralCode(): Promise<string> {
 }
 
 const router: IRouter = Router();
+const LOGIN_ACCOUNT_MAX_FAILURES = 5;
+const LOGIN_ACCOUNT_LOCKOUT_MS = 10 * 60_000;
+
+function respondWithLoginLockout(res: Response, remainingMs: number): void {
+  const retryAfterSeconds = Math.max(1, Math.ceil(remainingMs / 1000));
+  const remainingMinutes = Math.max(1, Math.ceil(retryAfterSeconds / 60));
+  res.setHeader("Retry-After", String(retryAfterSeconds));
+  res.status(429).json({
+    error: `Trop de tentatives de connexion. Compte temporairement bloqué; réessayez dans ${remainingMinutes} minute${remainingMinutes > 1 ? "s" : ""}.`,
+  });
+}
 
 router.post("/auth/register", requireTurnstile, async (req, res): Promise<void> => {
   const ip = req.ip ?? "unknown";
@@ -235,6 +253,14 @@ router.post("/auth/login", requireTurnstile, async (req, res): Promise<void> => 
 
   const { identifier, password } = parsed.data;
   const normalized = identifier.replace(/\s+/g, "");
+  const normalizedLockIdentifier = normalized.toLowerCase();
+  const identifierLockKey = `login_account_lock_identifier:${normalizedLockIdentifier}`;
+
+  const identifierLockRemaining = getTemporaryLockRemaining(identifierLockKey);
+  if (identifierLockRemaining > 0) {
+    respondWithLoginLockout(res, identifierLockRemaining);
+    return;
+  }
 
   /* ── Brute-force check BEFORE hitting the DB ── */
   const risk = assessLoginRisk(ip, normalized);
@@ -273,6 +299,12 @@ router.post("/auth/login", requireTurnstile, async (req, res): Promise<void> => 
     /* Record failed attempt */
     isRateLimited(`login_fail_ip:${ip}`, 99999, 15 * 60_000);
     isRateLimited(`login_fail_user:${normalized}`, 99999, 15 * 60_000);
+    const lockTriggered = recordFailedAttemptAndLock(
+      `login_account_attempt_identifier:${normalizedLockIdentifier}`,
+      identifierLockKey,
+      LOGIN_ACCOUNT_MAX_FAILURES,
+      LOGIN_ACCOUNT_LOCKOUT_MS,
+    );
     notifyLoginAlert({
       userName: "Compte introuvable",
       attemptedIdentifier: normalized,
@@ -281,7 +313,11 @@ router.post("/auth/login", requireTurnstile, async (req, res): Promise<void> => 
       success: false,
       failReason: "Identifiants invalides",
     });
-    res.status(401).json({ error: "Identifiants invalides" });
+    if (lockTriggered) {
+      respondWithLoginLockout(res, LOGIN_ACCOUNT_LOCKOUT_MS);
+    } else {
+      res.status(401).json({ error: "Identifiants invalides" });
+    }
     return;
   }
 
@@ -300,6 +336,13 @@ router.post("/auth/login", requireTurnstile, async (req, res): Promise<void> => 
       error: "Votre compte a été suspendu.",
       reason: user.blockedReason ?? "Activité suspecte détectée",
     });
+    return;
+  }
+
+  const accountLockKey = `login_account_lock_user:${user.id}`;
+  const accountLockRemaining = getTemporaryLockRemaining(accountLockKey);
+  if (accountLockRemaining > 0) {
+    respondWithLoginLockout(res, accountLockRemaining);
     return;
   }
 
@@ -323,6 +366,15 @@ router.post("/auth/login", requireTurnstile, async (req, res): Promise<void> => 
   if (!ok) {
     isRateLimited(`login_fail_ip:${ip}`, 99999, 15 * 60_000);
     isRateLimited(`login_fail_user:${normalized}`, 99999, 15 * 60_000);
+    const lockTriggered = recordFailedAttemptAndLock(
+      `login_account_attempt_user:${user.id}`,
+      accountLockKey,
+      LOGIN_ACCOUNT_MAX_FAILURES,
+      LOGIN_ACCOUNT_LOCKOUT_MS,
+    );
+    if (lockTriggered) {
+      setTemporaryLock(identifierLockKey, LOGIN_ACCOUNT_LOCKOUT_MS);
+    }
 
     if (risk.level === "suspicious") {
       await logSecurityEvent({
@@ -344,13 +396,21 @@ router.post("/auth/login", requireTurnstile, async (req, res): Promise<void> => 
       success: false,
       failReason: "Mot de passe incorrect",
     });
-    res.status(401).json({ error: "Identifiants invalides" });
+    if (lockTriggered) {
+      respondWithLoginLockout(res, LOGIN_ACCOUNT_LOCKOUT_MS);
+    } else {
+      res.status(401).json({ error: "Identifiants invalides" });
+    }
     return;
   }
 
   /* Success — reset fail counters */
   resetKey(`login_fail_ip:${ip}`);
   resetKey(`login_fail_user:${normalized}`);
+  resetKey(`login_account_attempt_user:${user.id}`);
+  resetKey(`login_account_attempt_identifier:${normalizedLockIdentifier}`);
+  resetTemporaryLock(accountLockKey);
+  resetTemporaryLock(identifierLockKey);
 
   const session = await createSession(user.id);
   setSessionCookie(res, session.id, session.expiresAt);
