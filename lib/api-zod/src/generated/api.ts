@@ -47,7 +47,6 @@ export const RegisterResponse = zod.object({
     isAdmin: zod.boolean().optional(),
     riskScore: zod.number().int().optional(),
   }),
-  token: zod.string(),
 });
 
 /**
@@ -74,8 +73,12 @@ export const LoginResponse = zod.object({
     transactionsCount: zod.number().int().optional(),
     isAdmin: zod.boolean().optional(),
     riskScore: zod.number().int().optional(),
-  }),
-  token: zod.string(),
+  }).optional(),
+  requiresTwoFactor: zod.boolean().optional(),
+  challengeId: zod.string().uuid().optional(),
+  maskedEmail: zod.string().optional(),
+  requiresEmailVerification: zod.boolean().optional(),
+  requiresInactivityCheck: zod.boolean().optional(),
 });
 
 /**

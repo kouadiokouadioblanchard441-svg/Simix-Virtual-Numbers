@@ -10,7 +10,7 @@ import { Router, type IRouter, type Request, type Response } from "express";
 import bcrypt from "bcryptjs";
 import { eq } from "drizzle-orm";
 import { db, usersTable, adminAccessLogsTable } from "@workspace/db";
-import { signAdminJwt } from "../lib/admin-jwt";
+import { ADMIN_SESSION_COOKIE, signAdminJwt } from "../lib/admin-jwt";
 import { requireAdminJwt } from "../lib/admin-jwt-middleware";
 import {
   getPersistentHitCount,
@@ -184,8 +184,15 @@ router.post("/admin-auth/login", async (req: Request, res: Response): Promise<vo
   await logAccess(ip, "login_success", true, email, { userId: user.id }, ua);
   logger.info({ ip, email, userId: user.id }, "Admin login success");
 
+  const isProd = process.env.NODE_ENV === "production";
+  res.cookie(ADMIN_SESSION_COOKIE, token, {
+    httpOnly: true,
+    secure: isProd,
+    sameSite: "strict",
+    maxAge: 8 * 3600 * 1000,
+    path: "/api",
+  });
   res.json({
-    token,
     expiresIn: 8 * 3600,
     admin: {
       id: user.id,
@@ -239,9 +246,23 @@ router.post("/admin-auth/logout", requireAdminJwt, async (req: Request, res: Res
   try {
     await logAccess(ip, "logout", true, payload.email, { jti: payload.jti }, ua);
   } catch {
+    const isProd = process.env.NODE_ENV === "production";
+    res.clearCookie(ADMIN_SESSION_COOKIE, {
+      httpOnly: true,
+      secure: isProd,
+      sameSite: "strict",
+      path: "/api",
+    });
     res.status(503).json({ error: "La session ne peut pas être révoquée pour le moment." });
     return;
   }
+  const isProd = process.env.NODE_ENV === "production";
+  res.clearCookie(ADMIN_SESSION_COOKIE, {
+    httpOnly: true,
+    secure: isProd,
+    sameSite: "strict",
+    path: "/api",
+  });
   res.json({ success: true });
 });
 

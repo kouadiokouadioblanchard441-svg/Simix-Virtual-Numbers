@@ -321,32 +321,49 @@ export async function sendPasswordResetEmail(
 export async function sendOtpEmail(
   to: string,
   code: string,
-  purpose: "register" | "inactivity",
+  purpose: "register" | "inactivity" | "two_factor",
   fullName: string,
   issuanceId: string,
 ): Promise<void> {
   const from    = await getFromEmail();
-  const subject = purpose === "inactivity"
-    ? "🔐 Vérification de sécurité — Simix"
-    : "✉️ Confirmez votre adresse email — Simix";
+  const isTwoFactor = purpose === "two_factor";
+  const subject = isTwoFactor
+    ? "🔐 Code de connexion — Simix"
+    : purpose === "inactivity"
+      ? "🔐 Vérification de sécurité — Simix"
+      : "✉️ Confirmez votre adresse email — Simix";
   const result = await emailService.send({
       to,
       from,
       subject,
       html: getProfessionalAuthEmailHtml({
-        title: purpose === "inactivity" ? "Vérification de sécurité" : "Confirmez votre inscription",
-        eyebrow: purpose === "inactivity" ? "Protection du compte" : "Bienvenue sur Simix",
-        subtitle: purpose === "inactivity"
-          ? "Une vérification supplémentaire est nécessaire pour sécuriser votre connexion."
-          : "Une dernière étape pour activer votre compte Simix.",
-        body: purpose === "inactivity"
-          ? "Entrez le code ci-dessous dans l'application pour confirmer votre identité."
-          : "Entrez le code ci-dessous dans l'application pour confirmer votre adresse email.",
+        title: isTwoFactor
+          ? "Confirmez votre connexion"
+          : purpose === "inactivity"
+            ? "Vérification de sécurité"
+            : "Confirmez votre inscription",
+        eyebrow: isTwoFactor || purpose === "inactivity"
+          ? "Protection du compte"
+          : "Bienvenue sur Simix",
+        subtitle: isTwoFactor
+          ? "Une vérification supplémentaire est nécessaire pour terminer votre connexion."
+          : purpose === "inactivity"
+            ? "Une vérification supplémentaire est nécessaire pour sécuriser votre connexion."
+            : "Une dernière étape pour activer votre compte Simix.",
+        body: isTwoFactor
+          ? "Entrez ce code dans l'application pour confirmer que vous êtes à l'origine de cette connexion."
+          : purpose === "inactivity"
+            ? "Entrez le code ci-dessous dans l'application pour confirmer votre identité."
+            : "Entrez le code ci-dessous dans l'application pour confirmer votre adresse email.",
         code,
-        codeLabel: purpose === "inactivity" ? "Code de sécurité" : "Code de confirmation",
+        codeLabel: isTwoFactor
+          ? "Code de connexion"
+          : purpose === "inactivity"
+            ? "Code de sécurité"
+            : "Code de confirmation",
         firstName: fullName.split(" ")[0] ?? fullName,
-        footerText: purpose === "inactivity"
-          ? "Si vous n'êtes pas à l'origine de cette connexion, contactez immédiatement le support Simix."
+        footerText: isTwoFactor || purpose === "inactivity"
+          ? "Si vous n'êtes pas à l'origine de cette connexion, ignorez ce code et contactez le support Simix."
           : "Si vous n'avez pas créé de compte Simix, vous pouvez ignorer cet email.",
       }),
       idempotencyKey: `otp-${issuanceId}`,
@@ -357,7 +374,11 @@ export async function sendOtpEmail(
   }
   void sendOtpEventAlert({
     event: "Code envoyé par email",
-    purpose: purpose === "inactivity" ? "Contrôle d'inactivité" : "Vérification d'inscription",
+    purpose: isTwoFactor
+      ? "Authentification à deux facteurs"
+      : purpose === "inactivity"
+        ? "Contrôle d'inactivité"
+        : "Vérification d'inscription",
     userName: fullName,
     email: to,
   });

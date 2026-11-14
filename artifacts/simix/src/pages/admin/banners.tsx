@@ -1,7 +1,6 @@
 import { useState, useRef, useEffect, type ChangeEvent } from "react";
 import { AdminLayout } from "@/components/admin-layout";
 import { AdminGuard } from "@/components/admin-guard";
-import { adminToken } from "@/lib/admin-token";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Plus, Pencil, Trash2, Upload, X, Check, ChevronUp, ChevronDown,
@@ -16,7 +15,7 @@ const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 async function api<T>(method: string, path: string, body?: unknown): Promise<T> {
   const res = await fetch(`${BASE}/api${path}`, {
     method,
-    headers: { ...adminToken.getHeader(), "content-type": "application/json" },
+    headers: { "content-type": "application/json" },
     credentials: "include",
     body: body ? JSON.stringify(body) : undefined,
   });

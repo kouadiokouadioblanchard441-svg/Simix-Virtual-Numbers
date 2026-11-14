@@ -2,7 +2,7 @@ import { Router, type IRouter, type Response } from "express";
 import crypto from "node:crypto";
 import bcrypt from "bcryptjs";
 import { eq, or } from "drizzle-orm";
-import { db, usersTable, loginHistoryTable, ipBlacklistTable } from "@workspace/db";
+import { db, usersTable, ipBlacklistTable } from "@workspace/db";
 import { RegisterBody, LoginBody } from "@workspace/api-zod";
 import {
   createSession,
@@ -36,6 +36,13 @@ import {
   type LoginAlertData,
 } from "../lib/telegram";
 import { auditLog } from "../lib/audit";
+import { notifySuccessfulLogin } from "../lib/login-notifications";
+import {
+  createLoginTwoFactorChallenge,
+  getAccountSecurityStatus,
+  maskEmailAddress,
+  setAccountTwoFactor,
+} from "../lib/account-security";
 
 function notifyLoginAlert(data: Omit<LoginAlertData, "geo">): void {
   void (async () => {
@@ -200,7 +207,7 @@ router.post("/auth/register", requireTurnstile, async (req, res): Promise<void> 
   if (!await isEmailOtpEnabled()) {
     await db.update(usersTable).set({ emailVerified: true, lastLoginAt: new Date() }).where(eq(usersTable.id, user.id));
     notifyRegistration(user, ip, req.headers["user-agent"] ?? "");
-    res.json({ user: { ...toUser(user), emailVerified: true }, token: session.id });
+    res.json({ user: { ...toUser(user), emailVerified: true } });
     return;
   }
 
@@ -227,7 +234,6 @@ router.post("/auth/register", requireTurnstile, async (req, res): Promise<void> 
 
   res.json({
     user: toUser(user),
-    token: session.id,
     requiresEmailVerification: true,
     emailDeliveryFailed,
   });
@@ -414,6 +420,54 @@ router.post("/auth/login", requireTurnstile, async (req, res): Promise<void> => 
   await resetPersistentTemporaryLock(accountLockKey);
   await resetPersistentTemporaryLock(identifierLockKey);
 
+  let accountSecurity;
+  try {
+    accountSecurity = await getAccountSecurityStatus(user.id);
+  } catch (securityErr) {
+    logger.error({ err: securityErr, userId: user.id }, "[auth] Cannot load account security settings");
+    res.status(503).json({ error: "Impossible de vérifier la sécurité du compte. Réessayez plus tard." });
+    return;
+  }
+
+  if (accountSecurity.available && accountSecurity.twoFactorEnabled) {
+    if (!user.emailVerified) {
+      res.status(403).json({ error: "L'adresse e-mail du compte doit être confirmée avant la connexion." });
+      return;
+    }
+
+    const twoFactorLockRemaining = await getPersistentTemporaryLockRemaining(
+      `login_2fa_lock_user:${user.id}`,
+    );
+    if (twoFactorLockRemaining > 0) {
+      respondWithLoginLockout(res, twoFactorLockRemaining);
+      return;
+    }
+
+    try {
+      const challenge = await createLoginTwoFactorChallenge(user.id);
+      if (!challenge) {
+        res.status(503).json({ error: "La vérification 2FA a changé. Recommencez la connexion." });
+        return;
+      }
+      await sendOtpEmail(
+        user.email,
+        challenge.code,
+        "two_factor",
+        user.fullName,
+        challenge.challengeId,
+      );
+      res.json({
+        requiresTwoFactor: true,
+        challengeId: challenge.challengeId,
+        maskedEmail: maskEmailAddress(user.email),
+      });
+    } catch (emailErr) {
+      logger.error({ err: emailErr, userId: user.id }, "[auth] Two-factor email could not be sent");
+      res.status(503).json({ error: "Impossible d'envoyer le code de connexion. Réessayez." });
+    }
+    return;
+  }
+
   const session = await createSession(user.id);
   setSessionCookie(res, session.id, session.expiresAt);
 
@@ -424,7 +478,7 @@ router.post("/auth/login", requireTurnstile, async (req, res): Promise<void> => 
     if (!otpEnabled) {
       /* OTP disabled — auto-verify the account and proceed normally */
       await db.update(usersTable).set({ emailVerified: true, lastLoginAt: new Date() }).where(eq(usersTable.id, user.id));
-      res.json({ user: { ...toUser(user), emailVerified: true }, token: session.id });
+      res.json({ user: { ...toUser(user), emailVerified: true } });
       return;
     }
     let emailDeliveryFailed = false;
@@ -446,7 +500,6 @@ router.post("/auth/login", requireTurnstile, async (req, res): Promise<void> => 
     }
     res.json({
       user: toUser(user),
-      token: session.id,
       requiresEmailVerification: true,
       emailDeliveryFailed,
     });
@@ -470,7 +523,7 @@ router.post("/auth/login", requireTurnstile, async (req, res): Promise<void> => 
         detail: "Le code n'a pas pu être généré ou envoyé.",
       });
     }
-    res.json({ user: toUser(user), token: session.id, requiresInactivityCheck: true });
+    res.json({ user: toUser(user), requiresInactivityCheck: true });
     return;
   }
 
@@ -478,34 +531,9 @@ router.post("/auth/login", requireTurnstile, async (req, res): Promise<void> => 
   await db.update(usersTable).set({ lastLoginAt: new Date() }).where(eq(usersTable.id, user.id));
 
   /* Géolocalisation + Telegram + historique — fire-and-forget */
-  void (async () => {
-    try {
-      const deviceType = /mobile|android|iphone|ipad/i.test(ua) ? "mobile" : "desktop";
-      const geo = await lookupIp(ip);
-      await db.insert(loginHistoryTable).values({
-        userId: user.id,
-        ip,
-        userAgent: ua,
-        deviceType,
-        country: geo.country ?? null,
-        city: geo.city ?? null,
-        region: geo.region ?? null,
-        isp: geo.isp ?? null,
-        success: "true",
-      });
-      await sendLoginAlert({
-        userId: user.id,
-        userName: user.fullName,
-        userPhone: user.phone,
-        ip,
-        userAgent: ua,
-        geo,
-        success: true,
-      });
-    } catch { /* non-fatal */ }
-  })();
+  notifySuccessfulLogin(user, ip, ua);
 
-  res.json({ user: toUser(user), token: session.id });
+  res.json({ user: toUser(user) });
 });
 
 router.post("/auth/logout", async (req, res): Promise<void> => {
@@ -589,7 +617,14 @@ router.patch("/auth/me/profile", requireAuth, async (req, res): Promise<void> =>
   const { fullName, email, username } = req.body;
   const updates: Record<string, unknown> = {};
   if (fullName && typeof fullName === "string") updates.fullName = fullName.trim();
-  if (email && typeof email === "string" && email.includes("@")) updates.email = email.trim().toLowerCase();
+  const nextEmail = typeof email === "string" && email.includes("@")
+    ? email.trim().toLowerCase()
+    : null;
+  const emailChanged = Boolean(nextEmail && nextEmail !== req.user!.email.toLowerCase());
+  if (emailChanged && nextEmail) {
+    updates.email = nextEmail;
+    updates.emailVerified = false;
+  }
   if (username && typeof username === "string") {
     const clean = username.toLowerCase().replace(/[^a-z0-9_]/g, "");
     if (clean.length >= 3) updates.username = clean;
@@ -605,6 +640,21 @@ router.patch("/auth/me/profile", requireAuth, async (req, res): Promise<void> =>
       .where(eq(usersTable.id, req.user!.id))
       .returning();
     if (!user) { res.status(404).json({ error: "Utilisateur non trouvé" }); return; }
+    if (emailChanged) {
+      try {
+        await setAccountTwoFactor(user.id, false);
+      } catch (securityErr) {
+        const { logger } = await import("../lib/logger");
+        logger.error(
+          { err: securityErr, userId: user.id },
+          "[profile] Email changed but two-factor settings could not be updated",
+        );
+        res.status(503).json({
+          error: "L'adresse a été modifiée, mais les réglages de sécurité doivent être rétablis par le serveur.",
+        });
+        return;
+      }
+    }
     res.json({ user: toUser(user) });
   } catch (err: unknown) {
     /* Drizzle 0.45+ wraps pg errors in DrizzleQueryError — the raw pg error

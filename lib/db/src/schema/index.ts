@@ -33,3 +33,5 @@ export * from "./audit_logs";
 export * from "./security_rate_limits";
 export * from "./email_providers";
 export * from "./payouts";
+export * from "./account_security";
+export * from "./login_two_factor_challenges";

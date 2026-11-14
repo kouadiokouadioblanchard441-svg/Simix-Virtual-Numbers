@@ -1,20 +1,17 @@
 import { useRef, useState, useCallback } from "react";
 import { Upload, Loader2, X, Link, ImageIcon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { adminToken } from "@/lib/admin-token";
 
-export async function uploadAdminImage(file: File, authHeader?: Record<string, string>): Promise<string> {
+export async function uploadAdminImage(file: File): Promise<string> {
   if (!["image/jpeg", "image/png", "image/gif", "image/webp"].includes(file.type.toLowerCase())) {
     throw new Error("Veuillez sélectionner une image PNG, JPG, GIF ou WebP.");
   }
-  const uploadHeaders = { ...adminToken.getHeader(), ...(authHeader ?? {}) };
-
   /* ── Phase 1: Try GCS presigned URL ── */
   let gcsUploadCompleted = false;
   try {
     const metaRes = await fetch("/api/storage/uploads/request-url", {
       method: "POST",
-      headers: { "Content-Type": "application/json", ...uploadHeaders },
+      headers: { "Content-Type": "application/json" },
       credentials: "include",
       body: JSON.stringify({ name: file.name, size: file.size, contentType: file.type }),
     });
@@ -25,7 +22,7 @@ export async function uploadAdminImage(file: File, authHeader?: Record<string, s
         gcsUploadCompleted = true;
         const finalizeRes = await fetch("/api/storage/uploads/finalize", {
           method: "POST",
-          headers: { "Content-Type": "application/json", ...uploadHeaders },
+          headers: { "Content-Type": "application/json" },
           credentials: "include",
           body: JSON.stringify({ objectPath }),
         });
@@ -44,7 +41,7 @@ export async function uploadAdminImage(file: File, authHeader?: Record<string, s
   /* ── Phase 2: Direct server upload ── */
   const directRes = await fetch("/api/storage/uploads/direct", {
     method: "POST",
-    headers: { "Content-Type": file.type, ...uploadHeaders },
+    headers: { "Content-Type": file.type },
     credentials: "include",
     body: file,
   });
@@ -56,14 +53,14 @@ export async function uploadAdminImage(file: File, authHeader?: Record<string, s
   throw new Error(error?.error || "Téléversement impossible. Vérifiez votre session administrateur.");
 }
 
-export function useImageUpload(onUploaded: (url: string) => void, authHeader?: Record<string, string>) {
+export function useImageUpload(onUploaded: (url: string) => void) {
   const [uploading, setUploading] = useState(false);
   const { toast } = useToast();
 
   const upload = useCallback(async (file: File) => {
     setUploading(true);
     try {
-      const url = await uploadAdminImage(file, authHeader);
+      const url = await uploadAdminImage(file);
       onUploaded(url);
       toast({ title: "Image uploadée ✓", description: "Le logo a été mis à jour." });
     } catch (e) {
@@ -71,7 +68,7 @@ export function useImageUpload(onUploaded: (url: string) => void, authHeader?: R
     } finally {
       setUploading(false);
     }
-  }, [onUploaded, authHeader, toast]);
+  }, [onUploaded, toast]);
 
   return { upload, uploading };
 }
@@ -80,14 +77,13 @@ export function useImageUpload(onUploaded: (url: string) => void, authHeader?: R
 interface Props {
   onUploaded: (url: string) => void;
   busy?: boolean;
-  authHeader?: Record<string, string>;
   size?: "sm" | "md";
   label?: string;
 }
 
-export function ImageUploadButton({ onUploaded, busy = false, authHeader, size = "sm", label }: Props) {
+export function ImageUploadButton({ onUploaded, busy = false, size = "sm", label }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
-  const { upload, uploading } = useImageUpload(onUploaded, authHeader);
+  const { upload, uploading } = useImageUpload(onUploaded);
   const isWorking = busy || uploading;
   const px = size === "md" ? "px-3 py-2 text-sm" : "px-2 py-1.5 text-xs";
 
@@ -118,7 +114,6 @@ export function ImageUploadButton({ onUploaded, busy = false, authHeader, size =
 interface LogoUploadCardProps {
   value: string;
   onChange: (val: string) => void;
-  authHeader?: Record<string, string>;
   busy?: boolean;
   label?: string;
   previewBg?: string;
@@ -128,14 +123,13 @@ interface LogoUploadCardProps {
 export function LogoUploadCard({
   value,
   onChange,
-  authHeader,
   busy = false,
   label,
   previewBg = "#18181b",
   placeholder = "https://…",
 }: LogoUploadCardProps) {
   const inputRef = useRef<HTMLInputElement>(null);
-  const { upload, uploading } = useImageUpload(onChange, authHeader);
+  const { upload, uploading } = useImageUpload(onChange);
   const [showUrl, setShowUrl] = useState(false);
   const isWorking = busy || uploading;
 
@@ -246,19 +240,17 @@ export function LogoUploadCard({
 interface LogoFieldProps {
   value: string;
   onChange: (val: string) => void;
-  authHeader?: Record<string, string>;
   busy?: boolean;
   placeholder?: string;
   label?: string;
   previewBg?: string;
 }
 
-export function LogoField({ value, onChange, authHeader, busy, placeholder = "https://…", label, previewBg = "transparent" }: LogoFieldProps) {
+export function LogoField({ value, onChange, busy, placeholder = "https://…", label, previewBg = "transparent" }: LogoFieldProps) {
   return (
     <LogoUploadCard
       value={value}
       onChange={onChange}
-      authHeader={authHeader}
       busy={busy}
       placeholder={placeholder}
       label={label}

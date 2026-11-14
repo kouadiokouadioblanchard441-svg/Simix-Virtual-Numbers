@@ -11,13 +11,19 @@ interface AdminSession {
   name: string;
 }
 
-async function verifyJwtSession(token: string): Promise<AdminSession | null> {
+async function verifyAdminSession(): Promise<{ admin: AdminSession; expiresAt: number } | null> {
   try {
     const res = await fetch(`${BASE}/api/admin-auth/session`, {
-      headers: { Authorization: `Bearer ${token}` },
+      credentials: "include",
     });
-    const data = await res.json() as { valid?: boolean; admin?: AdminSession };
-    return data.valid && data.admin ? data.admin : null;
+    const data = await res.json() as {
+      valid?: boolean;
+      admin?: AdminSession;
+      expiresAt?: number;
+    };
+    return data.valid && data.admin && data.expiresAt
+      ? { admin: data.admin, expiresAt: data.expiresAt }
+      : null;
   } catch {
     return null;
   }
@@ -33,17 +39,12 @@ export function AdminSecureGuard({ children }: { children: React.ReactNode }) {
   const [status, setStatus] = useState<"loading" | "ok" | "denied">("loading");
 
   useEffect(() => {
-    if (!adminToken.isValid()) {
-      adminToken.clear();
-      setStatus("denied");
-      setLocation("/admin/secure-login");
-      return;
-    }
-
-    const token = adminToken.get()!;
-    verifyJwtSession(token).then((admin) => {
-      if (admin) {
-        AdminSessionContext._admin = admin;
+    let active = true;
+    verifyAdminSession().then((session) => {
+      if (!active) return;
+      if (session) {
+        adminToken.setExpiry(session.expiresAt);
+        AdminSessionContext._admin = session.admin;
         setStatus("ok");
       } else {
         adminToken.clear();
@@ -52,6 +53,9 @@ export function AdminSecureGuard({ children }: { children: React.ReactNode }) {
         setLocation("/admin/secure-login");
       }
     });
+    return () => {
+      active = false;
+    };
   }, [setLocation]);
 
   if (status === "loading") {

@@ -1,6 +1,5 @@
 import { useState, useRef, type ChangeEvent } from "react";
 import { AdminLayout } from "@/components/admin-layout";
-import { adminToken } from "@/lib/admin-token";
 import { LogoUploadCard } from "@/components/image-upload-button";
 import {
   Share2, Globe, Plus, Pencil, Trash2, ToggleLeft, ToggleRight,
@@ -27,7 +26,7 @@ const SOCIAL_ICON_MAP: Record<string, { Icon: React.ElementType; color: string; 
 async function api<T>(method: string, path: string, body?: unknown): Promise<T> {
   const res = await fetch(`${BASE}/api${path}`, {
     method,
-    headers: { ...adminToken.getHeader(), "content-type": "application/json" },
+    headers: { "content-type": "application/json" },
     credentials: "include",
     body: body ? JSON.stringify(body) : undefined,
   });

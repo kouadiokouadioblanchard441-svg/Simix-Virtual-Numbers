@@ -1,18 +1,24 @@
-const KEY = "simix_admin_jwt";
 const EXPIRY_KEY = "simix_admin_jwt_exp";
+const LEGACY_TOKEN_KEY = "simix_admin_jwt";
+
+function removeLegacyToken(): void {
+  try {
+    sessionStorage.removeItem(LEGACY_TOKEN_KEY);
+  } catch {
+    /* Storage is only a UI hint; server authentication uses an HttpOnly cookie. */
+  }
+}
+
+if (typeof window !== "undefined") removeLegacyToken();
 
 export const adminToken = {
-  get(): string | null {
-    return sessionStorage.getItem(KEY);
-  },
-
-  set(token: string, expiresAt: number): void {
-    sessionStorage.setItem(KEY, token);
+  setExpiry(expiresAt: number): void {
+    removeLegacyToken();
     sessionStorage.setItem(EXPIRY_KEY, String(expiresAt));
   },
 
   clear(): void {
-    sessionStorage.removeItem(KEY);
+    removeLegacyToken();
     sessionStorage.removeItem(EXPIRY_KEY);
   },
 
@@ -23,19 +29,12 @@ export const adminToken = {
   },
 
   isValid(): boolean {
-    const token = this.get();
-    if (!token) return false;
+    removeLegacyToken();
     if (this.isExpired()) {
       this.clear();
       return false;
     }
     return true;
-  },
-
-  getHeader(): Record<string, string> {
-    const token = this.get();
-    if (!token) return {};
-    return { Authorization: `Bearer ${token}` };
   },
 
   getSecondsRemaining(): number {

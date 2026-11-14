@@ -28,6 +28,7 @@ export function PinSetup({ user, onComplete, isChange = false }: PinSetupProps) 
   const [firstPin, setFirstPin] = useState<string>("");
   const [digits, setDigits] = useState<string[]>([]);
   const [mismatch, setMismatch] = useState(false);
+  const [saveError, setSaveError] = useState("");
 
   const handleDigit = useCallback(
     async (d: string) => {
@@ -49,6 +50,7 @@ export function PinSetup({ user, onComplete, isChange = false }: PinSetupProps) 
       }
 
       if (step === "confirm") {
+        setSaveError("");
         if (entered !== firstPin) {
           setMismatch(true);
           setTimeout(() => {
@@ -61,11 +63,18 @@ export function PinSetup({ user, onComplete, isChange = false }: PinSetupProps) 
         }
 
         setStep("saving");
-        await savePin(user.id, entered);
-        setStep("done");
-        setTimeout(() => {
-          onComplete();
-        }, 700);
+        try {
+          await savePin(user.id, entered);
+          setStep("done");
+          setTimeout(() => {
+            onComplete();
+          }, 700);
+        } catch (error) {
+          setStep("create");
+          setDigits([]);
+          setFirstPin("");
+          setSaveError((error as Error).message || "Le PIN n'a pas pu être enregistré.");
+        }
       }
     },
     [digits, step, firstPin, user.id, onComplete],
@@ -171,6 +180,9 @@ export function PinSetup({ user, onComplete, isChange = false }: PinSetupProps) 
             </motion.p>
           )}
         </AnimatePresence>
+        {saveError && (
+          <p className="text-sm text-red-400 font-medium -mt-4 text-center">{saveError}</p>
+        )}
 
         {/* Keypad */}
         <NumericKeypad

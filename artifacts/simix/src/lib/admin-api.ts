@@ -18,7 +18,6 @@ const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
 async function req<T>(method: string, path: string, body?: unknown): Promise<T> {
   const headers: Record<string, string> = {
-    ...adminToken.getHeader(),
     ...(body ? { "content-type": "application/json" } : {}),
   };
   const res = await fetch(`${BASE}/api${path}`, {

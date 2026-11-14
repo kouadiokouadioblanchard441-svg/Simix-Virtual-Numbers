@@ -16,6 +16,8 @@ import { motion } from "framer-motion";
 import { SimixLogo } from "@/components/simix-logo";
 import { TurnstileWidget, useTurnstileToken } from "@/components/turnstile/TurnstileWidget";
 
+const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
+
 const formSchema = z.object({
   identifier: z.string().min(3, "L'identifiant est requis"),
   password: z.string().min(6, "Le mot de passe est requis"),
@@ -106,6 +108,12 @@ export default function Login() {
   const loginMutation = useLogin();
   const [method, setMethod] = useState<"phone" | "username">("phone");
   const { token: turnstileToken, handleSuccess: handleTurnstileSuccess, handleExpire: handleTurnstileExpire, handleError: handleTurnstileError } = useTurnstileToken();
+  const [twoFactorChallenge, setTwoFactorChallenge] = useState<{
+    challengeId: string;
+    maskedEmail: string;
+  } | null>(null);
+  const [twoFactorCode, setTwoFactorCode] = useState("");
+  const [twoFactorPending, setTwoFactorPending] = useState(false);
 
   /* Read ?error= param from URL after Google OAuth redirect */
   useEffect(() => {
@@ -150,7 +158,21 @@ export default function Login() {
           method,
           "cf-turnstile-response": turnstileToken,
         } as any
-      }) as { requiresEmailVerification?: boolean; requiresInactivityCheck?: boolean };
+      }) as {
+        requiresEmailVerification?: boolean;
+        requiresInactivityCheck?: boolean;
+        requiresTwoFactor?: boolean;
+        challengeId?: string;
+        maskedEmail?: string;
+      };
+      if (result?.requiresTwoFactor && result.challengeId) {
+        setTwoFactorChallenge({
+          challengeId: result.challengeId,
+          maskedEmail: result.maskedEmail ?? "",
+        });
+        setTwoFactorCode("");
+        return;
+      }
       queryClient.invalidateQueries({ queryKey: getGetMeQueryKey() });
       if (result?.requiresEmailVerification || result?.requiresInactivityCheck) {
         setLocation("/verify-email");
@@ -163,6 +185,41 @@ export default function Login() {
         description: error?.message || "Numéro de téléphone ou mot de passe incorrect. Vérifiez vos informations et réessayez.",
         variant: "destructive",
       });
+    }
+  }
+
+  async function verifyTwoFactorCode() {
+    if (!twoFactorChallenge || twoFactorCode.length !== 6) return;
+    setTwoFactorPending(true);
+    try {
+      const response = await fetch(`${BASE}/api/auth/login/2fa/verify`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          challengeId: twoFactorChallenge.challengeId,
+          code: twoFactorCode,
+        }),
+      });
+      const result = await response.json().catch(() => ({})) as {
+        user?: unknown;
+        error?: string;
+        requiresInactivityCheck?: boolean;
+      };
+      if (!response.ok) {
+        throw new Error(result.error ?? "Le code n'a pas pu être vérifié.");
+      }
+      queryClient.invalidateQueries({ queryKey: getGetMeQueryKey() });
+      setLocation(result.requiresInactivityCheck ? "/verify-email" : "/dashboard");
+    } catch (error) {
+      toast({
+        title: "Vérification refusée",
+        description: (error as Error).message,
+        variant: "destructive",
+      });
+      setTwoFactorCode("");
+    } finally {
+      setTwoFactorPending(false);
     }
   }
 
@@ -190,9 +247,56 @@ export default function Login() {
         <div className="mb-8">
           <h1 className="text-2xl font-bold text-white mb-2 tracking-tight">Connexion</h1>
           <p className="text-foreground text-base font-semibold mb-1">Bienvenue de retour</p>
-          <p className="text-sm text-muted-foreground">Connectez-vous à votre compte pour continuer.</p>
+          <p className="text-sm text-muted-foreground">
+            {twoFactorChallenge
+              ? `Saisissez le code envoyé à ${twoFactorChallenge.maskedEmail}.`
+              : "Connectez-vous à votre compte pour continuer."}
+          </p>
         </div>
 
+        {twoFactorChallenge ? (
+          <div className="space-y-5">
+            <div className="space-y-2">
+              <label htmlFor="login-two-factor-code" className="text-sm font-medium text-foreground">
+                Code de vérification
+              </label>
+              <Input
+                id="login-two-factor-code"
+                type="text"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                maxLength={6}
+                value={twoFactorCode}
+                onChange={(event) => setTwoFactorCode(event.target.value.replace(/\D/g, "").slice(0, 6))}
+                className="h-14 rounded-full bg-zinc-900 border border-zinc-700/60 text-white text-center text-xl tracking-[0.5em]"
+                placeholder="••••••"
+                aria-describedby="login-two-factor-help"
+              />
+              <p id="login-two-factor-help" className="text-xs text-muted-foreground">
+                Le code expire après 10 minutes. Il n’est jamais affiché dans les alertes Telegram.
+              </p>
+            </div>
+            <Button
+              type="button"
+              onClick={() => void verifyTwoFactorCode()}
+              disabled={twoFactorPending || twoFactorCode.length !== 6}
+              className="w-full h-14 rounded-2xl text-base font-semibold bg-gradient-to-r from-violet-600 to-indigo-600 hover:opacity-90 text-white shadow-lg shadow-primary/25"
+            >
+              {twoFactorPending ? "Vérification..." : "Confirmer le code"}
+            </Button>
+            <button
+              type="button"
+              onClick={() => {
+                setTwoFactorChallenge(null);
+                setTwoFactorCode("");
+              }}
+              className="w-full text-sm text-muted-foreground hover:text-foreground"
+            >
+              Recommencer la connexion
+            </button>
+          </div>
+        ) : (
+          <>
         <div className="flex p-1 bg-card border border-card-border rounded-full mb-8 h-12 items-center">
           <button
             type="button"
@@ -352,6 +456,8 @@ export default function Login() {
             </Button>
           </a>
         </div>
+          </>
+        )}
 
         <div className="mt-auto pt-8 text-center text-sm font-medium text-muted-foreground">
           Pas encore de compte ?{" "}

@@ -5,6 +5,7 @@
 import { createHmac, timingSafeEqual, randomUUID } from "node:crypto";
 
 const EXPIRY_SECONDS = 8 * 3600; // 8 hours
+export const ADMIN_SESSION_COOKIE = "simix_admin_session";
 
 function getSecret(): string {
   const s = process.env["ADMIN_JWT_SECRET"];

@@ -21,13 +21,17 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { isPWA } from "@/lib/pin/pwa-detect";
-import { hasPinSetup, clearPin, getPinUser } from "@/lib/pin/pin-store";
+import {
+  clearPin,
+  getPinSettings,
+  type PinSettings,
+  type PinUser,
+} from "@/lib/pin/pin-store";
 import { usePinLock } from "@/context/PinLockContext";
 import { PinSetup } from "@/pages/pin/PinSetup";
 import { useGetMe } from "@workspace/api-client-react";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
-const TWO_FA_KEY = "simix_2fa_enabled";
 
 export default function ProfileSecurite() {
   return (
@@ -49,29 +53,44 @@ function SecuriteContent() {
   const [pwd, setPwd] = useState({ current: "", newPwd: "", confirm: "" });
   const [showPinSetup, setShowPinSetup] = useState(false);
   const [pinSetupMode, setPinSetupMode] = useState<"setup" | "change">("setup");
+  const [securitySettings, setSecuritySettings] = useState<PinSettings | null>(null);
+  const [securityLoading, setSecurityLoading] = useState(true);
+  const [twoFaPassword, setTwoFaPassword] = useState("");
+  const [twoFaChangeRequested, setTwoFaChangeRequested] = useState(false);
+  const [twoFaSaving, setTwoFaSaving] = useState(false);
 
   const pwaMode = isPWA();
   const { disablePin } = usePinLock();
   const { data: apiUser } = useGetMe();
-  const userId = (apiUser as any)?.id ?? getPinUser()?.id ?? "";
-  const pinUser = getPinUser();
-  const pinActive = userId ? hasPinSetup(userId) : false;
+  const userId = (apiUser as any)?.id ?? "";
+  const pinUser: PinUser | null = apiUser
+    ? {
+        id: (apiUser as any).id,
+        fullName: (apiUser as any).fullName ?? "Utilisateur",
+        email: (apiUser as any).email ?? "",
+      }
+    : null;
+  const pinActive = securitySettings?.pinEnabled ?? false;
+  const twoFa = securitySettings?.twoFactorEnabled ?? false;
 
-  const [twoFa, setTwoFa] = useState(() => {
+  const refreshSecuritySettings = useCallback(async () => {
+    setSecurityLoading(true);
     try {
-      return localStorage.getItem(TWO_FA_KEY) === "true";
-    } catch {
-      return false;
+      setSecuritySettings(await getPinSettings());
+    } catch (error) {
+      toast({
+        title: "Réglages de sécurité indisponibles",
+        description: (error as Error).message,
+        variant: "destructive",
+      });
+    } finally {
+      setSecurityLoading(false);
     }
-  });
+  }, [toast]);
 
   useEffect(() => {
-    try {
-      localStorage.setItem(TWO_FA_KEY, String(twoFa));
-    } catch {
-      /* ignore */
-    }
-  }, [twoFa]);
+    void refreshSecuritySettings();
+  }, [refreshSecuritySettings]);
 
   const handleChangePwd = async () => {
     if (!pwd.current) {
@@ -108,25 +127,88 @@ function SecuriteContent() {
   };
 
   const handleToggle2FA = () => {
-    const next = !twoFa;
-    setTwoFa(next);
-    toast({
-      title: next ? "2FA activée" : "2FA désactivée",
-      description: next ? "Vous recevrez un code SMS à chaque connexion." : "La double authentification a été désactivée.",
-    });
+    if (!securitySettings?.available) {
+      toast({
+        title: "Réglages indisponibles",
+        description: "La migration du serveur doit être appliquée avant de modifier la 2FA.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (!twoFa && !securitySettings.canUseTwoFactor) {
+      toast({
+        title: "Adresse e-mail non vérifiée",
+        description: "Confirmez votre adresse e-mail avant d'activer la 2FA.",
+        variant: "destructive",
+      });
+      return;
+    }
+    setTwoFaChangeRequested(true);
+    setTwoFaPassword("");
   };
 
-  const handleDisablePin = useCallback(() => {
+  const confirmTwoFactorChange = async () => {
+    if (!twoFaPassword) {
+      toast({
+        title: "Mot de passe requis",
+        description: "Saisissez votre mot de passe actuel pour confirmer cette modification.",
+        variant: "destructive",
+      });
+      return;
+    }
+    setTwoFaSaving(true);
+    try {
+      const response = await fetch(`${BASE}/api/auth/me/two-factor`, {
+        method: "PATCH",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ enabled: !twoFa, currentPassword: twoFaPassword }),
+      });
+      const result = await response.json().catch(() => ({})) as { error?: string };
+      if (!response.ok) throw new Error(result.error ?? "Impossible de modifier la 2FA.");
+      setSecuritySettings((previous) => previous
+        ? { ...previous, twoFactorEnabled: !twoFa }
+        : previous);
+      setTwoFaChangeRequested(false);
+      setTwoFaPassword("");
+      toast({
+        title: !twoFa ? "2FA activée" : "2FA désactivée",
+        description: !twoFa
+          ? "Un code sera envoyé par e-mail à chaque nouvelle connexion."
+          : "La double authentification par e-mail a été désactivée.",
+      });
+    } catch (error) {
+      toast({
+        title: "Modification refusée",
+        description: (error as Error).message,
+        variant: "destructive",
+      });
+    } finally {
+      setTwoFaSaving(false);
+    }
+  };
+
+  const handleDisablePin = useCallback(async () => {
     if (!userId) return;
-    clearPin(userId);
-    disablePin();
-    toast({ title: "Code PIN supprimé", description: "Le déverrouillage par PIN a été désactivé sur cet appareil." });
-  }, [userId, disablePin, toast]);
+    try {
+      await clearPin(userId);
+      await refreshSecuritySettings();
+      disablePin();
+      toast({ title: "Code PIN supprimé", description: "Le PIN a été retiré du compte sur le serveur." });
+    } catch (error) {
+      toast({
+        title: "Suppression refusée",
+        description: (error as Error).message,
+        variant: "destructive",
+      });
+    }
+  }, [userId, disablePin, refreshSecuritySettings, toast]);
 
   const handlePinSetupDone = useCallback(() => {
     setShowPinSetup(false);
+    void refreshSecuritySettings();
     toast({ title: "Code PIN configuré ✓", description: "Votre PIN a été enregistré. Il vous sera demandé à chaque ouverture de l'application." });
-  }, [toast]);
+  }, [refreshSecuritySettings, toast]);
 
   // Full-screen PIN setup overlay
   if (showPinSetup && pinUser) {
@@ -191,10 +273,20 @@ function SecuriteContent() {
               </div>
               <div className="flex-1">
                 <p className={`text-sm font-semibold ${pinActive ? "text-emerald-400" : "text-foreground"}`}>
-                  {pinActive ? "PIN activé" : "PIN désactivé"}
+                  {securityLoading
+                    ? "Chargement..."
+                    : !securitySettings?.available
+                      ? "Réglages serveur indisponibles"
+                      : pinActive
+                        ? "PIN activé"
+                        : "PIN désactivé"}
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  {pinActive ? "L'application se verrouille automatiquement à la fermeture." : "Activez un PIN pour déverrouiller sans ressaisir votre mot de passe."}
+                  {!securitySettings?.available
+                    ? "La mise à jour du serveur doit être appliquée avant de configurer le PIN."
+                    : pinActive
+                      ? "Le PIN est vérifié par le serveur et n'est pas conservé dans le navigateur."
+                      : "Activez un PIN pour déverrouiller rapidement l'application."}
                 </p>
               </div>
               {pinActive && <CheckCircle className="w-5 h-5 text-emerald-400 flex-shrink-0" />}
@@ -205,6 +297,7 @@ function SecuriteContent() {
               {!pinActive ? (
                 <button
                   onClick={() => { setPinSetupMode("setup"); setShowPinSetup(true); }}
+                  disabled={securityLoading || !securitySettings?.available}
                   className="w-full flex items-center justify-between px-4 py-3 bg-primary/10 border border-primary/20 rounded-xl hover:bg-primary/20 transition-colors"
                 >
                   <div className="flex items-center gap-3">
@@ -217,6 +310,7 @@ function SecuriteContent() {
                 <>
                   <button
                     onClick={() => { setPinSetupMode("change"); setShowPinSetup(true); }}
+                    disabled={securityLoading || !securitySettings?.available}
                     className="w-full flex items-center justify-between px-4 py-3 bg-secondary rounded-xl hover:bg-secondary/70 transition-colors"
                   >
                     <div className="flex items-center gap-3">
@@ -226,7 +320,8 @@ function SecuriteContent() {
                     <ChevronRight className="w-4 h-4 text-muted-foreground" />
                   </button>
                   <button
-                    onClick={handleDisablePin}
+                    onClick={() => void handleDisablePin()}
+                    disabled={securityLoading || !securitySettings?.available}
                     className="w-full flex items-center justify-between px-4 py-3 bg-red-500/10 border border-red-500/20 rounded-xl hover:bg-red-500/20 transition-colors"
                   >
                     <div className="flex items-center gap-3">
@@ -240,7 +335,7 @@ function SecuriteContent() {
             </div>
 
             <p className="text-[11px] text-muted-foreground/70 mt-3 text-center leading-relaxed">
-              Le PIN est stocké localement sur cet appareil uniquement. Il n'est jamais transmis à nos serveurs.
+              Le PIN est vérifié par le serveur. Seul son hash est conservé dans la base, jamais le code en clair.
             </p>
           </div>
         )}
@@ -315,12 +410,14 @@ function SecuriteContent() {
               </div>
               <div>
                 <h3 className="text-sm font-bold text-foreground">Authentification à 2 facteurs</h3>
-                <p className="text-xs text-muted-foreground">Sécurisez votre compte avec un code SMS</p>
+                <p className="text-xs text-muted-foreground">Un code de vérification vous sera envoyé par e-mail à chaque connexion.</p>
               </div>
             </div>
             <button
               onClick={handleToggle2FA}
-              className={`relative w-12 h-6 rounded-full transition-colors ${twoFa ? "bg-primary" : "bg-secondary border border-card-border"}`}
+              disabled={securityLoading || !securitySettings?.available || (!twoFa && !securitySettings.canUseTwoFactor)}
+              aria-label={twoFa ? "Désactiver la 2FA par e-mail" : "Activer la 2FA par e-mail"}
+              className={`relative w-12 h-6 rounded-full transition-colors disabled:opacity-40 ${twoFa ? "bg-primary" : "bg-secondary border border-card-border"}`}
             >
               <div className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${twoFa ? "translate-x-6" : "translate-x-0.5"}`} />
             </button>
@@ -329,6 +426,44 @@ function SecuriteContent() {
             <div className="mt-3 flex items-center gap-2 p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl">
               <CheckCircle className="w-4 h-4 text-emerald-400 flex-shrink-0" />
               <p className="text-xs text-emerald-400 font-medium">2FA activée — Votre compte est mieux protégé.</p>
+            </div>
+          )}
+          {!securityLoading && securitySettings?.available && !securitySettings.canUseTwoFactor && !twoFa && (
+            <p className="mt-3 text-xs text-amber-400">
+              Confirmez votre adresse e-mail pour pouvoir activer la 2FA.
+            </p>
+          )}
+          {twoFaChangeRequested && (
+            <div className="mt-4 space-y-3">
+              <input
+                type="password"
+                value={twoFaPassword}
+                onChange={(event) => setTwoFaPassword(event.target.value)}
+                autoComplete="current-password"
+                placeholder="Mot de passe actuel"
+                className="w-full bg-secondary border border-card-border rounded-xl px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary"
+              />
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => void confirmTwoFactorChange()}
+                  disabled={twoFaSaving}
+                  className="flex-1 rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-white disabled:opacity-60"
+                >
+                  {twoFaSaving ? "Enregistrement..." : "Confirmer"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTwoFaChangeRequested(false);
+                    setTwoFaPassword("");
+                  }}
+                  disabled={twoFaSaving}
+                  className="rounded-xl bg-secondary px-4 py-3 text-sm font-semibold text-foreground"
+                >
+                  Annuler
+                </button>
+              </div>
             </div>
           )}
         </div>

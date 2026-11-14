@@ -1,202 +1,151 @@
-/**
- * PIN storage — manages all localStorage / sessionStorage keys for the PIN system.
- * Keys are scoped per userId so multi-account devices work correctly.
- */
-import { createPinHash, verifyPinHash } from "./pin-crypto";
+const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
+const UNLOCKED_KEY = (userId: string) => `simix_pin_unlock_v2_${userId}`;
 
-// ── Key helpers ─────────────────────────────────────────────────────────────
-const K = {
-  hash: (id: string) => `simix_pin_hash_${id}`,
-  salt: (id: string) => `simix_pin_salt_${id}`,
-  attempts: (id: string) => `simix_pin_attempts_${id}`,
-  user: () => "simix_pin_user",
-  lastActive: () => "simix_pin_last_active",
-  unlocked: () => "simix_pin_unlocked", // sessionStorage — cleared on app close
-};
-
-// ── Types ────────────────────────────────────────────────────────────────────
 export interface PinUser {
   id: string;
   fullName?: string;
   email?: string;
 }
 
-interface AttemptRecord {
-  count: number;
-  lockedUntil: number; // ms timestamp
+export interface PinSettings {
+  available: boolean;
+  pinEnabled: boolean;
+  pinAttemptsRemaining: number;
+  pinLockRemainingMs: number;
+  twoFactorEnabled: boolean;
+  emailVerified?: boolean;
+  canUseTwoFactor?: boolean;
 }
 
-// ── Constants ────────────────────────────────────────────────────────────────
-export const MAX_ATTEMPTS = 5;
-export const LOCKOUT_MS = 5 * 60 * 1000; // 5 minutes
-export const SESSION_EXPIRY_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
-
-// ── PIN setup ────────────────────────────────────────────────────────────────
-export function hasPinSetup(userId: string): boolean {
-  try {
-    return !!(
-      localStorage.getItem(K.hash(userId)) && localStorage.getItem(K.salt(userId))
-    );
-  } catch {
-    return false;
-  }
-}
-
-export async function savePin(userId: string, pin: string): Promise<void> {
-  const { hash, salt } = await createPinHash(pin);
-  localStorage.setItem(K.hash(userId), hash);
-  localStorage.setItem(K.salt(userId), salt);
-  clearAttempts(userId);
-}
-
-export async function checkPin(userId: string, pin: string): Promise<boolean> {
-  try {
-    const hash = localStorage.getItem(K.hash(userId));
-    const salt = localStorage.getItem(K.salt(userId));
-    if (!hash || !salt) return false;
-    return verifyPinHash(pin, hash, salt);
-  } catch {
-    return false;
-  }
-}
-
-export function clearPin(userId: string): void {
-  localStorage.removeItem(K.hash(userId));
-  localStorage.removeItem(K.salt(userId));
-  clearAttempts(userId);
-}
-
-// ── User cache ───────────────────────────────────────────────────────────────
-export function savePinUser(user: PinUser): void {
-  try {
-    localStorage.setItem(K.user(), JSON.stringify({ id: user.id }));
-  } catch { /* ignore quota errors */ }
-}
-
-export function getPinUser(): PinUser | null {
-  try {
-    const raw = localStorage.getItem(K.user());
-    return raw ? (JSON.parse(raw) as PinUser) : null;
-  } catch {
-    return null;
-  }
-}
-
-export function clearPinUser(): void {
-  try {
-    localStorage.removeItem(K.user());
-  } catch { /* ignore */ }
-}
-
-// ── Session / activity tracking ──────────────────────────────────────────────
-export function updateLastActive(): void {
-  try {
-    localStorage.setItem(K.lastActive(), Date.now().toString());
-  } catch { /* ignore */ }
-}
-
-/**
- * Clear the last-active timestamp so that isLocalSessionExpired() returns false
- * on the next check. Call this when the session expires so that after a fresh
- * login the user is taken to the PIN screen instead of looping back to /login.
- */
-export function clearLastActive(): void {
-  try {
-    localStorage.removeItem(K.lastActive());
-  } catch { /* ignore */ }
-}
-
-export function isLocalSessionExpired(): boolean {
-  try {
-    const ts = localStorage.getItem(K.lastActive());
-    if (!ts) return false; // no timestamp → treated as fresh session
-    return Date.now() - parseInt(ts, 10) > SESSION_EXPIRY_MS;
-  } catch {
-    return false;
-  }
-}
-
-// ── Unlock state (sessionStorage — survives hot-reload, cleared on app close) ─
-export function markUnlocked(): void {
-  try {
-    sessionStorage.setItem(K.unlocked(), "true");
-    updateLastActive();
-  } catch { /* ignore */ }
-}
-
-export function clearUnlocked(): void {
-  try {
-    sessionStorage.removeItem(K.unlocked());
-  } catch { /* ignore */ }
-}
-
-export function isUnlockedThisSession(): boolean {
-  try {
-    return sessionStorage.getItem(K.unlocked()) === "true";
-  } catch {
-    return false;
-  }
-}
-
-// ── Brute-force protection ───────────────────────────────────────────────────
-function getAttempts(userId: string): AttemptRecord {
-  try {
-    const raw = localStorage.getItem(K.attempts(userId));
-    return raw ? (JSON.parse(raw) as AttemptRecord) : { count: 0, lockedUntil: 0 };
-  } catch {
-    return { count: 0, lockedUntil: 0 };
-  }
-}
-
-function setAttempts(userId: string, record: AttemptRecord): void {
-  try {
-    localStorage.setItem(K.attempts(userId), JSON.stringify(record));
-  } catch { /* ignore */ }
-}
-
-export function clearAttempts(userId: string): void {
-  try {
-    localStorage.removeItem(K.attempts(userId));
-  } catch { /* ignore */ }
-}
-
-export interface LockoutStatus {
+export interface PinVerificationResult {
+  success: boolean;
   locked: boolean;
+  attemptsRemaining: number;
   remainingMs: number;
-  failedCount: number;
+  error?: string;
 }
 
-export function getLockoutStatus(userId: string): LockoutStatus {
-  const rec = getAttempts(userId);
+export const MAX_ATTEMPTS = 5;
+export const LOCKOUT_MS = 5 * 60 * 1000;
 
-  // Expired lockout — auto-reset
-  if (rec.lockedUntil > 0 && rec.lockedUntil <= Date.now()) {
-    clearAttempts(userId);
-    return { locked: false, remainingMs: 0, failedCount: 0 };
+async function securityRequest<T>(
+  method: string,
+  path: string,
+  body?: unknown,
+): Promise<T> {
+  const response = await fetch(`${BASE}/api/auth/me${path}`, {
+    method,
+    credentials: "include",
+    headers: body ? { "Content-Type": "application/json" } : undefined,
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  const result = await response.json().catch(() => ({})) as {
+    error?: string;
+    [key: string]: unknown;
+  };
+  if (!response.ok) {
+    throw new Error(result.error ?? "Impossible de vérifier la sécurité du compte.");
   }
-
-  if (rec.lockedUntil > Date.now()) {
-    return { locked: true, remainingMs: rec.lockedUntil - Date.now(), failedCount: rec.count };
-  }
-
-  return { locked: false, remainingMs: 0, failedCount: rec.count };
+  return result as T;
 }
 
-export function recordFailedAttempt(userId: string): LockoutStatus {
-  const rec = getAttempts(userId);
-  const count = rec.count + 1;
-  const shouldLock = count >= MAX_ATTEMPTS;
-  const lockedUntil = shouldLock ? Date.now() + LOCKOUT_MS : rec.lockedUntil;
+export function getPinSettings(): Promise<PinSettings> {
+  return securityRequest("GET", "/security");
+}
 
-  setAttempts(userId, { count, lockedUntil });
+export async function savePin(_userId: string, pin: string): Promise<void> {
+  await securityRequest("PUT", "/pin", { pin });
+}
 
+export async function checkPin(
+  _userId: string,
+  pin: string,
+): Promise<PinVerificationResult> {
+  const response = await fetch(`${BASE}/api/auth/me/pin/verify`, {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ pin }),
+  });
+  const result = await response.json().catch(() => ({})) as {
+    success?: boolean;
+    locked?: boolean;
+    attemptsRemaining?: number;
+    remainingMs?: number;
+    error?: string;
+  };
+
+  if (response.status === 401 || response.status === 429) {
+    return {
+      success: false,
+      locked: result.locked ?? response.status === 429,
+      attemptsRemaining: result.attemptsRemaining ?? 0,
+      remainingMs: result.remainingMs ?? 0,
+      error: result.error,
+    };
+  }
+  if (!response.ok) {
+    throw new Error(result.error ?? "Impossible de vérifier le PIN.");
+  }
   return {
-    locked: shouldLock,
-    remainingMs: shouldLock ? LOCKOUT_MS : 0,
-    failedCount: count,
+    success: true,
+    locked: false,
+    attemptsRemaining: result.attemptsRemaining ?? MAX_ATTEMPTS,
+    remainingMs: 0,
   };
 }
 
-export function resetFailedAttempts(userId: string): void {
-  clearAttempts(userId);
+export async function clearPin(_userId: string): Promise<void> {
+  await securityRequest("DELETE", "/pin");
+}
+
+export function clearLegacyPinStorage(): void {
+  try {
+    const legacyPrefixes = [
+      "simix_pin_hash_",
+      "simix_pin_salt_",
+      "simix_pin_attempts_",
+    ];
+    const legacyKeys = new Set([
+      "simix_pin_user",
+      "simix_pin_last_active",
+      "simix_2fa_enabled",
+    ]);
+    for (let index = localStorage.length - 1; index >= 0; index -= 1) {
+      const key = localStorage.key(index);
+      if (
+        key
+        && (legacyKeys.has(key) || legacyPrefixes.some((prefix) => key.startsWith(prefix)))
+      ) {
+        localStorage.removeItem(key);
+      }
+    }
+    sessionStorage.removeItem("simix_pin_unlocked");
+  } catch {
+    /* Storage may be unavailable in private browsing; server checks still apply. */
+  }
+}
+
+export function markUnlocked(userId: string): void {
+  try {
+    sessionStorage.setItem(UNLOCKED_KEY(userId), "true");
+  } catch {
+    /* The PIN is verified by the server; this only remembers the current UI state. */
+  }
+}
+
+export function clearUnlocked(userId: string): void {
+  try {
+    sessionStorage.removeItem(UNLOCKED_KEY(userId));
+  } catch {
+    /* ignore unavailable session storage */
+  }
+}
+
+export function isUnlockedThisSession(userId: string): boolean {
+  try {
+    return sessionStorage.getItem(UNLOCKED_KEY(userId)) === "true";
+  } catch {
+    return false;
+  }
 }

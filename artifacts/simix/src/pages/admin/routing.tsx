@@ -13,10 +13,10 @@ import {
 } from "lucide-react";
 
 const BASE = () => (import.meta.env.BASE_URL ?? "/").replace(/\/$/, "") + "/api";
-const H = () => ({ Authorization: `Bearer ${adminToken.get() ?? ""}`, "Content-Type": "application/json" });
+const H = () => ({ "Content-Type": "application/json" });
 
 async function apiFetch(url: string, opts?: RequestInit): Promise<Response> {
-  const res = await fetch(url, opts);
+  const res = await fetch(url, { ...opts, credentials: "include" });
   if (res.status === 401) {
     adminToken.clear();
     const base = (import.meta.env.BASE_URL ?? "/").replace(/\/$/, "");
@@ -887,7 +887,6 @@ function GatewaysSection({ toast }: { toast: ReturnType<typeof useToast> }) {
               label="Logo"
               value={form.logoUrl ?? ""}
               onChange={v => setForm(p => ({ ...p, logoUrl: v }))}
-              authHeader={{ Authorization: `Bearer ${adminToken.get() ?? ""}` }}
               placeholder="https://… ou uploader →"
             />
             <div>
@@ -1096,7 +1095,6 @@ function OperatorsSection({ toast }: { toast: ReturnType<typeof useToast> }) {
               label="Logo de l'opérateur"
               value={form.logoUrl ?? ""}
               onChange={v => setForm(p => ({ ...p, logoUrl: v }))}
-              authHeader={{ Authorization: `Bearer ${adminToken.get() ?? ""}` }}
               placeholder="https://… ou uploader →"
               previewBg={form.color ?? "transparent"}
             />

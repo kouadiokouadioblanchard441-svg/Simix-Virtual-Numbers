@@ -44,11 +44,24 @@ export default function SecureLogin() {
     }
   }, [setLocation]);
 
-  /* If already authenticated, go to admin */
+  /* Ask the server whether the HttpOnly cookie is still valid. */
   useEffect(() => {
-    if (adminToken.isValid()) {
-      setLocation("/admin");
-    }
+    let active = true;
+    fetch(`${BASE}/api/admin-auth/session`, { credentials: "include" })
+      .then(async (res) => {
+        if (!res.ok) return null;
+        return await res.json() as { valid?: boolean; expiresAt?: number };
+      })
+      .then((data) => {
+        if (active && data?.valid && data.expiresAt) {
+          adminToken.setExpiry(data.expiresAt);
+          setLocation("/admin");
+        }
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
   }, [setLocation]);
 
   /* Live clock */
@@ -71,17 +84,17 @@ export default function SecureLogin() {
       const res = await fetch(`${BASE}/api/admin-auth/login`, {
         method: "POST",
         headers: { "content-type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({ email, password, fingerprint: getFingerprint() }),
       });
 
       const data = await res.json() as {
-        token?: string;
         expiresIn?: number;
         error?: string;
         attemptsRemaining?: number;
       };
 
-      if (!res.ok || !data.token) {
+      if (!res.ok) {
         setError(data.error ?? "Authentication failed");
         if (data.attemptsRemaining !== undefined) {
           setAttemptsLeft(data.attemptsRemaining);
@@ -91,7 +104,7 @@ export default function SecureLogin() {
       }
 
       const exp = Math.floor(Date.now() / 1000) + (data.expiresIn ?? 28800);
-      adminToken.set(data.token, exp);
+      adminToken.setExpiry(exp);
       setSuccess(true);
       setTimeout(() => setLocation("/admin"), 1000);
     } catch {

@@ -31,3 +31,4 @@
 - [Payment credential browser storage](payment-credential-browser-storage.md) — never persist operator OTPs or checkout links in browser storage; refetch them from authenticated deposit status.
 - [Telegram alert scope](telegram-alert-scope.md) — cover auth, OTP status, confirmed recharges, and admin actions; never include OTP values, passwords, or credentials.
 - [Login lockout policy](login-lockout-policy.md) — lock an account for 10 minutes after its sixth failed password attempt; keep the limit server-side and account-scoped.
+- [Server-side account security](server-account-security.md) — PIN checks, email 2FA, and admin sessions stay server-side; browser state is only a display hint.

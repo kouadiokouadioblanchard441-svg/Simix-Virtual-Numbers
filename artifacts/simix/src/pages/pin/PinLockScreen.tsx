@@ -4,9 +4,7 @@ import { NumericKeypad } from "@/components/pin/NumericKeypad";
 import { SimixLogo, SimixIcon } from "@/components/simix-logo";
 import {
   checkPin,
-  recordFailedAttempt,
-  resetFailedAttempts,
-  getLockoutStatus,
+  getPinSettings,
   MAX_ATTEMPTS,
   type PinUser,
 } from "@/lib/pin/pin-store";
@@ -19,7 +17,13 @@ interface PinLockScreenProps {
   onForgotPin: () => void;
 }
 
-type ScreenState = "idle" | "checking" | "error" | "success" | "locked";
+type ScreenState = "idle" | "checking" | "error" | "success" | "locked" | "unavailable";
+
+interface LockoutStatus {
+  locked: boolean;
+  failedCount: number;
+  remainingMs: number;
+}
 
 function getInitials(name: string): string {
   return name
@@ -38,19 +42,47 @@ function formatRemaining(ms: number): string {
 
 export function PinLockScreen({ user, onUnlock, onForgotPin }: PinLockScreenProps) {
   const [digits, setDigits] = useState<string[]>([]);
-  const [state, setState] = useState<ScreenState>("idle");
-  const [lockout, setLockout] = useState(() => getLockoutStatus(user.id));
-  const [remaining, setRemaining] = useState(lockout.remainingMs);
+  const [state, setState] = useState<ScreenState>("checking");
+  const [lockout, setLockout] = useState<LockoutStatus>({
+    locked: false,
+    failedCount: 0,
+    remainingMs: 0,
+  });
+  const [remaining, setRemaining] = useState(0);
   const shakeRef = useRef(0);
 
-  // Lockout countdown — compute deadline from remainingMs captured at lock time
+  // Load the authoritative PIN lock state from the server.
+  useEffect(() => {
+    let active = true;
+    void getPinSettings().then((settings) => {
+      if (!active || !settings.available || !settings.pinEnabled) {
+        if (active) setState("unavailable");
+        return;
+      }
+      const remainingMs = settings.pinLockRemainingMs;
+      setLockout({
+        locked: remainingMs > 0,
+        failedCount: MAX_ATTEMPTS - settings.pinAttemptsRemaining,
+        remainingMs,
+      });
+      setRemaining(remainingMs);
+      setState(remainingMs > 0 ? "locked" : "idle");
+    }).catch(() => {
+      if (active) setState("unavailable");
+    });
+    return () => {
+      active = false;
+    };
+  }, [user.id]);
+
+  // Countdown is only a display; the backend remains authoritative.
   useEffect(() => {
     if (!lockout.locked) return;
     const deadline = Date.now() + lockout.remainingMs;
     const id = setInterval(() => {
       const ms = deadline - Date.now();
       if (ms <= 0) {
-        setLockout(getLockoutStatus(user.id));
+        setLockout({ locked: false, failedCount: 0, remainingMs: 0 });
         setState("idle");
         setRemaining(0);
       } else {
@@ -58,31 +90,35 @@ export function PinLockScreen({ user, onUnlock, onForgotPin }: PinLockScreenProp
       }
     }, 500);
     return () => clearInterval(id);
-  }, [lockout, user.id]);
-
-  // Detect when locked
-  useEffect(() => {
-    if (lockout.locked) setState("locked");
-  }, [lockout.locked]);
+  }, [lockout.locked, lockout.remainingMs]);
 
   const submitPin = useCallback(
     async (pin: string) => {
       setState("checking");
-      const ok = await checkPin(user.id, pin);
+      let result;
+      try {
+        result = await checkPin(user.id, pin);
+      } catch {
+        setState("unavailable");
+        return;
+      }
 
-      if (ok) {
-        resetFailedAttempts(user.id);
+      if (result.success) {
+        setLockout({ locked: false, failedCount: 0, remainingMs: 0 });
         setState("success");
         setTimeout(() => {
           onUnlock();
         }, 600);
       } else {
-        const status = recordFailedAttempt(user.id);
-        setLockout(getLockoutStatus(user.id));
-
-        if (status.locked) {
+        const nextLockout: LockoutStatus = {
+          locked: result.locked,
+          failedCount: MAX_ATTEMPTS - result.attemptsRemaining,
+          remainingMs: result.remainingMs,
+        };
+        setLockout(nextLockout);
+        if (result.locked) {
           setState("locked");
-          setRemaining(status.remainingMs);
+          setRemaining(result.remainingMs);
         } else {
           setState("error");
           shakeRef.current += 1;
@@ -98,7 +134,7 @@ export function PinLockScreen({ user, onUnlock, onForgotPin }: PinLockScreenProp
 
   const handleDigit = useCallback(
     (d: string) => {
-      if (state === "checking" || state === "success" || state === "locked") return;
+      if (state === "checking" || state === "success" || state === "locked" || state === "unavailable") return;
       if (digits.length >= PIN_LENGTH) return;
 
       const next = [...digits, d];
@@ -113,7 +149,7 @@ export function PinLockScreen({ user, onUnlock, onForgotPin }: PinLockScreenProp
   );
 
   const handleDelete = useCallback(() => {
-    if (state === "checking" || state === "success" || state === "locked") return;
+      if (state === "checking" || state === "success" || state === "locked" || state === "unavailable") return;
     setDigits((prev) => prev.slice(0, -1));
     setState("idle");
   }, [state]);
@@ -155,7 +191,11 @@ export function PinLockScreen({ user, onUnlock, onForgotPin }: PinLockScreenProp
             <p className="text-xs text-muted-foreground mt-0.5">
               {state === "locked"
                 ? `🔒 Bloqué — réessayez dans ${formatRemaining(remaining)}`
-                : "Entrez votre code PIN"}
+                : state === "checking"
+                  ? "Vérification en cours..."
+                  : state === "unavailable"
+                    ? "Vérification serveur indisponible"
+                    : "Entrez votre code PIN"}
             </p>
           </div>
         </motion.div>
@@ -198,13 +238,23 @@ export function PinLockScreen({ user, onUnlock, onForgotPin }: PinLockScreenProp
                 : ""}
             </motion.p>
           )}
+          {state === "unavailable" && (
+            <motion.p
+              initial={{ opacity: 0, y: -6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              className="text-sm text-red-400 font-medium -mt-4 text-center"
+            >
+              Le serveur ne peut pas vérifier votre PIN. Rechargez la page et réessayez.
+            </motion.p>
+          )}
         </AnimatePresence>
 
         {/* Keypad */}
         <NumericKeypad
           onDigit={handleDigit}
           onDelete={handleDelete}
-          disabled={state === "checking" || state === "success" || state === "locked"}
+          disabled={state === "checking" || state === "success" || state === "locked" || state === "unavailable"}
         />
       </div>
 

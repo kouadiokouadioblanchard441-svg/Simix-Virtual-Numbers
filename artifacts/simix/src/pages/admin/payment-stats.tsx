@@ -6,7 +6,7 @@ import { formatFCFA } from "@/lib/format";
 import { Loader2, RefreshCw, CheckCircle2, XCircle, Clock, Zap, TrendingUp, AlertCircle } from "lucide-react";
 
 const BASE = () => `${window.location.origin}/api`;
-const H = () => ({ Authorization: `Bearer ${adminToken.get() ?? ""}`, "Content-Type": "application/json" });
+const H = () => ({ "Content-Type": "application/json" });
 
 /* ── Types ──────────────────────────────────────────────── */
 interface DayEntry {
@@ -184,7 +184,10 @@ function PaymentStatsContent() {
     setLoading(true);
     setError(null);
     try {
-      const r = await fetch(`${BASE()}/admin/payment-routing/gateway-stats`, { headers: H() });
+      const r = await fetch(`${BASE()}/admin/payment-routing/gateway-stats`, {
+        headers: H(),
+        credentials: "include",
+      });
       if (!r.ok) throw new Error(`HTTP ${r.status}`);
       const d: GatewayStatsResponse = await r.json();
       setData(d);

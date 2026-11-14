@@ -4,84 +4,92 @@ import {
   useState,
   useEffect,
   useCallback,
+  useRef,
   type ReactNode,
 } from "react";
 import { useLocation } from "wouter";
-import { useGetMe } from "@workspace/api-client-react";
+import { getGetMeQueryKey, useGetMe } from "@workspace/api-client-react";
+import { Loader2, Shield } from "lucide-react";
 import { isPWA } from "@/lib/pin/pwa-detect";
 import {
-  hasPinSetup,
-  isUnlockedThisSession,
-  isLocalSessionExpired,
-  markUnlocked,
-  clearUnlocked,
-  clearLastActive,
-  savePinUser,
-  getPinUser,
-  updateLastActive,
+  clearLegacyPinStorage,
   clearPin,
+  clearUnlocked,
+  getPinSettings,
+  isUnlockedThisSession,
+  markUnlocked,
   type PinUser,
 } from "@/lib/pin/pin-store";
 import { PinLockScreen } from "@/pages/pin/PinLockScreen";
 import { PinSetup } from "@/pages/pin/PinSetup";
-import { Loader2 } from "lucide-react";
 
-// Routes that bypass PIN lock entirely
-const BYPASS_PATHS = [
-  "/console",
-  "/admin-login",
-  "/admin/secure-login",
-  "/login",
-  "/register",
-  "/forgot-password",
-  "/reset-password",
-  "/verify-email",
-];
-
-type PinStatus =
-  | "checking"    // Initial load, waiting for auth
-  | "skipped"     // Not in PWA mode
-  | "no_session"  // No valid server session
-  | "setup"       // Session OK, no PIN created yet
-  | "locked"      // Session OK, PIN exists, not unlocked
-  | "unlocked";   // Session OK, PIN verified this session
+export type PinStatus =
+  | "checking"
+  | "no_session"
+  | "setup"
+  | "locked"
+  | "error"
+  | "unlocked";
 
 interface PinLockContextValue {
   status: PinStatus;
   currentUser: PinUser | null;
   unlock: () => void;
-  pinSetupDone: () => void;
   forgotPin: () => void;
+  pinSetupDone: () => void;
   disablePin: () => void;
   triggerSetup: () => void;
+  isPWA: boolean;
 }
 
-const PinLockContext = createContext<PinLockContextValue | null>(null);
+const PinLockContext = createContext<PinLockContextValue>({
+  status: "checking",
+  currentUser: null,
+  unlock: () => {},
+  forgotPin: () => {},
+  pinSetupDone: () => {},
+  disablePin: () => {},
+  triggerSetup: () => {},
+  isPWA: false,
+});
 
-export function usePinLock(): PinLockContextValue {
-  const ctx = useContext(PinLockContext);
-  if (!ctx) throw new Error("usePinLock must be used inside PinLockProvider");
-  return ctx;
+export function usePinLock() {
+  return useContext(PinLockContext);
 }
+
+const BYPASS_PATHS = [
+  "/login",
+  "/register",
+  "/forgot-password",
+  "/reset-password",
+  "/auth/callback",
+  "/verify-email",
+];
 
 export function PinLockProvider({ children }: { children: ReactNode }) {
-  const [pwaMode] = useState(() => isPWA());
-  const [status, setStatus] = useState<PinStatus>(pwaMode ? "checking" : "skipped");
-  const [currentUser, setCurrentUser] = useState<PinUser | null>(null);
   const [location, setLocation] = useLocation();
+  const [status, setStatus] = useState<PinStatus>("checking");
+  const [currentUser, setCurrentUser] = useState<PinUser | null>(null);
+  const [pwaMode] = useState(() => isPWA());
+  const lastUserId = useRef<string | null>(null);
+  const { data: apiUser, isLoading, isError } = useGetMe({
+    query: { queryKey: getGetMeQueryKey(), enabled: pwaMode },
+  });
 
-  const { data: apiUser, isLoading, isError } = useGetMe();
-
-  // Compute effective status based on auth + pin state
   useEffect(() => {
-    if (!pwaMode) return; // non-PWA never enters PIN flow
-
+    if (!pwaMode) {
+      clearLegacyPinStorage();
+      setStatus("unlocked");
+      return;
+    }
     if (isLoading) {
       setStatus("checking");
       return;
     }
-
     if (isError || !apiUser) {
+      if (lastUserId.current) clearUnlocked(lastUserId.current);
+      lastUserId.current = null;
+      setCurrentUser(null);
       setStatus("no_session");
       return;
     }
@@ -91,113 +99,120 @@ export function PinLockProvider({ children }: { children: ReactNode }) {
       fullName: (apiUser as any).fullName || "Utilisateur",
       email: (apiUser as any).email || "",
     };
-    // Keep profile details in memory only; local storage needs only the user ID
-    // to scope the PIN keys.
-    savePinUser({ id: user.id });
+    if (lastUserId.current && lastUserId.current !== user.id) {
+      clearUnlocked(lastUserId.current);
+    }
+    lastUserId.current = user.id;
     setCurrentUser(user);
+    setStatus("checking");
 
-    // Check expiry BEFORE updating activity — updating first would reset the clock.
-    // We clear lastActive so that after re-login isLocalSessionExpired() returns
-    // false (no timestamp = not expired) and the user reaches the PIN screen
-    // instead of looping back to /login indefinitely.
-    if (isLocalSessionExpired()) {
-      clearLastActive();
-      clearUnlocked();
-      setStatus("no_session");
-      return;
-    }
-
-    // Session is valid — refresh the activity timestamp
-    updateLastActive();
-
-    // Already unlocked this app session (e.g. hot-reload)
-    if (isUnlockedThisSession()) {
-      setStatus("unlocked");
-      return;
-    }
-
-    if (!hasPinSetup(user.id)) {
-      setStatus("setup");
-    } else {
-      setStatus("locked");
-    }
+    let active = true;
+    void getPinSettings().then((settings) => {
+      if (!active) return;
+      clearLegacyPinStorage();
+      if (!settings.available) {
+        // Replit preview does not migrate the Plesk database.
+        clearUnlocked(user.id);
+        setStatus("unlocked");
+      } else if (!settings.pinEnabled) {
+        clearUnlocked(user.id);
+        setStatus("setup");
+      } else if (isUnlockedThisSession(user.id)) {
+        setStatus("unlocked");
+      } else {
+        setStatus("locked");
+      }
+    }).catch(() => {
+      if (active) setStatus("error");
+    });
+    return () => {
+      active = false;
+    };
   }, [pwaMode, apiUser, isLoading, isError]);
 
-  // In PWA mode with no session, redirect to /login
   useEffect(() => {
-    if (pwaMode && status === "no_session") {
-      const isOnAuth = BYPASS_PATHS.some((p) => location.startsWith(p));
-      if (!isOnAuth) {
-        setLocation("/login");
-      }
+    if (!pwaMode) return;
+    if (status === "no_session" && !BYPASS_PATHS.includes(location)) {
+      setLocation("/login");
     }
-  }, [pwaMode, status, location, setLocation]);
+  }, [status, location, setLocation, pwaMode]);
 
   const unlock = useCallback(() => {
-    markUnlocked();
-    setStatus("unlocked");
-  }, []);
-
-  const pinSetupDone = useCallback(() => {
-    markUnlocked();
-    setStatus("unlocked");
-    setLocation("/dashboard");
-  }, [setLocation]);
-
-  const forgotPin = useCallback(() => {
-    if (currentUser) clearPin(currentUser.id);
-    clearUnlocked();
-    setStatus("no_session");
-    setLocation("/login");
-  }, [currentUser, setLocation]);
-
-  const disablePin = useCallback(() => {
-    if (currentUser) clearPin(currentUser.id);
-    markUnlocked(); // keep current session unlocked
+    if (currentUser) markUnlocked(currentUser.id);
     setStatus("unlocked");
   }, [currentUser]);
 
-  const triggerSetup = useCallback(() => {
-    setStatus("setup");
-  }, []);
+  const pinSetupDone = useCallback(() => {
+    if (currentUser) markUnlocked(currentUser.id);
+    setStatus("unlocked");
+    setLocation("/dashboard");
+  }, [currentUser, setLocation]);
+
+  const forgotPin = useCallback(() => {
+    if (!currentUser) return;
+    void clearPin(currentUser.id).then(() => {
+      clearUnlocked(currentUser.id);
+      setStatus("setup");
+    }).catch(() => setStatus("error"));
+  }, [currentUser]);
+
+  const disablePin = useCallback(() => {
+    if (currentUser) markUnlocked(currentUser.id);
+    setStatus("unlocked");
+  }, [currentUser]);
+
+  const triggerSetup = useCallback(() => setStatus("setup"), []);
 
   const value: PinLockContextValue = {
     status,
-    currentUser: currentUser ?? getPinUser(),
+    currentUser,
     unlock,
-    pinSetupDone,
     forgotPin,
+    pinSetupDone,
     disablePin,
     triggerSetup,
+    isPWA: pwaMode,
   };
 
-  // Check if current path bypasses PIN
-  const shouldBypass = BYPASS_PATHS.some((p) => location.startsWith(p));
-
-  // Render logic
   let overlay: ReactNode = null;
-
-  if (pwaMode && !shouldBypass) {
+  if (pwaMode) {
     if (status === "checking") {
       overlay = (
+        <div className="fixed inset-0 z-[9999] bg-background flex flex-col items-center justify-center gap-3">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          <p className="text-sm text-muted-foreground">Vérification de votre compte...</p>
+        </div>
+      );
+    } else if (status === "no_session" && !BYPASS_PATHS.includes(location)) {
+      overlay = (
         <div className="fixed inset-0 z-[9999] bg-background flex items-center justify-center">
-          <Loader2 className="w-8 h-8 text-primary animate-spin" />
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
         </div>
       );
-    } else if (status === "setup" && value.currentUser) {
+    } else if (status === "setup" && currentUser) {
       overlay = (
-        <div className="fixed inset-0 z-[9999]">
-          <PinSetup user={value.currentUser} onComplete={pinSetupDone} />
-        </div>
+        <PinSetup
+          user={currentUser}
+          onComplete={pinSetupDone}
+        />
       );
-    } else if (status === "locked" && value.currentUser) {
+    } else if (status === "locked" && currentUser) {
+      overlay = <PinLockScreen user={currentUser} onUnlock={unlock} onForgotPin={forgotPin} />;
+    } else if (status === "error") {
       overlay = (
-        <div className="fixed inset-0 z-[9999]">
-          <PinLockScreen
-            user={value.currentUser}
-            onUnlock={unlock}
-            onForgotPin={forgotPin}
-          />
+        <div className="fixed inset-0 z-[9999] bg-background flex flex-col items-center justify-center gap-4 px-6 text-center">
+          <Shield className="w-10 h-10 text-red-400" />
+          <p className="text-foreground font-semibold">Vérification de sécurité indisponible</p>
+          <p className="text-sm text-muted-foreground">
+            Le serveur n’a pas pu vérifier votre PIN. Réessayez sans désactiver la protection.
+          </p>
+          <button
+            type="button"
+            onClick={() => window.location.reload()}
+            className="rounded-xl bg-primary px-5 py-3 text-sm font-semibold text-white"
+          >
+            Réessayer
+          </button>
         </div>
       );
     }

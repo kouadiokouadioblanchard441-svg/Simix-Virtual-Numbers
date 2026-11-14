@@ -1,5 +1,5 @@
 /**
- * requireAdminJwt — middleware that verifies the Admin JWT Bearer token
+ * requireAdminJwt — middleware that verifies the HttpOnly admin session cookie
  * on every protected /api/admin/* route.
  */
 import type { Request, Response, NextFunction } from "express";
@@ -22,12 +22,11 @@ export function requireAdminJwt(
   res: Response,
   next: NextFunction,
 ): void | Promise<void> {
-  const auth = req.headers.authorization;
-  if (!auth?.startsWith("Bearer ")) {
+  const token = req.cookies?.["simix_admin_session"];
+  if (typeof token !== "string" || !token) {
     res.status(401).json({ error: "Admin session required. Please log in." });
     return;
   }
-  const token = auth.slice(7);
   const payload = verifyAdminJwt(token);
   if (!payload) {
     res.status(401).json({ error: "Invalid or expired admin session." });

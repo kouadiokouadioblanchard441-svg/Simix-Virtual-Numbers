@@ -169,6 +169,13 @@
       "when": 1794645976978,
       "tag": "0023_security_rate_limits",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1794649065973,
+      "tag": "0024_account_security",
+      "breakpoints": true
     }
   ]
 }

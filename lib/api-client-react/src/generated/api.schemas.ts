@@ -32,8 +32,13 @@ export interface User {
 }
 
 export interface AuthResponse {
-  user: User;
-  token: string;
+  user?: User;
+  token?: string;
+  requiresTwoFactor?: boolean;
+  challengeId?: string;
+  maskedEmail?: string;
+  requiresEmailVerification?: boolean;
+  requiresInactivityCheck?: boolean;
 }
 
 export interface RegisterInput {

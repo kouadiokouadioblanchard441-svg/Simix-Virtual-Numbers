@@ -164,13 +164,10 @@ function NavLink({
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
 async function secureLogout() {
-  const token = adminToken.get();
-  if (token) {
-    await fetch(`${BASE}/api/admin-auth/logout`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${token}` },
-    }).catch(() => {});
-  }
+  await fetch(`${BASE}/api/admin-auth/logout`, {
+    method: "POST",
+    credentials: "include",
+  }).catch(() => {});
   adminToken.clear();
   sessionStorage.removeItem("simix_admin_access_granted");
   window.location.href = BASE + "/";
