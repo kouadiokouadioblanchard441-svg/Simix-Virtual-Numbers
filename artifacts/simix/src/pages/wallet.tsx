@@ -750,7 +750,9 @@ function DepositContent() {
         savePendingDeposit({
           depositId: outcome.depositId,
           paymentUrl: payUrl,
-          ...act,
+          operatorPaymentUrl: act.operatorPaymentUrl,
+          paymentOtp: null,
+          message: act.message,
           methodSlug: selectedMethod.slug,
           methodName: selectedMethod.name,
           methodColor: selectedMethod.color,
@@ -775,7 +777,10 @@ function DepositContent() {
       const info = readRechargeError(e);
       if (info.pending && info.depositId && selectedMethod) {
         savePendingDeposit({
-          depositId: info.depositId, paymentUrl: null, ...info.action,
+          depositId: info.depositId, paymentUrl: null,
+          operatorPaymentUrl: info.action.operatorPaymentUrl,
+          paymentOtp: null,
+          message: info.action.message,
           methodSlug: selectedMethod.slug, methodName: selectedMethod.name, methodColor: selectedMethod.color,
           localAmount: parsedAmount, currencyCode,
         });

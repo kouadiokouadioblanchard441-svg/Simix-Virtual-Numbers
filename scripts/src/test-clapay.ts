@@ -10,17 +10,33 @@
  * 5. Nettoie les données de test
  */
 
-import {
-  db,
-  transactionsTable,
-  usersTable,
-  systemSettingsTable,
-} from "@workspace/db";
-import { eq, and } from "drizzle-orm";
+export {};
 
 const API_BASE = `http://localhost:${process.env.PORT ?? 3000}/api`;
 const TEST_AMOUNT = 2500; // FCFA
-const DEMO_PHONE = "+2250701234567";
+const TEST_USER_ID = process.env.CLAPAY_TEST_USER_ID;
+
+const testDatabaseUrl = process.env.CLAPAY_TEST_DATABASE_URL;
+if (!testDatabaseUrl) {
+  throw new Error("Test bloqué : CLAPAY_TEST_DATABASE_URL doit pointer vers une base isolée.");
+}
+if (process.env.ALLOW_CLAPAY_TEST_MUTATIONS !== "true" || !TEST_USER_ID) {
+  throw new Error("Test bloqué : définissez ALLOW_CLAPAY_TEST_MUTATIONS=true et CLAPAY_TEST_USER_ID.");
+}
+const testUserId = TEST_USER_ID;
+try {
+  const parsed = new URL(testDatabaseUrl);
+  const isLocal = ["localhost", "127.0.0.1", "::1"].includes(parsed.hostname);
+  const isClearlyNonProduction = /(^|[-_.])(test|testing|staging|stage)([-_.]|$)/i.test(`${parsed.hostname} ${parsed.pathname}`);
+  if (!isLocal && !isClearlyNonProduction) {
+    throw new Error("L'hôte ou la base ne ressemble pas à un environnement de test.");
+  }
+} catch (error) {
+  throw new Error(`CLAPAY_TEST_DATABASE_URL invalide ou non isolée: ${(error as Error).message}`);
+}
+process.env.EXTERNAL_DATABASE_URL = testDatabaseUrl;
+const { db, transactionsTable, usersTable, systemSettingsTable } = await import("@workspace/db");
+const { eq } = await import("drizzle-orm");
 
 /* ── Couleurs terminal ── */
 const OK  = "\x1b[32m✓\x1b[0m";
@@ -53,16 +69,16 @@ async function run() {
   /* ── ÉTAPE 2 : Lire le compte démo ── */
   step("2. Compte démo dans Supabase");
   const [demo] = await db
-    .select({ id: usersTable.id, fullName: usersTable.fullName, phone: usersTable.phone, balance: usersTable.balance })
+    .select({ id: usersTable.id, fullName: usersTable.fullName, balance: usersTable.balance })
     .from(usersTable)
-    .where(eq(usersTable.phone, DEMO_PHONE))
+    .where(eq(usersTable.id, testUserId))
     .limit(1);
 
   if (!demo) {
-    fail(`Compte démo ${DEMO_PHONE} introuvable dans Supabase`);
+    fail("Compte de test introuvable dans la base isolée.");
     return;
   }
-  pass(`Compte trouvé : ${demo.fullName} (ID: ${demo.id})`);
+  pass("Compte de test trouvé.");
   info(`Solde actuel : ${demo.balance.toLocaleString("fr-FR")} FCFA`);
 
   /* ── ÉTAPE 3 : Vérifier les paramètres Clapay dans Supabase ── */
@@ -106,7 +122,7 @@ async function run() {
       amount: TEST_AMOUNT,
       status: "pending",
       method: "Orange Money",
-      description: `Test Clapay — Recharge via Orange Money — +2250701234567`,
+      description: "Test Clapay — Recharge via Orange Money",
       externalDepositId,
     })
     .returning();
@@ -125,9 +141,9 @@ async function run() {
     status: "COMPLETED",
     transaction_id: trackingId,
     additional_infos: {
-      customer_phone: DEMO_PHONE,
-      customer_firstname: demo.fullName?.split(" ")[0] ?? "Test",
-      customer_lastname: demo.fullName?.split(" ").slice(1).join(" ") ?? "User",
+      customer_phone: "",
+      customer_firstname: "Test",
+      customer_lastname: "User",
     },
     amount: TEST_AMOUNT,
     currency: "XOF",
@@ -137,7 +153,7 @@ async function run() {
     balance_before: 97500,
     balance_after: 100000,
     transaction_method: "MERCHANT",
-    transaction_phone_number: "0701234567",
+    transaction_phone_number: "",
     transaction_dial_code: "+225",
     signature: `SIG-${trackingId}`,
     transaction_date: new Date().toISOString(),
@@ -277,7 +293,7 @@ async function run() {
     .set({ balance: demo.balance })
     .where(eq(usersTable.id, demo.id));
 
-  pass(`Solde remis à ${demo.balance.toLocaleString()} FCFA`);
+  pass("Solde du compte de test remis à son état initial.");
   pass("Données de test supprimées de Supabase");
 
   /* ── Résumé ── */
@@ -290,7 +306,7 @@ async function run() {
   console.log("══════════════════════════════════════════════\n");
 }
 
-async function cleanup(txId: number) {
+async function cleanup(txId: string) {
   try {
     const { sql } = await import("drizzle-orm");
     await db.delete(transactionsTable).where(eq(transactionsTable.id, txId));

@@ -1,6 +1,12 @@
 import { strict as assert } from "node:assert";
 import { test } from "node:test";
-import { toDirectAction } from "./clapay-direct";
+import {
+  clearPendingDeposit,
+  loadPendingDeposit,
+  PENDING_KEY,
+  savePendingDeposit,
+  toDirectAction,
+} from "./clapay-direct";
 
 const link = "https://pay.wave.com/test-only-payment";
 
@@ -33,4 +39,52 @@ test("operator completion link takes priority and MyNita code remains unchanged"
   assert.equal(result.operatorPaymentUrl, link);
   assert.equal(result.paymentOtp, "ACHAT001234");
   assert.equal(result.message, "En attente");
+});
+
+test("pending payment credentials are never persisted to session storage", () => {
+  const values = new Map<string, string>();
+  Object.defineProperty(globalThis, "sessionStorage", {
+    configurable: true,
+    value: {
+      getItem: (key: string) => values.get(key) ?? null,
+      setItem: (key: string, value: string) => values.set(key, value),
+      removeItem: (key: string) => values.delete(key),
+    },
+  });
+
+  savePendingDeposit({
+    depositId: "deposit-test",
+    paymentUrl: null,
+    operatorPaymentUrl: link,
+    paymentOtp: null,
+    message: null,
+    methodSlug: "test",
+    methodName: "Test",
+    methodColor: "#000000",
+    localAmount: 500,
+    currencyCode: "XOF",
+  });
+
+  assert.equal(values.get(PENDING_KEY)?.includes("SENSITIVE-OTP"), false);
+  assert.equal(loadPendingDeposit()?.paymentOtp, null);
+
+  // Remove credentials already stored by an older app version.
+  values.set(PENDING_KEY, JSON.stringify({
+    depositId: "deposit-test",
+    paymentUrl: null,
+    operatorPaymentUrl: link,
+    paymentOtp: "OLD-SENSITIVE-OTP",
+    message: null,
+    methodSlug: "test",
+    methodName: "Test",
+    methodColor: "#000000",
+    localAmount: 500,
+    currencyCode: "XOF",
+  }));
+  assert.equal(loadPendingDeposit()?.paymentOtp, null);
+  assert.equal(values.get(PENDING_KEY)?.includes("OLD-SENSITIVE-OTP"), false);
+
+  clearPendingDeposit();
+  assert.equal(values.has(PENDING_KEY), false);
+  delete (globalThis as typeof globalThis & { sessionStorage?: unknown }).sessionStorage;
 });

@@ -17,8 +17,8 @@ const K = {
 // ── Types ────────────────────────────────────────────────────────────────────
 export interface PinUser {
   id: string;
-  fullName: string;
-  email: string;
+  fullName?: string;
+  email?: string;
 }
 
 interface AttemptRecord {
@@ -69,7 +69,7 @@ export function clearPin(userId: string): void {
 // ── User cache ───────────────────────────────────────────────────────────────
 export function savePinUser(user: PinUser): void {
   try {
-    localStorage.setItem(K.user(), JSON.stringify(user));
+    localStorage.setItem(K.user(), JSON.stringify({ id: user.id }));
   } catch { /* ignore quota errors */ }
 }
 

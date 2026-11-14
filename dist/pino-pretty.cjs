@@ -1682,10 +1682,17 @@ var require_delete_log_property = __commonJS({
   }
 });
 
-// ../../node_modules/.pnpm/fast-copy@4.0.2/node_modules/fast-copy/dist/cjs/index.cjs
+// ../../node_modules/.pnpm/fast-copy@4.3.1/node_modules/fast-copy/dist/cjs/index.cjs
 var require_cjs = __commonJS({
-  "../../node_modules/.pnpm/fast-copy@4.0.2/node_modules/fast-copy/dist/cjs/index.cjs"(exports2) {
+  "../../node_modules/.pnpm/fast-copy@4.3.1/node_modules/fast-copy/dist/cjs/index.cjs"(exports2) {
     "use strict";
+    var MaxDepthExceededError = class extends RangeError {
+      constructor(maxDepth) {
+        super(`Maximum copy depth of ${String(maxDepth)} exceeded; the value copied is nested too deeply.`);
+        this.maxDepth = maxDepth;
+        this.name = "MaxDepthExceededError";
+      }
+    };
     var toStringFunction = Function.prototype.toString;
     var toStringObject = Object.prototype.toString;
     function getCleanClone(prototype) {
@@ -1696,7 +1703,7 @@ var require_cjs = __commonJS({
       if (Constructor === Object) {
         return prototype === Object.prototype ? {} : Object.create(prototype);
       }
-      if (Constructor && ~toStringFunction.call(Constructor).indexOf("[native code]")) {
+      if (typeof Constructor === "function" && ~toStringFunction.call(Constructor).indexOf("[native code]")) {
         try {
           return new Constructor();
         } catch (_a) {
@@ -1712,7 +1719,7 @@ var require_cjs = __commonJS({
       const type = toStringObject.call(value);
       return type.substring(8, type.length - 1);
     }
-    var { hasOwnProperty, propertyIsEnumerable } = Object.prototype;
+    var sliceTypedArray = Object.getPrototypeOf(Int8Array.prototype).slice;
     function copyOwnDescriptor(original, clone, property, state) {
       const ownDescriptor = Object.getOwnPropertyDescriptor(original, property) || {
         configurable: true,
@@ -1732,18 +1739,16 @@ var require_cjs = __commonJS({
         clone[property] = descriptor.get ? descriptor.get() : descriptor.value;
       }
     }
-    function copyOwnPropertiesStrict(value, clone, state) {
-      const names = Object.getOwnPropertyNames(value);
-      for (let index = 0; index < names.length; ++index) {
+    function copyOwnPropertiesStrict(value, clone, state, names, start) {
+      for (let index = start; index < names.length; ++index) {
         copyOwnDescriptor(value, clone, names[index], state);
       }
-      const symbols = Object.getOwnPropertySymbols(value);
-      for (let index = 0; index < symbols.length; ++index) {
-        copyOwnDescriptor(value, clone, symbols[index], state);
+      for (const symbol of Object.getOwnPropertySymbols(value)) {
+        copyOwnDescriptor(value, clone, symbol, state);
       }
       return clone;
     }
-    function copyArrayLoose(array, state) {
+    function copyArray(array, state) {
       const clone = new state.Constructor();
       state.cache.set(array, clone);
       for (let index = 0; index < array.length; ++index) {
@@ -1754,43 +1759,80 @@ var require_cjs = __commonJS({
     function copyArrayStrict(array, state) {
       const clone = new state.Constructor();
       state.cache.set(array, clone);
-      return copyOwnPropertiesStrict(array, clone, state);
+      return copyOwnPropertiesStrict(array, clone, state, Object.getOwnPropertyNames(array), 0);
     }
-    function copyArrayBuffer(arrayBuffer, _state) {
+    function copyArrayBuffer(arrayBuffer, state) {
+      if (ArrayBuffer.isView(arrayBuffer)) {
+        return sliceTypedArray.call(arrayBuffer, 0);
+      }
+      if (arrayBuffer.resizable || arrayBuffer.growable) {
+        const maxByteLength = arrayBuffer.maxByteLength;
+        const clone = new state.Constructor(arrayBuffer.byteLength, { maxByteLength });
+        new Uint8Array(clone).set(new Uint8Array(arrayBuffer));
+        return clone;
+      }
+      if (!arrayBuffer.byteLength && getTag(arrayBuffer) === "SharedArrayBuffer") {
+        return new state.Constructor(0);
+      }
       return arrayBuffer.slice(0);
+    }
+    function copyArrayBufferStrict(arrayBuffer, state) {
+      const clone = copyArrayBuffer(arrayBuffer, state);
+      state.cache.set(arrayBuffer, clone);
+      const start = ArrayBuffer.isView(clone) ? clone.length || 0 : 0;
+      return copyOwnPropertiesStrict(arrayBuffer, clone, state, Object.getOwnPropertyNames(arrayBuffer), start);
     }
     function copyBlob(blob, _state) {
       return blob.slice(0, blob.size, blob.type);
     }
+    var copyBlobStrict = createStrictHandler(copyBlob);
     function copyDataView(dataView, state) {
-      return new state.Constructor(copyArrayBuffer(dataView.buffer));
+      return new state.Constructor(state.copier(dataView.buffer, state), dataView.byteOffset, dataView.byteLength);
+    }
+    function copyDataViewStrict(dataView, state) {
+      const { buffer } = dataView;
+      const { cache, Constructor } = state;
+      const bufferCopied = cache.has(buffer);
+      const bufferClone = bufferCopied ? cache.get(buffer) : state.copier(buffer, state);
+      if (!bufferCopied && cache.has(dataView)) {
+        return cache.get(dataView);
+      }
+      const clone = new Constructor(bufferClone, dataView.byteOffset, dataView.byteLength);
+      state.cache.set(dataView, clone);
+      return copyOwnPropertiesStrict(dataView, clone, state, Object.getOwnPropertyNames(dataView), 0);
     }
     function copyDate(date, state) {
       return new state.Constructor(date.getTime());
     }
-    function copyMapLoose(map, state) {
+    var copyDateStrict = createStrictHandler(copyDate);
+    function copyMap(map, state) {
       const clone = new state.Constructor();
       state.cache.set(map, clone);
-      map.forEach((value, key) => {
+      for (const [key, value] of map) {
         clone.set(key, state.copier(value, state));
-      });
+      }
       return clone;
     }
     function copyMapStrict(map, state) {
-      return copyOwnPropertiesStrict(map, copyMapLoose(map, state), state);
+      return copyOwnPropertiesStrict(map, copyMap(map, state), state, Object.getOwnPropertyNames(map), 0);
     }
-    function copyObjectLoose(object, state) {
+    function copyObject(object, state) {
       const clone = getCleanClone(state.prototype);
       state.cache.set(object, clone);
-      for (const key in object) {
-        if (hasOwnProperty.call(object, key)) {
+      for (const key of Object.keys(object)) {
+        if (key === "__proto__") {
+          Object.defineProperty(clone, key, {
+            configurable: true,
+            enumerable: true,
+            value: state.copier(object[key], state),
+            writable: true
+          });
+        } else {
           clone[key] = state.copier(object[key], state);
         }
       }
-      const symbols = Object.getOwnPropertySymbols(object);
-      for (let index = 0; index < symbols.length; ++index) {
-        const symbol = symbols[index];
-        if (propertyIsEnumerable.call(object, symbol)) {
+      for (const symbol of Object.getOwnPropertySymbols(object)) {
+        if (Object.prototype.propertyIsEnumerable.call(object, symbol)) {
           clone[symbol] = state.copier(object[symbol], state);
         }
       }
@@ -1799,64 +1841,91 @@ var require_cjs = __commonJS({
     function copyObjectStrict(object, state) {
       const clone = getCleanClone(state.prototype);
       state.cache.set(object, clone);
-      return copyOwnPropertiesStrict(object, clone, state);
+      return copyOwnPropertiesStrict(object, clone, state, Object.getOwnPropertyNames(object), 0);
     }
     function copyPrimitiveWrapper(primitiveObject, state) {
       return new state.Constructor(primitiveObject.valueOf());
     }
+    var copyPrimitiveWrapperStrict = createStrictHandler(copyPrimitiveWrapper);
     function copyRegExp(regExp, state) {
       const clone = new state.Constructor(regExp.source, regExp.flags);
       clone.lastIndex = regExp.lastIndex;
       return clone;
     }
+    var copyRegExpStrict = createStrictHandler(copyRegExp);
     function copySelf(value, _state) {
       return value;
     }
-    function copySetLoose(set, state) {
+    function copySet(set, state) {
       const clone = new state.Constructor();
       state.cache.set(set, clone);
-      set.forEach((value) => {
+      for (const value of set) {
         clone.add(state.copier(value, state));
-      });
+      }
       return clone;
     }
     function copySetStrict(set, state) {
-      return copyOwnPropertiesStrict(set, copySetLoose(set, state), state);
+      return copyOwnPropertiesStrict(set, copySet(set, state), state, Object.getOwnPropertyNames(set), 0);
     }
+    function createStrictHandler(handler) {
+      return (value, state) => {
+        const clone = handler(value, state);
+        state.cache.set(value, clone);
+        return copyOwnPropertiesStrict(value, clone, state, Object.getOwnPropertyNames(value), 0);
+      };
+    }
+    function copyStringStrict(string, state) {
+      const clone = copyPrimitiveWrapper(string, state);
+      state.cache.set(string, clone);
+      const { length } = string;
+      const names = Object.getOwnPropertyNames(string);
+      const start = names[length] === "length" ? length + 1 : length;
+      return copyOwnPropertiesStrict(string, clone, state, names, start);
+    }
+    var DEFAULT_MAX_DEPTH = 1e3;
     function createDefaultCache() {
       return /* @__PURE__ */ new WeakMap();
     }
-    function getOptions({ createCache: createCacheOverride, methods: methodsOverride, strict }) {
+    function getOptions({ createCache: createCacheOverride, maxDepth, methods: methodsOverride, strict }) {
       const defaultMethods = {
-        array: strict ? copyArrayStrict : copyArrayLoose,
-        arrayBuffer: copyArrayBuffer,
+        array: strict ? copyArrayStrict : copyArray,
+        arrayBuffer: strict ? copyArrayBufferStrict : copyArrayBuffer,
         asyncGenerator: copySelf,
-        blob: copyBlob,
-        dataView: copyDataView,
-        date: copyDate,
+        blob: strict ? copyBlobStrict : copyBlob,
+        dataView: strict ? copyDataViewStrict : copyDataView,
+        date: strict ? copyDateStrict : copyDate,
         error: copySelf,
         generator: copySelf,
-        map: strict ? copyMapStrict : copyMapLoose,
-        object: strict ? copyObjectStrict : copyObjectLoose,
-        regExp: copyRegExp,
-        set: strict ? copySetStrict : copySetLoose
+        map: strict ? copyMapStrict : copyMap,
+        object: strict ? copyObjectStrict : copyObject,
+        regExp: strict ? copyRegExpStrict : copyRegExp,
+        set: strict ? copySetStrict : copySet
       };
       const methods = methodsOverride ? Object.assign(defaultMethods, methodsOverride) : defaultMethods;
-      const copiers = getTagSpecificCopiers(methods);
+      const copiers = getTagSpecificCopiers(methods, strict);
       const createCache = createCacheOverride || createDefaultCache;
       if (!copiers.Object || !copiers.Array) {
         throw new Error("An object and array copier must be provided.");
       }
-      return { createCache, copiers, methods, strict: Boolean(strict) };
-    }
-    function getTagSpecificCopiers(methods) {
       return {
+        createCache,
+        copiers,
+        maxDepth: maxDepth == null ? DEFAULT_MAX_DEPTH : maxDepth,
+        methods,
+        strict: Boolean(strict)
+      };
+    }
+    function getTagSpecificCopiers(methods, strict) {
+      const copyPrimitive = strict ? copyPrimitiveWrapperStrict : copyPrimitiveWrapper;
+      return Object.assign(/* @__PURE__ */ Object.create(null), {
         Arguments: methods.object,
         Array: methods.array,
         ArrayBuffer: methods.arrayBuffer,
         AsyncGenerator: methods.asyncGenerator,
+        BigInt64Array: methods.arrayBuffer,
+        BigUint64Array: methods.arrayBuffer,
         Blob: methods.blob,
-        Boolean: copyPrimitiveWrapper,
+        Boolean: copyPrimitive,
         DataView: methods.dataView,
         Date: methods.date,
         Error: methods.error,
@@ -1867,24 +1936,24 @@ var require_cjs = __commonJS({
         Int16Array: methods.arrayBuffer,
         Int32Array: methods.arrayBuffer,
         Map: methods.map,
-        Number: copyPrimitiveWrapper,
+        Number: copyPrimitive,
         Object: methods.object,
         Promise: copySelf,
         RegExp: methods.regExp,
         Set: methods.set,
-        String: copyPrimitiveWrapper,
+        SharedArrayBuffer: methods.arrayBuffer,
+        String: strict ? copyStringStrict : copyPrimitiveWrapper,
         WeakMap: copySelf,
         WeakSet: copySelf,
         Uint8Array: methods.arrayBuffer,
         Uint8ClampedArray: methods.arrayBuffer,
         Uint16Array: methods.arrayBuffer,
-        Uint32Array: methods.arrayBuffer,
-        Uint64Array: methods.arrayBuffer
-      };
+        Uint32Array: methods.arrayBuffer
+      });
     }
     function createCopier(options = {}) {
-      const { createCache, copiers } = getOptions(options);
-      const { Array: copyArray, Object: copyObject } = copiers;
+      const { createCache, copiers, maxDepth } = getOptions(options);
+      const { Array: copyArray2, Object: copyObject2 } = copiers;
       function copier(value, state) {
         state.prototype = state.Constructor = void 0;
         if (!value || typeof value !== "object") {
@@ -1893,31 +1962,40 @@ var require_cjs = __commonJS({
         if (state.cache.has(value)) {
           return state.cache.get(value);
         }
+        if (++state.depth > maxDepth) {
+          throw new MaxDepthExceededError(maxDepth);
+        }
         state.prototype = Object.getPrototypeOf(value);
         state.Constructor = state.prototype && state.prototype.constructor;
+        let clone;
         if (!state.Constructor || state.Constructor === Object) {
-          return copyObject(value, state);
+          clone = copyObject2(value, state);
+        } else if (Array.isArray(value)) {
+          clone = copyArray2(value, state);
+        } else {
+          const tagSpecificCopier = copiers[getTag(value)];
+          if (tagSpecificCopier) {
+            clone = tagSpecificCopier(value, state);
+          } else {
+            clone = typeof value.then === "function" ? value : copyObject2(value, state);
+          }
         }
-        if (Array.isArray(value)) {
-          return copyArray(value, state);
-        }
-        const tagSpecificCopier = copiers[getTag(value)];
-        if (tagSpecificCopier) {
-          return tagSpecificCopier(value, state);
-        }
-        return typeof value.then === "function" ? value : copyObject(value, state);
+        --state.depth;
+        return clone;
       }
       return function copy2(value) {
         return copier(value, {
           Constructor: void 0,
           cache: createCache(),
           copier,
+          depth: 0,
           prototype: void 0
         });
       };
     }
     var copyStrict = createCopier({ strict: true });
     var copy = createCopier();
+    exports2.MaxDepthExceededError = MaxDepthExceededError;
     exports2.copy = copy;
     exports2.copyStrict = copyStrict;
     exports2.createCopier = createCopier;

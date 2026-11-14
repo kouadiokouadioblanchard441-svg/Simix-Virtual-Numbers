@@ -151,7 +151,7 @@ export function PinLockScreen({ user, onUnlock, onForgotPin }: PinLockScreenProp
             <SimixIcon size={44} />
           </div>
           <div className="text-center">
-            <p className="text-base font-bold text-foreground">{user.fullName}</p>
+            <p className="text-base font-bold text-foreground">{user.fullName || "Utilisateur"}</p>
             <p className="text-xs text-muted-foreground mt-0.5">
               {state === "locked"
                 ? `🔒 Bloqué — réessayez dans ${formatRemaining(remaining)}`

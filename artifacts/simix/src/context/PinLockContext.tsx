@@ -91,7 +91,9 @@ export function PinLockProvider({ children }: { children: ReactNode }) {
       fullName: (apiUser as any).fullName || "Utilisateur",
       email: (apiUser as any).email || "",
     };
-    savePinUser(user);
+    // Keep profile details in memory only; local storage needs only the user ID
+    // to scope the PIN keys.
+    savePinUser({ id: user.id });
     setCurrentUser(user);
 
     // Check expiry BEFORE updating activity — updating first would reset the clock.

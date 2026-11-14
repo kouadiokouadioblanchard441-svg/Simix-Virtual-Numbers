@@ -73,7 +73,14 @@ export function WalletPendingOverlay(p: Props) {
               message: next.message ?? prev.message,
             };
             const stored = loadPendingDeposit();
-            if (stored && stored.depositId === p.depositId) savePendingDeposit({ ...stored, ...merged });
+            if (stored && stored.depositId === p.depositId) {
+              savePendingDeposit({
+                ...stored,
+                operatorPaymentUrl: merged.operatorPaymentUrl,
+                message: merged.message,
+                paymentOtp: null,
+              });
+            }
             return merged;
           });
         }
